@@ -1,0 +1,16 @@
+# Local Supabase configuration for Predictor1.
+# Generated for local development; do not use this stack as production infrastructure.
+project_id = "predictor"
+
+[db]
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
