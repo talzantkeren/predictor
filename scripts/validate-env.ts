@@ -17,7 +17,7 @@ try {
   console.log("Environment configuration is valid.");
 } catch (error) {
   const variables = getEnvironmentErrorVariables(error);
-  const variableList = variables.length > 0 ? variables.join(", ") : "DEMO_MODE";
+  const variableList = variables.length > 0 ? variables.join(", ") : "unknown";
 
   console.error(`Invalid environment configuration: ${variableList}`);
   process.exitCode = 1;

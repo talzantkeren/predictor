@@ -92,6 +92,10 @@ export function getEnvironmentErrorVariables(error: unknown) {
     return ["SPORTS_API_KEY"];
   }
 
+  if (error instanceof Error && error.message.startsWith("DEMO_MODE")) {
+    return ["DEMO_MODE"];
+  }
+
   return [];
 }
 

@@ -9,6 +9,8 @@ import {
 function configurationErrorResponse(error: unknown) {
   const variables = getEnvironmentErrorVariables(error);
   const variableList = variables.length > 0 ? variables.join(", ") : "unknown";
+  const publicVariables =
+    process.env.VERCEL_ENV === "production" ? [] : variables;
 
   console.error(`[proxy] Invalid environment configuration: ${variableList}`);
 
@@ -16,7 +18,7 @@ function configurationErrorResponse(error: unknown) {
     {
       error: "configuration_error",
       message: "הגדרת הסביבה של היישום אינה תקינה.",
-      variables,
+      variables: publicVariables,
     },
     {
       status: 503,

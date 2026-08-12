@@ -20,10 +20,11 @@
 1. מאגר GitHub פרטי/ציבורי לפי דרישות הקורס, עם branch `main` מוגן ככל האפשר.
 2. פרויקט Supabase hosted עבור Production.
 3. פרויקט Vercel המקושר למאגר.
-4. סביבת Node.js בגרסה 20.9 ומעלה.
-5. Docker Desktop לצורך Supabase local development, אם המחשב תומך; אחרת migrations נבדקות בפרויקט development נפרד ולא ב־Production.
-6. החלטת POC מתועדת לגבי Sports provider. כשל POC מפעיל מיד `ManualSportsProvider` ו־seed — הוא לא עוצר פיתוח.
-7. `DEMO_MODE=true` בפריסה הציבורית. אין תשלום, פרס כספי או מסמך פיננסי אמיתי.
+4. סביבת Node.js 24.x. פיתוח מקומי ו־CI ננעלים ל־24.16.0 דרך `.nvmrc`; פרויקט Vercel מוגדר ל־24.x.
+5. Supabase local ו־CI משתמשים ב־PostgreSQL 17, בהתאם לגרסה המרכזית של פרויקט ה־hosted.
+6. Docker Desktop לצורך Supabase local development, אם המחשב תומך; אחרת migrations נבדקות בפרויקט development נפרד ולא ב־Production.
+7. החלטת POC מתועדת לגבי Sports provider. כשל POC מפעיל מיד `ManualSportsProvider` ו־seed — הוא לא עוצר פיתוח.
+8. `DEMO_MODE=true` בפריסה הציבורית. אין תשלום, פרס כספי או מסמך פיננסי אמיתי.
 
 ### 2.1 Bootstrap מומלץ
 
@@ -52,9 +53,10 @@ npx playwright install
 | `test` | `vitest run` |
 | `test:watch` | `vitest` |
 | `test:db` | `supabase test db` |
-| `test:e2e` | `playwright test` |
+| `test:e2e` | production build ולאחריו `playwright test` |
+| `test:e2e:run` | `playwright test` מול build קיים, עבור `verify` ותרחישי URL חיצוני |
 | `types:db` | יצירת `src/types/database.generated.ts` מה־DB המקומי |
-| `verify` | lint → typecheck → unit → DB → build; E2E ב־CI job נפרד |
+| `verify` | lint → typecheck → unit → DB → generated types drift → build → E2E מול ה־build הקיים |
 
 ## 3. מבנה תיקיות יעד
 

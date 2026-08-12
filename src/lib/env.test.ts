@@ -111,4 +111,18 @@ describe("Slice 0 environment validation", () => {
   it("requires the secret key only when the admin client is requested", () => {
     expect(() => parseAdminEnv(validInput)).toThrow();
   });
+
+  it("attributes a production Demo-mode failure to DEMO_MODE", () => {
+    expect(
+      getEnvironmentErrorVariables(
+        new Error("DEMO_MODE must be true for the public course deployment"),
+      ),
+    ).toEqual(["DEMO_MODE"]);
+  });
+
+  it("does not mislabel an unexpected error as a known variable", () => {
+    expect(getEnvironmentErrorVariables(new Error("Unexpected failure"))).toEqual(
+      [],
+    );
+  });
 });

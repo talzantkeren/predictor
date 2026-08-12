@@ -13,7 +13,7 @@ export default function Home() {
         <p className="mb-3 text-sm text-slate-500">Predictor1</p>
 
         <h1 id="home-title" className="mb-4 text-3xl font-bold">
-          ברוכים הבאים ל־Predictor
+          ברוכים הבאים ל־Predictor1
         </h1>
 
         <p className="mb-6 text-slate-600">

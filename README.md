@@ -46,6 +46,9 @@ npm run dev
 `CRON_SECRET` שמור ל־Slice 7, ומפתחות AI שמורים ל־Slice 8. אין להכניס אף
 secret ל־Git או למשתנה שמתחיל ב־`NEXT_PUBLIC_`.
 
+`DEMO_MODE` נקרא בזמן build בדף הבית הסטטי. שינוי שלו ב־Vercel נכנס לתוקף רק
+לאחר Redeploy; בפריסת Production ה־build נדחה אם הערך אינו `true`.
+
 ## בדיקות
 
 ```powershell
