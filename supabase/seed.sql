@@ -1,0 +1,2 @@
+-- Predictor1 local seed entry point.
+-- Keep this empty until the foundation migration defines the required enums/extensions.
