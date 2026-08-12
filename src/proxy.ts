@@ -1,9 +1,11 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { env } from "@/lib/env";
+import { getPublicEnv } from "@/lib/env";
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
+  const env = getPublicEnv();
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -16,7 +18,7 @@ export async function proxy(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );

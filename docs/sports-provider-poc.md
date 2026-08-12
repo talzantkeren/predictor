@@ -170,3 +170,11 @@ The provider layer is accepted when:
 - Live intermediate scores do not activate prediction scoring.
 - The provider contract contains no Israeli-league-specific business logic.
 - A second provider could be added without changing scoring or UI code.
+
+## Slice 0 decision and evidence
+
+No live external Sports API POC has been run or accepted. The six provider questions
+remain open, so the documented safe fallback is active: `ManualSportsProvider` with
+the checked-in fixture set at `src/features/sports/fixtures.ts`. Run the one-off
+`npm run poc:sports` command to inspect its normalized output; this command is not
+part of CI and does not make network requests.

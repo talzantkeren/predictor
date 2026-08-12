@@ -1,4 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Predictor1
+
+Predictor1 is a Hebrew RTL football score-prediction league application. The
+public course deployment is Demo-only: it does not collect money, process
+payments, or represent a financial balance.
+
+## Requirements
+
+- Node.js 20.9 or newer
+- Docker Desktop for local Supabase tests
+- Supabase CLI for migrations and pgTAP tests
+
+## Local setup
+
+```bash
+npm ci
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+Fill only the local, non-secret Supabase values required by the current slice.
+Never commit `.env.local` or real credentials.
+
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run test:db
+npm run build
+npm run test:e2e
+```
+
+The one-off Sports POC uses the manual fixture adapter and does not call a live
+provider:
+
+```bash
+npm run poc:sports
+```
+
+The current Slice 0 deployment is not yet connected to a hosted Supabase project
+or Vercel Production URL.
 
 ## Getting Started
 
