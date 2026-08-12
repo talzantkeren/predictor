@@ -5,6 +5,7 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
+- Slice 1 Preview: [https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
@@ -79,7 +80,7 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Site URL: `https://predictor-swart.vercel.app`
 - Redirect URL: `http://localhost:3000/auth/confirm`
 - Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
-- Redirect URL: כתובת ה־Preview המדויקת של הענף בתוספת `/auth/confirm`
+- Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
 
 טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי, ולכן Preview עובד רק אחרי
 הוספת הכתובת המדויקת שלו ל־allowlist.
