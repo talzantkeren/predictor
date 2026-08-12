@@ -62,6 +62,10 @@ npm run dev
 עדכון שם → התנתקות → התחברות. שחזור סיסמה מתחיל ב־`/forgot-password`, ממשיך
 בקישור Mailpit ומסתיים בהתחברות מחדש עם הסיסמה החדשה.
 
+טפסי Auth נשלחים ל־Server Actions ומאומתים שם באמצעות Zod. בנוסף,
+`supabase/config.toml` והפרויקט המארח אוכפים מינימום של 8 תווים ברמת Supabase
+Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
+
 ### Mailpit
 
 Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מופיעה בשדה `MAILPIT_URL`

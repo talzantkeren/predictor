@@ -1,6 +1,6 @@
 begin;
 
-select plan(34);
+select plan(35);
 
 select ok(to_regclass('public.profiles') is not null, 'profiles table exists');
 
@@ -174,6 +174,11 @@ select ok(
 select ok(
   not has_column_privilege('authenticated', 'public.profiles', 'created_at', 'UPDATE'),
   'authenticated cannot update created_at'
+);
+
+select ok(
+  not has_column_privilege('authenticated', 'public.profiles', 'updated_at', 'UPDATE'),
+  'authenticated cannot update updated_at'
 );
 
 select ok(

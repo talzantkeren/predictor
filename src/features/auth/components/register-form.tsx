@@ -1,75 +1,26 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useActionState } from "react";
 
-import { getSafeAuthErrorMessage } from "@/features/auth/errors";
-import { getFieldErrors, registerSchema } from "@/features/auth/schemas";
-import { createClient } from "@/lib/supabase/browser";
+import {
+  registerAction,
+  type AuthActionState,
+} from "@/features/auth/actions";
 
 import { FieldError, FormMessage } from "./form-message";
 
 export function RegisterForm() {
-  const [pending, setPending] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [message, setMessage] = useState<string>();
-  const [fieldErrors, setFieldErrors] = useState<
-    Record<string, string[] | undefined>
-  >({});
+  const initialState: AuthActionState = { status: "idle" };
+  const [state, formAction, pending] = useActionState(registerAction, initialState);
+  const fieldErrors = state.fieldErrors ?? {};
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(undefined);
-
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const parsed = registerSchema.safeParse({
-      displayName: form.get("displayName"),
-      email: form.get("email"),
-      password: form.get("password"),
-      passwordConfirmation: form.get("passwordConfirmation"),
-    });
-
-    if (!parsed.success) {
-      setFieldErrors(getFieldErrors(parsed.error));
-      return;
-    }
-
-    setFieldErrors({});
-    setPending(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        data: { display_name: parsed.data.displayName },
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
-      },
-    });
-
-    if (error) {
-      setMessage(getSafeAuthErrorMessage(error, "register"));
-      setPending(false);
-      return;
-    }
-
-    formElement.reset();
-    setSuccess(true);
-    setPending(false);
-  }
-
-  if (success) {
-    return (
-      <FormMessage kind="success">
-        ההרשמה התקבלה. שלחנו הודעת אישור לכתובת שהזנת. יש לפתוח את הקישור
-        בהודעה לפני ההתחברות.
-      </FormMessage>
-    );
+  if (state.status === "success") {
+    return <FormMessage kind="success">{state.message}</FormMessage>;
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {message ? <FormMessage kind="error">{message}</FormMessage> : null}
+    <form action={formAction} noValidate className="space-y-5">
+      {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>
         <label htmlFor="displayName" className="block text-sm font-semibold text-slate-800">

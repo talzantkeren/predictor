@@ -1,19 +1,28 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getSafeAuthRedirect } from "@/features/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 
-const allowedOtpTypes = new Set<EmailOtpType>(["email", "recovery", "signup"]);
-
 function privateRedirect(
   request: NextRequest,
   path: string,
-  options?: { recoverySession?: boolean },
+  options?: {
+    authHeaders?: Record<string, string>;
+    recoverySession?: boolean;
+  },
 ) {
   const response = NextResponse.redirect(new URL(path, request.url));
-  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, must-revalidate, max-age=0",
+  );
+  response.headers.set("Expires", "0");
+  response.headers.set("Pragma", "no-cache");
   response.headers.set("Referrer-Policy", "no-referrer");
+
+  Object.entries(options?.authHeaders ?? {}).forEach(([name, value]) =>
+    response.headers.set(name, value),
+  );
 
   if (options?.recoverySession) {
     response.cookies.set("predictor_recovery", "active", {
@@ -30,30 +39,23 @@ function privateRedirect(
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const tokenHash = request.nextUrl.searchParams.get("token_hash");
-  const rawType = request.nextUrl.searchParams.get("type");
-  const type = allowedOtpTypes.has(rawType as EmailOtpType)
-    ? (rawType as EmailOtpType)
-    : null;
   const recoveryFlow =
-    type === "recovery" ||
     request.nextUrl.searchParams.get("next") === "/update-password";
   const nextPath = getSafeAuthRedirect(
     request.nextUrl.searchParams.get("next"),
     recoveryFlow ? "/update-password" : "/dashboard",
   );
 
-  const supabase = await createClient();
+  const authHeaders: Record<string, string> = {};
+  const supabase = await createClient({
+    onAuthHeaders(headers) {
+      Object.assign(authHeaders, headers);
+    },
+  });
   let failed = true;
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    failed = Boolean(error);
-  } else if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type,
-    });
     failed = Boolean(error);
   }
 
@@ -63,10 +65,12 @@ export async function GET(request: NextRequest) {
       recoveryFlow
         ? "/forgot-password?status=recovery-error"
         : "/login?status=confirmation-error",
+      { authHeaders },
     );
   }
 
   return privateRedirect(request, nextPath, {
+    authHeaders,
     recoverySession: recoveryFlow && nextPath === "/update-password",
   });
 }

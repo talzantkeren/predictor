@@ -11,6 +11,11 @@ type MailpitMessage = {
   HTML?: unknown;
 };
 
+type AuthErrorResponse = {
+  code?: unknown;
+  error_code?: unknown;
+};
+
 function extractAuthLink(message: MailpitMessage) {
   const content = [message.Text, message.HTML]
     .filter((value): value is string => typeof value === "string")
@@ -70,7 +75,20 @@ async function waitForAuthEmail(
 }
 
 test.describe("authentication and profile", () => {
-  test("blocks guests from protected pages", async ({ page }) => {
+  test("blocks guests and returns private confirmation responses", async ({
+    page,
+    request,
+  }) => {
+    const confirmationResponse = await request.get("/auth/confirm", {
+      maxRedirects: 0,
+    });
+
+    expect(confirmationResponse.status()).toBe(307);
+    expect(confirmationResponse.headers()["cache-control"]).toContain("private");
+    expect(confirmationResponse.headers()["cache-control"]).toContain("no-store");
+    expect(confirmationResponse.headers().expires).toBe("0");
+    expect(confirmationResponse.headers().pragma).toBe("no-cache");
+
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
     await expect(page.getByRole("heading", { name: "התחברות" })).toBeVisible();
@@ -79,10 +97,38 @@ test.describe("authentication and profile", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fprofile$/);
   });
 
+  test("enforces the password minimum in Supabase Auth", async ({ request }) => {
+    test.skip(
+      Boolean(process.env.PLAYWRIGHT_BASE_URL),
+      "The authoritative Auth policy check targets local Supabase only.",
+    );
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    expect(supabaseUrl).toBeTruthy();
+    expect(publishableKey).toBeTruthy();
+
+    const response = await request.post(`${supabaseUrl}/auth/v1/signup`, {
+      headers: { apikey: publishableKey! },
+      data: {
+        email: `short-password-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
+        password: "seven77",
+      },
+    });
+    const error = (await response.json()) as AuthErrorResponse;
+
+    expect(response.ok()).toBe(false);
+    expect(response.status()).toBe(422);
+    expect(error.code).toBe(422);
+    expect(error.error_code).toBe("weak_password");
+  });
+
   test("completes signup, confirmation, profile, logout, login and recovery", async ({
     page,
     request,
   }) => {
+    // Mailpit and its deterministic email API exist only in the local stack.
     test.skip(
       Boolean(process.env.PLAYWRIGHT_BASE_URL),
       "Mailpit-backed authentication is a local deterministic flow.",
@@ -125,6 +171,8 @@ test.describe("authentication and profile", () => {
     await page.getByRole("button", { name: "התנתקות" }).click();
     await expect(page).toHaveURL(/\/login\?status=signed-out$/);
     await expect(page.getByText("התנתקת בהצלחה")).toBeVisible();
+    await page.goto("/dashboard");
+    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
 
     await page.getByLabel("כתובת אימייל").fill(email);
     await page.getByLabel("סיסמה").fill(password);
@@ -154,6 +202,13 @@ test.describe("authentication and profile", () => {
 
     await expect(page).toHaveURL(/\/login\?status=password-updated$/);
     await expect(page.getByText("הסיסמה עודכנה בהצלחה")).toBeVisible();
+    await expect
+      .poll(async () =>
+        (await page.context().cookies()).some(
+          (cookie) => cookie.name === "predictor_recovery",
+        ),
+      )
+      .toBe(false);
 
     await page.getByLabel("כתובת אימייל").fill(email);
     await page.getByLabel("סיסמה").fill(replacementPassword);

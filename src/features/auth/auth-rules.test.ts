@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { getSafeAuthErrorMessage } from "@/features/auth/errors";
-import { getSafeAuthRedirect } from "@/features/auth/redirects";
+import {
+  getSafeAuthOrigin,
+  getSafeAuthRedirect,
+} from "@/features/auth/redirects";
 import {
   displayNameSchema,
   forgotPasswordSchema,
@@ -88,6 +91,12 @@ describe("safe authentication redirects", () => {
   it.each([
     "https://attacker.example/path",
     "//attacker.example/path",
+    "javascript:alert(1)",
+    "data:text/html,malicious",
+    "%2f%2fattacker.example/path",
+    "/%2f%2fattacker.example/path",
+    "%09//attacker.example/path",
+    "\u0000/dashboard",
     "/\\attacker.example/path",
     "\\attacker.example/path",
     "dashboard",
@@ -105,6 +114,37 @@ describe("safe authentication redirects", () => {
     expect(getSafeAuthRedirect("https://attacker.example", "/login")).toBe(
       "/login",
     );
+  });
+
+  it("accepts only an exact allowlisted callback origin", () => {
+    const allowedOrigins = [
+      "https://predictor-swart.vercel.app",
+      "https://predictor-preview.vercel.app",
+    ];
+
+    expect(
+      getSafeAuthOrigin(
+        "https://predictor-preview.vercel.app/path?ignored=true",
+        allowedOrigins,
+        allowedOrigins[0],
+      ),
+    ).toBe("https://predictor-preview.vercel.app");
+  });
+
+  it.each([
+    "https://attacker.example",
+    "predictor-preview.vercel.app.attacker.example",
+    "javascript:alert(1)",
+    "https:\\attacker.example",
+    null,
+  ])("falls back for an untrusted callback origin: %j", (candidate) => {
+    expect(
+      getSafeAuthOrigin(
+        candidate,
+        ["https://predictor-preview.vercel.app"],
+        "https://predictor-swart.vercel.app",
+      ),
+    ).toBe("https://predictor-swart.vercel.app");
   });
 });
 

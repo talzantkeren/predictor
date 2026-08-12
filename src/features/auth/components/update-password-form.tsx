@@ -1,70 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { useActionState } from "react";
 
-import { getSafeAuthErrorMessage } from "@/features/auth/errors";
-import { getFieldErrors, updatePasswordSchema } from "@/features/auth/schemas";
-import { createClient } from "@/lib/supabase/browser";
+import {
+  updatePasswordAction,
+  type AuthActionState,
+} from "@/features/auth/actions";
 
 import { FieldError, FormMessage } from "./form-message";
 
 export function UpdatePasswordForm() {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string>();
-  const [fieldErrors, setFieldErrors] = useState<
-    Record<string, string[] | undefined>
-  >({});
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(undefined);
-
-    const form = new FormData(event.currentTarget);
-    const parsed = updatePasswordSchema.safeParse({
-      password: form.get("password"),
-      passwordConfirmation: form.get("passwordConfirmation"),
-    });
-
-    if (!parsed.success) {
-      setFieldErrors(getFieldErrors(parsed.error));
-      return;
-    }
-
-    setFieldErrors({});
-    setPending(true);
-
-    const supabase = createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setMessage("הקישור אינו תקף או שפג תוקפו. יש לבקש קישור חדש.");
-      setPending(false);
-      return;
-    }
-
-    const { error } = await supabase.auth.updateUser({
-      password: parsed.data.password,
-    });
-
-    if (error) {
-      setMessage(getSafeAuthErrorMessage(error, "password-update"));
-      setPending(false);
-      return;
-    }
-
-    await supabase.auth.signOut({ scope: "local" });
-    router.replace("/login?status=password-updated");
-    router.refresh();
-  }
+  const initialState: AuthActionState = { status: "idle" };
+  const [state, formAction, pending] = useActionState(
+    updatePasswordAction,
+    initialState,
+  );
+  const fieldErrors = state.fieldErrors ?? {};
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {message ? <FormMessage kind="error">{message}</FormMessage> : null}
+    <form action={formAction} noValidate className="space-y-5">
+      {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>
         <label htmlFor="password" className="block text-sm font-semibold text-slate-800">

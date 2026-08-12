@@ -12,7 +12,7 @@ Playwright קורא ממנו בזמן הריצה רק את כתובת ה־API ו
 | --- | --- |
 | Vitest | נרמול ואימות Email, אורך סיסמה, התאמת סיסמאות, trim וגבולות שם תצוגה, allowlist ל־redirects ומיפוי שגיאות Auth בטוח |
 | pgTAP | מבנה `profiles`, FK, constraints, trigger יצירה, `updated_at`, RLS, column grants, הרשאות פונקציות, self access וחסימת משתמש זר/anon |
-| Playwright | חסימת אורח, הרשמה, אישור דרך Mailpit, Dashboard, עדכון פרופיל, redirect של משתמש מחובר, logout/login ושחזור סיסמה מלא |
+| Playwright | חסימת אורח, אכיפת מינימום סיסמה ישירות ב־Auth, הרשמה, אישור דרך Mailpit, Dashboard, עדכון פרופיל, redirect של משתמש מחובר, חסימה אחרי logout ושחזור מלא כולל מחיקת recovery cookie |
 | Visual | עברית ו־RTL, labels, autocomplete, focus states והיעדר overflow ב־390px וב־1440px |
 
 ### הרצה מקומית

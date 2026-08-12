@@ -7,12 +7,16 @@
   או state גלובלי.
 - `src/proxy.ts` מרענן session ומבצע redirects בסיסיים בלבד. כל עמוד ו־Server
   Action מוגנים קוראים `getUser()` מחדש מול Supabase.
-- תגובות שמעדכנות cookies מקבלות cache headers פרטיים כדי למנוע שמירת session
-  ב־CDN.
+- ה־Proxy מעביר את כותרות ה־cache ש־`@supabase/ssr` מספק בכל רענון session.
+  `/auth/confirm` מעביר אותן לתגובת ה־redirect ומגדיר תמיד `private, no-store`;
+  Server Actions הן בקשות POST שאינן נשמרות ב־cache.
 - `/auth/confirm` מוחק את פרטי ה־token מהיעד, חוסם redirects שאינם ב־allowlist
   ומוסיף `Referrer-Policy: no-referrer`.
 - מסך עדכון הסיסמה דורש user מאומת וגם cookie `HttpOnly` קצר־חיים שנוצר רק
-  לאחר callback שחזור מוצלח.
+  לאחר callback שחזור מוצלח. ה־Server Action מוחק את ה־cookie לאחר הצלחה או
+  session לא תקף.
+- כל מוטציות Auth מאומתות מחדש ב־Server Actions באמצעות Zod. מינימום הסיסמה
+  נאכף בנוסף ב־Supabase Auth עצמו, כך שקריאה ישירה ל־endpoint אינה עוקפת אותו.
 
 ## פרופילים והרשאות
 

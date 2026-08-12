@@ -1,51 +1,30 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useActionState } from "react";
 
-import { getFieldErrors, forgotPasswordSchema } from "@/features/auth/schemas";
-import { createClient } from "@/lib/supabase/browser";
+import {
+  forgotPasswordAction,
+  type AuthActionState,
+} from "@/features/auth/actions";
 
 import { FieldError, FormMessage } from "./form-message";
 
-const CONSISTENT_SUCCESS_MESSAGE =
-  "אם קיים חשבון התואם לכתובת, נשלח אליו קישור לשחזור הסיסמה.";
-
 export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }) {
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState(statusMessage);
-  const [fieldErrors, setFieldErrors] = useState<
-    Record<string, string[] | undefined>
-  >({});
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(undefined);
-
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const parsed = forgotPasswordSchema.safeParse({ email: form.get("email") });
-
-    if (!parsed.success) {
-      setFieldErrors(getFieldErrors(parsed.error));
-      return;
-    }
-
-    setFieldErrors({});
-    setPending(true);
-
-    const supabase = createClient();
-    await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
-    });
-
-    formElement.reset();
-    setMessage(CONSISTENT_SUCCESS_MESSAGE);
-    setPending(false);
-  }
+  const initialState: AuthActionState = { status: "idle" };
+  const [state, formAction, pending] = useActionState(
+    forgotPasswordAction,
+    initialState,
+  );
+  const fieldErrors = state.fieldErrors ?? {};
+  const message = state.message ?? statusMessage;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {message ? <FormMessage kind="info">{message}</FormMessage> : null}
+    <form action={formAction} noValidate className="space-y-5">
+      {message ? (
+        <FormMessage kind={state.status === "error" ? "error" : "info"}>
+          {message}
+        </FormMessage>
+      ) : null}
 
       <div>
         <label htmlFor="email" className="block text-sm font-semibold text-slate-800">

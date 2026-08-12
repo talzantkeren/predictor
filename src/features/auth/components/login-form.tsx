@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { useActionState } from "react";
 
-import { getSafeAuthErrorMessage } from "@/features/auth/errors";
-import { getFieldErrors, loginSchema } from "@/features/auth/schemas";
-import { createClient } from "@/lib/supabase/browser";
+import { loginAction, type AuthActionState } from "@/features/auth/actions";
 
 import { FieldError, FormMessage } from "./form-message";
 
@@ -17,48 +14,15 @@ export function LoginForm({
   nextPath: string;
   statusMessage?: string;
 }) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string>();
-  const [fieldErrors, setFieldErrors] = useState<
-    Record<string, string[] | undefined>
-  >({});
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setMessage(undefined);
-
-    const form = new FormData(event.currentTarget);
-    const parsed = loginSchema.safeParse({
-      email: form.get("email"),
-      password: form.get("password"),
-    });
-
-    if (!parsed.success) {
-      setFieldErrors(getFieldErrors(parsed.error));
-      return;
-    }
-
-    setFieldErrors({});
-    setPending(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
-
-    if (error) {
-      setMessage(getSafeAuthErrorMessage(error, "login"));
-      setPending(false);
-      return;
-    }
-
-    router.replace(nextPath);
-    router.refresh();
-  }
+  const initialState: AuthActionState = { status: "idle" };
+  const [state, formAction, pending] = useActionState(loginAction, initialState);
+  const fieldErrors = state.fieldErrors ?? {};
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form action={formAction} noValidate className="space-y-5">
+      <input type="hidden" name="next" value={nextPath} />
       {statusMessage ? <FormMessage kind="success">{statusMessage}</FormMessage> : null}
-      {message ? <FormMessage kind="error">{message}</FormMessage> : null}
+      {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>
         <label htmlFor="email" className="block text-sm font-semibold text-slate-800">
