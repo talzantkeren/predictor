@@ -15,15 +15,16 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "supabase test db",
-    "test:e2e": "npm run build && playwright test",
-    "test:e2e:run": "playwright test",
+    "test:e2e": "tsx scripts/run-e2e.ts",
+    "test:e2e:run": "tsx scripts/run-e2e.ts --skip-build",
+    "preview:local": "tsx scripts/run-e2e.ts --skip-build --serve-only",
     "types:db": "supabase gen types typescript --local > src/types/database.generated.ts",
-    "types:check": "npm run types:db && git diff --exit-code -- src/types/database.generated.ts",
+    "types:check": "tsx scripts/check-database-types.ts",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run build && npm run test:e2e:run"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run test:e2e"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.6.1",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.49.1",
     "next": "16.3.0",
     "react": "19.2.8",
