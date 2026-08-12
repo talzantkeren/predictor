@@ -19,6 +19,9 @@ const statusAliases: Record<string, MatchStatus> = {
   cancelled: "canceled",
 };
 
+const ISO_TIMESTAMP_WITH_OFFSET =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
 function normalizeStatus(value: string): MatchStatus {
   const normalized = statusAliases[value.trim().toLowerCase()];
 
@@ -37,6 +40,20 @@ function officialScore(value: number | null | undefined, field: string) {
   return value;
 }
 
+function normalizeKickoffAt(value: string) {
+  if (!ISO_TIMESTAMP_WITH_OFFSET.test(value)) {
+    throw new Error("kickoffAt must be an ISO-8601 timestamp with an explicit offset");
+  }
+
+  const timestamp = Date.parse(value);
+
+  if (!Number.isFinite(timestamp)) {
+    throw new Error("kickoffAt must be a valid timestamp");
+  }
+
+  return new Date(timestamp).toISOString();
+}
+
 export function normalizeMatch(input: RawSportsMatch): NormalizedMatch {
   const status = normalizeStatus(input.status);
   const hasOfficialResult = status === "finished";
@@ -49,7 +66,7 @@ export function normalizeMatch(input: RawSportsMatch): NormalizedMatch {
     round: input.round,
     homeTeam: { ...input.homeTeam },
     awayTeam: { ...input.awayTeam },
-    kickoffAt: new Date(input.kickoffAt).toISOString(),
+    kickoffAt: normalizeKickoffAt(input.kickoffAt),
     status,
     homeScore: hasOfficialResult
       ? officialScore(input.homeScore, "home score")

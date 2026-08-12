@@ -97,4 +97,31 @@ describe("ManualSportsProvider normalization", () => {
       awayScore: 0,
     });
   });
+
+  it("rejects a kickoff timestamp without an explicit timezone", () => {
+    expect(() =>
+      normalizeMatch({
+        ...manualFixtures[0],
+        kickoffAt: "2026-08-22T16:00:00",
+      }),
+    ).toThrow("explicit offset");
+  });
+
+  it("normalizes an offset kickoff timestamp deterministically to UTC", () => {
+    const normalized = normalizeMatch({
+      ...manualFixtures[0],
+      kickoffAt: "2026-08-22T19:00:00+03:00",
+    });
+
+    expect(normalized.kickoffAt).toBe("2026-08-22T16:00:00.000Z");
+  });
+
+  it("rejects an invalid calendar timestamp", () => {
+    expect(() =>
+      normalizeMatch({
+        ...manualFixtures[0],
+        kickoffAt: "2026-13-42T19:00:00+03:00",
+      }),
+    ).toThrow("valid timestamp");
+  });
 });

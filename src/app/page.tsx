@@ -1,4 +1,9 @@
+import { getPublicEnv } from "@/lib/env";
+
 export default function Home() {
+  const { DEMO_MODE } = getPublicEnv();
+  const modeLabel = DEMO_MODE ? "מצב הדגמה" : "מצב פיתוח מקומי";
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 sm:px-6">
       <section
@@ -17,10 +22,10 @@ export default function Home() {
 
         <span
           role="status"
-          aria-label="מצב הדגמה"
+          aria-label={modeLabel}
           className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800"
         >
-          מצב הדגמה
+          {modeLabel}
         </span>
       </section>
     </main>

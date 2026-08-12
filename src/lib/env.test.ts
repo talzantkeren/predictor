@@ -1,6 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { parsePublicEnv, parseServerEnv } from "@/lib/env";
+import {
+  getBrowserEnv,
+  getEnvironmentErrorVariables,
+  parseAdminEnv,
+  parseBrowserEnv,
+  parsePublicEnv,
+  parseServerEnv,
+} from "@/lib/env";
 
 const validInput = {
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
@@ -8,17 +15,23 @@ const validInput = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
   SPORTS_API_PROVIDER: "manual",
   DEMO_MODE: "true",
-  SUPABASE_SECRET_KEY: "sb_secret_test",
-  CRON_SECRET: "cron_test",
 };
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("Slice 0 environment validation", () => {
-  it("accepts a valid manual-provider configuration without a sports key", () => {
+  it("accepts a valid manual-provider configuration without server secrets", () => {
     expect(parsePublicEnv(validInput)).toMatchObject({
       SPORTS_API_PROVIDER: "manual",
       DEMO_MODE: true,
     });
-    expect(parseServerEnv(validInput).SPORTS_API_KEY).toBeUndefined();
+    expect(parseServerEnv(validInput)).toMatchObject({
+      SPORTS_API_KEY: undefined,
+      CRON_SECRET: undefined,
+      SUPABASE_SECRET_KEY: undefined,
+    });
   });
 
   it("requires a sports key only for an API provider", () => {
@@ -27,16 +40,16 @@ describe("Slice 0 environment validation", () => {
     ).toThrow("SPORTS_API_KEY is required");
   });
 
-  it("rejects missing required public configuration", () => {
+  it("rejects missing required browser configuration", () => {
     expect(() =>
-      parsePublicEnv({
+      parseBrowserEnv({
         ...validInput,
         NEXT_PUBLIC_SUPABASE_URL: undefined,
       }),
     ).toThrow();
 
     expect(() =>
-      parsePublicEnv({
+      parseBrowserEnv({
         ...validInput,
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: undefined,
       }),
@@ -49,24 +62,53 @@ describe("Slice 0 environment validation", () => {
     ).toThrow();
   });
 
-  it("does not expose server-only values through the public schema", () => {
-    const publicEnv = parsePublicEnv(validInput);
+  it("does not expose server-only values through either client schema", () => {
+    const inputWithSecrets = {
+      ...validInput,
+      SUPABASE_SECRET_KEY: "sb_secret_test",
+      CRON_SECRET: "cron_test",
+    };
 
-    expect(publicEnv).not.toHaveProperty("SUPABASE_SECRET_KEY");
-    expect(publicEnv).not.toHaveProperty("CRON_SECRET");
+    expect(parseBrowserEnv(inputWithSecrets)).not.toHaveProperty(
+      "SUPABASE_SECRET_KEY",
+    );
+    expect(parsePublicEnv(inputWithSecrets)).not.toHaveProperty("CRON_SECRET");
   });
 
   it("does not include secret values in validation errors", () => {
     const secret = "sb_secret_do_not_leak";
 
     try {
-      parsePublicEnv({
+      parseAdminEnv({
         ...validInput,
-        NEXT_PUBLIC_APP_URL: "not-a-url",
+        NEXT_PUBLIC_SUPABASE_URL: "not-a-url",
         SUPABASE_SECRET_KEY: secret,
       });
     } catch (error) {
       expect(String(error)).not.toContain(secret);
+      expect(getEnvironmentErrorVariables(error)).toEqual([
+        "NEXT_PUBLIC_SUPABASE_URL",
+      ]);
     }
+  });
+
+  it("reads browser variables through the static Next.js access boundary", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", validInput.NEXT_PUBLIC_APP_URL);
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", validInput.NEXT_PUBLIC_SUPABASE_URL);
+    vi.stubEnv(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      validInput.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    );
+
+    expect(getBrowserEnv()).toEqual({
+      NEXT_PUBLIC_APP_URL: validInput.NEXT_PUBLIC_APP_URL,
+      NEXT_PUBLIC_SUPABASE_URL: validInput.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        validInput.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    });
+  });
+
+  it("requires the secret key only when the admin client is requested", () => {
+    expect(() => parseAdminEnv(validInput)).toThrow();
   });
 });

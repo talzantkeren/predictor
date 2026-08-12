@@ -1,14 +1,16 @@
 begin;
 
-select plan(9);
+select plan(10);
 
 select ok(
   exists (
     select 1
     from pg_extension
+    join pg_namespace on pg_namespace.oid = pg_extension.extnamespace
     where extname = 'pgcrypto'
+      and pg_namespace.nspname = 'extensions'
   ),
-  'pgcrypto extension is available for future UUID boundaries'
+  'pgcrypto is installed in the extensions schema'
 );
 
 select ok(
@@ -59,9 +61,25 @@ select ok(
     from pg_class
     join pg_namespace on pg_namespace.oid = pg_class.relnamespace
     where pg_namespace.nspname = 'public'
-      and pg_class.relkind in ('r', 'p', 'v', 'm', 'f')
+      and pg_class.relkind in ('r', 'p')
+      and not pg_class.relrowsecurity
   ),
-  'foundation does not expose product tables or views early'
+  'every public table has row level security enabled'
+);
+
+select ok(
+  not exists (
+    select 1
+    from pg_proc
+    join pg_namespace on pg_namespace.oid = pg_proc.pronamespace
+    cross join lateral aclexplode(
+      coalesce(pg_proc.proacl, acldefault('f', pg_proc.proowner))
+    ) as privileges
+    where pg_namespace.nspname = 'public'
+      and privileges.grantee = 0
+      and privileges.privilege_type = 'EXECUTE'
+  ),
+  'public schema functions do not grant execute to PUBLIC'
 );
 
 select * from finish();

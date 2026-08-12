@@ -1,10 +1,38 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getPublicEnv } from "@/lib/env";
+import {
+  getEnvironmentErrorVariables,
+  getPublicEnv,
+} from "@/lib/env";
+
+function configurationErrorResponse(error: unknown) {
+  const variables = getEnvironmentErrorVariables(error);
+  const variableList = variables.length > 0 ? variables.join(", ") : "unknown";
+
+  console.error(`[proxy] Invalid environment configuration: ${variableList}`);
+
+  return NextResponse.json(
+    {
+      error: "configuration_error",
+      message: "הגדרת הסביבה של היישום אינה תקינה.",
+      variables,
+    },
+    {
+      status: 503,
+      headers: { "Cache-Control": "no-store" },
+    },
+  );
+}
 
 export default async function proxy(request: NextRequest) {
-  const env = getPublicEnv();
+  let env: ReturnType<typeof getPublicEnv>;
+
+  try {
+    env = getPublicEnv();
+  } catch (error) {
+    return configurationErrorResponse(error);
+  }
 
   let supabaseResponse = NextResponse.next({
     request,

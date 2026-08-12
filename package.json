@@ -2,19 +2,24 @@
   "name": "predictor",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24.16.0 <25"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "validate:env": "tsx scripts/validate-env.ts",
+    "build": "npm run validate:env && next build",
     "start": "next start",
-    "lint": "eslint src scripts e2e playwright.config.ts vitest.config.ts",
+    "lint": "eslint src scripts e2e playwright.config.ts vitest.config.mts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "supabase test db",
-    "test:e2e": "playwright test",
+    "test:e2e": "npm run build && playwright test",
     "types:db": "supabase gen types typescript --local > src/types/database.generated.ts",
+    "types:check": "npm run types:db && git diff --exit-code -- src/types/database.generated.ts",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run build"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run build && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -22,9 +27,11 @@
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "0.0.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@next/env": "16.3.0",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -32,6 +39,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "supabase": "2.113.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5",

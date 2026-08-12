@@ -222,7 +222,7 @@ DEMO_MODE=true
 | `join_request_status` | `pending_proof`, `pending_approval`, `approved`, `rejected` |
 | `member_status` | `active`, `removed` |
 | `invite_status` | `active`, `revoked` |
-| `match_status` | `scheduled`, `postponed`, `live`, `finished`, `canceled` |
+| `match_status` | `scheduled`, `live`, `finished`, `postponed`, `canceled` |
 | `outcome` | `HOME`, `DRAW`, `AWAY` |
 | `sync_status` | `running`, `succeeded`, `failed`, `skipped` |
 
