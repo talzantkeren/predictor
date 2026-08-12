@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.0 |
-| תאריך עדכון | 11 באוגוסט 2026 |
+| גרסה | 2.1 |
+| תאריך עדכון | 12 באוגוסט 2026 |
 | סטטוס | Ready for implementation |
 | דדליין | 6 בספטמבר 2026 |
 
@@ -81,12 +81,14 @@ npx playwright install
 │   │   ├── (public)/
 │   │   │   ├── page.tsx
 │   │   │   └── invite/[token]/page.tsx
-│   │   ├── (auth)/auth/
-│   │   │   ├── sign-in/page.tsx
-│   │   │   ├── sign-up/page.tsx
-│   │   │   └── forgot-password/page.tsx
+│   │   ├── (auth)/
+│   │   │   ├── login/page.tsx
+│   │   │   ├── register/page.tsx
+│   │   │   ├── forgot-password/page.tsx
+│   │   │   └── update-password/page.tsx
 │   │   ├── (app)/
 │   │   │   ├── dashboard/page.tsx
+│   │   │   ├── profile/page.tsx
 │   │   │   ├── leagues/new/page.tsx
 │   │   │   ├── leagues/[leagueId]/
 │   │   │   │   ├── page.tsx
@@ -104,7 +106,7 @@ npx playwright install
 │   │   │   ├── join-requests/[requestId]/proofs/route.ts
 │   │   │   ├── matches/[matchId]/analysis/route.ts
 │   │   │   └── payment-proofs/[proofId]/route.ts
-│   │   ├── auth/callback/route.ts
+│   │   ├── auth/confirm/route.ts
 │   │   ├── error.tsx
 │   │   ├── global-error.tsx
 │   │   ├── layout.tsx
@@ -192,6 +194,7 @@ DEMO_MODE=true
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`.
 - `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
+- `SUPABASE_SECRET_KEY` נשמר עבור פעולות מערכת עתידיות, אך אינו נדרש ואינו מיובא ב־Slice 1. כל פעולת Auth/Profile רגילה משתמשת ב־publishable key וב־session המשתמש תחת RLS.
 - `env.ts` מאמת env בצד שרת עם Zod ונכשל בזמן startup כאשר ערך חובה חסר.
 - `admin.ts` כולל `import 'server-only'` ונבדק בבדיקת import boundary.
 
@@ -202,12 +205,12 @@ DEMO_MODE=true
 | Migration | תוכן | תנאי סיום |
 | --- | --- | --- |
 | 001 `extensions_and_enums` | extensions, enums ו־default privileges | reset מקומי מצליח |
-| 002 `identity` | `profiles`, `system_admins`, trigger פרופיל ו־RLS | משתמש רואה/מעדכן רק המותר |
+| 002 `identity` | `profiles`, trigger פרופיל ו־RLS | פרופיל נוצר בהרשמה; משתמש קורא/מעדכן רק את עצמו |
 | 003 `sports_core` | competitions, seasons, teams, matches, indexes ו־RLS | seed של מחזור נטען |
 | 004 `leagues` | leagues, scoring rules, prize rules, invite links, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
 | 005 `membership_and_proofs` | join requests, members, proofs, bucket, policies ופונקציות החלטה | אישור כפול אידמפוטנטי |
 | 006 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
-| 007 `operations_and_ai` | analyses, sync runs, audit, rate-limit events | הרשאות ו־cleanup מוגדרים |
+| 007 `operations_and_ai` | `system_admins`, analyses, sync runs, audit, rate-limit events | הרשאות ו־cleanup מוגדרים |
 | 008 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
@@ -230,10 +233,11 @@ DEMO_MODE=true
 
 #### `profiles`
 
-- `user_id uuid primary key references auth.users(id) on delete cascade`
+- `id uuid primary key references auth.users(id) on delete cascade`
 - `display_name text not null` — 2–50 תווים אחרי trim.
 - `created_at`, `updated_at timestamptz`.
 - משתמש יכול לעדכן רק `display_name` של עצמו.
+- trigger על `auth.users` יוצר את הרשומה אוטומטית. פונקציית `SECURITY DEFINER`, אם נדרשת, משתמשת ב־`search_path = ''`, בשמות schema מלאים ובהרשאות מצומצמות.
 
 #### `system_admins`
 
@@ -432,7 +436,7 @@ DEMO_MODE=true
 
 | Domain | Create | Read | Update | Delete/Deactivate |
 | --- | --- | --- | --- | --- |
-| Profile | trigger בהרשמה | self/shared-league | display name של עצמי | דרך מחיקת Auth בעתיד |
+| Profile | trigger בהרשמה | self ב־Slice 1; shared-league לאחר Slice 4 | display name של עצמי | דרך מחיקת Auth בעתיד |
 | League | `createLeague` | member/manager | `updateLeagueSettings` | archive, לא hard delete |
 | Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
 | Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
@@ -641,14 +645,21 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ### Slice 1 — Auth ופרופיל
 
-**תוצר:** sign-up/in/out/reset, profile ו־protected dashboard.
+**תוצר:** flow אנכי עובד של הרשמה → אישור Email → יצירת פרופיל → התחברות → Dashboard מוגן → עדכון שם תצוגה → התנתקות, יחד עם שחזור סיסמה.
 
-- publishable key clients, SSR cookies ו־`src/proxy.ts`.
-- identity migration + RLS + pgTAP.
-- E2E auth smoke.
-- README local setup ראשוני.
+- Email + Password בלבד. OAuth, תמונת פרופיל, תפקידי מנהל מערכת וחברויות ליגה אינם חלק מה־slice.
+- עמודים: `/login`, `/register`, `/forgot-password`, `/update-password`, `/profile` ו־`/dashboard`; Route Handler ב־`/auth/confirm`.
+- Browser client, Server client, SSR cookies ו־`src/proxy.ts`; אין Auth Context או Redux גלובלי.
+- `proxy.ts` מרענן session ומבצע redirect בסיסי בלבד. כל Server Action/Query מאמת משתמש והרשאה מחדש.
+- identity migration יוצרת `profiles(id → auth.users.id, display_name, created_at, updated_at)`, trigger יצירה אוטומטי, constraints, RLS ו־least-privilege grants באותה migration.
+- מדיניות Slice 1: משתמש authenticated קורא ומעדכן רק את הפרופיל שלו; אין client insert/delete ואין קריאת פרופילים אחרים עד שקיימת טבלת חברות.
+- Zod: Email תקין, סיסמה באורך 8 לפחות, התאמת אישור סיסמה ושם תצוגה באורך 2–50 אחרי trim.
+- redirects מאומתים: אורח בעמוד מוגן → `/login`; משתמש מחובר בעמוד Auth → `/dashboard`; אישור Email → `/dashboard`; שחזור תקף → `/update-password`.
+- `SUPABASE_SECRET_KEY` ו־admin client אינם בשימוש בפעולות Slice 1.
+- Vitest ל־validation ול־safe redirect, pgTAP ל־trigger/constraints/RLS כולל משתמש זר, ו־Playwright ל־signup/login/profile/logout/protected route/reset smoke.
+- README מעודכן עם setup מקומי, Redirect URLs ופקודות הבדיקה.
 
-**Exit:** session עובד ב־Local וב־Vercel; משתמש אינו מעדכן פרופיל זר.
+**Exit:** ה־flow עובד ב־Local וב־Vercel; פרופיל נוצר אוטומטית; אורח חסום מעמודים מוגנים; משתמש אינו קורא או מעדכן פרופיל זר; lint, typecheck, unit, DB, build ו־E2E הרלוונטיים ירוקים.
 
 ### Slice 2 — יצירת ליגה, ניקוד ופרסים
 
@@ -818,19 +829,19 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 | Vercel URL ו־GitHub | `README.md` ועמוד ההגשה |
 | מצגת 10–15 דקות | `presentation/` או קישור מצורף להגשה |
 
-## 20. המשימה הראשונה לסוכן הקידוד
+## 20. המשימה הבאה לסוכן הקידוד
 
-המשימה הבאה היא **Slice 0 בלבד**:
+לאחר אישור ביקורת Slice 0, המשימה הבאה היא **Slice 1 בלבד**, לפי החוזה המפורט בסעיף 15:
 
-1. ליצור scaffold של Next.js 16 עם strict TypeScript.
-2. להגדיר scripts, env validation, Supabase clients skeleton ו־`src/proxy.ts`.
-3. לאתחל Supabase migrations בלי טבלאות מוצר מעבר ל־foundation הנדרש.
-4. להוסיף CI בסיסי ו־health/home page.
-5. לפרוס ל־Vercel.
-6. ליצור `SportsProvider` + `ManualSportsProvider` ו־POC script נפרד.
-7. לתעד תוצאות POC; לא להתחיל sync production בלי מעבר השער.
+1. ליצור branch חדש מ־`main` המעודכן, בלי לערבב שינויי Slice 0 שלא אושרו.
+2. לממש Email + Password Auth, אישור Email ושחזור סיסמה במסלולים הקנוניים.
+3. ליצור migration של `profiles`, trigger, constraints, grants ו־RLS יחד.
+4. לממש Browser/Server clients ו־`proxy.ts` לרענון session; לא להוסיף admin client או state גלובלי.
+5. להוסיף Dashboard ו־Profile מוגנים ו־redirects בטוחים.
+6. להוסיף Vitest, pgTAP ו־Playwright בהתאם לקריטריוני היציאה.
+7. לעדכן generated types, README ו־Vercel/Supabase Redirect URLs, ואז לפרוס Preview.
 
-אין להתחיל ליצור את כל הטבלאות או כל המסכים בבת אחת. Slice 0 חייב להיות deployable, בדוק ומובן לפני Slice 1.
+אין להתחיל ליגות, חברויות, תפקידי מנהל מערכת או UI מתקדם ב־Slice 1.
 
 ## 21. מקורות טכניים — אומתו ב־11 באוגוסט 2026
 
