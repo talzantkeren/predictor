@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.0 |
-| תאריך עדכון | 11 באוגוסט 2026 |
+| גרסה | 2.1 |
+| תאריך עדכון | 12 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
 
@@ -108,6 +108,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 - `POST /api/join-requests/[requestId]/proofs` — multipart upload.
 - `GET /api/payment-proofs/[proofId]` — הרשאה והפניה ל־signed URL קצר־חיים.
 - `POST /api/cron/sync` — הפעלת Sync עם secret ונעילת ריצה.
+- `GET /auth/confirm` — החלפת קוד האישור של Supabase ב־session והפניה בטוחה ליעד פנימי.
 - `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
 ### 6.4 `proxy.ts`
@@ -130,6 +131,10 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`. אין לשמור access token ידנית ב־`localStorage`, אין להעביר Bearer token לשירות Backend נפרד ואין CORS פנימי, מפני שאין גבול origin נוסף.
 
+ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. ה־Browser client משמש לטפסי Auth, ה־Server client משמש לקריאות Server Components/Actions, ו־`proxy.ts` מרענן את ה־session. הרשאה בשרת תסתמך על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+
+אין Auth Context או Redux גלובלי. Server Components הם מקור האמת ל־session, ו־Client Components נשארים בגבול הטופס האינטראקטיבי בלבד. OAuth ותמונת פרופיל אינם חלק מ־Slice 1.
+
 ### 7.3 תפקידים
 
 - משתמש רגיל נובע מ־`auth.uid()`.
@@ -143,7 +148,7 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 
 | תחום | ישויות | קשרים מרכזיים |
 | --- | --- | --- |
-| זהות | `profiles`, `system_admins` | `profiles.user_id = auth.users.id` |
+| זהות | `profiles`, `system_admins` | `profiles.id = auth.users.id` |
 | ספורט | `competitions`, `seasons`, `teams`, `matches` | תחרות → עונות → משחקים; משחק כולל שתי קבוצות |
 | ליגות | `leagues`, `league_scoring_rules`, `prize_rules`, `invite_links` | ליגה שייכת לעונה ולמנהל; חוקים ופרסים שייכים לליגה |
 | הצטרפות | `join_requests`, `payment_proofs`, `league_members` | בקשה מחזיקה היסטוריית הוכחות; אישור יוצר חברות |
@@ -277,7 +282,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 | משאב | עקרון Policy |
 | --- | --- |
-| `profiles` | המשתמש מעדכן רק שם תצוגה של עצמו; קריאה לאחרים רק כשקיימת זיקת ליגה מותרת |
+| `profiles` | ב־Slice 1 המשתמש קורא ומעדכן רק את הרשומה שלו; לאחר יצירת מודל החברות תתווסף קריאה לפרופילים של משתמשים בעלי זיקת ליגה מותרת |
 | `system_admins` | ללא גישת משתמש רגיל; ניהול שרת/DB בלבד |
 | ספורט גלובלי | authenticated read; כתיבה למנהל מערכת/secret בלבד |
 | `leagues`, חוקים ופרסים | חברים רואים; רק מנהל הליגה משנה ובכפוף לסטטוס |
