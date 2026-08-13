@@ -5,6 +5,9 @@ const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Local auth tests mutate one shared Supabase and Mailpit stack. Serializing
+  // them avoids cross-project races while preview smoke tests stay parallel.
+  workers: externalBaseUrl ? undefined : 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "html" : "line",
