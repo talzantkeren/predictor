@@ -51,7 +51,7 @@ jobs:
         run: npm run build
 
   database:
-    name: Supabase foundation tests
+    name: Supabase database tests
     runs-on: ubuntu-latest
 
     steps:
@@ -68,7 +68,7 @@ jobs:
         run: npm ci
 
       - name: Start local Supabase
-        run: npm exec -- supabase start
+        run: npm exec -- supabase start > /dev/null
 
       - name: Run pgTAP tests
         run: npm run test:db
@@ -81,7 +81,7 @@ jobs:
         run: npm exec -- supabase stop
 
   e2e:
-    name: Playwright home smoke
+    name: Playwright core flows
     runs-on: ubuntu-latest
 
     steps:
@@ -100,8 +100,15 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E smoke tests
+      - name: Start local Supabase
+        run: npm exec -- supabase start > /dev/null
+
+      - name: Run E2E core flows
         run: npm run test:e2e
+
+      - name: Stop local Supabase
+        if: always()
+        run: npm exec -- supabase stop
 
       - name: Upload Playwright report on failure
         if: failure()

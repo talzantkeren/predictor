@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getPublicEnv } from "@/lib/env";
 
 export default function Home() {
@@ -19,6 +21,21 @@ export default function Home() {
         <p className="mb-6 text-slate-600">
           כאן תוכלו להשתתף בליגות חיזוי תוצאות כדורגל.
         </p>
+
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/register"
+            className="rounded-lg bg-blue-700 px-4 py-2.5 text-center font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          >
+            יצירת חשבון
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-lg border border-slate-300 px-4 py-2.5 text-center font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          >
+            התחברות
+          </Link>
+        </div>
 
         <span
           role="status"

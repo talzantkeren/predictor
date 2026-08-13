@@ -5,11 +5,14 @@ const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Local auth tests mutate one shared Supabase and Mailpit stack. Serializing
+  // them avoids cross-project races while preview smoke tests stay parallel.
+  workers: externalBaseUrl ? undefined : 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "html" : "line",
   use: {
-    baseURL: externalBaseUrl ?? "http://127.0.0.1:3000",
+    baseURL: externalBaseUrl ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
   projects: [
@@ -25,16 +28,9 @@ export default defineConfig({
   webServer: externalBaseUrl
     ? undefined
     : {
-        command: "npm run start -- --hostname 127.0.0.1",
-        url: "http://127.0.0.1:3000",
+        command: "npm run start -- --hostname localhost",
+        url: "http://localhost:3000",
         reuseExistingServer: false,
         timeout: 120_000,
-        env: {
-          NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000",
-          NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_playwright",
-          SPORTS_API_PROVIDER: "manual",
-          DEMO_MODE: "true",
-        },
       },
 });

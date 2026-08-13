@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("home smoke", () => {
-  test("loads a stable RTL Demo home page", async ({ page }) => {
+  test("@preview loads a stable RTL Demo home page", async ({ page }) => {
     const browserErrors: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") {

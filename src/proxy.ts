@@ -5,6 +5,7 @@ import {
   getEnvironmentErrorVariables,
   getPublicEnv,
 } from "@/lib/env";
+import type { Database } from "@/types/database.generated";
 
 function configurationErrorResponse(error: unknown) {
   const variables = getEnvironmentErrorVariables(error);
@@ -39,8 +40,14 @@ export default async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
+  let pendingCookies: {
+    name: string;
+    value: string;
+    options: CookieOptions;
+  }[] = [];
+  let pendingHeaders: Record<string, string> = {};
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
@@ -48,7 +55,17 @@ export default async function proxy(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options: CookieOptions;
+          }[],
+          headers: Record<string, string>,
+        ) {
+          pendingCookies = cookiesToSet;
+          pendingHeaders = headers;
+
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
@@ -60,12 +77,50 @@ export default async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
+
+          Object.entries(headers).forEach(([name, value]) =>
+            supabaseResponse.headers.set(name, value),
+          );
         },
       },
     },
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+  const isProtectedPath =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/profile" ||
+    pathname.startsWith("/profile/") ||
+    pathname === "/update-password";
+  const isEntryAuthPath = pathname === "/login" || pathname === "/register";
+
+  function redirectWithAuthCookies(destination: URL) {
+    const response = NextResponse.redirect(destination);
+
+    pendingCookies.forEach(({ name, value, options }) =>
+      response.cookies.set(name, value, options),
+    );
+    Object.entries(pendingHeaders).forEach(([name, value]) =>
+      response.headers.set(name, value),
+    );
+    response.headers.set("Cache-Control", "private, no-store");
+
+    return response;
+  }
+
+  if (!user && isProtectedPath) {
+    const destination = new URL("/login", request.url);
+    destination.searchParams.set("next", pathname);
+    return redirectWithAuthCookies(destination);
+  }
+
+  if (user && isEntryAuthPath) {
+    return redirectWithAuthCookies(new URL("/dashboard", request.url));
+  }
 
   return supabaseResponse;
 }
