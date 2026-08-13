@@ -17,12 +17,28 @@ const npmArgumentPrefix = npmCliPath ? [npmCliPath] : [];
 const npmNeedsShell = !npmCliPath && process.platform === "win32";
 const skipBuild = process.argv.includes("--skip-build");
 const serveOnly = process.argv.includes("--serve-only");
+const externalSmoke = process.argv.includes("--external-smoke");
 const playwrightArguments = process.argv
   .slice(2)
   .filter(
-    (argument) => argument !== "--skip-build" && argument !== "--serve-only",
+    (argument) =>
+      argument !== "--skip-build" &&
+      argument !== "--serve-only" &&
+      argument !== "--external-smoke",
   );
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+
+if (externalBaseUrl && !externalSmoke) {
+  console.error(
+    "External E2E requires the explicit preview smoke command: npm run test:e2e:preview.",
+  );
+  process.exit(1);
+}
+
+if (externalSmoke && !externalBaseUrl) {
+  console.error("PLAYWRIGHT_BASE_URL is required for the preview smoke suite.");
+  process.exit(1);
+}
 
 function getProcessEnvironment() {
   const environment = { ...process.env };
@@ -124,4 +140,14 @@ if (serveOnly && !externalBaseUrl) {
   process.exit(0);
 }
 
-run(["exec", "--", "playwright", "test", ...playwrightArguments], environment);
+run(
+  [
+    "exec",
+    "--",
+    "playwright",
+    "test",
+    ...(externalSmoke ? ["--grep", "@preview"] : []),
+    ...playwrightArguments,
+  ],
+  environment,
+);

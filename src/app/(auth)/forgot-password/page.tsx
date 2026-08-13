@@ -9,10 +9,14 @@ export default async function ForgotPasswordPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const statusMessage =
-    status === "recovery-error"
-      ? "הקישור אינו תקף או שפג תוקפו. אפשר לבקש קישור חדש."
-      : undefined;
+  const statusMessage = status
+    ? {
+        "recovery-error":
+          "הקישור אינו תקף או שפג תוקפו. אפשר לבקש קישור חדש.",
+        "recovery-browser-mismatch":
+          "לא ניתן להשלים את השחזור בדפדפן הזה. יש לבקש כאן קישור חדש ולפתוח אותו באותו דפדפן.",
+      }[status]
+    : undefined;
 
   return (
     <AuthCard

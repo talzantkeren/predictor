@@ -5,6 +5,7 @@ import {
   getEnvironmentErrorVariables,
   getPublicEnv,
 } from "@/lib/env";
+import type { Database } from "@/types/database.generated";
 
 function configurationErrorResponse(error: unknown) {
   const variables = getEnvironmentErrorVariables(error);
@@ -46,7 +47,7 @@ export default async function proxy(request: NextRequest) {
   }[] = [];
   let pendingHeaders: Record<string, string> = {};
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {

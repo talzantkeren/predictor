@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 const statusMessages: Record<string, string> = {
   "signed-out": "התנתקת בהצלחה.",
   "password-updated": "הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה.",
+  "confirmation-completed":
+    "כתובת האימייל אושרה או כבר הייתה מאושרת. כדי להמשיך, יש להתחבר עם הסיסמה שבחרתם.",
   "confirmation-error": "הקישור אינו תקף או שפג תוקפו. יש לבקש קישור חדש.",
 };
 

@@ -60,7 +60,9 @@ npm run dev
 
 זרימת ההדגמה: הרשמה → פתיחת Mailpit → אישור ההודעה → Dashboard → פרופיל →
 עדכון שם → התנתקות → התחברות. שחזור סיסמה מתחיל ב־`/forgot-password`, ממשיך
-בקישור Mailpit ומסתיים בהתחברות מחדש עם הסיסמה החדשה.
+בקישור Mailpit ומסתיים בהתחברות מחדש עם הסיסמה החדשה. בגלל PKCE, השלמת session
+אוטומטית דורשת את הדפדפן שבו התחילה הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר
+את הכתובת ומציג התחברות ידנית; בשחזור יש לבקש קישור חדש בדפדפן שבו ייפתח.
 
 טפסי Auth נשלחים ל־Server Actions ומאומתים שם באמצעות Zod. בנוסף,
 `supabase/config.toml` והפרויקט המארח אוכפים מינימום של 8 תווים ברמת Supabase
@@ -113,12 +115,15 @@ npm run test:db
 npm run types:check
 npm run build
 npm run test:e2e
+npm run test:e2e:preview
 npm run verify
 ```
 
 `npm run test:e2e` דורש Supabase מקומי פעיל, בונה production build עם הכתובת
 והמפתח הציבורי המקומיים ומריץ Desktop + Mobile. `npm run preview:local` מפעיל
-את ה־build האחרון מול אותה סביבה לצורך בדיקה ידנית.
+את ה־build האחרון מול אותה סביבה לצורך בדיקה ידנית. `test:e2e:preview` דורש
+`PLAYWRIGHT_BASE_URL` ומריץ רק smoke ציבורי מסומן; הפקודה המקומית נכשלת במכוון
+אם מנסים להפנות אותה ל־URL חיצוני, כדי לא להסתיר דילוג על זרימות Auth.
 
 פירוט מטריצת הבדיקות נמצא ב־[`docs/testing.md`](./docs/testing.md), וגבולות
 האבטחה של Slice 1 ב־[`docs/security.md`](./docs/security.md).

@@ -12,9 +12,13 @@
   Server Actions הן בקשות POST שאינן נשמרות ב־cache.
 - `/auth/confirm` מוחק את פרטי ה־token מהיעד, חוסם redirects שאינם ב־allowlist
   ומוסיף `Referrer-Policy: no-referrer`.
-- מסך עדכון הסיסמה דורש user מאומת וגם cookie `HttpOnly` קצר־חיים שנוצר רק
-  לאחר callback שחזור מוצלח. ה־Server Action מוחק את ה־cookie לאחר הצלחה או
-  session לא תקף.
+- קישורי Email משתמשים ב־PKCE. פתיחה מחוץ לדפדפן שיזם את הבקשה אינה יכולה
+  להחליף את הקוד ב־session: באישור הכתובת המשתמש מופנה להתחברות ידנית, ובשחזור
+  הוא מקבל הנחיה לבקש קישור חדש בדפדפן הנוכחי. היעד נגזר רק מ־origin ו־path
+  שנמצאים ב־allowlist.
+- מסך עדכון הסיסמה דורש user מאומת. cookie `HttpOnly` קצר־חיים מסמן ל־UI
+  שה־session נוצר בזרימת recovery, אך אינו מתועד או נחשב גבול הרשאה: לקוח HTTP
+  יכול לזייף אותו. ה־Server Action מוחק את הסמן לאחר הצלחה או session לא תקף.
 - כל מוטציות Auth מאומתות מחדש ב־Server Actions באמצעות Zod. מינימום הסיסמה
   נאכף בנוסף ב־Supabase Auth עצמו, כך שקריאה ישירה ל־endpoint אינה עוקפת אותו.
 
@@ -27,7 +31,8 @@
 - RLS מאפשרת למשתמש authenticated לקרוא ולעדכן רק את הרשומה שלו.
 - column grants מאפשרים מהלקוח עדכון של `display_name` בלבד. אין insert,
   delete או עדכון של `id`, `created_at` ו־`updated_at`.
-- Zod מאמת קלט בגבול האפליקציה, ו־PostgreSQL אוכף מחדש trim ואורך 2–50.
+- Zod מאמת קלט בגבול האפליקציה, ו־PostgreSQL אוכף מחדש trim תואם
+  `String.trim()` ואורך 2–50, כולל tab, מעברי שורה ו־NBSP.
 
 ## פרטיות ושגיאות
 

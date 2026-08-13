@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(42);
 
 select ok(to_regclass('public.profiles') is not null, 'profiles table exists');
 
@@ -235,6 +235,45 @@ values
     '{"display_name":"x"}'::jsonb,
     now(),
     now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '30000000-0000-0000-0000-000000000003',
+    'authenticated',
+    'authenticated',
+    'missing@example.com',
+    crypt('password123', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '40000000-0000-0000-0000-000000000004',
+    'authenticated',
+    'authenticated',
+    'numeric@example.com',
+    crypt('password123', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"display_name":42}'::jsonb,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '50000000-0000-0000-0000-000000000005',
+    'authenticated',
+    'authenticated',
+    repeat('a', 51) || '@example.com',
+    crypt('password123', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    jsonb_build_object('display_name', repeat('א', 51)),
+    now(),
+    now()
   );
 
 select is(
@@ -251,6 +290,27 @@ select is(
   'profile trigger falls back safely for invalid metadata'
 );
 
+select is(
+  (select display_name from public.profiles
+   where id = '30000000-0000-0000-0000-000000000003'),
+  'missing',
+  'profile trigger falls back to the email when metadata is missing'
+);
+
+select is(
+  (select display_name from public.profiles
+   where id = '40000000-0000-0000-0000-000000000004'),
+  'numeric',
+  'profile trigger rejects non-string metadata and falls back to the email'
+);
+
+select is(
+  (select display_name from public.profiles
+   where id = '50000000-0000-0000-0000-000000000005'),
+  'משתמש 50000000',
+  'profile trigger uses the UUID fallback when metadata and email are too long'
+);
+
 select throws_ok(
   $$update public.profiles set display_name = 'x'
     where id = '10000000-0000-0000-0000-000000000001'$$,
@@ -265,6 +325,48 @@ select throws_ok(
   '23514',
   null,
   'database rejects a display name longer than fifty characters'
+);
+
+select throws_ok(
+  $$update public.profiles set display_name = E'\t\t'
+    where id = '10000000-0000-0000-0000-000000000001'$$,
+  '23514',
+  null,
+  'database rejects a display name containing only ASCII whitespace'
+);
+
+select throws_ok(
+  $$update public.profiles set display_name = U&'\00A0\00A0'
+    where id = '10000000-0000-0000-0000-000000000001'$$,
+  '23514',
+  null,
+  'database rejects a display name containing only non-breaking spaces'
+);
+
+update public.profiles
+set updated_at = '2000-01-01 00:00:00+00'
+where id = '30000000-0000-0000-0000-000000000003';
+
+update public.profiles
+set display_name = display_name
+where id = '30000000-0000-0000-0000-000000000003';
+
+select is(
+  (select updated_at from public.profiles
+   where id = '30000000-0000-0000-0000-000000000003'),
+  '2000-01-01 00:00:00+00'::timestamptz,
+  'updated_at remains unchanged when display_name is unchanged'
+);
+
+update public.profiles
+set display_name = 'missing updated'
+where id = '30000000-0000-0000-0000-000000000003';
+
+select ok(
+  (select updated_at > '2000-01-01 00:00:00+00'::timestamptz
+   from public.profiles
+   where id = '30000000-0000-0000-0000-000000000003'),
+  'updated_at advances when display_name changes'
 );
 
 set local role authenticated;

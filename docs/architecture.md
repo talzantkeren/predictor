@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.2 |
+| גרסה | 2.3 |
 | תאריך עדכון | 13 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
@@ -108,7 +108,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 - `POST /api/join-requests/[requestId]/proofs` — multipart upload.
 - `GET /api/payment-proofs/[proofId]` — הרשאה והפניה ל־signed URL קצר־חיים.
 - `POST /api/cron/sync` — הפעלת Sync עם secret ונעילת ריצה.
-- `GET /auth/confirm` — החלפת קוד האישור של Supabase ב־session והפניה בטוחה ליעד פנימי.
+- `GET /auth/confirm` — החלפת PKCE code ב־session והפניה בטוחה ליעד פנימי.
 - `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
 ### 6.4 `proxy.ts`
@@ -131,7 +131,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`. אין לשמור access token ידנית ב־`localStorage`, אין להעביר Bearer token לשירות Backend נפרד ואין CORS פנימי, מפני שאין גבול origin נוסף.
 
-ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
 
 אין Auth Context או Redux גלובלי. Server Components הם מקור האמת ל־session, ו־Client Components נשארים בגבול הטופס האינטראקטיבי בלבד. OAuth ותמונת פרופיל אינם חלק מ־Slice 1.
 

@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.2 |
+| גרסה | 2.3 |
 | תאריך עדכון | 13 באוגוסט 2026 |
 | סטטוס | Ready for implementation |
 | דדליין | 6 בספטמבר 2026 |
@@ -54,9 +54,10 @@ npx playwright install
 | `test:watch` | `vitest` |
 | `test:db` | `supabase test db` |
 | `test:e2e` | production build ולאחריו `playwright test` |
-| `test:e2e:run` | `playwright test` מול build קיים, עבור `verify` ותרחישי URL חיצוני |
+| `test:e2e:preview` | smoke ציבורי מפורש מול `PLAYWRIGHT_BASE_URL`; אינו מתחזה לזרימת Auth מלאה |
+| `test:e2e:run` | `playwright test` מקומי מול build קיים |
 | `types:db` | יצירת `src/types/database.generated.ts` מה־DB המקומי |
-| `verify` | lint → typecheck → unit → DB → generated types drift → build → E2E מול ה־build הקיים |
+| `verify` | lint → typecheck → unit → DB → generated types drift → `test:e2e` שבונה production build ומריץ E2E |
 
 ## 3. מבנה תיקיות יעד
 
@@ -652,13 +653,14 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - Email + Password בלבד. OAuth, תמונת פרופיל, תפקידי מנהל מערכת וחברויות ליגה אינם חלק מה־slice.
 - עמודים: `/login`, `/register`, `/forgot-password`, `/update-password`, `/profile` ו־`/dashboard`; Route Handler ב־`/auth/confirm`.
 - טפסי Auth שולחים מוטציות ל־Server Actions עם Zod ו־Server client; Browser client נשאר בתשתית אך אינו גבול אכיפה. SSR cookies ו־`src/proxy.ts` משמשים ל־session, ללא Auth Context או Redux גלובלי.
+- כל לקוחות Supabase מחוברים ל־`Database` generated. זרימת Email משתמשת ב־PKCE של `@supabase/ssr`; ב־Free tier עם ספק האימייל המובנה פתיחה במכשיר אחר מאשרת את הכתובת אך דורשת login ידני, ושחזור דורש בקשה חדשה באותו דפדפן. ה־UI מסביר זאת במפורש.
 - `proxy.ts` מרענן session ומבצע redirect בסיסי בלבד. כל Server Action/Query מאמת משתמש והרשאה מחדש.
 - identity migration יוצרת `profiles(id → auth.users.id, display_name, created_at, updated_at)`, trigger יצירה אוטומטי, constraints, RLS ו־least-privilege grants באותה migration.
 - מדיניות Slice 1: משתמש authenticated קורא ומעדכן רק את הפרופיל שלו; אין client insert/delete ואין קריאת פרופילים אחרים עד שקיימת טבלת חברות.
 - Zod בגבול ה־Server Action: Email תקין, סיסמה באורך 8 לפחות, התאמת אישור סיסמה ושם תצוגה באורך 2–50 אחרי trim. Supabase Auth אוכף בנפרד מינימום 8 תווים ב־Local ובפרויקט המארח.
 - redirects מאומתים: אורח בעמוד מוגן → `/login`; משתמש מחובר בעמוד Auth → `/dashboard`; אישור Email → `/dashboard`; שחזור תקף → `/update-password`.
 - `SUPABASE_SECRET_KEY` ו־admin client אינם בשימוש בפעולות Slice 1.
-- Vitest ל־validation ול־safe redirect, pgTAP ל־trigger/constraints/RLS כולל משתמש זר, ו־Playwright ל־signup/login/profile/logout/protected route/reset smoke.
+- Vitest ל־validation ול־safe redirect, pgTAP ל־trigger/constraints/RLS כולל משתמש זר, ו־Playwright ל־signup/login/profile/logout/protected route/reset, התנהגות פתיחה בהקשר דפדפן חדש ובידוד שני משתמשים.
 - README מעודכן עם setup מקומי, Redirect URLs ופקודות הבדיקה.
 
 **Exit:** ה־flow עובד ב־Local וב־Vercel; פרופיל נוצר אוטומטית; אורח חסום מעמודים מוגנים; משתמש אינו קורא או מעדכן פרופיל זר; lint, typecheck, unit, DB, build ו־E2E הרלוונטיים ירוקים.

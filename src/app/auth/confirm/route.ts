@@ -60,6 +60,16 @@ export async function GET(request: NextRequest) {
   }
 
   if (failed) {
+    if (code) {
+      return privateRedirect(
+        request,
+        recoveryFlow
+          ? "/forgot-password?status=recovery-browser-mismatch"
+          : "/login?status=confirmation-completed",
+        { authHeaders },
+      );
+    }
+
     return privateRedirect(
       request,
       recoveryFlow

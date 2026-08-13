@@ -16,6 +16,44 @@ type AuthErrorResponse = {
   error_code?: unknown;
 };
 
+type PasswordSessionResponse = {
+  access_token?: unknown;
+  user?: { id?: unknown };
+};
+
+function getLocalAuthConfiguration() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (typeof url !== "string" || typeof publishableKey !== "string") {
+    throw new Error("Local Supabase Auth configuration is unavailable.");
+  }
+
+  return { publishableKey, url };
+}
+
+async function signInThroughAuth(
+  request: APIRequestContext,
+  email: string,
+  password: string,
+) {
+  const { publishableKey, url } = getLocalAuthConfiguration();
+  const response = await request.post(`${url}/auth/v1/token?grant_type=password`, {
+    headers: { apikey: publishableKey },
+    data: { email, password },
+  });
+  const result = (await response.json()) as PasswordSessionResponse;
+
+  expect(response.ok()).toBe(true);
+  expect(typeof result.access_token).toBe("string");
+  expect(typeof result.user?.id).toBe("string");
+
+  return {
+    accessToken: result.access_token as string,
+    userId: result.user?.id as string,
+  };
+}
+
 function extractAuthLink(message: MailpitMessage) {
   const content = [message.Text, message.HTML]
     .filter((value): value is string => typeof value === "string")
@@ -33,8 +71,10 @@ function extractAuthLink(message: MailpitMessage) {
 async function waitForAuthEmail(
   request: APIRequestContext,
   email: string,
-  excludedMessageId?: string,
+  excludedMessageIds: Iterable<string> = [],
 ) {
+  const excludedIds = new Set(excludedMessageIds);
+
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const searchResponse = await request.get(
       `${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
@@ -46,7 +86,7 @@ async function waitForAuthEmail(
       for (const candidate of search.messages ?? []) {
         if (
           typeof candidate.ID !== "string" ||
-          candidate.ID === excludedMessageId
+          excludedIds.has(candidate.ID)
         ) {
           continue;
         }
@@ -75,7 +115,7 @@ async function waitForAuthEmail(
 }
 
 test.describe("authentication and profile", () => {
-  test("blocks guests and returns private confirmation responses", async ({
+  test("@preview blocks guests and returns private confirmation responses", async ({
     page,
     request,
   }) => {
@@ -98,19 +138,10 @@ test.describe("authentication and profile", () => {
   });
 
   test("enforces the password minimum in Supabase Auth", async ({ request }) => {
-    test.skip(
-      Boolean(process.env.PLAYWRIGHT_BASE_URL),
-      "The authoritative Auth policy check targets local Supabase only.",
-    );
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-    expect(supabaseUrl).toBeTruthy();
-    expect(publishableKey).toBeTruthy();
+    const { publishableKey, url: supabaseUrl } = getLocalAuthConfiguration();
 
     const response = await request.post(`${supabaseUrl}/auth/v1/signup`, {
-      headers: { apikey: publishableKey! },
+      headers: { apikey: publishableKey },
       data: {
         email: `short-password-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
         password: "seven77",
@@ -125,17 +156,13 @@ test.describe("authentication and profile", () => {
   });
 
   test("completes signup, confirmation, profile, logout, login and recovery", async ({
+    browser,
     page,
     request,
   }) => {
-    // Mailpit and its deterministic email API exist only in the local stack.
-    test.skip(
-      Boolean(process.env.PLAYWRIGHT_BASE_URL),
-      "Mailpit-backed authentication is a local deterministic flow.",
-    );
-
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const email = `slice1-${suffix}@example.com`;
+    const secondEmail = `slice1-second-${suffix}@example.com`;
     const password = "Predictor123!";
     const replacementPassword = "Predictor456!";
 
@@ -149,70 +176,165 @@ test.describe("authentication and profile", () => {
     await expect(page.getByText("ההרשמה התקבלה")).toBeVisible();
 
     const confirmationEmail = await waitForAuthEmail(request, email);
-    await page.goto(confirmationEmail.link);
-    await expect(page).toHaveURL(/\/dashboard$/);
+    const confirmationContext = await browser.newContext();
+    const flowPage = await confirmationContext.newPage();
+    await flowPage.goto(confirmationEmail.link);
+    await expect(flowPage).toHaveURL(/\/login\?status=confirmation-completed$/);
+    await expect(flowPage.getByText("כתובת האימייל אושרה")).toBeVisible();
+    await flowPage.getByLabel("כתובת אימייל").fill(email);
+    await flowPage.getByLabel("סיסמה").fill(password);
+    await flowPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(flowPage).toHaveURL(/\/dashboard$/);
     await expect(
-      page.getByRole("heading", { name: "שלום משתמש בדיקה" }),
+      flowPage.getByRole("heading", { name: "שלום משתמש בדיקה" }),
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "פרופיל", exact: true }).click();
-    await page.getByLabel("שם תצוגה").fill("שם מעודכן");
-    await page.getByRole("button", { name: "שמירת שם התצוגה" }).click();
-    await expect(page.getByText("שם התצוגה עודכן בהצלחה")).toBeVisible();
+    await flowPage.getByRole("link", { name: "פרופיל", exact: true }).click();
+    await flowPage.getByLabel("שם תצוגה").fill("שם מעודכן");
+    await flowPage.getByRole("button", { name: "שמירת שם התצוגה" }).click();
+    await expect(flowPage.getByText("שם התצוגה עודכן בהצלחה")).toBeVisible();
 
-    await page.goto("/dashboard");
+    await flowPage.goto("/dashboard");
     await expect(
-      page.getByRole("heading", { name: "שלום שם מעודכן" }),
+      flowPage.getByRole("heading", { name: "שלום שם מעודכן" }),
     ).toBeVisible();
 
-    await page.goto("/login");
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await flowPage.goto("/login");
+    await expect(flowPage).toHaveURL(/\/dashboard$/);
+    await flowPage.goto("/register");
+    await expect(flowPage).toHaveURL(/\/dashboard$/);
+    await flowPage.goto("/login?next=https://attacker.example");
+    await expect(flowPage).toHaveURL(/\/dashboard$/);
 
-    await page.getByRole("button", { name: "התנתקות" }).click();
-    await expect(page).toHaveURL(/\/login\?status=signed-out$/);
-    await expect(page.getByText("התנתקת בהצלחה")).toBeVisible();
-    await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
+    await flowPage.getByRole("button", { name: "התנתקות" }).click();
+    await expect(flowPage).toHaveURL(/\/login\?status=signed-out$/);
+    await expect(flowPage.getByText("התנתקת בהצלחה")).toBeVisible();
+    await flowPage.goto("/dashboard");
+    await expect(flowPage).toHaveURL(/\/login\?next=%2Fdashboard$/);
 
-    await page.getByLabel("כתובת אימייל").fill(email);
-    await page.getByLabel("סיסמה").fill(password);
-    await page.getByRole("button", { name: "התחברות" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await flowPage.getByLabel("כתובת אימייל").fill(email);
+    await flowPage.getByLabel("סיסמה").fill(password);
+    await flowPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(flowPage).toHaveURL(/\/dashboard$/);
 
-    await page.getByRole("button", { name: "התנתקות" }).click();
-    await expect(page).toHaveURL(/\/login\?status=signed-out$/);
-    await page.getByRole("link", { name: "שכחתי סיסמה" }).click();
-    await expect(page).toHaveURL(/\/forgot-password$/);
-    await page.getByLabel("כתובת אימייל").fill(email);
-    await page.getByRole("button", { name: "שליחת קישור לשחזור" }).click();
+    await flowPage.getByRole("button", { name: "התנתקות" }).click();
+    await expect(flowPage).toHaveURL(/\/login\?status=signed-out$/);
+    await flowPage.getByRole("link", { name: "שכחתי סיסמה" }).click();
+    await expect(flowPage).toHaveURL(/\/forgot-password$/);
+    await flowPage.getByLabel("כתובת אימייל").fill(email);
+    await flowPage.getByRole("button", { name: "שליחת קישור לשחזור" }).click();
     await expect(
-      page.getByText("אם קיים חשבון התואם לכתובת"),
+      flowPage.getByText("אם קיים חשבון התואם לכתובת"),
     ).toBeVisible();
 
     const recoveryEmail = await waitForAuthEmail(
       request,
       email,
-      confirmationEmail.id,
+      [confirmationEmail.id],
     );
-    await page.goto(recoveryEmail.link);
-    await expect(page).toHaveURL(/\/update-password$/);
-    await page.getByLabel("סיסמה חדשה", { exact: true }).fill(replacementPassword);
-    await page.getByLabel("אימות סיסמה חדשה").fill(replacementPassword);
-    await page.getByRole("button", { name: "עדכון סיסמה" }).click();
+    const recoveryContext = await browser.newContext();
+    const recoveryPage = await recoveryContext.newPage();
+    await recoveryPage.goto(recoveryEmail.link);
+    await expect(recoveryPage).toHaveURL(
+      /\/forgot-password\?status=recovery-browser-mismatch$/,
+    );
+    await expect(
+      recoveryPage.getByText("יש לבקש כאן קישור חדש"),
+    ).toBeVisible();
+    await recoveryPage.waitForTimeout(1_100);
+    await recoveryPage.getByLabel("כתובת אימייל").fill(email);
+    await recoveryPage
+      .getByRole("button", { name: "שליחת קישור לשחזור" })
+      .click();
+    await expect(
+      recoveryPage.getByText("אם קיים חשבון התואם לכתובת"),
+    ).toBeVisible();
 
-    await expect(page).toHaveURL(/\/login\?status=password-updated$/);
-    await expect(page.getByText("הסיסמה עודכנה בהצלחה")).toBeVisible();
+    const sameBrowserRecoveryEmail = await waitForAuthEmail(
+      request,
+      email,
+      [confirmationEmail.id, recoveryEmail.id],
+    );
+    await recoveryPage.goto(sameBrowserRecoveryEmail.link);
+    await expect(recoveryPage).toHaveURL(/\/update-password$/);
+    await recoveryPage
+      .getByLabel("סיסמה חדשה", { exact: true })
+      .fill(replacementPassword);
+    await recoveryPage
+      .getByLabel("אימות סיסמה חדשה")
+      .fill(replacementPassword);
+    await recoveryPage.getByRole("button", { name: "עדכון סיסמה" }).click();
+
+    await expect(recoveryPage).toHaveURL(/\/login\?status=password-updated$/);
+    await expect(recoveryPage.getByText("הסיסמה עודכנה בהצלחה")).toBeVisible();
     await expect
       .poll(async () =>
-        (await page.context().cookies()).some(
+        (await recoveryContext.cookies()).some(
           (cookie) => cookie.name === "predictor_recovery",
         ),
       )
       .toBe(false);
 
-    await page.getByLabel("כתובת אימייל").fill(email);
-    await page.getByLabel("סיסמה").fill(replacementPassword);
-    await page.getByRole("button", { name: "התחברות" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await recoveryPage.getByLabel("כתובת אימייל").fill(email);
+    await recoveryPage.getByLabel("סיסמה").fill(replacementPassword);
+    await recoveryPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(recoveryPage).toHaveURL(/\/dashboard$/);
+
+    await page.goto("/register");
+    await page.getByLabel("שם תצוגה").fill("משתמש שני");
+    await page.getByLabel("כתובת אימייל").fill(secondEmail);
+    await page.getByLabel("סיסמה", { exact: true }).fill(password);
+    await page.getByLabel("אימות סיסמה").fill(password);
+    await page.getByRole("button", { name: "יצירת חשבון" }).click();
+    await expect(page.getByText("ההרשמה התקבלה")).toBeVisible();
+
+    const secondConfirmationEmail = await waitForAuthEmail(request, secondEmail);
+    const secondContext = await browser.newContext();
+    const secondPage = await secondContext.newPage();
+    await secondPage.goto(secondConfirmationEmail.link);
+    await expect(secondPage).toHaveURL(
+      /\/login\?status=confirmation-completed$/,
+    );
+    await secondPage.getByLabel("כתובת אימייל").fill(secondEmail);
+    await secondPage.getByLabel("סיסמה").fill(password);
+    await secondPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(secondPage).toHaveURL(/\/dashboard$/);
+    await expect(
+      secondPage.getByRole("heading", { name: "שלום משתמש שני" }),
+    ).toBeVisible();
+
+    const firstSession = await signInThroughAuth(
+      request,
+      email,
+      replacementPassword,
+    );
+    const secondSession = await signInThroughAuth(request, secondEmail, password);
+    const { publishableKey, url: supabaseUrl } = getLocalAuthConfiguration();
+    const foreignProfileUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${firstSession.userId}&select=id,display_name`;
+    const foreignRead = await request.get(foreignProfileUrl, {
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${secondSession.accessToken}`,
+      },
+    });
+
+    expect(foreignRead.ok()).toBe(true);
+    expect(await foreignRead.json()).toEqual([]);
+
+    const foreignUpdate = await request.patch(foreignProfileUrl, {
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${secondSession.accessToken}`,
+        Prefer: "return=representation",
+      },
+      data: { display_name: "ניסיון שינוי זר" },
+    });
+
+    expect(foreignUpdate.ok()).toBe(true);
+    expect(await foreignUpdate.json()).toEqual([]);
+
+    await confirmationContext.close();
+    await recoveryContext.close();
+    await secondContext.close();
   });
 });
