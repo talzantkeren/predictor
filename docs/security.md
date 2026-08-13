@@ -42,3 +42,30 @@
 - אין שימוש ב־`SUPABASE_SECRET_KEY` או ב־admin client בזרימות Auth/Profile.
 - CI משתמש רק ב־Supabase ו־Mailpit מקומיים ואינו מדפיס את פלט המפתחות של
   `supabase start`.
+
+## ליגות והרשאות ב־Slice 2
+
+- `competitions`, `seasons`, `teams` ו־`matches` הם catalog גלובלי לקריאה בלבד
+  עבור `authenticated`. ל־`anon` אין `SELECT`, ולמשתמש רגיל אין הרשאות כתיבה.
+- `leagues`, `league_scoring_rules`, `prize_rules` ו־`league_members` מפעילות
+  RLS ומעניקות למשתמש רגיל `SELECT` בלבד. אין `INSERT`, `UPDATE` או `DELETE`
+  ישירים דרך Data API.
+- קריאת נתוני ליגה דורשת חברות פעילה באותה ליגה. מנהל מזוהה רק לפי
+  `leagues.manager_id` של המשאב, ולא לפי role או flag שהגיעו מהלקוח.
+- פונקציות policy ב־schema פרטי הן `SECURITY DEFINER` עם `search_path = ''`.
+  הן קוראות `auth.uid()` ומונעות תלות רקורסיבית בין policies של ליגות וחברויות.
+- מדיניות `profiles` מאפשרת self read/update כבעבר, ומרחיבה קריאה בלבד לפרופיל
+  של חבר פעיל שחולק ליגה פעילה. פרופיל לא קשור אינו ניתן לגילוי או לעדכון.
+- `create_league` היא נקודת הכתיבה היחידה ב־Slice: פונקציה אטומית שמקבלת הגדרות
+  אך לא actor, manager או user ID. היא גוזרת את היוצר מ־`auth.uid()`, יוצרת ליגה,
+  חוקים, פרסים וחברות פעילה, או מבטלת את כל הפעולה.
+- ל־RPC יש `search_path = ''`; `EXECUTE` נשלל מ־PUBLIC ומ־`anon` ומוענק רק
+  ל־`authenticated`. שגיאות צפויות ממופות לקודים בטוחים וה־UI אינו מחזיר SQL.
+- סכומי Demo נשמרים באגורות שלמות ואחוזים ב־basis points שלמים. אין שדה payment
+  URL; הוראות Demo נשמרות ומוצגות כטקסט בלבד וקישורים נדחים בשתי שכבות validation.
+- trigger במסד מעלה את גרסת חוקי הניקוד בכל שינוי מותר, ודוחה שינוי לאחר
+  `locked_at` או כאשר `now()` של PostgreSQL הגיע ל־kickoff הראשון בעונת הליגה.
+- סכום פרסים של 10000 bps ומיקומים רצופים נבדקים בתוך ה־RPC וגם ב־constraint
+  trigger deferred שבודק את שני צדי העברה בין ליגות, כך שגם כתיבה privileged
+  עתידית אינה יכולה להשאיר מצב חלקי.
+- אין שימוש ב־admin client או ב־`SUPABASE_SECRET_KEY` בזרימות Slice 2.

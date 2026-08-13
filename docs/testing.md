@@ -47,3 +47,21 @@ npm run test:e2e:preview
 חדש ומוודאת שהכתובת אושרה ושאפשר להתחבר ידנית. בדיקת השחזור מוודאת שבהקשר חדש
 מוצגת הנחיה מדויקת, ואז מבקשת ופותחת קישור חדש באותו context. כך CI מכסה גם
 את מגבלת PKCE, נשאר דטרמיניסטי ואינו שולח Email אמיתי.
+
+## Slice 2: יצירת ליגה, ניקוד ופרסי Demo
+
+Slice 2 ממשיך להשתמש רק ב־Supabase וב־Mailpit המקומיים. אין קריאה ל־Sports,
+AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת reference בלבד;
+אין teams, fixtures, provider IDs או תוצאות מומצאות.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | trim וגבולות שם/תיאור, סכום Demo שלם ולא־שלילי, טווח וסדר חוקי ניקוד, ברירת מחדל 3/1/0 וחוקים שונים לשתי ליגות, המרת אחוזים ל־bps ללא float, מיקומים רצופים/ייחודיים, סכום 10000, קלט malformed/over-precision ומיפוי שגיאות בטוח |
+| pgTAP | טבלאות, עמודות, enums, FKs, checks, unique/indexes, reference data, RLS לכל טבלה, grants לטבלאות ולפונקציות, `search_path`, יצירה אטומית, creator manager+active member, גרסה 1, חוקים נפרדים, rollback לקלט שגוי, anon/משתמש זר, חסימת כתיבה ישירה, שיתוף פרופיל מצומצם, policy ללא recursion ונעילת חוקים לפי DB time |
+| Playwright | empty Dashboard, פתיחת `/leagues/new`, שגיאות מייצגות, יצירה עם 5/2/0 ושני מיקומי פרס, redirect וסיכום Demo, הופעה ב־Dashboard, משתמש שני מבודד וחסימת URL מנוחש |
+| Visual | Desktop Chrome ו־Pixel 5, עברית/RTL, labels, focus, pending/disabled, empty/error states והיעדר overflow בטופס סביב 390px |
+
+בדיקת ה־Preview נשארת smoke ציבורי בלבד עם `@preview`; בדיקת הליגה אינה מסומנת
+כך ואינה תלויה במכסת Email hosted.

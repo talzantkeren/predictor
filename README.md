@@ -33,7 +33,7 @@ npm run dev
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. אין להדפיס או לשמור ב־Git את
 `SECRET_KEY`, JWTs או סיסמת מסד הנתונים. `.env.local` חסום ב־Git.
 
-המשתנים הפעילים ב־Slice 1:
+המשתנים הפעילים ב־Slice 2:
 
 | משתנה | שימוש |
 | --- | --- |
@@ -43,7 +43,7 @@ npm run dev
 | `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
-`SUPABASE_SECRET_KEY` אינו נדרש ואינו מיובא ב־Auth/Profile. `CRON_SECRET`,
+`SUPABASE_SECRET_KEY` אינו נדרש ואינו מיובא ב־Auth/Profile/Leagues. `CRON_SECRET`,
 מפתח Sports ומפתחות AI שמורים ל־slices מאוחרים יותר.
 
 ## זרימת Auth ופרופיל
@@ -67,6 +67,25 @@ npm run dev
 טפסי Auth נשלחים ל־Server Actions ומאומתים שם באמצעות Zod. בנוסף,
 `supabase/config.toml` והפרויקט המארח אוכפים מינימום של 8 תווים ברמת Supabase
 Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
+
+## זרימת Slice 2: ליגות
+
+הנתיבים החדשים מוגנים ודורשים session תקף:
+
+- `/dashboard` — ברכה אישית, empty state או רשימת הליגות הפעילות של המשתמש.
+- `/leagues/new` — יצירת ליגה עם עונת 2026/27, סכום/הוראות Demo, הצטרפות
+  מאוחרת, חוקי ניקוד לכל ליגה וחלוקת פרסים שמסתכמת ב־100%.
+- `/leagues/[leagueId]` — סיכום פרטי לחבר פעיל: עונה, סטטוס, תפקיד, סכומי
+  Demo, ניקוד ופרסים. משתמש שאינו חבר מקבל not-found ללא חשיפת נתונים.
+
+זרימת ההדגמה: הרשמה/התחברות → Dashboard ריק → יצירת ליגה → תיקון שדות לא
+תקינים לדוגמה → שמירה → סיכום הליגה → חזרה ל־Dashboard. פעולת השמירה קוראת
+ל־`create_league` אטומי: היוצר נגזר מה־session ונשמר גם כמנהל וגם כחבר פעיל.
+כשל בעונה, בניקוד או בפרסים אינו משאיר רשומות חלקיות.
+
+ה־catalog נמסר ב־migrations forward-only וכולל את ליגת העל הישראלית ועונת
+`2026/27` בלבד. teams, fixtures, scores ו־provider IDs נשארים ריקים עד למסלול
+הידני/המאומת ב־slice הייעודי.
 
 ### Mailpit
 
@@ -126,7 +145,7 @@ npm run verify
 אם מנסים להפנות אותה ל־URL חיצוני, כדי לא להסתיר דילוג על זרימות Auth.
 
 פירוט מטריצת הבדיקות נמצא ב־[`docs/testing.md`](./docs/testing.md), וגבולות
-האבטחה של Slice 1 ב־[`docs/security.md`](./docs/security.md).
+האבטחה של Auth, פרופילים וליגות ב־[`docs/security.md`](./docs/security.md).
 
 ## פריסה
 
