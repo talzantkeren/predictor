@@ -58,10 +58,14 @@ AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת re
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | trim וגבולות שם/תיאור, סכום Demo שלם ולא־שלילי, טווח וסדר חוקי ניקוד, ברירת מחדל 3/1/0 וחוקים שונים לשתי ליגות, המרת אחוזים ל־bps ללא float, מיקומים רצופים/ייחודיים, סכום 10000, קלט malformed/over-precision ומיפוי שגיאות בטוח |
-| pgTAP | טבלאות, עמודות, enums, FKs, checks, unique/indexes, reference data, RLS לכל טבלה, grants לטבלאות ולפונקציות, `search_path`, יצירה אטומית, creator manager+active member, גרסה 1, חוקים נפרדים, rollback לקלט שגוי, anon/משתמש זר, חסימת כתיבה ישירה, שיתוף פרופיל מצומצם, policy ללא recursion ונעילת חוקים לפי DB time |
-| Playwright | empty Dashboard, פתיחת `/leagues/new`, שגיאות מייצגות, יצירה עם 5/2/0 ושני מיקומי פרס, redirect וסיכום Demo, הופעה ב־Dashboard, משתמש שני מבודד וחסימת URL מנוחש |
-| Visual | Desktop Chrome ו־Pixel 5, עברית/RTL, labels, focus, pending/disabled, empty/error states והיעדר overflow בטופס סביב 390px |
+| Vitest | trim וגבולות שם/תיאור, דחיית תווי בקרה בשם ובשדות הרב־שורתיים, סכום Demo שלם ולא־שלילי, טווח וסדר חוקי ניקוד, ברירת מחדל 3/1/0 וחוקים שונים לשתי ליגות, המרת אחוזים ל־bps ללא float, מיקומים רצופים/ייחודיים, סכום 10000, קלט malformed/over-precision, מיפוי שגיאות בטוח ו־allowlist ההפניות כולל נתיבי `/leagues/new` וסיכום ליגה עם UUID |
+| pgTAP | טבלאות, עמודות, enums, FKs, checks, unique/indexes, reference data, RLS לכל טבלה, grants לטבלאות ולפונקציות, `search_path`, יצירה אטומית, creator manager+active member, גרסה 1, חוקים נפרדים, rollback לקלט שגוי, anon/משתמש זר, מנהל של ליגה אחרת, חבר שהוסר, מנהל ללא חברות פעילה, קריאה ללא subject claim, JSON פרסים malformed, תווי בקרה, חסימת כתיבה ישירה, revoke ל־`service_role`, שיתוף פרופיל מצומצם, policy ללא recursion, נעילת חוקים לפי DB time, triggers של `updated_at` והעברת פרס בין ליגות תחת ה־constraint הנדחה |
+| Playwright | empty Dashboard, פתיחת `/leagues/new`, שגיאות מייצגות עם `aria-invalid` ושיוך הודעה, הסרת שורת פרס אמצעית עם מספור אוטומטי רציף, יצירה עם 5/2/0 ושני מיקומי פרס, redirect וסיכום Demo, הופעה ב־Dashboard, deep-link לליגה שחוזר לנתיב המקורי אחרי התחברות, משתמש שני מבודד וחסימת URL מנוחש |
+| Visual | Desktop Chrome ו־Pixel 5, עברית/RTL, labels ושיוך הודעות שגיאה ב־aria, empty/error states והיעדר overflow בטופס סביב 390px. מצבי focus ו־pending/disabled נבדקים ידנית ואינם נטענים ככיסוי אוטומטי |
 
 בדיקת ה־Preview נשארת smoke ציבורי בלבד עם `@preview`; בדיקת הליגה אינה מסומנת
 כך ואינה תלויה במכסת Email hosted.
+
+מקביליות אמיתית של שתי קריאות `create_league` בו־זמנית אינה ניתנת לבדיקה
+ב־pgTAP חד־חיבורי; ההגנה היא האטומיות של הפונקציה וה־constraints, כך שגם
+בקשות חוזרות אינן משאירות מצב חלקי.

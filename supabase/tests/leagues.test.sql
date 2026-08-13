@@ -646,5 +646,276 @@ select is(
 );
 set constraints prize_rules_validate_total deferred;
 
+-- ===== Audit hardening: structure =====
+select ok(
+  exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.leagues'::regclass
+      and tgname = 'leagues_touch_updated_at'
+      and not tgisinternal
+  ),
+  'leagues maintains updated_at with a database trigger'
+);
+select ok(
+  exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.league_members'::regclass
+      and tgname = 'league_members_touch_updated_at'
+      and not tgisinternal
+  ),
+  'league_members maintains updated_at with a database trigger'
+);
+select ok(
+  exists (
+    select 1 from pg_trigger
+    where tgrelid = 'public.league_scoring_rules'::regclass
+      and tgname = 'league_scoring_rules_touch_updated_at'
+      and not tgisinternal
+  ),
+  'league_scoring_rules maintains updated_at with a database trigger'
+);
+select ok(
+  to_regclass('public.prize_rules_league_idx') is null,
+  'the redundant prize_rules league index was removed'
+);
+select ok(
+  exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.leagues'::regclass
+      and conname = 'leagues_name_control_characters_check'
+      and contype = 'c'
+  ),
+  'league names reject control characters at the database layer'
+);
+select ok(
+  not has_function_privilege(
+    'service_role',
+    'public.create_league(uuid,text,text,integer,text,timestamptz,boolean,smallint,smallint,smallint,jsonb)',
+    'EXECUTE'
+  ),
+  'service_role cannot execute create_league'
+);
+
+-- ===== Audit hardening: a session without a subject claim =====
+set local role authenticated;
+select set_config('request.jwt.claims', '{"role":"authenticated"}', true);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'ליגה ללא זהות', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'P0001', 'UNAUTHENTICATED',
+  'an authenticated role without a subject claim cannot create a league'
+);
+reset role;
+
+-- ===== Audit hardening: malformed prize JSON and control characters =====
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'פרסים בשבר עשרוני', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":5000.5},{"position":2,"percentage_bps":4999.5}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_PRIZE_RULES',
+  'fractional basis points are rejected without silent rounding'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'פרסים כמחרוזת', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":"10000"}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_PRIZE_RULES',
+  'string-typed basis points are rejected'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'פרסים שאינם מערך', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '{"position":1,"percentage_bps":10000}'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_PRIZE_RULES',
+  'a non-array prize payload is rejected'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'מיקום בשבר עשרוני', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1.5,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_PRIZE_RULES',
+  'a fractional prize position is rejected'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'אבג' || chr(1) || 'דהו', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_LEAGUE',
+  'a league name containing a control character is rejected'
+);
+reset role;
+
+-- ===== Audit hardening: a manager of another league gains no authority =====
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"b0000000-0000-4000-8000-000000000002","role":"authenticated"}',
+  true
+);
+select lives_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', 'ליגת ב היחידה', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'user B creates their own league'
+);
+select is(
+  (select count(*)::integer from public.leagues),
+  1,
+  'a manager of another league still reads only their own league'
+);
+select is(
+  (select count(*)::integer from public.leagues where name like 'ליגת א%'),
+  0,
+  'managing league B grants no read access to user A leagues'
+);
+select is(
+  (select count(*)::integer from public.league_scoring_rules),
+  1,
+  'a manager of another league reads only their own scoring rules'
+);
+select is(
+  (select count(*)::integer from public.prize_rules),
+  1,
+  'a manager of another league reads only their own prize rules'
+);
+select is(
+  (select count(*)::integer from public.league_members),
+  1,
+  'a manager of another league reads only their own membership'
+);
+select is(
+  (select count(*)::integer from public.profiles),
+  1,
+  'a manager of another league still reads only their own profile'
+);
+reset role;
+
+-- ===== Audit hardening: a removed member loses access =====
+update public.league_members
+set status = 'removed',
+    removed_by = 'a0000000-0000-4000-8000-000000000001',
+    removed_at = now()
+where user_id = 'c0000000-0000-4000-8000-000000000003';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"c0000000-0000-4000-8000-000000000003","role":"authenticated"}',
+  true
+);
+select is(
+  (select count(*)::integer from public.leagues),
+  0,
+  'a removed member no longer reads the league'
+);
+select is(
+  (select count(*)::integer from public.league_scoring_rules),
+  0,
+  'a removed member no longer reads scoring rules'
+);
+select is(
+  (select count(*)::integer from public.prize_rules),
+  0,
+  'a removed member no longer reads prize rules'
+);
+select is(
+  (select count(*)::integer from public.profiles),
+  1,
+  'a removed member reads only their own profile again'
+);
+reset role;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select is(
+  (select count(*)::integer from public.profiles),
+  1,
+  'the manager no longer shares a profile with the removed member'
+);
+reset role;
+
+-- ===== Audit hardening: manager read access without active membership =====
+update public.league_members
+set status = 'removed',
+    removed_by = 'a0000000-0000-4000-8000-000000000001',
+    removed_at = now()
+where league_id = (select id from public.leagues where name = 'ליגת א מותאמת')
+  and user_id = 'a0000000-0000-4000-8000-000000000001';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a0000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select is(
+  (select count(*)::integer from public.leagues where name = 'ליגת א מותאמת'),
+  1,
+  'a manager still reads their league without an active membership row'
+);
+select is(
+  (select count(*)::integer from public.league_scoring_rules
+   where league_id = (select id from public.leagues where name = 'ליגת א מותאמת')),
+  1,
+  'a manager still reads their scoring rules without an active membership row'
+);
+select is(
+  (select count(*)::integer from public.prize_rules
+   where league_id = (select id from public.leagues where name = 'ליגת א מותאמת')),
+  1,
+  'a manager still reads their prize rules without an active membership row'
+);
+reset role;
+
+-- ===== Audit hardening: a privileged cross-league prize move =====
+set constraints prize_rules_validate_total immediate;
+select throws_ok(
+  $$update public.prize_rules
+    set league_id = (select id from public.leagues where name = 'ליגת א מותאמת'),
+        position = 2
+    where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')
+      and position = 2$$,
+  'P0001', 'INVALID_PRIZE_RULES',
+  'a privileged prize-row move between leagues validates both leagues'
+);
+select is(
+  (select sum(percentage_bps)::integer from public.prize_rules
+   where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')),
+  10000,
+  'the source league keeps a complete allocation after the rejected move'
+);
+select is(
+  (select sum(percentage_bps)::integer from public.prize_rules
+   where league_id = (select id from public.leagues where name = 'ליגת א מותאמת')),
+  10000,
+  'the target league keeps a complete allocation after the rejected move'
+);
+set constraints prize_rules_validate_total deferred;
+
 select * from finish();
 rollback;

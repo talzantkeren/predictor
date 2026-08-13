@@ -2,7 +2,13 @@ const AUTH_REDIRECT_PATHS = new Set([
   "/dashboard",
   "/profile",
   "/update-password",
+  "/leagues/new",
 ]);
+
+// Exactly one protected league-summary path: a UUID segment with no query
+// string, fragment, backslash, or nested segment. Anything else falls back.
+const LEAGUE_SUMMARY_PATH_PATTERN =
+  /^\/leagues\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function getSafeAuthRedirect(
   candidate: unknown,
@@ -12,13 +18,19 @@ export function getSafeAuthRedirect(
     typeof candidate !== "string" ||
     candidate.includes("\\") ||
     candidate.startsWith("//") ||
-    !candidate.startsWith("/") ||
-    !AUTH_REDIRECT_PATHS.has(candidate)
+    !candidate.startsWith("/")
   ) {
     return fallback;
   }
 
-  return candidate;
+  if (
+    AUTH_REDIRECT_PATHS.has(candidate) ||
+    LEAGUE_SUMMARY_PATH_PATTERN.test(candidate)
+  ) {
+    return candidate;
+  }
+
+  return fallback;
 }
 
 function normalizeOrigin(candidate: unknown) {

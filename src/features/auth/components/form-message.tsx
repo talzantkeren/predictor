@@ -24,16 +24,24 @@ export function FormMessage({
 export function FieldError({
   id,
   messages,
+  alert = false,
 }: {
   id: string;
   messages?: string[];
+  // Field-level errors are announced through aria-describedby on their input.
+  // Section-level errors have no owning input, so they announce as an alert.
+  alert?: boolean;
 }) {
   if (!messages?.length) {
     return null;
   }
 
   return (
-    <p id={id} className="mt-1 text-sm text-red-700">
+    <p
+      id={id}
+      role={alert ? "alert" : undefined}
+      className="mt-1 text-sm text-red-700"
+    >
       {messages[0]}
     </p>
   );

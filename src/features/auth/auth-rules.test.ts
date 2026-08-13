@@ -81,12 +81,16 @@ describe("display-name validation", () => {
 });
 
 describe("safe authentication redirects", () => {
-  it.each(["/dashboard", "/profile", "/update-password"])(
-    "accepts the approved internal path %s",
-    (path) => {
-      expect(getSafeAuthRedirect(path)).toBe(path);
-    },
-  );
+  it.each([
+    "/dashboard",
+    "/profile",
+    "/update-password",
+    "/leagues/new",
+    "/leagues/26000000-0000-4000-8000-000000000027",
+    "/leagues/26000000-0000-4000-8000-0000000000AB",
+  ])("accepts the approved internal path %s", (path) => {
+    expect(getSafeAuthRedirect(path)).toBe(path);
+  });
 
   it.each([
     "https://attacker.example/path",
@@ -102,6 +106,14 @@ describe("safe authentication redirects", () => {
     "dashboard",
     "/dashboard?next=https://attacker.example",
     "/unknown",
+    "/leagues",
+    "/leagues/",
+    "/leagues/not-a-uuid",
+    "/leagues/26000000-0000-4000-8000-000000000027/edit",
+    "/leagues/26000000-0000-4000-8000-000000000027?x=1",
+    "/leagues/26000000-0000-4000-8000-000000000027#frag",
+    "/leagues/../profile",
+    "/leagues/26000000-0000-4000-8000-00000000002",
     "",
     null,
     undefined,

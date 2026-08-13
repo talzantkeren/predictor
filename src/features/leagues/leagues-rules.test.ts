@@ -63,6 +63,35 @@ describe("league fields", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("rejects control characters in the league name", () => {
+    expect(leagueNameSchema.safeParse("אבג\u0001דהו").success).toBe(false);
+    expect(leagueNameSchema.safeParse("שם\nרב־שורתי").success).toBe(false);
+    expect(leagueNameSchema.safeParse("אבג\u0085דהו").success).toBe(false);
+  });
+
+  it("keeps directional marks while rejecting control characters", () => {
+    expect(leagueNameSchema.safeParse("ליגה \u200f2026").success).toBe(true);
+  });
+
+  it("allows line breaks but not other control characters in multiline fields", () => {
+    expect(leagueDescriptionSchema.safeParse("שורה ראשונה\nשורה שנייה").success).toBe(
+      true,
+    );
+    expect(leagueDescriptionSchema.safeParse("תיאור\u0007פגום").success).toBe(false);
+    expect(
+      createLeagueSchema.safeParse({
+        ...validLeagueInput,
+        demoPaymentInstructions: "הוראה\u000bפגומה",
+      }).success,
+    ).toBe(false);
+    expect(
+      createLeagueSchema.safeParse({
+        ...validLeagueInput,
+        demoPaymentInstructions: "שורה ראשונה\r\nשורה שנייה",
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe("scoring rules", () => {

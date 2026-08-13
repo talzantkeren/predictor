@@ -44,6 +44,11 @@ test.describe("league creation and isolation", () => {
     await expect(first.page.getByText("שם הליגה חייב לכלול לפחות 3 תווים")).toBeVisible();
     await expect(first.page.getByText("סכום Demo שלם ולא־שלילי")).toBeVisible();
     await expect(first.page.getByText("ניקוד לתוצאה מדויקת חייב להיות לפחות")).toBeVisible();
+    await expect(first.page.getByLabel("שם הליגה")).toHaveAttribute("aria-invalid", "true");
+    await expect(first.page.getByLabel("שם הליגה")).toHaveAttribute(
+      "aria-describedby",
+      /league-name-error/,
+    );
 
     await first.page.getByLabel("שם הליגה").fill(leagueName);
     await first.page.getByLabel("תיאור").fill("ליגה פרטית לבדיקת Slice 2");
@@ -52,8 +57,19 @@ test.describe("league creation and isolation", () => {
     await first.page.getByLabel("תוצאה מדויקת").fill("5");
     await first.page.getByLabel("כיוון נכון").fill("2");
     await first.page.getByLabel("כיוון שגוי").fill("0");
-    await first.page.getByLabel("אחוז").fill("60");
+
+    // Removing a middle prize row must renumber the remaining rows so the
+    // submitted positions stay consecutive.
     await first.page.getByRole("button", { name: "הוספת מיקום פרס" }).click();
+    await first.page.getByRole("button", { name: "הוספת מיקום פרס" }).click();
+    await expect(first.page.getByLabel("מיקום", { exact: true })).toHaveCount(3);
+    await expect(first.page.getByLabel("מיקום", { exact: true }).nth(2)).toHaveValue("3");
+    await first.page.getByRole("button", { name: "הסרת מיקום פרס 2", exact: true }).click();
+    await expect(first.page.getByLabel("מיקום", { exact: true })).toHaveCount(2);
+    await expect(first.page.getByLabel("מיקום", { exact: true }).nth(0)).toHaveValue("1");
+    await expect(first.page.getByLabel("מיקום", { exact: true }).nth(1)).toHaveValue("2");
+
+    await first.page.getByLabel("אחוז").nth(0).fill("60");
     await first.page.getByLabel("אחוז").nth(1).fill("40");
     await first.page.getByRole("button", { name: "יצירת ליגה", exact: true }).click();
 
@@ -71,6 +87,19 @@ test.describe("league creation and isolation", () => {
 
     await first.page.goto("/dashboard");
     await expect(first.page.getByRole("link", { name: new RegExp(leagueName) })).toBeVisible();
+
+    // A shared league link opened while logged out must return to that league
+    // after login, not fall back to the dashboard.
+    const returning = await browser.newContext();
+    const returningPage = await returning.newPage();
+    await returningPage.goto(`/leagues/${leagueId}`);
+    await expect(returningPage).toHaveURL(/\/login\?next=/);
+    await returningPage.getByLabel("כתובת אימייל").fill(`league-owner-${suffix}@example.com`);
+    await returningPage.getByLabel("סיסמה").fill(password);
+    await returningPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(returningPage).toHaveURL(new RegExp(`/leagues/${leagueId}$`));
+    await expect(returningPage.getByRole("heading", { name: leagueName })).toBeVisible();
+    await returning.close();
 
     const second = await registerConfirmedUser({
       browser,

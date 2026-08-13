@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 const paymentLinkPattern = /(?:https?:\/\/|www\.)/i;
+// League names are single-line: every C0/C1 control character is rejected.
+const controlCharactersPattern = /[\u0001-\u001f\u007f-\u009f]/;
+// Multiline Demo fields keep tab (U+0009) and line breaks (U+000A, U+000D).
+const multilineControlCharactersPattern =
+  /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
 
 function trimmedText(minimum: number, maximum: number, messages: {
   minimum: string;
@@ -79,11 +84,17 @@ const percentageSchema = z.string().transform((value, context) => {
 export const leagueNameSchema = trimmedText(3, 80, {
   minimum: "שם הליגה חייב לכלול לפחות 3 תווים.",
   maximum: "שם הליגה יכול לכלול עד 80 תווים.",
-});
+}).refine(
+  (value) => !controlCharactersPattern.test(value),
+  "שם הליגה מכיל תווי בקרה שאינם מותרים.",
+);
 
 export const leagueDescriptionSchema = optionalTrimmedText(
   500,
   "התיאור יכול לכלול עד 500 תווים.",
+).refine(
+  (value) => value === undefined || !multilineControlCharactersPattern.test(value),
+  "התיאור מכיל תווי בקרה שאינם מותרים.",
 );
 
 export const demoEntryFeeAgorotSchema = integerString(
@@ -185,10 +196,16 @@ export const createLeagueSchema = z.object({
   demoPaymentInstructions: optionalTrimmedText(
     500,
     "הוראות ה־Demo יכולות לכלול עד 500 תווים.",
-  ).refine(
-    (value) => value === undefined || !paymentLinkPattern.test(value),
-    "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
-  ),
+  )
+    .refine(
+      (value) => value === undefined || !paymentLinkPattern.test(value),
+      "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
+    )
+    .refine(
+      (value) =>
+        value === undefined || !multilineControlCharactersPattern.test(value),
+      "הוראות ה־Demo מכילות תווי בקרה שאינם מותרים.",
+    ),
   allowLateJoin: z.boolean(),
   scoring: scoringRulesSchema,
   prizes: prizeRulesSchema,

@@ -11,6 +11,9 @@ type QueryResult<T> =
   | { ok: true; data: T }
   | { ok: false; data: T };
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getSeasonOptions(
   supabase: SupabaseClient<Database>,
 ): Promise<QueryResult<SeasonOption[]>> {
@@ -51,7 +54,11 @@ export async function getDashboardLeagues(
     return { ok: false, data: [] };
   }
 
-  const leagueIds = memberships.map((membership) => membership.league_id);
+  // Defense in depth: these are uuid column values from our own database, but
+  // they are interpolated into the PostgREST or() filter string below.
+  const leagueIds = memberships
+    .map((membership) => membership.league_id)
+    .filter((leagueId) => UUID_PATTERN.test(leagueId));
   let query = supabase
     .from("leagues")
     .select("id, name, status, manager_id, season:seasons!inner(name)")
@@ -106,7 +113,9 @@ export async function getLeagueSummary(
     return { status: "not-found" };
   }
 
-  const [scoringResult, prizesResult, membershipResult] = await Promise.all([
+  // Reading the league row already proves the viewer is its manager or an
+  // active member (RLS); scoring and prize rules follow the same policies.
+  const [scoringResult, prizesResult] = await Promise.all([
     supabase
       .from("league_scoring_rules")
       .select(
@@ -120,22 +129,13 @@ export async function getLeagueSummary(
       .eq("league_id", leagueId)
       .order("position", { ascending: true })
       .limit(100),
-    supabase
-      .from("league_members")
-      .select("status")
-      .eq("league_id", leagueId)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle(),
   ]);
 
   if (
     scoringResult.error ||
     !scoringResult.data ||
     prizesResult.error ||
-    !prizesResult.data ||
-    membershipResult.error ||
-    !membershipResult.data
+    !prizesResult.data
   ) {
     return { status: "error" };
   }
