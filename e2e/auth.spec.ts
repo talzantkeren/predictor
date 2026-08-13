@@ -203,8 +203,6 @@ test.describe("authentication and profile", () => {
     await expect(flowPage).toHaveURL(/\/dashboard$/);
     await flowPage.goto("/register");
     await expect(flowPage).toHaveURL(/\/dashboard$/);
-    await flowPage.goto("/login?next=https://attacker.example");
-    await expect(flowPage).toHaveURL(/\/dashboard$/);
 
     await flowPage.getByRole("button", { name: "התנתקות" }).click();
     await expect(flowPage).toHaveURL(/\/login\?status=signed-out$/);
@@ -212,6 +210,7 @@ test.describe("authentication and profile", () => {
     await flowPage.goto("/dashboard");
     await expect(flowPage).toHaveURL(/\/login\?next=%2Fdashboard$/);
 
+    await flowPage.goto("/login?next=https://attacker.example");
     await flowPage.getByLabel("כתובת אימייל").fill(email);
     await flowPage.getByLabel("סיסמה").fill(password);
     await flowPage.getByRole("button", { name: "התחברות" }).click();
