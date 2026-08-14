@@ -5,7 +5,7 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Slice 2 Preview: [https://predictor-git-feature-slice-2-leagues-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-2-leagues-tals-projects-19902e47.vercel.app)
+- Slice 3 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
