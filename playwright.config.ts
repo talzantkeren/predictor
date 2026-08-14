@@ -13,7 +13,11 @@ export default defineConfig({
   reporter: process.env.CI ? "html" : "line",
   use: {
     baseURL: externalBaseUrl ?? "http://localhost:3000",
-    trace: "on-first-retry",
+    // Auth confirmation URLs, invite bearers, and proof signed URLs must never
+    // be persisted in CI artifacts. Keep browser recordings disabled.
+    screenshot: "off",
+    trace: "off",
+    video: "off",
   },
   projects: [
     {

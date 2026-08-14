@@ -18,10 +18,14 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string; status?: string }>;
 }) {
-  await redirectAuthenticatedUser();
   const params = await searchParams;
   const nextPath = getSafeAuthRedirect(params.next);
+  await redirectAuthenticatedUser(nextPath);
   const statusMessage = params.status ? statusMessages[params.status] : undefined;
+  const registerHref =
+    nextPath === "/dashboard"
+      ? "/register"
+      : `/register?next=${encodeURIComponent(nextPath)}`;
 
   return (
     <AuthCard
@@ -30,7 +34,7 @@ export default async function LoginPage({
       footer={{
         label: "עדיין אין לכם חשבון?",
         linkLabel: "הרשמה",
-        href: "/register",
+        href: registerHref,
       }}
     >
       <LoginForm nextPath={nextPath} statusMessage={statusMessage} />

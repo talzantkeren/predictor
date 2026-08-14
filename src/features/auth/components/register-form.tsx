@@ -9,7 +9,7 @@ import {
 
 import { FieldError, FormMessage } from "./form-message";
 
-export function RegisterForm() {
+export function RegisterForm({ nextPath }: { nextPath: string }) {
   const initialState: AuthActionState = { status: "idle" };
   const [state, formAction, pending] = useActionState(registerAction, initialState);
   const fieldErrors = state.fieldErrors ?? {};
@@ -20,6 +20,7 @@ export function RegisterForm() {
 
   return (
     <form action={formAction} noValidate className="space-y-5">
+      <input type="hidden" name="next" value={nextPath} />
       {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>

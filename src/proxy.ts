@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { getSafeAuthRedirect } from "@/features/auth/redirects";
 import {
   getEnvironmentErrorVariables,
   getPublicEnv,
@@ -99,6 +100,26 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith("/leagues/") ||
     pathname === "/update-password";
   const isEntryAuthPath = pathname === "/login" || pathname === "/register";
+  const isInvitePath = pathname.startsWith("/invite/");
+  const authNextPath = isEntryAuthPath
+    ? getSafeAuthRedirect(request.nextUrl.searchParams.get("next"))
+    : undefined;
+  const isInviteAuthPath = authNextPath?.startsWith("/invite/") ?? false;
+
+  function applyInvitePrivacyHeaders(response: NextResponse) {
+    if (!isInvitePath && !isInviteAuthPath) {
+      return response;
+    }
+
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate, max-age=0",
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
+  }
 
   function redirectWithAuthCookies(destination: URL) {
     const response = NextResponse.redirect(destination);
@@ -111,7 +132,7 @@ export default async function proxy(request: NextRequest) {
     );
     response.headers.set("Cache-Control", "private, no-store");
 
-    return response;
+    return applyInvitePrivacyHeaders(response);
   }
 
   if (!user && isProtectedPath) {
@@ -121,10 +142,12 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (user && isEntryAuthPath) {
-    return redirectWithAuthCookies(new URL("/dashboard", request.url));
+    return redirectWithAuthCookies(
+      new URL(authNextPath ?? "/dashboard", request.url),
+    );
   }
 
-  return supabaseResponse;
+  return applyInvitePrivacyHeaders(supabaseResponse);
 }
 
 export const config = {

@@ -1,5 +1,10 @@
 import { expect, type APIRequestContext, test } from "@playwright/test";
 
+import {
+  fillPasswordWithoutReportValue,
+  navigateSensitiveAuthUrl,
+} from "./support/local-auth";
+
 const mailpitUrl = "http://127.0.0.1:54324";
 
 type MailpitSearchResponse = {
@@ -33,18 +38,24 @@ function getLocalAuthConfiguration() {
 }
 
 async function signInThroughAuth(
-  request: APIRequestContext,
   email: string,
   password: string,
 ) {
   const { publishableKey, url } = getLocalAuthConfiguration();
-  const response = await request.post(`${url}/auth/v1/token?grant_type=password`, {
-    headers: { apikey: publishableKey },
-    data: { email, password },
-  });
+  const response = await fetchWithoutSensitiveReport(
+    `${url}/auth/v1/token?grant_type=password`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    },
+  );
   const result = (await response.json()) as PasswordSessionResponse;
 
-  expect(response.ok()).toBe(true);
+  expect(response.ok).toBe(true);
   expect(typeof result.access_token).toBe("string");
   expect(typeof result.user?.id).toBe("string");
 
@@ -52,6 +63,14 @@ async function signInThroughAuth(
     accessToken: result.access_token as string,
     userId: result.user?.id as string,
   };
+}
+
+async function fetchWithoutSensitiveReport(url: string, init?: RequestInit) {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error("Sensitive local authentication request failed.");
+  }
 }
 
 function extractAuthLink(message: MailpitMessage) {
@@ -137,20 +156,28 @@ test.describe("authentication and profile", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fprofile$/);
   });
 
-  test("enforces the password minimum in Supabase Auth", async ({ request }) => {
+  test("enforces the password minimum in Supabase Auth", async () => {
     const { publishableKey, url: supabaseUrl } = getLocalAuthConfiguration();
+    const weakPassword = crypto.randomUUID().replaceAll("-", "").slice(0, 7);
 
-    const response = await request.post(`${supabaseUrl}/auth/v1/signup`, {
-      headers: { apikey: publishableKey },
-      data: {
-        email: `short-password-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
-        password: "seven77",
+    const response = await fetchWithoutSensitiveReport(
+      `${supabaseUrl}/auth/v1/signup`,
+      {
+        method: "POST",
+        headers: {
+          apikey: publishableKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: `short-password-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
+          password: weakPassword,
+        }),
       },
-    });
+    );
     const error = (await response.json()) as AuthErrorResponse;
 
-    expect(response.ok()).toBe(false);
-    expect(response.status()).toBe(422);
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe(422);
     expect(error.code).toBe(422);
     expect(error.error_code).toBe("weak_password");
   });
@@ -163,14 +190,14 @@ test.describe("authentication and profile", () => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const email = `slice1-${suffix}@example.com`;
     const secondEmail = `slice1-second-${suffix}@example.com`;
-    const password = "Predictor123!";
-    const replacementPassword = "Predictor456!";
+    const password = `Aa1!${crypto.randomUUID()}`;
+    const replacementPassword = `Bb2!${crypto.randomUUID()}`;
 
     await page.goto("/register");
     await page.getByLabel("שם תצוגה").fill("משתמש בדיקה");
     await page.getByLabel("כתובת אימייל").fill(email);
-    await page.getByLabel("סיסמה", { exact: true }).fill(password);
-    await page.getByLabel("אימות סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(page, "סיסמה", password);
+    await fillPasswordWithoutReportValue(page, "אימות סיסמה", password);
     await page.getByRole("button", { name: "יצירת חשבון" }).click();
 
     await expect(page.getByText("ההרשמה התקבלה")).toBeVisible();
@@ -178,11 +205,11 @@ test.describe("authentication and profile", () => {
     const confirmationEmail = await waitForAuthEmail(request, email);
     const confirmationContext = await browser.newContext();
     const flowPage = await confirmationContext.newPage();
-    await flowPage.goto(confirmationEmail.link);
+    await navigateSensitiveAuthUrl(flowPage, confirmationEmail.link);
     await expect(flowPage).toHaveURL(/\/login\?status=confirmation-completed$/);
     await expect(flowPage.getByText("כתובת האימייל אושרה")).toBeVisible();
     await flowPage.getByLabel("כתובת אימייל").fill(email);
-    await flowPage.getByLabel("סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(flowPage, "סיסמה", password);
     await flowPage.getByRole("button", { name: "התחברות" }).click();
     await expect(flowPage).toHaveURL(/\/dashboard$/);
     await expect(
@@ -212,7 +239,7 @@ test.describe("authentication and profile", () => {
 
     await flowPage.goto("/login?next=https://attacker.example");
     await flowPage.getByLabel("כתובת אימייל").fill(email);
-    await flowPage.getByLabel("סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(flowPage, "סיסמה", password);
     await flowPage.getByRole("button", { name: "התחברות" }).click();
     await expect(flowPage).toHaveURL(/\/dashboard$/);
 
@@ -233,7 +260,7 @@ test.describe("authentication and profile", () => {
     );
     const recoveryContext = await browser.newContext();
     const recoveryPage = await recoveryContext.newPage();
-    await recoveryPage.goto(recoveryEmail.link);
+    await navigateSensitiveAuthUrl(recoveryPage, recoveryEmail.link);
     await expect(recoveryPage).toHaveURL(
       /\/forgot-password\?status=recovery-browser-mismatch$/,
     );
@@ -254,14 +281,18 @@ test.describe("authentication and profile", () => {
       email,
       [confirmationEmail.id, recoveryEmail.id],
     );
-    await recoveryPage.goto(sameBrowserRecoveryEmail.link);
+    await navigateSensitiveAuthUrl(recoveryPage, sameBrowserRecoveryEmail.link);
     await expect(recoveryPage).toHaveURL(/\/update-password$/);
-    await recoveryPage
-      .getByLabel("סיסמה חדשה", { exact: true })
-      .fill(replacementPassword);
-    await recoveryPage
-      .getByLabel("אימות סיסמה חדשה")
-      .fill(replacementPassword);
+    await fillPasswordWithoutReportValue(
+      recoveryPage,
+      "סיסמה חדשה",
+      replacementPassword,
+    );
+    await fillPasswordWithoutReportValue(
+      recoveryPage,
+      "אימות סיסמה חדשה",
+      replacementPassword,
+    );
     await recoveryPage.getByRole("button", { name: "עדכון סיסמה" }).click();
 
     await expect(recoveryPage).toHaveURL(/\/login\?status=password-updated$/);
@@ -275,27 +306,31 @@ test.describe("authentication and profile", () => {
       .toBe(false);
 
     await recoveryPage.getByLabel("כתובת אימייל").fill(email);
-    await recoveryPage.getByLabel("סיסמה").fill(replacementPassword);
+    await fillPasswordWithoutReportValue(
+      recoveryPage,
+      "סיסמה",
+      replacementPassword,
+    );
     await recoveryPage.getByRole("button", { name: "התחברות" }).click();
     await expect(recoveryPage).toHaveURL(/\/dashboard$/);
 
     await page.goto("/register");
     await page.getByLabel("שם תצוגה").fill("משתמש שני");
     await page.getByLabel("כתובת אימייל").fill(secondEmail);
-    await page.getByLabel("סיסמה", { exact: true }).fill(password);
-    await page.getByLabel("אימות סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(page, "סיסמה", password);
+    await fillPasswordWithoutReportValue(page, "אימות סיסמה", password);
     await page.getByRole("button", { name: "יצירת חשבון" }).click();
     await expect(page.getByText("ההרשמה התקבלה")).toBeVisible();
 
     const secondConfirmationEmail = await waitForAuthEmail(request, secondEmail);
     const secondContext = await browser.newContext();
     const secondPage = await secondContext.newPage();
-    await secondPage.goto(secondConfirmationEmail.link);
+    await navigateSensitiveAuthUrl(secondPage, secondConfirmationEmail.link);
     await expect(secondPage).toHaveURL(
       /\/login\?status=confirmation-completed$/,
     );
     await secondPage.getByLabel("כתובת אימייל").fill(secondEmail);
-    await secondPage.getByLabel("סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(secondPage, "סיסמה", password);
     await secondPage.getByRole("button", { name: "התחברות" }).click();
     await expect(secondPage).toHaveURL(/\/dashboard$/);
     await expect(
@@ -303,33 +338,34 @@ test.describe("authentication and profile", () => {
     ).toBeVisible();
 
     const firstSession = await signInThroughAuth(
-      request,
       email,
       replacementPassword,
     );
-    const secondSession = await signInThroughAuth(request, secondEmail, password);
+    const secondSession = await signInThroughAuth(secondEmail, password);
     const { publishableKey, url: supabaseUrl } = getLocalAuthConfiguration();
     const foreignProfileUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${firstSession.userId}&select=id,display_name`;
-    const foreignRead = await request.get(foreignProfileUrl, {
+    const foreignRead = await fetchWithoutSensitiveReport(foreignProfileUrl, {
       headers: {
         apikey: publishableKey,
         Authorization: `Bearer ${secondSession.accessToken}`,
       },
     });
 
-    expect(foreignRead.ok()).toBe(true);
+    expect(foreignRead.ok).toBe(true);
     expect(await foreignRead.json()).toEqual([]);
 
-    const foreignUpdate = await request.patch(foreignProfileUrl, {
+    const foreignUpdate = await fetchWithoutSensitiveReport(foreignProfileUrl, {
+      method: "PATCH",
       headers: {
         apikey: publishableKey,
         Authorization: `Bearer ${secondSession.accessToken}`,
         Prefer: "return=representation",
+        "Content-Type": "application/json",
       },
-      data: { display_name: "ניסיון שינוי זר" },
+      body: JSON.stringify({ display_name: "ניסיון שינוי זר" }),
     });
 
-    expect(foreignUpdate.ok()).toBe(true);
+    expect(foreignUpdate.ok).toBe(true);
     expect(await foreignUpdate.json()).toEqual([]);
 
     await confirmationContext.close();

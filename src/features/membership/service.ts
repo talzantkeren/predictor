@@ -1,0 +1,92 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { getSafeMembershipErrorMessage } from "@/features/membership/errors";
+import {
+  hashInviteToken,
+  isValidInviteToken,
+} from "@/features/membership/invite-token";
+import {
+  getSingleMembershipRpcRecord,
+  invokeMembershipRpc,
+} from "@/features/membership/rpc";
+import {
+  createdInviteRpcSchema,
+  joinRequestRpcSchema,
+} from "@/features/membership/schemas";
+import type { Database } from "@/types/database.generated";
+
+export async function createOrRotateInvite(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+) {
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "create_or_rotate_invite",
+    { p_league_id: leagueId },
+  );
+
+  if (error) {
+    return { ok: false as const, message: getSafeMembershipErrorMessage(error) };
+  }
+
+  const parsed = createdInviteRpcSchema.safeParse(
+    getSingleMembershipRpcRecord(data),
+  );
+
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      message: "ההזמנה נוצרה, אך לא ניתן להציג את הקישור. יש ליצור קישור חדש.",
+    };
+  }
+
+  return { ok: true as const, data: parsed.data };
+}
+
+export async function revokeInvite(
+  supabase: SupabaseClient<Database>,
+  inviteId: string,
+) {
+  const { error } = await invokeMembershipRpc(supabase, "revoke_invite", {
+    p_invite_id: inviteId,
+  });
+
+  if (error) {
+    return { ok: false as const, message: getSafeMembershipErrorMessage(error) };
+  }
+
+  return { ok: true as const };
+}
+
+export async function submitJoinRequest(
+  supabase: SupabaseClient<Database>,
+  token: string,
+) {
+  if (!isValidInviteToken(token)) {
+    return { ok: false as const, message: "קישור ההזמנה אינו זמין." };
+  }
+
+  const tokenHash = await hashInviteToken(token);
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "submit_join_request",
+    { p_token_hash: tokenHash },
+  );
+
+  if (error) {
+    return { ok: false as const, message: getSafeMembershipErrorMessage(error) };
+  }
+
+  const parsed = joinRequestRpcSchema.safeParse(
+    getSingleMembershipRpcRecord(data),
+  );
+
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      message: "לא ניתן לקרוא את מצב הבקשה כרגע. יש לרענן ולנסות שוב.",
+    };
+  }
+
+  return { ok: true as const, data: parsed.data };
+}

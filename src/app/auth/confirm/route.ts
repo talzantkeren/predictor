@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getSafeAuthRedirect } from "@/features/auth/redirects";
+import {
+  AUTH_CONFIRM_RETURN_COOKIE,
+  getAuthConfirmReturnCookieOptions,
+  getConfirmationReturnPath,
+} from "@/features/auth/confirmation-return";
 import { createClient } from "@/lib/supabase/server";
 
 function privateRedirect(
@@ -24,6 +28,12 @@ function privateRedirect(
     response.headers.set(name, value),
   );
 
+  response.cookies.set(
+    AUTH_CONFIRM_RETURN_COOKIE,
+    "",
+    getAuthConfirmReturnCookieOptions(0),
+  );
+
   if (options?.recoverySession) {
     response.cookies.set("predictor_recovery", "active", {
       httpOnly: true,
@@ -37,14 +47,30 @@ function privateRedirect(
   return response;
 }
 
+function authStatusPath(
+  pathname: "/login" | "/forgot-password",
+  status: string,
+  nextPath?: string,
+) {
+  const searchParams = new URLSearchParams({ status });
+
+  if (nextPath) {
+    searchParams.set("next", nextPath);
+  }
+
+  return `${pathname}?${searchParams.toString()}`;
+}
+
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const recoveryFlow =
-    request.nextUrl.searchParams.get("next") === "/update-password";
-  const nextPath = getSafeAuthRedirect(
-    request.nextUrl.searchParams.get("next"),
-    recoveryFlow ? "/update-password" : "/dashboard",
-  );
+  const queryNext = request.nextUrl.searchParams.get("next");
+  const recoveryFlow = queryNext === "/update-password";
+  const nextPath = recoveryFlow
+    ? "/update-password"
+    : getConfirmationReturnPath({
+        cookieNext: request.cookies.get(AUTH_CONFIRM_RETURN_COOKIE)?.value,
+        queryNext,
+      });
 
   const authHeaders: Record<string, string> = {};
   const supabase = await createClient({
@@ -64,8 +90,15 @@ export async function GET(request: NextRequest) {
       return privateRedirect(
         request,
         recoveryFlow
-          ? "/forgot-password?status=recovery-browser-mismatch"
-          : "/login?status=confirmation-completed",
+          ? authStatusPath(
+              "/forgot-password",
+              "recovery-browser-mismatch",
+            )
+          : authStatusPath(
+              "/login",
+              "confirmation-completed",
+              nextPath === "/dashboard" ? undefined : nextPath,
+            ),
         { authHeaders },
       );
     }
@@ -73,8 +106,12 @@ export async function GET(request: NextRequest) {
     return privateRedirect(
       request,
       recoveryFlow
-        ? "/forgot-password?status=recovery-error"
-        : "/login?status=confirmation-error",
+        ? authStatusPath("/forgot-password", "recovery-error")
+        : authStatusPath(
+            "/login",
+            "confirmation-error",
+            nextPath === "/dashboard" ? undefined : nextPath,
+          ),
       { authHeaders },
     );
   }
