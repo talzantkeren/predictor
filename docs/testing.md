@@ -69,3 +69,60 @@ AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת re
 מקביליות אמיתית של שתי קריאות `create_league` בו־זמנית אינה ניתנת לבדיקה
 ב־pgTAP חד־חיבורי; ההגנה היא האטומיות של הפונקציה וה־constraints, כך שגם
 בקשות חוזרות אינן משאירות מצב חלקי.
+
+## Slice 3: הזמנה, בקשת הצטרפות ואסמכתאת Demo פרטית
+
+כל תמונות הבדיקה מיוצרות בזיכרון בזמן הריצה באמצעות `sharp` או buffers
+סינתטיים. אין fixture של קבלה, מסמך פיננסי או קובץ משתמש אמיתי במאגר. בדיקות
+ה־route וה־E2E משתמשות רק ב־Supabase/Auth/Storage/Mailpit המקומיים ואינן פונות
+ל־hosted Storage.
+Playwright מבטל trace, screenshots ו־video, וה־runner מבטל snapshot אוטומטי של
+מצב העמוד בשגיאה, מפני שזרימות Auth/invite/signed-access נוגעות ב־bearer URLs.
+הבדיקות משתמשות בהשוואות boolean, המתנות UI עם שגיאה קבועה ובעטיפות navigation
+מסוננות כדי ש־matcher snapshot או דו"ח כשל לא ידפיסו token. קריאות עם JWT,
+cookie, signed URL או proof path משתמשות ב־`fetch` של Node עם שגיאה מסוננת ולא
+ב־`APIRequestContext` המתועד של Playwright. canary מכוון שנכשל וסורק גם את
+ה־ZIP המוטמע בדוח HTML מאמת שאין בו sentinel של invite, JWT, cookie, password
+או signed proof path; artifact ה־canary נמחק לאחר הבדיקה. כל invite פעיל מבוטל
+ב־cleanup ככל שה־session המקומי זמין.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | token base64url באורך/entropy הנדרשים, validation ו־SHA-256 לפני RPC ללא העברת raw token, ו־redirect allowlist; mapping שגיאות; request-body bounded גם בלי `Content-Length`; Origin; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
+| pgTAP | schema, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; בידוד owner/manager/outsider/ליגה אחרת וללא decision/membership mutation |
+| Route integration | JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
+| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; guest → register/login → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
+| Visual/manual | 390px ו־desktop, RTL, keyboard/focus, labels ו־error summary, `aria-live`, preview מקומי, loading/empty/success/failure וללא overflow |
+
+pgTAP רץ בחיבור יחיד ואינו מוכיח race אמיתי לבדו. בדיקות Playwright/API
+משתמשות ב־`Promise.all` עבור rotate, submit ו־upload retry, בעוד constraints,
+locks ו־RLS נבדקים בנוסף במסד.
+
+### הכנת הסביבה והרצה
+
+```powershell
+npm ci
+npm exec -- supabase start
+npm exec -- supabase db reset --local
+npm run lint
+npm run typecheck
+npm run test
+npm run test:db
+npm exec -- supabase db lint --local --schema public,private --level warning --fail-on error
+npm run types:check
+npm run build
+npm run test:e2e
+```
+
+ה־runner קורא מ־`supabase status -o json` את `API_URL`, `PUBLISHABLE_KEY` ואת
+`SECRET_KEY`, ומעביר את הסוד רק לתהליך Node המהימן שמריץ את build, שרת הבדיקה
+ו־Playwright כ־`SUPABASE_SECRET_KEY`; הוא אינו נשלח לדפדפן, לדוח או ל־stdout.
+ה־gateway נטען lazy כדי ש־build שאינו מפעיל Storage יישאר בטוח, אך route
+העלאה/צפייה נכשל סגור ללא הסוד.
+
+לבדיקה ידנית: יוצרים ליגה, נכנסים ל־settings, יוצרים קישור, פותחים אותו בחלון
+פרטי, משלימים Auth דרך Mailpit, מגישים בקשה ומעלים תמונה סינתטית. מאמתים
+`pending_approval` גם ב־Dashboard ופותחים את התמונה דרך endpoint ההרשאה בלבד.
+אין להשתמש ב־`supabase db reset --linked` או בתמונה פיננסית אמיתית.

@@ -84,3 +84,105 @@
   trigger deferred שבודק את שני צדי העברה בין ליגות, כך שגם כתיבה privileged
   עתידית אינה יכולה להשאיר מצב חלקי.
 - אין שימוש ב־admin client או ב־`SUPABASE_SECRET_KEY` בזרימות Slice 2.
+
+## הזמנות, בקשות ואסמכתאות Demo ב־Slice 3
+
+### הזמנה ו־return path
+
+- פונקציית PostgreSQL מייצרת token של 32 bytes אקראיים ומחזירה base64url ללא
+  padding פעם אחת בלבד. רק SHA-256 hash נשמר; אין עמודה, לוג, audit metadata או
+  snapshot שמכילים את ה־token הגולמי. קישור חדש תקף בדיוק שבעה ימים לפי זמן DB.
+- גבול Next.js מאמת תחילה base64url קנוני באורך 43 תווים, מחשב SHA-256 ומעביר
+  ל־PostgREST/RPC רק digest קטן־אותיות בן 64 תווי hex. ה־RPC מאמת שוב את צורת
+  ה־digest לפני lookup. כך ה־token הגולמי אינו נכנס לגוף בקשת Data API.
+- לכל ליגה יש לכל היותר הזמנה `active` אחת. create/rotate נועלת את שורת הליגה,
+  מבטלת קישור קודם ויוצרת חדש באותה transaction. ההזמנה הראשונה מעבירה ליגה
+  `draft` ל־`open`; אין פתיחה מחדש של ליגה שהושלמה או אורכבה.
+- revoke ו־expiry חוסמים בקשה חדשה מיד, אך אינם מוחקים או שוללים העלאה מבקשה
+  קיימת. submission נועל ואוכף שוב status, late join, `joins_close_at`, מנהל,
+  חברות ובקשה פעילה; partial unique index הוא ההגנה הסופית בפני race.
+- `/invite/[token]` הוא dynamic ו־no-store, עם `noindex`, `nofollow` ו־
+  `Referrer-Policy: no-referrer`. קישור לא זמין מחזיר מצב אחיד שאינו מגלה ליגה.
+  אין analytics או משאבי צד שלישי בעמוד. ה־URL עדיין עשוי להופיע בלוג הגישה של
+  פלטפורמת האירוח; לכן אין לטעון שהוא אינו מגיע לעולם לתשתית, ומצמצמים את הסיכון
+  באמצעות expiry, rotation, אי־שמירה באפליקציה והיעדר referrer.
+- `next` מקבל רק נתיב יחסי מדויק ב־allowlist, כולל token base64url קנוני.
+  absolute/protocol-relative URLs, query/fragment לא צפויים, backslash, קידוד
+  עוקף ותווי בקרה נדחים. login משמר את היעד המאומת בפרמטר פנימי. registration
+  שומר אותו עד 30 דקות ב־cookie `HttpOnly`, `SameSite=Lax`, שמוגבל ל־
+  `/auth/confirm`; כתובת callback שנשלחת ל־Supabase/Email אינה כוללת invite token.
+  ה־callback צורך ומוחק את ה־cookie. אישור בדפדפן אחר חסר את ה־cookie ואת PKCE
+  verifier ולכן חוזר ל־login/Dashboard בלי לשכפל את token בהודעת Email.
+
+### גבול Storage והעלאה
+
+- `payment-proofs` הוא bucket פרטי, עד 4,000,000 bytes ו־`image/webp` בלבד.
+  אין policies ל־`anon` או `authenticated` על `storage.objects`, ולכן דפדפן אינו
+  יכול לעקוף את Route Handler ולשמור bytes לא מסוננים.
+- החריג המצומצם לשימוש ב־`SUPABASE_SECRET_KEY` הוא gateway עם `server-only`
+  ו־bucket קבוע. הוא גוזר path רק מ־UUIDs שאושרו, מעלה WebP מסונן עם
+  `upsert: false`, ובודק מחדש MIME/signature/גודל/digest וממדים של פלט ה־sanitizer
+  לפני שימוש ב־secret. הוא מוחק בפיצוי ויוצר signed URL לאחר AuthZ ואינו חושף client
+  כללי, bucket/path שרירותיים ואינו כותב טבלאות עסקיות.
+- ה־Handler דורש `DEMO_MODE=true`, session, Origin זהה ל־
+  `NEXT_PUBLIC_APP_URL` או ל־origin מדויק שמגיע ממשתנה deployment מהימן של
+  Vercel (`VERCEL_BRANCH_URL`/`VERCEL_URL`), והרשאת owner לפני עבודה privileged.
+  אין הסתמכות על Host/forwarded-host מהבקשה. הוא קורא stream
+  חסום ל־4,250,000 bytes גם ללא `Content-Length`, מקבל file יחיד בשם `proof`
+  ומפתח idempotency מסוג UUID.
+- הקלט מוגבל ל־JPEG/PNG/WebP עד 4,000,000 bytes. סיומת, MIME ו־magic bytes
+  חייבים להתאים. `sharp` מפענח תמונה חד־עמודית עם עד 20,000,000 pixels,
+  מפעיל orientation, מתאים לתיבה 2000×2000 ללא הגדלה, מסיר metadata ומקודד
+  WebP חדש. המקור, שמו ו־EXIF אינם נשמרים.
+- עד חמש הוכחות נשמרות append-only לכל בקשה. מפתח idempotency זהה עם digest
+  זהה מחזיר את התוצאה הקיימת; תוכן אחר עם אותו מפתח נדחה. המכסה המתמשכת היא
+  חמש ניסיונות למשתמש+בקשה ב־15 דקות ו־20 למשתמש ב־24 שעות.
+- לאחר upload, RPC user-scoped נועל את הבקשה, מאמת שוב owner/status ואת ה־object
+  המדויק ב־`storage.objects`, מוסיף metadata ומעביר `pending_proof` ל־
+  `pending_approval` אטומית. רק SQLSTATE שמוכיח rollback — `P0001`, מחלקות
+  `22`/`23`, או מחלקה `40` למעט `40003` — הוא rejection מובהק שמאפשר מחיקת
+  פיצוי. מחלקה `08`, `40003`, shutdown, כשל transport/schema וקוד חסר או לא
+  מוכר נשארים עמומים כי ייתכן שה־commit כבר הושלם; במקרה כזה משוחזרת פעם אחת
+  בדיוק אותה קריאת finalizer אידמפוטנטית.
+  replay מוצלח שומר את ה־object שאליו מצביעה רשומת ה־DB. אם גם ה־replay אינו
+  מכריע, אין למחוק object שאולי כבר מקושר: הוא נשאר פרטי ונרשם רק האירוע המסונן
+  `{"event":"proof_upload_compensation_failed","recovery":"private_orphan_reconciliation"}`;
+  אותו אירוע נרשם גם אם מחיקת פיצוי מובהקת נכשלת. התאוששות תפעולית
+  מאתרת objects ישנים ללא `payment_proofs` תואם, מצליבה עם האירוע ומוחקת אותם
+  רק דרך אותו gateway לאחר review.
+- רק status ברשימת rejection סגורה (`400`, `401`, `403`, `404`, `409`, `411`,
+  `413`, `415`, `422`, `429`) מוכיח שכשל Storage קדם ל־commit: לא מופעל finalizer
+  ואין צורך ב־reconciliation. `408`, `425`, `499`, כל `5xx`, transport ו־status
+  חסר/לא מוכר הם עמומים כי upload עשוי היה להישמר; אין finalization ואין מחיקה,
+  ונשלח אותו signal מסונן. מחיקה של הנתיב
+  אינה בטוחה בשלב זה כי `upsert: false` אינו מוכיח שה־object שייך לניסיון הנוכחי
+  ולא להתנגשות קיימת; cleanup מותנה ידרוש ownership marker ייחודי בחוזה ה־Gateway.
+
+### צפייה, RLS וסיכון שיורי
+
+- כתיבות טבלה וכל metadata רגיש אינם נגישים ישירות ללקוח. `authenticated`
+  רשאי לקרוא תחת RLS רק את בקשתו/בקשת הליגה שהוא מנהל ועמודות proof בטוחות
+  (`id`, שיוך בקשה, MIME, גודל וזמן). token hash, path, digest, מפתח
+  idempotency, שם מקורי ו־URL אינם ניתנים לקריאה. ה־RPCs של ה־UI מצמצמים זאת
+  עוד ל־DTO הדרוש למסך.
+- endpoint צפייה מקבל proof UUID בלבד, מאמת uploader או manager של אותה ליגה,
+  מחזיר אותה תשובת 404 לחסר/אסור ומייצר signed access לעד 60 שניות. אין חריג
+  system-admin ב־Slice 3. ה־path נשמר מחוץ ל־DTOs/תגובות upload ואינו נחשף
+  למשתמש לא מורשה; הוא כן מופיע, בהכרח, ב־Supabase signed URL שמקבל משתמש
+  מורשה למשך החלון הקצר, ולכן גם ה־URL וגם ה־path אסורים בלוגים וב־artifacts.
+- magic-byte detection ו־decode/re-encode מפחיתים סיכון אך אינם antivirus או
+  הוכחה שקובץ אינו זדוני. סריקת malware מלאה ו־retention אוטומטי נשארים מחוץ
+  ל־MVP. קובץ SVG/executable מוסווה נדחה; אם payload נלווה לתמונה תקינה עדיין
+  ניתן לפענוח, המקור כולו נזרק ורק WebP חדש שנוצר מהפיקסלים נשמר. זו נטרול דרך
+  re-encode ולא טענה לזיהוי polyglot מושלם. משתמשים רק בתמונות סינתטיות ואסור
+  להעלות מסמך פיננסי אמיתי.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| token גולמי או קישור ישן | hash-only, הצגה חד־פעמית, rotation/expiry ב־DB | refresh, rotate, revoke ו־חיפוש diff/log |
+| בקשה כפולה או invite race | row lock + partial unique + idempotent RPC | שתי submissions/rotations מקבילות |
+| IDOR של request/proof | session + resource AuthZ + RLS/opaque 404 | requester/outsider/manager ליגה אחרת |
+| עקיפת sanitization | אין Storage policies ללקוחות; gateway קבוע | CRUD ישיר כ־anon/authenticated |
+| MIME מזויף/image bomb | extension+MIME+magic, Sharp limits ו־re-encode | SVG/PDF/HTML/exe/corrupt/multi-page/oversize |
+| retry שיוצר היסטוריה כפולה | digest + idempotency unique + compensation | retry זהה/שונה ומקביל |
+| דליפת path או signed URL למשתמש לא מורשה או ל־artifact | DTO allowlist, AuthZ, TTL קצר, no-store ולוגים מסוננים | תגובות upload/denial, bundle וחיפוש repository; משתמש מורשה רואה אותו ב־redirect בלבד |

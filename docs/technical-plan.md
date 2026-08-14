@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.4 |
-| תאריך עדכון | 13 באוגוסט 2026 |
+| גרסה | 2.5 |
+| תאריך עדכון | 14 באוגוסט 2026 |
 | סטטוס | Ready for implementation |
 | דדליין | 6 בספטמבר 2026 |
 
@@ -212,9 +212,9 @@ DEMO_MODE=true
 | 002 `identity` | `profiles`, trigger פרופיל ו־RLS | פרופיל נוצר בהרשמה; משתמש קורא/מעדכן רק את עצמו |
 | 003 `sports_core` | competitions, seasons, teams, matches, indexes ו־RLS; prerequisite שמגיע ב־Slice 2 | catalog עונה זמין בלי fixtures מומצאים |
 | 004 `leagues` | leagues, scoring rules, prize rules, minimal creator membership, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
-| 005 `membership_and_proofs` | invite links, join requests, proofs, bucket, general membership policies ופונקציות החלטה | אישור כפול אידמפוטנטי |
+| 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable; ללא approve/reject או יצירת חבר | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
-| 007 `operations_and_ai` | `system_admins`, analyses, sync runs, audit, rate-limit events | הרשאות ו־cleanup מוגדרים |
+| 007 `operations_and_ai` | `system_admins`, analyses ו־sync runs; מרחיבה את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | הרשאות, observability ו־cleanup מוגדרים |
 | 008 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
@@ -307,7 +307,10 @@ DEMO_MODE=true
 #### `invite_links`
 
 - `id`, `league_id`, `token_hash text unique`, `status`, `expires_at`, `created_by`, timestamps.
-- token גולמי נוצר ב־crypto random, מוחזר פעם אחת ואינו נשמר.
+- פונקציית DB מייצרת 32 bytes אקראיים ומחזירה token גולמי base64url פעם אחת; נשמר רק SHA-256 hash.
+- resolve/submit מאמתים את ה־token בגבול Next.js, מחשבים SHA-256 ומעבירים ל־RPC
+  רק `p_token_hash` קנוני; ה־DB מאמת digest של 64 תווי hex לפני lookup.
+- תוקף קבוע של שבעה ימים; rotation נועל את הליגה, מבטל כל הזמנה פעילה קודמת ופותח ליגה במצב `draft` ל־`open` באותה transaction.
 
 ### 6.5 הצטרפות ואסמכתאות
 
@@ -327,6 +330,7 @@ DEMO_MODE=true
 - `size_bytes integer`, `sha256 text`, `uploaded_at`, `deleted_at null`.
 - אין `original_filename`; אין URL ציבורי.
 - latest `uploaded_at` עבור הבקשה הוא ה־current proof.
+- עד חמש רשומות לבקשה; `(join_request_id, idempotency_key)` ייחודי מונע כפילות retry.
 
 #### `league_members`
 
@@ -381,7 +385,7 @@ DEMO_MODE=true
 
 #### `rate_limit_events`
 
-- `id`, `user_id`, `action`, `created_at`.
+- `id`, `user_id`, `join_request_id`, `action`, `created_at`.
 - משמש למכסות AI/upload ב־MVP; cleanup יומי לאירועים ישנים.
 
 ## 7. פונקציות ופעולות אטומיות
@@ -445,7 +449,7 @@ DEMO_MODE=true
 | Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
 | Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
 | Invite | `createInvite` | manager; resolve token בשרת | אין edit token | `revokeInvite` |
-| Join request | `submitJoinRequest` | owner/manager | decision functions | אין delete |
+| Join request | `submitJoinRequest` | owner/manager | ב־Slice 3 אין decision; approve/reject ב־Slice 4 | אין delete |
 | Proof | upload Handler | signed access אחרי AuthZ | אין overwrite | retention job בלבד |
 | Membership | approval RPC | same league/manager | activate/remove | status `removed` |
 | Match | provider/admin | authenticated scoped | provider/admin override | cancel, לא hard delete |
@@ -458,7 +462,7 @@ DEMO_MODE=true
 | --- | --- | --- | --- |
 | `createLeague` | league + scoring + prizes | RPC `create_league` | redirect לליגה חדשה; creator active |
 | `updateLeagueSettings` | fields allowed by status | league service | revalidate settings/summary |
-| `createInvite` | league id + expiry | invite service | raw token פעם אחת |
+| `createInvite` | league id | RPC אטומי עם expiry קבוע | raw token פעם אחת |
 | `revokeInvite` | invite id | invite service | link disabled |
 | `submitJoinRequest` | invite token | membership service | status `pending_proof` |
 | `approveJoinRequest` | request id | RPC approve | member active |
@@ -477,20 +481,23 @@ DEMO_MODE=true
 הקובץ מגדיר `export const runtime = 'nodejs'`.
 
 1. reject אם `DEMO_MODE` אינו מוגדר כמצופה בפריסת הקורס או אם המשתמש אינו owner של בקשה מתאימה.
-2. בדיקת Origin/Host, session, rate limit ו־`Content-Length` עד 4,250,000 bytes מוקדם ככל האפשר.
+2. בדיקת Origin מדויק מול `NEXT_PUBLIC_APP_URL`, session והקשר הבקשה; גוף הבקשה נקרא כ־stream חסום עד 4,250,000 bytes לפני parsing, גם כש־`Content-Length` חסר או שקרי.
 3. קובץ יחיד, עד 4,000,000 bytes, allowlist JPEG/PNG/WebP.
 4. בדיקת extension, MIME ו־magic bytes.
-5. `sharp` עם `limitInputPixels: 20_000_000`, resize בתוך 2000×2000 ללא הגדלה, הסרת metadata ו־encode ל־WebP.
-6. חישוב hash, upload ל־private bucket ו־insert metadata.
-7. אם insert נכשל אחרי upload, מחיקת orphan object; אם upload נכשל, אין רשומת DB.
-8. status הבקשה עובר ל־`pending_approval` באותה orchestration עם audit.
+5. ספירת rate limit durable לפני decoding: עד 5 ניסיונות למשתמש ולבקשה ב־15 דקות ועד 20 למשתמש ב־24 שעות; תשובת `429` כוללת `Retry-After` בטוח.
+6. `sharp` מפענח תמונה חד־עמודית עם `limitInputPixels: 20_000_000`, מבצע orientation, resize בתוך 2000×2000 ללא הגדלה, מסיר metadata ומקודד ל־WebP.
+7. SHA-256 מחושב על הפלט המסונן. UUID של proof ונתיב Storage נגזרים בשרת; ה־bucket קבוע ואין API ל־bucket/path שרירותיים.
+8. upload ל־Storage עם `upsert: false`, ואז RPC finalizer אטומי מאמת object/נתיב, idempotency ומכסה, מוסיף metadata ומעביר `pending_proof` ל־`pending_approval` עם audit.
+9. retry עם אותו idempotency key ואותו digest מחזיר אותה הצלחה; digest שונה מחזיר conflict. object מירוץ שלא ניצח נמחק.
+10. rejection של DB נחשב definitive ומאפשר מחיקת פיצוי רק עבור `P0001`, מחלקות SQLSTATE `22`/`23`, או מחלקה `40` למעט `40003`. מחלקה `08`, `40003`, shutdown וקוד חסר/לא מוכר הם תוצאה עמומה, משום שה־commit אולי כבר הושלם: ה־Handler משחזר פעם אחת בדיוק את אותה קריאת finalizer האידמפוטנטית. replay מוצלח שומר את ה־object שאליו מצביעה רשומת ה־DB; אם גם ה־replay אינו מכריע, ה־object הפרטי נשמר ונשלח אירוע reconciliation מסונן ללא path רגיש. כשל במחיקת פיצוי נשלח לאותו מסלול reconciliation.
+11. רק rejection של Storage עם status ברשימה הסגורה `400/401/403/404/409/411/413/415/422/429` הוא definitive ואינו מפעיל finalizer או reconciliation. `408`, `425`, `499`, כל `5xx`, transport ו־status חסר/לא מוכר הם תוצאת upload עמומה: אין finalization ואין מחיקה של הנתיב החדש, משום ש־`upsert: false` אינו מוכיח אם ה־object נוצר בקריאה הזו או היה collision קיים. נשמרת פרטיות ונשלח signal מסונן לסריקת orphan; מחיקה מדויקת תדרוש בעתיד ownership marker וחוזה Gateway מותנה.
 
 ### 10.2 `GET /api/payment-proofs/[proofId]`
 
 1. session.
 2. lookup metadata לפי proof id.
-3. AuthZ: uploader, manager של הליגה או system admin.
-4. signed URL ל־60 שניות והפניית 302, או JSON רק אם ה־UI דורש.
+3. AuthZ ב־Slice 3: uploader או manager של הליגה המדויקת. מנהל מערכת אינו חריג לפני שמודל התמיכה ימומש.
+4. השער הקבוע גוזר את הנתיב מתוך IDs שמקורם ב־DB ויוצר signed URL ל־60 שניות. ה־path אינו מופיע בטבלאות/DTOs ציבוריים או בתגובת upload, אך לאחר AuthZ הוא בהכרח נכלל ב־`Location` של Supabase ונראה למחזיק/ת ה־URL הקצר; אין לרשום אותו בלוגים או artifacts.
 5. `Cache-Control: private, no-store`.
 
 ### 10.3 `POST /api/cron/sync`
@@ -584,6 +591,10 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 - טבלת 3/1/0 וחוקי ניקוד מותאמים שונים בשתי ליגות.
 - prize split במקומות משותפים.
 - Zod schemas ומקרי גבול.
+- סיווג תוצאות upload/finalization: SQLSTATE `40003`/`08007` ו־Storage
+  `408`/`425`/`499` נשארים עמומים, עוברים replay/reconciliation ואינם גוררים
+  מחיקת object שאולי כבר committed; מחלקות rollback ורשימת Storage הסגורה
+  מפעילות פיצוי רק כאשר הכשל definitive.
 - adapter mapping מ־fixtures מוקלטים.
 - cache freshness ו־AI fallback.
 
@@ -594,6 +605,9 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - כל טבלה קיימת עם RLS enabled.
 - grants ופונקציות EXECUTE מצומצמים.
 - משתמש A אינו קורא/כותב נתוני משתמש B או ליגה זרה.
+- invite rotation/revoke/expiry, hash-only persistence ו־submit אידמפוטנטי; בקשה קיימת נשארת תקפה גם אחרי ביטול ההזמנה.
+- bucket `payment-proofs` פרטי ובעל מגבלת 4,000,000 bytes; CRUD ישיר ב־`storage.objects` נדחה עבור anon/authenticated.
+- proof ownership/manager isolation, מכסת חמש הוכחות, idempotency ורישום rate-limit/audit ללא מידע רגיש.
 - prediction מותר לפני kickoff ונדחה ב־/אחרי kickoff לפי DB time.
 - visibility לפני/אחרי kickoff.
 - unique constraints תחת concurrency.
@@ -607,7 +621,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 1. הרשמה → login → logout → password reset smoke.
 2. מנהל יוצר ליגה עם חוקים ופרסים.
-3. משתמש פותח invite, מעלה תמונת Demo והמנהל מאשר.
+3. מנהל יוצר/מסובב invite, משתמש פותח אותו, נרשם או מתחבר עם `next` שמור, מגיש בקשה ומעלה תמונת Demo פרטית.
 4. משתמש לא מאושר מנסה URL/API ישיר ונדחה.
 5. שני חברים מנחשים; לפני פתיחה אין חשיפה, אחרי פתיחה יש.
 6. שמירה לפני/אחרי נעילה.
@@ -687,19 +701,23 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** קישור הזמנה, בקשה, upload Demo פרטי וסטטוס.
 
-- token hash, lifecycle ו־expiry.
-- private bucket ו־Storage RLS.
-- Node runtime, hard byte/pixel limits, re-encode, hash ו־history.
-- signed access route.
-- unit/DB tests לקבצים והרשאות.
+- token אקראי של 32 bytes, שמירת hash בלבד, תוקף קבוע של שבעה ימים ו־rotation של active link יחיד; יצירה ראשונה פותחת ליגה `draft` אטומית.
+- public landing מינימלי ולא־מאנדקס, ללא token ב־analytics/logs של האפליקציה; login משתמש ב־`next` יחסי ומאומת. registration משתמש ב־cookie HttpOnly קצר ומוגבל ל־callback, כך שכתובת אישור ה־Email אינה מכילה token.
+- submit אידמפוטנטי ל־request פעילה; revoke/expiry חוסמים submission חדש אך אינם מבטלים request קיימת.
+- bucket `payment-proofs` פרטי ללא policies ל־client. שער server-only קבוע הוא consumer היחיד של secret ב־Slice 3.
+- Node runtime, hard request/file/pixel/page limits, התאמת extension/MIME/magic, re-encode WebP, hash, history של עד חמש הוכחות ו־idempotency key.
+- rate limit durable של 5 ניסיונות למשתמש+בקשה ב־15 דקות ו־20 למשתמש ב־24 שעות, עם audit לא־רגיש ופיצוי orphan.
+- signed access route ל־60 שניות עבור uploader או manager של אותה ליגה בלבד.
+- unit/DB/Playwright tests לקבצים, race/retry, Data API denial והרשאות cross-user/cross-league.
+- approve/reject, יצירת membership ותור החלטות מנהל אינם חלק מ־Slice 3 ונשארים ב־Slice 4.
 
-**Exit:** SVG/exe/oversize נדחים; IDOR proof נכשל; אין bucket ציבורי.
+**Exit:** rotate/revoke/expired/idempotent submit עובדים; SVG/exe מוסווים ו־oversize נדחים, ו־payload נלווה לתמונה תקינה מנוטרל כי רק פלט ה־decode/re-encode נשמר; retry בטוח; IDOR proof ו־Storage CRUD ישיר נכשלים; אין bucket ציבורי או raw object נשמר.
 
 ### Slice 4 — החלטת מנהל וחברות
 
 **תוצר:** manager queue, צפייה מורשית, approve/reject וחברות פעילה.
 
-- הרחבת מודל החברות המינימלי מ־Slice 2 לזרימות ניהול כלליות; RPCs, audit ו־unique constraints.
+- הרחבת מודל החברות המינימלי מ־Slice 2 לזרימות ניהול כלליות; RPCs approve/reject, יצירת חברות ו־unique constraints תוך שימוש ב־audit שכבר הוקדם ב־Slice 3.
 - concurrency tests.
 - E2E join flow.
 
@@ -841,10 +859,10 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-לאחר אישור ומיזוג Slice 2, המשימה הבאה היא **Slice 3 בלבד**: invite token
-מאובטח, בקשת הצטרפות והעלאת אסמכתאת Demo פרטית לפי חוזי האבטחה בסעיפים
-10 ו־15. מודל החברות המינימלי שכבר קיים אינו מרחיב הרשאה להצטרפות ישירה;
-אישור/דחייה וניהול חברים כללי נשארים ב־Slice 4.
+המשימה הפעילה היא **Slice 3 בלבד**: invite token מאובטח, בקשת הצטרפות והעלאת
+אסמכתאת Demo פרטית לפי חוזי האבטחה בסעיפים 10 ו־15. מודל החברות המינימלי שכבר
+קיים אינו מרחיב הרשאה להצטרפות ישירה; אישור/דחייה, יצירת חברות וניהול חברים כללי
+נשארים במפורש ב־Slice 4.
 
 ## 21. מקורות טכניים — אומתו ב־11 באוגוסט 2026
 
