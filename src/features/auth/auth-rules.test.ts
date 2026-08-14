@@ -114,6 +114,7 @@ describe("safe authentication redirects", () => {
     "/leagues/26000000-0000-4000-8000-000000000027#frag",
     "/leagues/../profile",
     "/leagues/26000000-0000-4000-8000-00000000002",
+    "/LEAGUES/26000000-0000-4000-8000-000000000027",
     "",
     null,
     undefined,

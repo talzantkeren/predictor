@@ -2,11 +2,14 @@ import { z } from "zod";
 
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 const paymentLinkPattern = /(?:https?:\/\/|www\.)/i;
-// League names are single-line: every C0/C1 control character is rejected.
-const controlCharactersPattern = /[\u0001-\u001f\u007f-\u009f]/;
+// League names are single-line: C0/C1 controls and Unicode line/paragraph
+// separators are rejected. PostgreSQL cannot store NUL, but the application
+// boundary still rejects it before calling the database.
+const singleLineControlCharactersPattern =
+  /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 // Multiline Demo fields keep tab (U+0009) and line breaks (U+000A, U+000D).
 const multilineControlCharactersPattern =
-  /[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
 
 function trimmedText(minimum: number, maximum: number, messages: {
   minimum: string;
@@ -85,8 +88,8 @@ export const leagueNameSchema = trimmedText(3, 80, {
   minimum: "שם הליגה חייב לכלול לפחות 3 תווים.",
   maximum: "שם הליגה יכול לכלול עד 80 תווים.",
 }).refine(
-  (value) => !controlCharactersPattern.test(value),
-  "שם הליגה מכיל תווי בקרה שאינם מותרים.",
+  (value) => !singleLineControlCharactersPattern.test(value),
+  "שם הליגה מכיל תווי בקרה או מפרידי שורה שאינם מותרים.",
 );
 
 export const leagueDescriptionSchema = optionalTrimmedText(

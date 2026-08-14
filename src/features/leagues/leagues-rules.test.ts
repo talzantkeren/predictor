@@ -64,10 +64,13 @@ describe("league fields", () => {
     ).toBe(false);
   });
 
-  it("rejects control characters in the league name", () => {
+  it("rejects control characters and line separators in the league name", () => {
+    expect(leagueNameSchema.safeParse("אבג\u0000דהו").success).toBe(false);
     expect(leagueNameSchema.safeParse("אבג\u0001דהו").success).toBe(false);
     expect(leagueNameSchema.safeParse("שם\nרב־שורתי").success).toBe(false);
     expect(leagueNameSchema.safeParse("אבג\u0085דהו").success).toBe(false);
+    expect(leagueNameSchema.safeParse("שם\u2028רב־שורתי").success).toBe(false);
+    expect(leagueNameSchema.safeParse("שם\u2029רב־שורתי").success).toBe(false);
   });
 
   it("keeps directional marks while rejecting control characters", () => {
@@ -79,10 +82,17 @@ describe("league fields", () => {
       true,
     );
     expect(leagueDescriptionSchema.safeParse("תיאור\u0007פגום").success).toBe(false);
+    expect(leagueDescriptionSchema.safeParse("תיאור\u0000פגום").success).toBe(false);
     expect(
       createLeagueSchema.safeParse({
         ...validLeagueInput,
         demoPaymentInstructions: "הוראה\u000bפגומה",
+      }).success,
+    ).toBe(false);
+    expect(
+      createLeagueSchema.safeParse({
+        ...validLeagueInput,
+        demoPaymentInstructions: "הוראה\u0000פגומה",
       }).success,
     ).toBe(false);
     expect(

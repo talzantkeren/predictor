@@ -8,7 +8,7 @@ const AUTH_REDIRECT_PATHS = new Set([
 // Exactly one protected league-summary path: a UUID segment with no query
 // string, fragment, backslash, or nested segment. Anything else falls back.
 const LEAGUE_SUMMARY_PATH_PATTERN =
-  /^\/leagues\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
 
 export function getSafeAuthRedirect(
   candidate: unknown,

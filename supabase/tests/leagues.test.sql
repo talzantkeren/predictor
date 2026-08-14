@@ -688,6 +688,15 @@ select ok(
   'league names reject control characters at the database layer'
 );
 select ok(
+  exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.leagues'::regclass
+      and conname = 'leagues_name_line_separators_check'
+      and contype = 'c'
+  ),
+  'league names reject Unicode line separators at the database layer'
+);
+select ok(
   not has_function_privilege(
     'service_role',
     'public.create_league(uuid,text,text,integer,text,timestamptz,boolean,smallint,smallint,smallint,jsonb)',
@@ -761,6 +770,24 @@ select throws_ok(
   )$sql$,
   'P0001', 'INVALID_LEAGUE',
   'a league name containing a control character is rejected'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', U&'שם\2028רב-שורתי', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_LEAGUE',
+  'a league name containing a Unicode line separator is rejected'
+);
+select throws_ok(
+  $sql$select public.create_league(
+    '26000000-0000-4000-8000-000000000027', U&'שם\2029רב-שורתי', null, 0, null,
+    null::timestamptz, true, 3::smallint, 1::smallint, 0::smallint,
+    '[{"position":1,"percentage_bps":10000}]'::jsonb
+  )$sql$,
+  'P0001', 'INVALID_LEAGUE',
+  'a league name containing a Unicode paragraph separator is rejected'
 );
 reset role;
 
