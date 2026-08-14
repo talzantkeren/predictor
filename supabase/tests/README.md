@@ -1,3 +1,15 @@
 # Database tests
 
-Add pgTAP tests alongside the migrations they verify. `identity.test.sql` covers the Slice 1 profile schema, trigger hardening, grants, constraints and self/foreign RLS behavior. Every test file runs in a transaction and rolls back its fixtures.
+Add pgTAP tests alongside the migrations they verify. Every test file runs in a
+transaction and rolls back its fixtures.
+
+- `identity.test.sql` covers the Slice 1 profile schema, trigger hardening,
+  grants, constraints and self/foreign RLS behavior.
+- `leagues.test.sql` covers the Slice 2 league schema, transactional creation,
+  ownership boundaries, lifecycle constraints and RLS behavior.
+- `membership.test.sql` covers Slice 3 invite and join-request lifecycle,
+  database-generated one-time tokens, exact expiry boundaries, idempotency,
+  least-privilege grants and cross-league denial.
+- `proofs.test.sql` covers Slice 3 private proof storage, upload quotas,
+  finalization/idempotency, historical proof limits, signed-access
+  authorization, narrow service-role access and hostile direct access.
