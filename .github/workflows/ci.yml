@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, "feature/**", "claude/**"]
   pull_request:
     branches: [main, "feature/**"]
 
@@ -72,6 +72,9 @@ jobs:
 
       - name: Run pgTAP tests
         run: npm run test:db
+
+      - name: Lint database schema
+        run: npm exec -- supabase db lint --local --schema public,private --level warning --fail-on error
 
       - name: Check generated database types
         run: npm run types:check

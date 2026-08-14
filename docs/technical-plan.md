@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.3 |
+| גרסה | 2.4 |
 | תאריך עדכון | 13 באוגוסט 2026 |
 | סטטוס | Ready for implementation |
 | דדליין | 6 בספטמבר 2026 |
@@ -75,6 +75,7 @@ npx playwright install
 │   └── scale.md                # ייכתב לפני ההגשה
 ├── e2e/
 │   ├── auth.spec.ts
+│   ├── leagues.spec.ts
 │   ├── league-join.spec.ts
 │   ├── prediction-lock.spec.ts
 │   └── scoring.spec.ts
@@ -209,9 +210,9 @@ DEMO_MODE=true
 | --- | --- | --- |
 | 001 `extensions_and_enums` | extensions, enums ו־default privileges | reset מקומי מצליח |
 | 002 `identity` | `profiles`, trigger פרופיל ו־RLS | פרופיל נוצר בהרשמה; משתמש קורא/מעדכן רק את עצמו |
-| 003 `sports_core` | competitions, seasons, teams, matches, indexes ו־RLS | seed של מחזור נטען |
-| 004 `leagues` | leagues, scoring rules, prize rules, invite links, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
-| 005 `membership_and_proofs` | join requests, members, proofs, bucket, policies ופונקציות החלטה | אישור כפול אידמפוטנטי |
+| 003 `sports_core` | competitions, seasons, teams, matches, indexes ו־RLS; prerequisite שמגיע ב־Slice 2 | catalog עונה זמין בלי fixtures מומצאים |
+| 004 `leagues` | leagues, scoring rules, prize rules, minimal creator membership, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
+| 005 `membership_and_proofs` | invite links, join requests, proofs, bucket, general membership policies ופונקציות החלטה | אישור כפול אידמפוטנטי |
 | 006 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
 | 007 `operations_and_ai` | `system_admins`, analyses, sync runs, audit, rate-limit events | הרשאות ו־cleanup מוגדרים |
 | 008 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
@@ -439,7 +440,7 @@ DEMO_MODE=true
 
 | Domain | Create | Read | Update | Delete/Deactivate |
 | --- | --- | --- | --- | --- |
-| Profile | trigger בהרשמה | self ב־Slice 1; shared-league לאחר Slice 4 | display name של עצמי | דרך מחיקת Auth בעתיד |
+| Profile | trigger בהרשמה | self ב־Slice 1; active shared-league לאחר המודל המינימלי ב־Slice 2 | display name של עצמי | דרך מחיקת Auth בעתיד |
 | League | `createLeague` | member/manager | `updateLeagueSettings` | archive, לא hard delete |
 | Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
 | Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
@@ -669,11 +670,16 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** מנהל יוצר ליגה תקינה עם חוקי ניקוד ופרסי Demo.
 
-- league migrations/policies.
+- sports-core prerequisite: catalog tables עם RLS ונתוני reference ל־ליגת העל 2026/27, ללא provider IDs, קבוצות או fixtures מומצאים.
+- league migrations/policies ומודל `league_members` מינימלי לחברות הפעילה של היוצר בלבד.
 - form, schemas, service ו־Action.
 - `create_league` RPC אטומי שמוסיף את היוצר גם כחבר פעיל.
 - סכום פרסים 10000 bps.
 - נעילת scoring rules לאחר התחלה נבדקת ב־DB/Service.
+
+הקדמת sports core והחברות המינימלית היא dependency הכרחי ליצירת ליגה אמיתית
+ואטומית. Invite links, בקשות הצטרפות, אסמכתאות וניהול חברים כללי אינם מוקדמים
+ל־Slice זה ונשארים ב־Slices 3–4.
 
 **Exit:** כשל חלקי אינו משאיר ליגה; היוצר חבר פעיל; משתמש אחר אינו משנה ליגה; שתי ליגות יכולות להחזיק חוקים שונים.
 
@@ -693,7 +699,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** manager queue, צפייה מורשית, approve/reject וחברות פעילה.
 
-- RPCs, audit ו־unique constraints.
+- הרחבת מודל החברות המינימלי מ־Slice 2 לזרימות ניהול כלליות; RPCs, audit ו־unique constraints.
 - concurrency tests.
 - E2E join flow.
 
@@ -703,7 +709,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** seed/מסך משחקים, save prediction, lock ו־visibility.
 
-- sports core migrations ו־seed ליגת העל ככל שהמידע מאומת.
+- seed משחקי העונה והזנה ידנית על גבי sports core שכבר נמסר ב־Slice 2, ורק ככל שהמידע מאומת.
 - round/date pages.
 - prediction Action, policy ו־countdown.
 - boundary tests ו־two-user E2E.
@@ -835,17 +841,10 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-לאחר אישור ביקורת Slice 0, המשימה הבאה היא **Slice 1 בלבד**, לפי החוזה המפורט בסעיף 15:
-
-1. ליצור branch חדש מ־`main` המעודכן, בלי לערבב שינויי Slice 0 שלא אושרו.
-2. לממש Email + Password Auth, אישור Email ושחזור סיסמה במסלולים הקנוניים.
-3. ליצור migration של `profiles`, trigger, constraints, grants ו־RLS יחד.
-4. לממש Browser/Server clients ו־`proxy.ts` לרענון session; לא להוסיף admin client או state גלובלי.
-5. להוסיף Dashboard ו־Profile מוגנים ו־redirects בטוחים.
-6. להוסיף Vitest, pgTAP ו־Playwright בהתאם לקריטריוני היציאה.
-7. לעדכן generated types, README ו־Vercel/Supabase Redirect URLs, ואז לפרוס Preview.
-
-אין להתחיל ליגות, חברויות, תפקידי מנהל מערכת או UI מתקדם ב־Slice 1.
+לאחר אישור ומיזוג Slice 2, המשימה הבאה היא **Slice 3 בלבד**: invite token
+מאובטח, בקשת הצטרפות והעלאת אסמכתאת Demo פרטית לפי חוזי האבטחה בסעיפים
+10 ו־15. מודל החברות המינימלי שכבר קיים אינו מרחיב הרשאה להצטרפות ישירה;
+אישור/דחייה וניהול חברים כללי נשארים ב־Slice 4.
 
 ## 21. מקורות טכניים — אומתו ב־11 באוגוסט 2026
 

@@ -14,6 +14,12 @@ export function AppHeader() {
         </Link>
         <nav aria-label="ניווט משתמש" className="flex items-center gap-3 text-sm">
           <Link
+            href="/dashboard"
+            className="rounded-lg px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          >
+            הליגות שלי
+          </Link>
+          <Link
             href="/profile"
             className="rounded-lg px-3 py-2 font-semibold text-blue-700 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
           >

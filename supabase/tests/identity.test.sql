@@ -80,10 +80,10 @@ select ok(
   exists (
     select 1 from pg_policy
     where polrelid = 'public.profiles'::regclass
-      and polname = 'profiles_select_own'
+      and polname = 'profiles_select_authorized'
       and polcmd = 'r'
   ),
-  'profiles has a self-select policy'
+  'profiles has an authorized-select policy'
 );
 
 select ok(

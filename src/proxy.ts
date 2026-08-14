@@ -95,6 +95,8 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith("/dashboard/") ||
     pathname === "/profile" ||
     pathname.startsWith("/profile/") ||
+    pathname === "/leagues" ||
+    pathname.startsWith("/leagues/") ||
     pathname === "/update-password";
   const isEntryAuthPath = pathname === "/login" || pathname === "/register";
 
