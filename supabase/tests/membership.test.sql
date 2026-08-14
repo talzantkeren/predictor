@@ -41,6 +41,203 @@ select ok(
   'raw invite tokens have no storage column'
 );
 
+select results_eq(
+  $$select jsonb_build_array(
+      columns.table_name::text,
+      columns.column_name::text,
+      columns.udt_name::text,
+      columns.is_nullable::text,
+      columns.column_default::text
+    )
+    from information_schema.columns as columns
+    where columns.table_schema = 'public'
+      and columns.table_name in (
+        'audit_logs',
+        'invite_links',
+        'join_requests',
+        'payment_proofs',
+        'rate_limit_events'
+      )
+    order by columns.table_name, columns.ordinal_position$$,
+  $$select jsonb_build_array(
+      expected.table_name,
+      expected.column_name,
+      expected.udt_name,
+      expected.is_nullable,
+      expected.column_default
+    )
+    from (values
+    ('audit_logs'::text, 'id'::text, 'uuid'::text, 'NO'::text, 'extensions.gen_random_uuid()'::text),
+    ('audit_logs', 'actor_id', 'uuid', 'NO', null::text),
+    ('audit_logs', 'action', 'text', 'NO', null::text),
+    ('audit_logs', 'entity_type', 'text', 'NO', null::text),
+    ('audit_logs', 'entity_id', 'uuid', 'NO', null::text),
+    ('audit_logs', 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
+    ('audit_logs', 'created_at', 'timestamptz', 'NO', 'now()'),
+    ('invite_links', 'id', 'uuid', 'NO', 'extensions.gen_random_uuid()'),
+    ('invite_links', 'league_id', 'uuid', 'NO', null::text),
+    ('invite_links', 'token_hash', 'text', 'NO', null::text),
+    ('invite_links', 'status', 'invite_status', 'NO', '''active''::invite_status'),
+    ('invite_links', 'expires_at', 'timestamptz', 'NO', null::text),
+    ('invite_links', 'created_by', 'uuid', 'NO', null::text),
+    ('invite_links', 'created_at', 'timestamptz', 'NO', 'now()'),
+    ('invite_links', 'revoked_at', 'timestamptz', 'YES', null::text),
+    ('invite_links', 'updated_at', 'timestamptz', 'NO', 'now()'),
+    ('join_requests', 'id', 'uuid', 'NO', 'extensions.gen_random_uuid()'),
+    ('join_requests', 'league_id', 'uuid', 'NO', null::text),
+    ('join_requests', 'user_id', 'uuid', 'NO', null::text),
+    ('join_requests', 'status', 'join_request_status', 'NO', '''pending_proof''::join_request_status'),
+    ('join_requests', 'rejection_reason', 'text', 'YES', null::text),
+    ('join_requests', 'decided_by', 'uuid', 'YES', null::text),
+    ('join_requests', 'decided_at', 'timestamptz', 'YES', null::text),
+    ('join_requests', 'created_at', 'timestamptz', 'NO', 'now()'),
+    ('join_requests', 'updated_at', 'timestamptz', 'NO', 'now()'),
+    ('payment_proofs', 'id', 'uuid', 'NO', null::text),
+    ('payment_proofs', 'join_request_id', 'uuid', 'NO', null::text),
+    ('payment_proofs', 'uploaded_by', 'uuid', 'NO', null::text),
+    ('payment_proofs', 'storage_path', 'text', 'NO', null::text),
+    ('payment_proofs', 'mime_type', 'text', 'NO', '''image/webp''::text'),
+    ('payment_proofs', 'size_bytes', 'int4', 'NO', null::text),
+    ('payment_proofs', 'sha256', 'text', 'NO', null::text),
+    ('payment_proofs', 'upload_idempotency_key', 'uuid', 'NO', null::text),
+    ('payment_proofs', 'uploaded_at', 'timestamptz', 'NO', 'now()'),
+    ('payment_proofs', 'deleted_at', 'timestamptz', 'YES', null::text),
+    ('rate_limit_events', 'id', 'uuid', 'NO', 'extensions.gen_random_uuid()'),
+    ('rate_limit_events', 'user_id', 'uuid', 'NO', null::text),
+    ('rate_limit_events', 'join_request_id', 'uuid', 'NO', null::text),
+    ('rate_limit_events', 'action', 'text', 'NO', '''proof_upload''::text'),
+    ('rate_limit_events', 'created_at', 'timestamptz', 'NO', 'now()')
+    ) as expected(
+      table_name,
+      column_name,
+      udt_name,
+      is_nullable,
+      column_default
+    )$$,
+  'Slice 3 columns, types, nullability, and defaults match the contract'
+);
+
+select results_eq(
+  $$select jsonb_build_array(
+      source.relname::text,
+      constraint_row.conname::text,
+      target_namespace.nspname::text || '.' || target.relname::text,
+      constraint_row.confdeltype::text
+    )
+    from pg_constraint as constraint_row
+    join pg_class as source on source.oid = constraint_row.conrelid
+    join pg_namespace as source_namespace
+      on source_namespace.oid = source.relnamespace
+    join pg_class as target on target.oid = constraint_row.confrelid
+    join pg_namespace as target_namespace
+      on target_namespace.oid = target.relnamespace
+    where source_namespace.nspname = 'public'
+      and source.relname in (
+        'audit_logs',
+        'invite_links',
+        'join_requests',
+        'payment_proofs',
+        'rate_limit_events'
+      )
+      and constraint_row.contype = 'f'
+    order by source.relname, constraint_row.conname$$,
+  $$select jsonb_build_array(
+      expected.table_name,
+      expected.constraint_name,
+      expected.target_table,
+      expected.delete_action
+    )
+    from (values
+    ('audit_logs'::text, 'audit_logs_actor_id_fkey'::text, 'auth.users'::text, 'r'::text),
+    ('invite_links', 'invite_links_created_by_fkey', 'auth.users', 'r'),
+    ('invite_links', 'invite_links_league_id_fkey', 'public.leagues', 'r'),
+    ('join_requests', 'join_requests_decided_by_fkey', 'auth.users', 'r'),
+    ('join_requests', 'join_requests_league_id_fkey', 'public.leagues', 'r'),
+    ('join_requests', 'join_requests_user_id_fkey', 'auth.users', 'r'),
+    ('payment_proofs', 'payment_proofs_join_request_id_fkey', 'public.join_requests', 'r'),
+    ('payment_proofs', 'payment_proofs_uploaded_by_fkey', 'auth.users', 'r'),
+    ('rate_limit_events', 'rate_limit_events_join_request_id_fkey', 'public.join_requests', 'r'),
+    ('rate_limit_events', 'rate_limit_events_user_id_fkey', 'auth.users', 'r')
+    ) as expected(table_name, constraint_name, target_table, delete_action)$$,
+  'every Slice 3 foreign key targets the intended relation and restricts deletion'
+);
+
+select results_eq(
+  $$select jsonb_build_array(
+      source.relname::text,
+      constraint_row.conname::text
+    )
+    from pg_constraint as constraint_row
+    join pg_class as source on source.oid = constraint_row.conrelid
+    join pg_namespace as source_namespace
+      on source_namespace.oid = source.relnamespace
+    where source_namespace.nspname = 'public'
+      and source.relname in (
+        'audit_logs',
+        'invite_links',
+        'join_requests',
+        'payment_proofs',
+        'rate_limit_events'
+      )
+      and constraint_row.contype = 'c'
+    order by source.relname, constraint_row.conname$$,
+  $$select jsonb_build_array(expected.table_name, expected.constraint_name)
+    from (values
+    ('audit_logs'::text, 'audit_logs_action_check'::text),
+    ('audit_logs', 'audit_logs_entity_type_check'),
+    ('audit_logs', 'audit_logs_metadata_check'),
+    ('invite_links', 'invite_links_expiry_range_check'),
+    ('invite_links', 'invite_links_lifecycle_check'),
+    ('invite_links', 'invite_links_token_hash_check'),
+    ('join_requests', 'join_requests_decision_lifecycle_check'),
+    ('payment_proofs', 'payment_proofs_deleted_at_check'),
+    ('payment_proofs', 'payment_proofs_mime_type_check'),
+    ('payment_proofs', 'payment_proofs_sha256_check'),
+    ('payment_proofs', 'payment_proofs_size_bytes_check'),
+    ('payment_proofs', 'payment_proofs_storage_path_check'),
+    ('rate_limit_events', 'rate_limit_events_action_check')
+    ) as expected(table_name, constraint_name)$$,
+  'all Slice 3 lifecycle, shape, size, and audit checks exist'
+);
+
+select results_eq(
+  $$select jsonb_build_array(
+      indexes.tablename::text,
+      indexes.indexname::text
+    )
+    from pg_indexes as indexes
+    where indexes.schemaname = 'public'
+      and indexes.tablename in (
+        'audit_logs',
+        'invite_links',
+        'join_requests',
+        'payment_proofs',
+        'rate_limit_events'
+      )
+    order by indexes.tablename, indexes.indexname$$,
+  $$select jsonb_build_array(expected.table_name, expected.index_name)
+    from (values
+    ('audit_logs'::text, 'audit_logs_entity_created_idx'::text),
+    ('audit_logs', 'audit_logs_pkey'),
+    ('invite_links', 'invite_links_league_created_idx'),
+    ('invite_links', 'invite_links_one_active_per_league_idx'),
+    ('invite_links', 'invite_links_pkey'),
+    ('invite_links', 'invite_links_token_hash_key'),
+    ('join_requests', 'join_requests_league_status_created_idx'),
+    ('join_requests', 'join_requests_one_active_per_user_league_idx'),
+    ('join_requests', 'join_requests_pkey'),
+    ('join_requests', 'join_requests_user_created_idx'),
+    ('payment_proofs', 'payment_proofs_pkey'),
+    ('payment_proofs', 'payment_proofs_request_idempotency_key'),
+    ('payment_proofs', 'payment_proofs_request_uploaded_idx'),
+    ('payment_proofs', 'payment_proofs_storage_path_key'),
+    ('rate_limit_events', 'rate_limit_events_pkey'),
+    ('rate_limit_events', 'rate_limit_events_user_action_created_idx'),
+    ('rate_limit_events', 'rate_limit_events_user_request_action_created_idx')
+    ) as expected(table_name, index_name)$$,
+  'all Slice 3 primary, unique, concurrency, and query indexes exist'
+);
+
 select ok(
   exists (
     select 1 from pg_constraint
@@ -233,12 +430,95 @@ select ok(
   and not has_function_privilege('anon', 'public.submit_join_request(text)', 'EXECUTE'),
   'anon can execute only the safe invite resolver'
 );
+select results_eq(
+  $$select jsonb_build_array(
+      procedures.proname::text,
+      has_function_privilege('anon', procedures.oid, 'EXECUTE')
+    )
+    from pg_proc as procedures
+    join pg_namespace as namespaces on namespaces.oid = procedures.pronamespace
+    where namespaces.nspname = 'public'
+      and procedures.proname in (
+        'create_or_rotate_invite',
+        'get_league_invite_metadata',
+        'revoke_invite',
+        'resolve_invite',
+        'submit_join_request',
+        'get_my_join_requests',
+        'get_join_request_upload_context',
+        'consume_proof_upload_rate_limit',
+        'finalize_payment_proof',
+        'authorize_payment_proof_access'
+      )
+    order by procedures.proname$$,
+  $$select jsonb_build_array(expected.function_name, expected.can_execute)
+    from (values
+    ('authorize_payment_proof_access'::text, false),
+    ('consume_proof_upload_rate_limit', false),
+    ('create_or_rotate_invite', false),
+    ('finalize_payment_proof', false),
+    ('get_join_request_upload_context', false),
+    ('get_league_invite_metadata', false),
+    ('get_my_join_requests', false),
+    ('resolve_invite', true),
+    ('revoke_invite', false),
+    ('submit_join_request', false)
+    ) as expected(function_name, can_execute)$$,
+  'anonymous execution is limited to the safe invite resolver'
+);
 select ok(
   has_function_privilege('authenticated', 'public.resolve_invite(text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.create_or_rotate_invite(uuid)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.submit_join_request(text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.finalize_payment_proof(uuid,uuid,uuid,text,integer)', 'EXECUTE'),
   'authenticated can execute the intended user RPCs'
+);
+select is(
+  (select count(*)::integer
+   from pg_proc as procedures
+   join pg_namespace as namespaces on namespaces.oid = procedures.pronamespace
+   where namespaces.nspname = 'public'
+     and procedures.proname in (
+       'create_or_rotate_invite',
+       'get_league_invite_metadata',
+       'revoke_invite',
+       'resolve_invite',
+       'submit_join_request',
+       'get_my_join_requests',
+       'get_join_request_upload_context',
+       'consume_proof_upload_rate_limit',
+       'finalize_payment_proof',
+       'authorize_payment_proof_access'
+     )
+     and has_function_privilege('authenticated', procedures.oid, 'EXECUTE')),
+  10,
+  'authenticated can execute every and only the ten intended Slice 3 RPCs'
+);
+select ok(
+  not exists (
+    select 1
+    from pg_proc as procedures
+    join pg_namespace as namespaces on namespaces.oid = procedures.pronamespace
+    cross join lateral aclexplode(
+      coalesce(procedures.proacl, acldefault('f', procedures.proowner))
+    ) as privilege
+    where namespaces.nspname = 'public'
+      and procedures.proname in (
+        'create_or_rotate_invite',
+        'get_league_invite_metadata',
+        'revoke_invite',
+        'resolve_invite',
+        'submit_join_request',
+        'get_my_join_requests',
+        'get_join_request_upload_context',
+        'consume_proof_upload_rate_limit',
+        'finalize_payment_proof',
+        'authorize_payment_proof_access'
+      )
+      and privilege.grantee = 0
+      and privilege.privilege_type = 'EXECUTE'
+  ),
+  'PUBLIC has no implicit execute grant on Slice 3 RPCs'
 );
 select ok(
   not exists (
@@ -605,6 +885,141 @@ values
     )
   );
 
+select throws_ok(
+  $$with event_time as (
+      select clock_timestamp() as value
+    )
+    insert into public.invite_links (
+      league_id,
+      token_hash,
+      status,
+      expires_at,
+      created_by,
+      created_at,
+      revoked_at
+    )
+    select
+      (select id from slice3_leagues where label = 'manager-d'),
+      repeat('z', 64),
+      'revoked',
+      event_time.value + interval '7 days',
+      '74000000-0000-4000-8000-000000000004',
+      event_time.value,
+      event_time.value
+    from event_time$$,
+  '23514', null,
+  'invite token hashes reject non-hexadecimal data at the table boundary'
+);
+
+select throws_ok(
+  $$with event_time as (
+      select clock_timestamp() as value
+    )
+    insert into public.invite_links (
+      league_id,
+      token_hash,
+      status,
+      expires_at,
+      created_by,
+      created_at,
+      revoked_at
+    )
+    select
+      (select id from slice3_leagues where label = 'manager-d'),
+      repeat('1', 64),
+      'revoked',
+      event_time.value + interval '31 days',
+      '74000000-0000-4000-8000-000000000004',
+      event_time.value,
+      event_time.value
+    from event_time$$,
+  '23514', null,
+  'invite expiry must remain within the database-enforced one-to-thirty-day range'
+);
+
+select throws_ok(
+  $$with event_time as (
+      select clock_timestamp() as value
+    )
+    insert into public.invite_links (
+      league_id,
+      token_hash,
+      status,
+      expires_at,
+      created_by,
+      created_at,
+      revoked_at
+    )
+    select
+      (select id from slice3_leagues where label = 'manager-d'),
+      repeat('2', 64),
+      'active',
+      event_time.value + interval '7 days',
+      '74000000-0000-4000-8000-000000000004',
+      event_time.value,
+      event_time.value
+    from event_time$$,
+  '23514', null,
+  'an active invite cannot carry contradictory revocation data'
+);
+
+select throws_ok(
+  $$insert into public.join_requests (
+      league_id,
+      user_id,
+      status
+    )
+    values (
+      (select id from slice3_leagues where label = 'manager-d'),
+      '75000000-0000-4000-8000-000000000005',
+      'approved'
+    )$$,
+  '23514', null,
+  'an approved request requires consistent decision fields'
+);
+
+select throws_ok(
+  $$insert into public.audit_logs (
+      actor_id, action, entity_type, entity_id, metadata
+    ) values (
+      '71000000-0000-4000-8000-000000000001',
+      'x',
+      'invite_link',
+      extensions.gen_random_uuid(),
+      '{}'::jsonb
+    )$$,
+  '23514', null,
+  'audit action names enforce their trimmed length contract'
+);
+
+select throws_ok(
+  $$insert into public.audit_logs (
+      actor_id, action, entity_type, entity_id, metadata
+    ) values (
+      '71000000-0000-4000-8000-000000000001',
+      'invite.tested',
+      'Invalid Entity',
+      extensions.gen_random_uuid(),
+      '{}'::jsonb
+    )$$,
+  '23514', null,
+  'audit entity types enforce the safe identifier format'
+);
+
+select throws_ok(
+  $$insert into public.audit_logs (
+      actor_id, action, entity_type, entity_id, metadata
+    ) values (
+      '71000000-0000-4000-8000-000000000001',
+      'invite.tested',
+      'invite_link',
+      extensions.gen_random_uuid(),
+      '[]'::jsonb
+    )$$,
+  '23514', null,
+  'audit metadata must be a JSON object'
+);
+
 create temp table slice3_invite_facts as
 select *
 from pg_temp.create_invite_facts(
@@ -704,6 +1119,20 @@ select is(
 );
 
 select throws_ok(
+  $$insert into public.rate_limit_events (
+      user_id,
+      join_request_id,
+      action
+    ) values (
+      '72000000-0000-4000-8000-000000000002',
+      (select first_request_id from slice3_join_result),
+      'forged_action'
+    )$$,
+  '23514', null,
+  'rate-limit rows accept only the fixed proof-upload action'
+);
+
+select throws_ok(
   $$select pg_temp.revoked_invite_submit(
     '71000000-0000-4000-8000-000000000001',
     '75000000-0000-4000-8000-000000000005',
@@ -765,6 +1194,30 @@ select throws_ok(
   )$$,
   'P0001', 'FORBIDDEN',
   'a manager of another league cannot read invite metadata'
+);
+
+select throws_ok(
+  $$select * from public.create_or_rotate_invite(
+      (select id from slice3_leagues where label = 'manager-a')
+    )$$,
+  'P0001', 'FORBIDDEN',
+  'a manager of another league cannot create or rotate its invitation'
+);
+
+select throws_ok(
+  $$select * from public.revoke_invite(
+      (select invite_id from slice3_expiry_metadata_invite)
+    )$$,
+  'P0001', 'FORBIDDEN',
+  'a manager of another league cannot revoke its invitation'
+);
+
+select results_eq(
+  $$select invite.status::text, invite.revoked_at
+    from public.invite_links as invite
+    where invite.id = (select invite_id from slice3_expiry_metadata_invite)$$,
+  $$values ('active'::text, null::timestamptz)$$,
+  'hostile invite RPC calls leave the foreign invitation unchanged'
 );
 
 select results_eq(

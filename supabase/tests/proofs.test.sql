@@ -242,6 +242,160 @@ select
 from proof_test_context
 where label = 'league-a';
 
+select throws_ok(
+  $$insert into public.payment_proofs (
+      id,
+      join_request_id,
+      uploaded_by,
+      storage_path,
+      mime_type,
+      size_bytes,
+      sha256,
+      upload_idempotency_key
+    )
+    select
+      '8d000000-0000-4000-8000-000000000001',
+      context.request_id,
+      '62000000-0000-4000-8000-000000000002',
+      'attacker-controlled.webp',
+      'image/webp',
+      1,
+      repeat('a', 64),
+      '9d000000-0000-4000-8000-000000000001'
+    from proof_test_context as context
+    where context.label = 'league-a'$$,
+  '23514', null,
+  'proof metadata rejects a path outside the server-derived hierarchy'
+);
+
+select throws_ok(
+  $$insert into public.payment_proofs (
+      id,
+      join_request_id,
+      uploaded_by,
+      storage_path,
+      mime_type,
+      size_bytes,
+      sha256,
+      upload_idempotency_key
+    )
+    select
+      '8d000000-0000-4000-8000-000000000002',
+      context.request_id,
+      '62000000-0000-4000-8000-000000000002',
+      format(
+        'league/%s/request/%s/8d000000-0000-4000-8000-000000000002.webp',
+        context.league_id,
+        context.request_id
+      ),
+      'image/png',
+      1,
+      repeat('b', 64),
+      '9d000000-0000-4000-8000-000000000002'
+    from proof_test_context as context
+    where context.label = 'league-a'$$,
+  '23514', null,
+  'proof metadata accepts only sanitized WebP MIME'
+);
+
+select throws_ok(
+  $$insert into public.payment_proofs (
+      id,
+      join_request_id,
+      uploaded_by,
+      storage_path,
+      mime_type,
+      size_bytes,
+      sha256,
+      upload_idempotency_key
+    )
+    select
+      '8d000000-0000-4000-8000-000000000003',
+      context.request_id,
+      '62000000-0000-4000-8000-000000000002',
+      format(
+        'league/%s/request/%s/8d000000-0000-4000-8000-000000000003.webp',
+        context.league_id,
+        context.request_id
+      ),
+      'image/webp',
+      0,
+      repeat('c', 64),
+      '9d000000-0000-4000-8000-000000000003'
+    from proof_test_context as context
+    where context.label = 'league-a'$$,
+  '23514', null,
+  'proof metadata enforces the non-empty sanitized size range'
+);
+
+select throws_ok(
+  $$insert into public.payment_proofs (
+      id,
+      join_request_id,
+      uploaded_by,
+      storage_path,
+      mime_type,
+      size_bytes,
+      sha256,
+      upload_idempotency_key
+    )
+    select
+      '8d000000-0000-4000-8000-000000000004',
+      context.request_id,
+      '62000000-0000-4000-8000-000000000002',
+      format(
+        'league/%s/request/%s/8d000000-0000-4000-8000-000000000004.webp',
+        context.league_id,
+        context.request_id
+      ),
+      'image/webp',
+      1,
+      repeat('G', 64),
+      '9d000000-0000-4000-8000-000000000004'
+    from proof_test_context as context
+    where context.label = 'league-a'$$,
+  '23514', null,
+  'proof metadata requires a canonical lowercase SHA-256 digest'
+);
+
+select throws_ok(
+  $$with event_time as (
+      select clock_timestamp() as value
+    )
+    insert into public.payment_proofs (
+      id,
+      join_request_id,
+      uploaded_by,
+      storage_path,
+      mime_type,
+      size_bytes,
+      sha256,
+      upload_idempotency_key,
+      uploaded_at,
+      deleted_at
+    )
+    select
+      '8d000000-0000-4000-8000-000000000005',
+      context.request_id,
+      '62000000-0000-4000-8000-000000000002',
+      format(
+        'league/%s/request/%s/8d000000-0000-4000-8000-000000000005.webp',
+        context.league_id,
+        context.request_id
+      ),
+      'image/webp',
+      1,
+      repeat('d', 64),
+      '9d000000-0000-4000-8000-000000000005',
+      event_time.value,
+      event_time.value - interval '1 second'
+    from proof_test_context as context
+    cross join event_time
+    where context.label = 'league-a'$$,
+  '23514', null,
+  'proof deletion timestamps cannot predate upload'
+);
+
 -- ===== Upload context and durable rate limiting =====
 
 select pg_temp.set_proof_actor('62000000-0000-4000-8000-000000000002');
@@ -429,6 +583,49 @@ select pg_temp.insert_proof_object(
   (select request_id from proof_test_context where label = 'league-a'),
   '81000000-0000-4000-8000-000000000001',
   1234
+);
+
+select pg_temp.set_proof_actor('63000000-0000-4000-8000-000000000003');
+select throws_ok(
+  $$select * from public.finalize_payment_proof(
+      (select request_id from proof_test_context where label = 'league-a'),
+      '81000000-0000-4000-8000-000000000001',
+      '91000000-0000-4000-8000-000000000001',
+      repeat('a', 64),
+      1234
+    )$$,
+  'P0001', 'FORBIDDEN',
+  'another requester cannot finalize an object for a foreign request'
+);
+
+select pg_temp.set_proof_actor('61000000-0000-4000-8000-000000000001');
+select throws_ok(
+  $$select * from public.finalize_payment_proof(
+      (select request_id from proof_test_context where label = 'league-a'),
+      '81000000-0000-4000-8000-000000000001',
+      '91000000-0000-4000-8000-000000000001',
+      repeat('a', 64),
+      1234
+    )$$,
+  'P0001', 'FORBIDDEN',
+  'the league manager cannot bypass the owner-only upload finalizer'
+);
+
+select is(
+  (select count(*)::integer
+   from public.payment_proofs
+   where id = '81000000-0000-4000-8000-000000000001'),
+  0,
+  'hostile finalizer calls create no proof metadata'
+);
+select is(
+  (select request.status::text
+   from public.join_requests as request
+   where request.id = (
+     select request_id from proof_test_context where label = 'league-a'
+   )),
+  'pending_proof',
+  'hostile finalizer calls leave the request state unchanged'
 );
 
 select pg_temp.set_proof_actor('62000000-0000-4000-8000-000000000002');
@@ -711,9 +908,14 @@ select is(
 -- ===== Direct Data API / Storage-style hostile access =====
 
 create temp table proof_storage_count_before_hostile_delete as
-select count(*)::integer as object_count
-from storage.objects
-where bucket_id = 'payment-proofs';
+select
+  count(*)::integer as object_count,
+  coalesce(
+    md5(string_agg(row_to_json(object)::text, E'\n' order by object.id)),
+    md5('')
+  ) as object_fingerprint
+from storage.objects as object
+where object.bucket_id = 'payment-proofs';
 
 set local role authenticated;
 select set_config(
@@ -798,6 +1000,18 @@ select throws_ok(
   '42501', null,
   'authenticated cannot bypass validation with a direct Storage insert'
 );
+select lives_ok(
+  $$update storage.objects
+    set metadata = metadata
+    where bucket_id = 'payment-proofs'$$,
+  'authenticated direct update is safely filtered by Storage RLS'
+);
+select lives_ok(
+  $$update storage.objects
+    set name = name || '.moved'
+    where bucket_id = 'payment-proofs'$$,
+  'authenticated direct move is safely filtered by Storage RLS'
+);
 select throws_ok(
   $$delete from storage.objects where bucket_id = 'payment-proofs'$$,
   '42501', null,
@@ -810,6 +1024,16 @@ select is(
    where bucket_id = 'payment-proofs'),
   (select object_count from proof_storage_count_before_hostile_delete),
   'authenticated direct delete removes no private proof objects'
+);
+select is(
+  (select coalesce(
+      md5(string_agg(row_to_json(object)::text, E'\n' order by object.id)),
+      md5('')
+    )
+   from storage.objects as object
+   where object.bucket_id = 'payment-proofs'),
+  (select object_fingerprint from proof_storage_count_before_hostile_delete),
+  'authenticated direct update, move, and delete leave object rows unchanged'
 );
 set local role authenticated;
 select throws_ok(
@@ -858,7 +1082,35 @@ select throws_ok(
   '42501', null,
   'anonymous users cannot upload to the private bucket'
 );
+select lives_ok(
+  $$update storage.objects
+    set name = name || '.anonymous-move'
+    where bucket_id = 'payment-proofs'$$,
+  'anonymous direct update or move is safely filtered by Storage RLS'
+);
+select throws_ok(
+  $$delete from storage.objects where bucket_id = 'payment-proofs'$$,
+  '42501', null,
+  'anonymous users cannot delete private proof objects'
+);
 reset role;
+select is(
+  (select count(*)::integer
+   from storage.objects
+   where bucket_id = 'payment-proofs'),
+  (select object_count from proof_storage_count_before_hostile_delete),
+  'anonymous direct mutations leave all private proof objects unchanged'
+);
+select is(
+  (select coalesce(
+      md5(string_agg(row_to_json(object)::text, E'\n' order by object.id)),
+      md5('')
+    )
+   from storage.objects as object
+   where object.bucket_id = 'payment-proofs'),
+  (select object_fingerprint from proof_storage_count_before_hostile_delete),
+  'anonymous direct update and delete preserve every object row'
+);
 
 select * from finish();
 rollback;
