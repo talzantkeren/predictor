@@ -7,12 +7,17 @@ import { getInviteAccessTokenHash } from "@/features/membership/invite-access-se
 import { getInvitePath } from "@/features/membership/invite-fragment";
 import {
   createOrRotateInviteInputSchema,
+  approveJoinRequestInputSchema,
+  getMembershipFieldErrors,
+  rejectJoinRequestInputSchema,
   revokeInviteInputSchema,
   submitJoinRequestInputSchema,
   type MembershipFieldErrors,
 } from "@/features/membership/schemas";
 import {
   createOrRotateInvite,
+  approveJoinRequest,
+  rejectJoinRequest,
   revokeInvite,
   submitJoinRequest,
 } from "@/features/membership/service";
@@ -22,6 +27,12 @@ export type MembershipActionState = {
   message?: string;
   rawToken?: string;
   publicId?: string;
+  fieldErrors?: MembershipFieldErrors;
+};
+
+export type JoinDecisionActionState = {
+  status: "idle" | "success" | "error";
+  message?: string;
   fieldErrors?: MembershipFieldErrors;
 };
 
@@ -143,4 +154,65 @@ export async function submitJoinRequestAction(
     status: "success",
     message: "בקשת ההצטרפות נפתחה. כעת יש להעלות תמונת Demo בלבד.",
   };
+}
+
+export async function approveJoinRequestAction(
+  _previousState: JoinDecisionActionState,
+  formData: FormData,
+): Promise<JoinDecisionActionState> {
+  const { supabase, user } = await requireAuthenticatedUser("/dashboard");
+  const parsed = approveJoinRequestInputSchema.safeParse({
+    leagueId: formData.get("leagueId"),
+    requestId: formData.get("requestId"),
+  });
+
+  if (!parsed.success) {
+    return { status: "error", message: "פרטי הבקשה אינם תקינים." };
+  }
+  if (!(await isLeagueManager(supabase, parsed.data.leagueId, user.id))) {
+    return { status: "error", message: "בקשת ההצטרפות אינה זמינה." };
+  }
+
+  const result = await approveJoinRequest(supabase, parsed.data.requestId);
+  if (!result.ok) return { status: "error", message: result.message };
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/leagues/${parsed.data.leagueId}`);
+  revalidatePath(`/leagues/${parsed.data.leagueId}/members`);
+  return { status: "success", message: "הבקשה אושרה והחברות בליגה הופעלה." };
+}
+
+export async function rejectJoinRequestAction(
+  _previousState: JoinDecisionActionState,
+  formData: FormData,
+): Promise<JoinDecisionActionState> {
+  const { supabase, user } = await requireAuthenticatedUser("/dashboard");
+  const parsed = rejectJoinRequestInputSchema.safeParse({
+    leagueId: formData.get("leagueId"),
+    requestId: formData.get("requestId"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "יש לתקן את סיבת הדחייה.",
+      fieldErrors: getMembershipFieldErrors(parsed.error),
+    };
+  }
+  if (!(await isLeagueManager(supabase, parsed.data.leagueId, user.id))) {
+    return { status: "error", message: "בקשת ההצטרפות אינה זמינה." };
+  }
+
+  const result = await rejectJoinRequest(
+    supabase,
+    parsed.data.requestId,
+    parsed.data.reason,
+  );
+  if (!result.ok) return { status: "error", message: result.message };
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/leagues/${parsed.data.leagueId}`);
+  revalidatePath(`/leagues/${parsed.data.leagueId}/members`);
+  return { status: "success", message: "הבקשה נדחתה." };
 }

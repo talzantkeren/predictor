@@ -188,6 +188,19 @@
   re-encode ולא טענה לזיהוי polyglot מושלם. משתמשים רק בתמונות סינתטיות ואסור
   להעלות מסמך פיננסי אמיתי.
 
+### החלטת מנהל וחברות
+
+- תור הבקשות מתקבל רק דרך `get_manager_join_requests` לאחר התאמה מדויקת בין
+  `auth.uid()` לבין `leagues.manager_id`. ה־DTO כולל שם תצוגה, מצב וסיכומי proof
+  בטוחים בלבד; path, digest, token ופרטי Auth אינם מוחזרים.
+- `approve_join_request` ו־`reject_join_request` הם `SECURITY DEFINER` עם
+  `search_path = ''`, נעילת שורת הבקשה ובדיקת מנהל חוזרת בתוך ה־transaction.
+  אין הרשאת כתיבה ישירה לטבלאות. אישור מבצע upsert/activation לחברות, עדכון
+  בקשה ו־audit אטומיים; דחייה דורשת reason בשורה אחת באורך 3–300.
+- replay של אותה הכרעה מחזיר את אותה תוצאה בלי חברות או audit כפולים. ניסיון
+  להחליף הכרעה או סיבת דחייה מחזיר conflict בטוח, ומנהל ליגה אחרת מקבל שגיאה
+  עמומה שאינה חושפת אם הבקשה קיימת.
+
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
 | secret גולמי בנתיב/לוג או קישור ישן | public-ID path + Fragment שנמחק לפני רשת, hash-only, cookie HttpOnly קצר, rotation/expiry ב־DB | network-target assertion, exchange Route, refresh, rotate, revoke וחיפוש diff/log |
@@ -196,4 +209,5 @@
 | עקיפת sanitization | אין Storage policies ללקוחות; gateway קבוע | CRUD ישיר כ־anon/authenticated |
 | MIME מזויף/image bomb | extension+MIME+magic, Sharp limits ו־re-encode | SVG/PDF/HTML/exe/corrupt/multi-page/oversize |
 | retry שיוצר היסטוריה כפולה | digest + idempotency unique + compensation | retry זהה/שונה ומקביל |
+| החלטה כפולה או של מנהל זר | row lock + manager AuthZ בתוך RPC + unique membership | approve/reject replay, audit יחיד ומנהל ליגה אחרת |
 | דליפת path או signed URL למשתמש לא מורשה או ל־artifact | DTO allowlist, AuthZ, TTL קצר, no-store ולוגים מסוננים | תגובות upload/denial, bundle וחיפוש repository; משתמש מורשה רואה אותו ב־redirect בלבד |

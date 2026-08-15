@@ -13,12 +13,14 @@ import {
   inviteMetadataRpcSchema,
   inviteResolutionRpcSchema,
   unavailableInviteResolutionRpcSchema,
+  managerJoinRequestsRpcSchema,
 } from "@/features/membership/schemas";
 import type {
   InviteMetadata,
   InviteResolution,
   JoinRequestDashboardItem,
   LeagueInviteSettings,
+  ManagerJoinRequestItem,
 } from "@/features/membership/types";
 import type { Database } from "@/types/database.generated";
 
@@ -139,7 +141,7 @@ export async function getMyJoinRequests(
 > {
   const { data, error } = await invokeMembershipRpc(
     supabase,
-    "get_my_join_requests",
+    "get_my_join_requests_v2",
   );
 
   if (error) {
@@ -150,4 +152,35 @@ export async function getMyJoinRequests(
   return parsed.success
     ? { ok: true, data: parsed.data }
     : { ok: false, data: [] };
+}
+
+export async function getManagerJoinRequests(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+  userId: string,
+): Promise<
+  | { status: "found"; league: { id: string; name: string }; requests: ManagerJoinRequestItem[] }
+  | { status: "not-found" }
+  | { status: "error" }
+> {
+  const { data: league, error: leagueError } = await supabase
+    .from("leagues")
+    .select("id, name, manager_id")
+    .eq("id", leagueId)
+    .maybeSingle();
+
+  if (leagueError) return { status: "error" };
+  if (!league || league.manager_id !== userId) return { status: "not-found" };
+
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "get_manager_join_requests",
+    { p_league_id: leagueId },
+  );
+  if (error) return { status: "error" };
+
+  const parsed = managerJoinRequestsRpcSchema.safeParse(data);
+  return parsed.success
+    ? { status: "found", league: { id: league.id, name: league.name }, requests: parsed.data }
+    : { status: "error" };
 }

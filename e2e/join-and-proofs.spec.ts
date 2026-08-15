@@ -654,6 +654,8 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
     await assertVisible(
       requester.page.getByRole("heading", { name: leagueName }),
     );
+    await assertVisible(requester.page.getByRole("link", { name: "הליגות שלי" }));
+    await assertVisible(requester.page.getByRole("button", { name: "התנתקות" }));
 
     // Two tabs submitting the same invite must converge on one request. A
     // subsequent submission with an older token remains an idempotent replay.
@@ -984,6 +986,46 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
       proofHref as string,
     );
     expect(otherManagerAccess.status).toBe(404);
+
+    await manager.page.goto(`/leagues/${leagueId}`);
+    await manager.page
+      .getByRole("link", { name: "ניהול בקשות הצטרפות" })
+      .click();
+    await expect(manager.page).toHaveURL(
+      new RegExp(`/leagues/${leagueId}/members$`),
+    );
+    await assertVisible(manager.page.getByRole("heading", { name: "בקשות הצטרפות" }));
+    await assertVisible(manager.page.getByRole("heading", { name: "מבקש הצטרפות" }));
+    await assertLocatorCount(
+      manager.page.getByRole("link", { name: "צפייה בתמונת Demo" }),
+      3,
+    );
+
+    await otherManager.page.goto(`/leagues/${leagueId}/members`);
+    await assertVisible(
+      otherManager.page.getByRole("heading", { name: "הדף לא נמצא" }),
+    );
+    await assertLocatorCount(
+      otherManager.page.getByRole("heading", { name: "מבקש הצטרפות" }),
+      0,
+    );
+
+    await manager.page.getByRole("button", { name: "אישור וצירוף לליגה" }).click();
+    await assertVisible(manager.page.getByText("אושרה", { exact: true }));
+
+    const replayApprovals = await Promise.all([
+      callAuthenticatedRpc(managerAccessToken, "approve_join_request", {
+        p_request_id: requestId as string,
+      }),
+      callAuthenticatedRpc(managerAccessToken, "approve_join_request", {
+        p_request_id: requestId as string,
+      }),
+    ]);
+    expect(replayApprovals.every((response) => response.ok)).toBe(true);
+
+    await requester.page.goto("/dashboard");
+    await assertVisible(requester.page.getByText(leagueName, { exact: true }).first());
+    await assertVisible(requester.page.getByText("אושרה", { exact: true }));
 
     const outsiderForbiddenUpload = await fetchLocalRoute(
       outsider.context,

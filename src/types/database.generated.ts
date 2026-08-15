@@ -616,6 +616,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_join_request: {
+        Args: { p_request_id: string }
+        Returns: {
+          decided_at: string
+          member_id: string
+          member_status: Database["public"]["Enums"]["member_status"]
+          request_id: string
+          request_status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
       authorize_payment_proof_access: {
         Args: { p_proof_id: string }
         Returns: {
@@ -693,6 +703,19 @@ export type Database = {
           status: Database["public"]["Enums"]["invite_status"]
         }[]
       }
+      get_manager_join_requests: {
+        Args: { p_league_id: string }
+        Returns: {
+          created_at: string
+          decided_at: string
+          proofs: Json
+          rejection_reason: string
+          request_id: string
+          requester_display_name: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
       get_my_join_requests: {
         Args: never
         Returns: {
@@ -702,6 +725,27 @@ export type Database = {
           request_id: string
           status: Database["public"]["Enums"]["join_request_status"]
           updated_at: string
+        }[]
+      }
+      get_my_join_requests_v2: {
+        Args: never
+        Returns: {
+          created_at: string
+          league_name: string
+          proofs: Json
+          rejection_reason: string
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
+      reject_join_request: {
+        Args: { p_reason: string; p_request_id: string }
+        Returns: {
+          decided_at: string
+          rejection_reason: string
+          request_id: string
+          request_status: Database["public"]["Enums"]["join_request_status"]
         }[]
       }
       resolve_invite: {

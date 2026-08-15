@@ -10,6 +10,9 @@ const timestampSchema = z.string().datetime({ offset: true });
 const nullableTimestampSchema = timestampSchema.nullable().optional().default(null);
 
 export const leagueIdSchema = z.string().uuid("מזהה הליגה אינו תקין.");
+export const joinRequestIdSchema = z
+  .string()
+  .uuid("מזהה בקשת ההצטרפות אינו תקין.");
 export const inviteIdSchema = z.string().uuid("מזהה ההזמנה אינו תקין.");
 export const inviteTokenSchema = z
   .string()
@@ -32,6 +35,22 @@ export const revokeInviteInputSchema = z.object({
 
 export const submitJoinRequestInputSchema = z.object({
   publicId: invitePublicIdSchema,
+});
+
+export const approveJoinRequestInputSchema = z.object({
+  leagueId: leagueIdSchema,
+  requestId: joinRequestIdSchema,
+});
+
+export const rejectJoinRequestInputSchema = approveJoinRequestInputSchema.extend({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "יש לכתוב סיבה באורך של 3 תווים לפחות.")
+    .max(300, "סיבת הדחייה יכולה להכיל עד 300 תווים.")
+    .refine((value) => !/[\p{Cc}\p{Zl}\p{Zp}]/u.test(value), {
+      message: "סיבת הדחייה חייבת להיכתב בשורה אחת.",
+    }),
 });
 
 export const inviteExchangeInputSchema = z
@@ -169,6 +188,7 @@ const dashboardJoinRequestRpcSchema = z
       "approved",
       "rejected",
     ]),
+    rejection_reason: z.string().max(300).nullable().optional().default(null),
     created_at: timestampSchema,
     updated_at: timestampSchema,
     proofs: z.array(proofSummarySchema).max(5).optional().default([]),
@@ -177,6 +197,7 @@ const dashboardJoinRequestRpcSchema = z
     requestId: request.request_id,
     leagueName: request.league_name,
     status: request.status,
+    rejectionReason: request.rejection_reason,
     createdAt: request.created_at,
     updatedAt: request.updated_at,
     proofs: request.proofs,
@@ -185,6 +206,66 @@ const dashboardJoinRequestRpcSchema = z
 export const dashboardJoinRequestsRpcSchema = z
   .array(dashboardJoinRequestRpcSchema)
   .max(100);
+
+const managerJoinRequestRpcSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    requester_display_name: z.string().min(1).max(80),
+    status: z.enum([
+      "pending_proof",
+      "pending_approval",
+      "approved",
+      "rejected",
+    ]),
+    rejection_reason: z.string().max(300).nullable().optional().default(null),
+    created_at: timestampSchema,
+    updated_at: timestampSchema,
+    decided_at: nullableTimestampSchema,
+    proofs: z.array(proofSummarySchema).max(5).optional().default([]),
+  })
+  .transform((request) => ({
+    requestId: request.request_id,
+    requesterDisplayName: request.requester_display_name,
+    status: request.status,
+    rejectionReason: request.rejection_reason,
+    createdAt: request.created_at,
+    updatedAt: request.updated_at,
+    decidedAt: request.decided_at,
+    proofs: request.proofs,
+  }));
+
+export const managerJoinRequestsRpcSchema = z
+  .array(managerJoinRequestRpcSchema)
+  .max(100);
+
+export const approvedJoinRequestRpcSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    request_status: z.literal("approved"),
+    member_id: z.string().uuid(),
+    member_status: z.literal("active"),
+    decided_at: timestampSchema,
+  })
+  .transform((result) => ({
+    requestId: result.request_id,
+    status: result.request_status,
+    memberId: result.member_id,
+    decidedAt: result.decided_at,
+  }));
+
+export const rejectedJoinRequestRpcSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    request_status: z.literal("rejected"),
+    rejection_reason: z.string().min(3).max(300),
+    decided_at: timestampSchema,
+  })
+  .transform((result) => ({
+    requestId: result.request_id,
+    status: result.request_status,
+    rejectionReason: result.rejection_reason,
+    decidedAt: result.decided_at,
+  }));
 
 export type MembershipFieldErrors = Record<string, string[] | undefined>;
 

@@ -98,10 +98,10 @@ navigation, מאזין לכל בקשות הרשת עד שה־bootstrap מסיר 
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | secret base64url באורך/entropy הנדרשים, URL Fragment קנוני, public ID/digest/cookie binding, Origin ו־redirect allowlist; mapping שגיאות; request-body bounded גם בלי `Content-Length`; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
-| pgTAP | schema, public-ID+hash pairing, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; בידוד owner/manager/outsider/ליגה אחרת וללא decision/membership mutation |
+| Vitest | secret base64url באורך/entropy הנדרשים, URL Fragment קנוני, public ID/digest/cookie binding, Origin ו־redirect allowlist; mapping שגיאות; DTO מנהל שאינו שומר path/digest; validation לסיבת דחייה; מיפוי RPC אישור/דחייה; request-body bounded גם בלי `Content-Length`; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
+| pgTAP | schema, public-ID+hash pairing, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; תור מנהל מצומצם, חסימת מנהל ליגה זרה, approve אטומי שיוצר חברות יחידה, reject עם reason, replay אידמפוטנטי ו־audit יחיד |
 | Route integration | invite exchange עם Origin/body/public-ID/digest/cookie/opaque denial; JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
-| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; expiry שמתרחש אחרי render נבדק דרך UI → Server Action → DB ומחזיר שגיאה בטוחה ומצב מנהל מדויק; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
+| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; expiry שמתרחש אחרי render נבדק דרך UI → Server Action → DB ומחזיר שגיאה בטוחה ומצב מנהל מדויק; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; קישור ותור מנהל, proof signed access, חסימת מנהל זר, approve דרך UI ו־replay מקבילי שמוביל לחברות פעילה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
 | Visual/manual | 390px ו־desktop, RTL, keyboard/focus, labels ו־error summary, `aria-live`, preview מקומי, loading/empty/success/failure וללא overflow |
 
 pgTAP רץ בחיבור יחיד ואינו מוכיח race אמיתי לבדו. בדיקות Playwright/API
@@ -141,4 +141,6 @@ npm run test:e2e
 נעלם מיד אך פרטי הליגה נטענים. משלימים Auth דרך Mailpit, מגישים בקשה ומעלים
 תמונה סינתטית. מאמתים
 `pending_approval` גם ב־Dashboard ופותחים את התמונה דרך endpoint ההרשאה בלבד.
+לאחר מכן נכנסים כמנהל/ת דרך קישור "ניהול בקשות הצטרפות", צופים בהוכחה, מאשרים
+או דוחים ומוודאים את מצב הבקשה והחברות משני החשבונות.
 אין להשתמש ב־`supabase db reset --linked` או בתמונה פיננסית אמיתית.

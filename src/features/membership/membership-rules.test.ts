@@ -27,10 +27,16 @@ import {
   dashboardJoinRequestsRpcSchema,
   inviteMetadataRpcSchema,
   inviteResolutionRpcSchema,
+  managerJoinRequestsRpcSchema,
+  rejectJoinRequestInputSchema,
   unavailableInviteResolutionRpcSchema,
 } from "@/features/membership/schemas";
 import { resolveInvite } from "@/features/membership/queries";
-import { submitJoinRequest } from "@/features/membership/service";
+import {
+  approveJoinRequest,
+  rejectJoinRequest,
+  submitJoinRequest,
+} from "@/features/membership/service";
 import type { Database } from "@/types/database.generated";
 
 const validToken = "A".repeat(43);
@@ -255,6 +261,50 @@ describe("membership RPC response validation", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("maps manager rows without retaining proof-internal fields", () => {
+    const result = managerJoinRequestsRpcSchema.parse([
+      {
+        request_id: "26000000-0000-4000-8000-000000000032",
+        requester_display_name: "מבקשת בדיקה",
+        status: "pending_approval",
+        rejection_reason: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        decided_at: null,
+        proofs: [
+          {
+            id: "26000000-0000-4000-8000-000000000033",
+            mime_type: "image/webp",
+            size_bytes: 512,
+            uploaded_at: timestamp,
+            storage_path: "private/path.webp",
+            sha256: "f".repeat(64),
+          },
+        ],
+      },
+    ]);
+
+    expect(result[0]?.proofs[0]).toEqual({
+      id: "26000000-0000-4000-8000-000000000033",
+      mimeType: "image/webp",
+      sizeBytes: 512,
+      uploadedAt: timestamp,
+    });
+    expect(JSON.stringify(result)).not.toContain("storage_path");
+    expect(JSON.stringify(result)).not.toContain("sha256");
+  });
+
+  it("requires a bounded single-line rejection reason", () => {
+    const base = {
+      leagueId: publicId,
+      requestId: "26000000-0000-4000-8000-000000000032",
+    };
+
+    expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "לא תקין" }).success).toBe(true);
+    expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "x" }).success).toBe(false);
+    expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "שורה\nנוספת" }).success).toBe(false);
+  });
 });
 
 describe("membership RPC token boundary", () => {
@@ -316,6 +366,51 @@ describe("membership RPC token boundary", () => {
       p_token_hash: validTokenHash,
     });
     expect(JSON.stringify(rpc.mock.calls)).not.toContain(validToken);
+  });
+});
+
+describe("manager decision RPC boundary", () => {
+  const requestId = "26000000-0000-4000-8000-000000000032";
+
+  it("sends only the request identifier when approving", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{
+        request_id: requestId,
+        request_status: "approved",
+        member_id: "26000000-0000-4000-8000-000000000034",
+        member_status: "active",
+        decided_at: timestamp,
+      }],
+      error: null,
+    });
+
+    await expect(approveJoinRequest(clientWithRpc(rpc), requestId)).resolves.toMatchObject({ ok: true });
+    expect(rpc).toHaveBeenCalledWith("approve_join_request", { p_request_id: requestId });
+  });
+
+  it("sends the validated decision reason and maps unknown errors opaquely", async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({
+        data: [{
+          request_id: requestId,
+          request_status: "rejected",
+          rejection_reason: "הוכחת Demo אינה מתאימה",
+          decided_at: timestamp,
+        }],
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: { message: "private row detail" } });
+
+    await expect(rejectJoinRequest(clientWithRpc(rpc), requestId, "הוכחת Demo אינה מתאימה"))
+      .resolves.toMatchObject({ ok: true });
+    expect(rpc).toHaveBeenNthCalledWith(1, "reject_join_request", {
+      p_request_id: requestId,
+      p_reason: "הוכחת Demo אינה מתאימה",
+    });
+    await expect(approveJoinRequest(clientWithRpc(rpc), requestId)).resolves.toEqual({
+      ok: false,
+      message: "לא ניתן להשלים את הפעולה כרגע. יש לנסות שוב.",
+    });
   });
 });
 

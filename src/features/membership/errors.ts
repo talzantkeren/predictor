@@ -8,6 +8,7 @@ const safeMembershipErrors: Record<string, string> = {
   JOIN_CLOSED: "הליגה אינה מקבלת בקשות הצטרפות חדשות.",
   JOIN_REQUEST_STATE_CONFLICT: "מצב בקשת ההצטרפות השתנה. יש לרענן ולנסות שוב.",
   STATE_CONFLICT: "המידע השתנה. יש לרענן ולנסות שוב.",
+  VALIDATION_ERROR: "הפרטים שנשלחו אינם תקינים.",
 };
 
 function getErrorValue(error: unknown, key: "code" | "message") {

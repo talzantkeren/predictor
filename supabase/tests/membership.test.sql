@@ -545,9 +545,9 @@ select ok(
   'service_role cannot execute user-scoped Slice 3 RPCs'
 );
 select ok(
-  to_regprocedure('public.approve_join_request(uuid)') is null
-  and to_regprocedure('public.reject_join_request(uuid,text)') is null,
-  'Slice 3 creates no approval or rejection shortcut'
+  to_regprocedure('public.approve_join_request(uuid)') is not null
+  and to_regprocedure('public.reject_join_request(uuid,text)') is not null,
+  'hosted Slice 3 includes the manager approval and rejection RPCs'
 );
 
 -- ===== Test actors and helpers; raw tokens remain stack-local only =====

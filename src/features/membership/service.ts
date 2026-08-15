@@ -12,6 +12,8 @@ import {
 import {
   createdInviteRpcSchema,
   joinRequestRpcSchema,
+  approvedJoinRequestRpcSchema,
+  rejectedJoinRequestRpcSchema,
 } from "@/features/membership/schemas";
 import type { Database } from "@/types/database.generated";
 
@@ -41,6 +43,45 @@ export async function createOrRotateInvite(
   }
 
   return { ok: true as const, data: parsed.data };
+}
+
+export async function approveJoinRequest(
+  supabase: SupabaseClient<Database>,
+  requestId: string,
+) {
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "approve_join_request",
+    { p_request_id: requestId },
+  );
+  if (error) return { ok: false as const, message: getSafeMembershipErrorMessage(error) };
+
+  const parsed = approvedJoinRequestRpcSchema.safeParse(
+    getSingleMembershipRpcRecord(data),
+  );
+  return parsed.success
+    ? { ok: true as const, data: parsed.data }
+    : { ok: false as const, message: "לא ניתן לאשר את הבקשה כרגע. יש לרענן ולנסות שוב." };
+}
+
+export async function rejectJoinRequest(
+  supabase: SupabaseClient<Database>,
+  requestId: string,
+  reason: string,
+) {
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "reject_join_request",
+    { p_request_id: requestId, p_reason: reason },
+  );
+  if (error) return { ok: false as const, message: getSafeMembershipErrorMessage(error) };
+
+  const parsed = rejectedJoinRequestRpcSchema.safeParse(
+    getSingleMembershipRpcRecord(data),
+  );
+  return parsed.success
+    ? { ok: true as const, data: parsed.data }
+    : { ok: false as const, message: "לא ניתן לדחות את הבקשה כרגע. יש לרענן ולנסות שוב." };
 }
 
 export async function revokeInvite(

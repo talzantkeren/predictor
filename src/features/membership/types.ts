@@ -49,8 +49,20 @@ export type JoinRequestDashboardItem = {
   requestId: string;
   leagueName: string;
   status: JoinRequestStatus;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
+  proofs: ProofSummary[];
+};
+
+export type ManagerJoinRequestItem = {
+  requestId: string;
+  requesterDisplayName: string;
+  status: JoinRequestStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt: string | null;
   proofs: ProofSummary[];
 };
 

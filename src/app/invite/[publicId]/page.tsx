@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AppHeader } from "@/features/auth/components/app-header";
 import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
 import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
 import { InviteBootstrap } from "@/features/membership/components/invite-bootstrap";
@@ -232,7 +233,9 @@ export default async function InvitePage({
   const resolution = result.data;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      {resolution.viewerState !== "guest" ? <AppHeader /> : null}
+      <main className="px-4 py-8 sm:px-6 sm:py-12">
       <InviteFragmentScrubber />
       <div className="mx-auto max-w-3xl space-y-6">
         <section
@@ -295,6 +298,7 @@ export default async function InvitePage({
           </div>
         </section>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }

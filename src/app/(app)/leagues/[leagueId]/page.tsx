@@ -71,12 +71,20 @@ export default async function LeagueSummaryPage({
                 </div>
               </dl>
               {league.role === "manager" ? (
-                <Link
-                  href={`/leagues/${league.id}/settings`}
-                  className="flex justify-center rounded-lg border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                >
-                  ניהול קישור ההזמנה
-                </Link>
+                <div className="grid gap-2">
+                  <Link
+                    href={`/leagues/${league.id}/members`}
+                    className="flex justify-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                  >
+                    ניהול בקשות הצטרפות
+                  </Link>
+                  <Link
+                    href={`/leagues/${league.id}/settings`}
+                    className="flex justify-center rounded-lg border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                  >
+                    ניהול קישור ההזמנה
+                  </Link>
+                </div>
               ) : null}
             </div>
           </div>

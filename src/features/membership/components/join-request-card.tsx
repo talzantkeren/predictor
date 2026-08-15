@@ -46,6 +46,13 @@ export function JoinRequestCard({ request }: { request: JoinRequestDashboardItem
               : "הבקשה הסתיימה. בקשה חדשה אפשר לפתוח רק דרך קישור הזמנה פעיל."}
       </div>
 
+      {request.status === "rejected" && request.rejectionReason ? (
+        <p className="mt-3 rounded-lg border border-slate-200 p-3 text-sm leading-6 text-slate-700">
+          <span className="font-semibold text-slate-900">סיבת הדחייה: </span>
+          {request.rejectionReason}
+        </p>
+      ) : null}
+
       {request.proofs.length > 0 ? (
         <div className="mt-5">
           <ProofHistory proofs={request.proofs} />
