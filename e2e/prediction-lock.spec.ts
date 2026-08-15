@@ -130,6 +130,7 @@ function getContextOptions(projectName: string): BrowserContextOptions {
     deviceScaleFactor: descriptor.deviceScaleFactor,
     hasTouch: descriptor.hasTouch,
     isMobile: descriptor.isMobile,
+    timezoneId: projectName.startsWith("mobile-") ? "Asia/Jerusalem" : "UTC",
     userAgent: descriptor.userAgent,
     viewport: descriptor.viewport,
   };
@@ -235,7 +236,9 @@ test.describe("matches, predictions, lock, and reveal", () => {
     await expect(manager.page.getByText("בשידור חי").first()).toBeVisible();
     await expect(manager.page.getByText("הסתיים").first()).toBeVisible();
     await expect(manager.page.getByText("2–1").first()).toBeVisible();
-    await expect(manager.page.getByText("Asia/Jerusalem").first()).toBeVisible();
+    await expect(
+      manager.page.getByText(contextOptions.timezoneId ?? "UTC").first(),
+    ).toBeVisible();
     await expect(manager.page.getByText(/נותרו/).first()).toBeVisible();
 
     const listLayout = await manager.page.evaluate(() => ({
