@@ -14,7 +14,6 @@ const publicEnvSchema = browserEnvSchema.extend({
   SPORTS_API_PROVIDER: z.enum(["manual", "api"]).default("manual"),
   DEMO_MODE: z
     .enum(["true", "false"])
-    .default("true")
     .transform((value) => value === "true"),
 });
 

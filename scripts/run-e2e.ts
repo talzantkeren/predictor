@@ -5,6 +5,7 @@ import { delimiter, join } from "node:path";
 type LocalSupabaseStatus = {
   API_URL?: unknown;
   PUBLISHABLE_KEY?: unknown;
+  SECRET_KEY?: unknown;
 };
 
 const npmCliPath = process.env.npm_execpath;
@@ -41,7 +42,12 @@ if (externalSmoke && !externalBaseUrl) {
 }
 
 function getProcessEnvironment() {
-  const environment = { ...process.env };
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    // Playwright otherwise writes an automatic DOM/URL error snapshot. Slice
+    // 3 exercises bearer-token URLs, so failure artifacts must omit page state.
+    PLAYWRIGHT_NO_COPY_PROMPT: "1",
+  };
 
   if (process.platform === "win32" && process.env.LOCALAPPDATA) {
     const dockerDirectory = join(
@@ -111,9 +117,10 @@ function getLocalSupabaseEnvironment() {
 
   if (
     typeof status.API_URL !== "string" ||
-    typeof status.PUBLISHABLE_KEY !== "string"
+    typeof status.PUBLISHABLE_KEY !== "string" ||
+    typeof status.SECRET_KEY !== "string"
   ) {
-    console.error("Local Supabase did not provide the required public values.");
+    console.error("Local Supabase did not provide the required runtime values.");
     process.exit(1);
   }
 
@@ -122,6 +129,7 @@ function getLocalSupabaseEnvironment() {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY,
+    SUPABASE_SECRET_KEY: status.SECRET_KEY,
     SPORTS_API_PROVIDER: "manual",
     DEMO_MODE: "true",
   };

@@ -6,19 +6,24 @@ import {
   getLeagueStatusLabel,
 } from "@/features/leagues/display";
 import { getDashboardLeagues } from "@/features/leagues/queries";
+import { JoinRequestCard } from "@/features/membership/components/join-request-card";
+import { getMyJoinRequests } from "@/features/membership/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { supabase, user } = await requireAuthenticatedUser("/dashboard");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .maybeSingle();
-  const leagues = await getDashboardLeagues(supabase, user.id);
+  const [profileResult, leagues, joinRequests] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getDashboardLeagues(supabase, user.id),
+    getMyJoinRequests(supabase),
+  ]);
 
-  const displayName = profile?.display_name ?? "משתמש";
+  const displayName = profileResult.data?.display_name ?? "משתמש";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
@@ -90,6 +95,41 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        <section
+          aria-labelledby="my-join-requests-title"
+          className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+        >
+          <div>
+            <p className="text-sm font-semibold text-blue-700">הצטרפות לליגות</p>
+            <h2 id="my-join-requests-title" className="mt-1 text-2xl font-bold">
+              בקשות ההצטרפות שלי
+            </h2>
+          </div>
+
+          <aside
+            aria-label="הודעת מצב Demo"
+            className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950"
+          >
+            זהו דמו בלבד — אין להעביר כסף ואין להעלות מסמך פיננסי אמיתי.
+          </aside>
+
+          {!joinRequests.ok ? (
+            <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              לא ניתן לטעון את בקשות ההצטרפות כרגע. יש לרענן ולנסות שוב.
+            </p>
+          ) : joinRequests.data.length === 0 ? (
+            <p className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-sm leading-6 text-slate-600">
+              עדיין לא פתחת בקשת הצטרפות לליגה אחרת.
+            </p>
+          ) : (
+            <div className="mt-6 grid gap-4">
+              {joinRequests.data.map((request) => (
+                <JoinRequestCard key={request.requestId} request={request} />
+              ))}
+            </div>
           )}
         </section>
       </div>

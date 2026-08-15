@@ -69,3 +69,82 @@ AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת re
 מקביליות אמיתית של שתי קריאות `create_league` בו־זמנית אינה ניתנת לבדיקה
 ב־pgTAP חד־חיבורי; ההגנה היא האטומיות של הפונקציה וה־constraints, כך שגם
 בקשות חוזרות אינן משאירות מצב חלקי.
+
+## Slices 3–4: הזמנה, אסמכתאת Demo והחלטת מנהל
+
+לפי גבול B26 המאושר, כיסוי invite, בקשת ההצטרפות וה־upload הפרטי שייך ל־Slice 3;
+כיסוי תור המנהל, הצפייה המורשית, approve/reject והחברות שייך ל־Slice 4. PR #4
+מאמת את שני ה־Slices באותה זרימה מקצה לקצה.
+
+כל תמונות הבדיקה מיוצרות בזיכרון בזמן הריצה באמצעות `sharp` או buffers
+סינתטיים. אין fixture של קבלה, מסמך פיננסי או קובץ משתמש אמיתי במאגר. בדיקות
+ה־route וה־E2E משתמשות רק ב־Supabase/Auth/Storage/Mailpit המקומיים ואינן פונות
+ל־hosted Storage.
+Playwright מבטל trace, screenshots ו־video, וה־runner מבטל snapshot אוטומטי של
+מצב העמוד בשגיאה, מפני שזרימות Auth/invite/signed-access נוגעות ב־bearer URLs.
+הבדיקות משתמשות בהשוואות boolean, המתנות UI עם שגיאה קבועה ובעטיפות navigation
+מסוננות כדי ש־matcher snapshot או דו"ח כשל לא ידפיסו token. קריאות עם JWT,
+cookie, signed URL או proof path משתמשות ב־`fetch` של Node עם שגיאה מסוננת ולא
+ב־`APIRequestContext` המתועד של Playwright. אין בדיקת canary ייעודית לדוח HTML;
+ההגנה הקיימת היא ביטול trace, screenshots, video ו־page snapshots, יחד עם
+שגיאות מסוננות והימנעות מצעדי Playwright שמקבלים URL רגיש. דוחות כשל ו־artifacts
+עדיין נסרקים כחלק מבדיקת הדליפה לפני מסירה. כל invite פעיל מבוטל ב־cleanup ככל
+שה־session המקומי זמין, ו־fixture התפוגה נמחק ישירות מהמסד המקומי ב־`finally`.
+
+בקישור invite ה־bearer נמצא רק ב־URL Fragment. helper הניווט מבצע browser-side
+navigation, מאזין לכל בקשות הרשת עד שה־bootstrap מסיר את ה־Fragment ומכשיל את
+הבדיקה בשגיאה קבועה אם secret מופיע ב־request target, headers או body. התרחיש פותח את
+אותו קישור שוב עם cookie תקף ומוודא שגם המסך המאומת מנקה את ה־Fragment. בדיקות Route מאמתות
+שה־exchange מקבל רק public ID ו־digest, מציב cookie HttpOnly מוגבל לנתיב,
+חוסם Origin/body עוינים ומחזיר תשובה אטומה לזוג לא תואם.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | secret base64url באורך/entropy הנדרשים, URL Fragment קנוני, public ID/digest/cookie binding, Origin ו־redirect allowlist; mapping שגיאות; DTO מנהל שאינו שומר path/digest; validation לסיבת דחייה; מיפוי RPC אישור/דחייה; request-body bounded גם בלי `Content-Length`; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
+| pgTAP | schema, public-ID+hash pairing, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; תור מנהל מצומצם, חסימת מנהל ליגה זרה, approve אטומי שיוצר חברות יחידה, reject עם reason, replay אידמפוטנטי ו־audit יחיד |
+| Route integration | invite exchange עם Origin/body/public-ID/digest/cookie/opaque denial; JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
+| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; expiry שמתרחש אחרי render נבדק דרך UI → Server Action → DB ומחזיר שגיאה בטוחה ומצב מנהל מדויק; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; קישור ותור מנהל, proof signed access, חסימת מנהל זר, approve דרך UI ו־replay מקבילי שמוביל לחברות פעילה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
+| Visual/manual | 390px ו־desktop, RTL, keyboard/focus, labels ו־error summary, `aria-live`, preview מקומי, loading/empty/success/failure וללא overflow |
+
+pgTAP רץ בחיבור יחיד ואינו מוכיח race אמיתי לבדו. בדיקות Playwright/API
+משתמשות ב־`Promise.all` עבור rotate, submit ו־upload retry, בעוד constraints,
+locks ו־RLS נבדקים בנוסף במסד.
+
+תרחיש ה־expiry של Playwright משנה רק fixture סינתטי בתוך מכולת PostgreSQL של
+Supabase המקומי והחד־פעמי. הוא מאמת UUID קנוני, משתמש ב־timestamp יחיד כדי
+לשמור על אילוצי lifecycle, דורש בדיוק `UPDATE 1` ואינו מציג stderr של PostgreSQL
+שעלול להכיל שורת invite רגישה. העזר אינו קורא URL או credentials ואינו מסוגל
+לפנות לפרויקט Supabase מקושר.
+
+### הכנת הסביבה והרצה
+
+```powershell
+npm ci
+npm exec -- supabase start
+npm exec -- supabase db reset --local
+npm run lint
+npm run typecheck
+npm run test
+npm run test:db
+npm exec -- supabase db lint --local --schema public,private --level warning --fail-on error
+npm run types:check
+npm run build
+npm run test:e2e
+```
+
+ה־runner קורא מ־`supabase status -o json` את `API_URL`, `PUBLISHABLE_KEY` ואת
+`SECRET_KEY`, ומעביר את הסוד רק לתהליך Node המהימן שמריץ את build, שרת הבדיקה
+ו־Playwright כ־`SUPABASE_SECRET_KEY`; הוא אינו נשלח לדפדפן, לדוח או ל־stdout.
+ה־gateway נטען lazy כדי ש־build שאינו מפעיל Storage יישאר בטוח, אך route
+העלאה/צפייה נכשל סגור ללא הסוד.
+
+לבדיקה ידנית: יוצרים ליגה, נכנסים ל־settings, יוצרים קישור בצורת
+`/invite/[publicId]#invite=[secret]`, פותחים אותו בחלון פרטי ומוודאים שה־Fragment
+נעלם מיד אך פרטי הליגה נטענים. משלימים Auth דרך Mailpit, מגישים בקשה ומעלים
+תמונה סינתטית. מאמתים
+`pending_approval` גם ב־Dashboard ופותחים את התמונה דרך endpoint ההרשאה בלבד.
+לאחר מכן נכנסים כמנהל/ת דרך קישור "ניהול בקשות הצטרפות", צופים בהוכחה, מאשרים
+או דוחים ומוודאים את מצב הבקשה והחברות משני החשבונות.
+אין להשתמש ב־`supabase db reset --linked` או בתמונה פיננסית אמיתית.

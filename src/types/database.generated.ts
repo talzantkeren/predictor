@@ -34,6 +34,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+        }
+        Relationships: []
+      }
       competitions: {
         Row: {
           country_code: string
@@ -66,6 +96,97 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      invite_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          league_id: string
+          public_id: string
+          revoked_at: string | null
+          status: Database["public"]["Enums"]["invite_status"]
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          league_id: string
+          public_id?: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          league_id?: string
+          public_id?: string
+          revoked_at?: string | null
+          status?: Database["public"]["Enums"]["invite_status"]
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_links_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      join_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          league_id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          league_id: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["join_request_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          league_id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["join_request_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       league_members: {
         Row: {
@@ -284,6 +405,53 @@ export type Database = {
           },
         ]
       }
+      payment_proofs: {
+        Row: {
+          deleted_at: string | null
+          id: string
+          join_request_id: string
+          mime_type: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          upload_idempotency_key: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          deleted_at?: string | null
+          id: string
+          join_request_id: string
+          mime_type?: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          upload_idempotency_key: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          deleted_at?: string | null
+          id?: string
+          join_request_id?: string
+          mime_type?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          upload_idempotency_key?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_proofs_join_request_id_fkey"
+            columns: ["join_request_id"]
+            isOneToOne: false
+            referencedRelation: "join_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_rules: {
         Row: {
           created_at: string
@@ -336,6 +504,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rate_limit_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          join_request_id: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          join_request_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          join_request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limit_events_join_request_id_fkey"
+            columns: ["join_request_id"]
+            isOneToOne: false
+            referencedRelation: "join_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seasons: {
         Row: {
@@ -416,6 +616,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_join_request: {
+        Args: { p_request_id: string }
+        Returns: {
+          decided_at: string
+          member_id: string
+          member_status: Database["public"]["Enums"]["member_status"]
+          request_id: string
+          request_status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      authorize_payment_proof_access: {
+        Args: { p_proof_id: string }
+        Returns: {
+          league_id: string
+          proof_id: string
+          request_id: string
+        }[]
+      }
+      consume_proof_upload_rate_limit: {
+        Args: { p_request_id: string }
+        Returns: {
+          allowed: boolean
+          retry_after_seconds: number
+        }[]
+      }
       create_league: {
         Args: {
           p_allow_late_join: boolean
@@ -432,8 +657,140 @@ export type Database = {
         }
         Returns: string
       }
+      create_or_rotate_invite: {
+        Args: { p_league_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          invite_id: string
+          public_id: string
+          raw_token: string
+          revoked_at: string
+          status: Database["public"]["Enums"]["invite_status"]
+        }[]
+      }
+      finalize_payment_proof: {
+        Args: {
+          p_idempotency_key: string
+          p_proof_id: string
+          p_request_id: string
+          p_sha256: string
+          p_size_bytes: number
+        }
+        Returns: {
+          proof_id: string
+          replayed: boolean
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      get_join_request_upload_context: {
+        Args: { p_request_id: string }
+        Returns: {
+          league_id: string
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      get_league_invite_metadata: {
+        Args: { p_league_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          invite_id: string
+          is_expired: boolean
+          revoked_at: string
+          status: Database["public"]["Enums"]["invite_status"]
+        }[]
+      }
+      get_manager_join_requests: {
+        Args: { p_league_id: string }
+        Returns: {
+          created_at: string
+          decided_at: string
+          proofs: Json
+          rejection_reason: string
+          request_id: string
+          requester_display_name: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
+      get_my_join_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          league_name: string
+          proofs: Json
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
+      get_my_join_requests_v2: {
+        Args: never
+        Returns: {
+          created_at: string
+          league_name: string
+          proofs: Json
+          rejection_reason: string
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
+      reject_join_request: {
+        Args: { p_reason: string; p_request_id: string }
+        Returns: {
+          decided_at: string
+          rejection_reason: string
+          request_id: string
+          request_status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      resolve_invite: {
+        Args: { p_public_id: string; p_token_hash: string }
+        Returns: {
+          available: boolean
+          demo_entry_fee_agorot: number
+          demo_payment_instructions: string
+          join_request_id: string
+          join_request_status: Database["public"]["Enums"]["join_request_status"]
+          joins_close_at: string
+          league_name: string
+          proofs: Json
+          request_created_at: string
+          request_updated_at: string
+          viewer_state: string
+        }[]
+      }
+      revoke_invite: {
+        Args: { p_invite_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          invite_id: string
+          revoked_at: string
+          status: Database["public"]["Enums"]["invite_status"]
+        }[]
+      }
+      submit_join_request: {
+        Args: { p_public_id: string; p_token_hash: string }
+        Returns: {
+          created_at: string
+          request_id: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
+      invite_status: "active" | "revoked"
+      join_request_status:
+        | "pending_proof"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
       league_status: "draft" | "open" | "active" | "completed" | "archived"
       match_status: "scheduled" | "live" | "finished" | "postponed" | "canceled"
       member_status: "active" | "removed"
@@ -567,6 +924,13 @@ export const Constants = {
   },
   public: {
     Enums: {
+      invite_status: ["active", "revoked"],
+      join_request_status: [
+        "pending_proof",
+        "pending_approval",
+        "approved",
+        "rejected",
+      ],
       league_status: ["draft", "open", "active", "completed", "archived"],
       match_status: ["scheduled", "live", "finished", "postponed", "canceled"],
       member_status: ["active", "removed"],

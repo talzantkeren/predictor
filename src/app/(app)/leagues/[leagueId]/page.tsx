@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -58,16 +59,34 @@ export default async function LeagueSummaryPage({
                 <p className="mt-3 text-slate-500">לא נוסף תיאור לליגה.</p>
               )}
             </div>
-            <dl className="shrink-0 rounded-xl bg-slate-50 p-4 text-sm">
-              <div>
-                <dt className="font-semibold text-slate-600">סטטוס</dt>
-                <dd className="mt-1 text-slate-950">{getLeagueStatusLabel(league.status)}</dd>
-              </div>
-              <div className="mt-3">
-                <dt className="font-semibold text-slate-600">התפקיד שלי</dt>
-                <dd className="mt-1 text-slate-950">{getLeagueRoleLabel(league.role)}</dd>
-              </div>
-            </dl>
+            <div className="shrink-0 space-y-3">
+              <dl className="rounded-xl bg-slate-50 p-4 text-sm">
+                <div>
+                  <dt className="font-semibold text-slate-600">סטטוס</dt>
+                  <dd className="mt-1 text-slate-950">{getLeagueStatusLabel(league.status)}</dd>
+                </div>
+                <div className="mt-3">
+                  <dt className="font-semibold text-slate-600">התפקיד שלי</dt>
+                  <dd className="mt-1 text-slate-950">{getLeagueRoleLabel(league.role)}</dd>
+                </div>
+              </dl>
+              {league.role === "manager" ? (
+                <div className="grid gap-2">
+                  <Link
+                    href={`/leagues/${league.id}/members`}
+                    className="flex justify-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                  >
+                    ניהול בקשות הצטרפות
+                  </Link>
+                  <Link
+                    href={`/leagues/${league.id}/settings`}
+                    className="flex justify-center rounded-lg border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                  >
+                    ניהול קישור ההזמנה
+                  </Link>
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
 

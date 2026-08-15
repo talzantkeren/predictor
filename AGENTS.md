@@ -27,6 +27,12 @@ When an approved decision changes, update the applicable canonical document in t
 - Use Server Components for reads, Server Actions for UI mutations, Route Handlers for uploads/Cron/AI/external HTTP, and shared feature services for business logic.
 - Enable RLS and least-privilege grants in the same migration that creates every exposed table.
 - Use the new Supabase publishable/secret keys. A secret key is server-only and bypasses RLS; confine it to `src/lib/supabase/admin.ts` with `server-only`.
+- The only Slice 3 exception that may consume the admin client is a server-only,
+  fixed-bucket `payment-proofs` gateway. It may upload sanitized WebP bytes,
+  compensate by deleting the same derived object, look up an authorized proof's
+  internal path, and create a signed URL only after user-session resource
+  authorization. It must not expose a generic client, accept an arbitrary bucket
+  or path, or write business tables.
 - Store all timestamps as UTC `timestamptz`; database time decides prediction locking.
 - Keep `predictions.points` and scoring metadata. Scoring rules belong to each league and default to 3/1/0.
 - Treat draw as a first-class outcome. Tie-break by correct outcomes only, then share the place and applicable prizes.
@@ -56,6 +62,9 @@ When an approved decision changes, update the applicable canonical document in t
 - Multi-row state changes that must be atomic belong in a transaction/database function.
 - `SECURITY DEFINER` is exceptional: set `search_path = ''`, schema-qualify every relation, revoke default execution and grant only the required role.
 - Never make the proof bucket public. Serve proof images only after resource authorization through a short-lived signed URL.
+- Do not grant `anon` or `authenticated` direct `storage.objects` access for the
+  proof bucket. Direct browser upload would bypass the Route Handler's byte,
+  signature, decode and re-encode checks.
 - Proof uploads accept one JPEG/PNG/WebP image up to the documented limit, verify magic bytes, decode and re-encode with `sharp`, discard the original, generate the storage name on the server and rate-limit the route.
 - Never log secrets, tokens, cookies, signed URLs, proof paths/content, passwords or full provider payloads containing personal data.
 - Do not use `dangerouslySetInnerHTML` for AI or user content.

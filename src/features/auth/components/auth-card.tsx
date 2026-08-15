@@ -32,6 +32,7 @@ export function AuthCard({
             {footer.label}{" "}
             <Link
               href={footer.href}
+              prefetch={false}
               className="font-semibold text-blue-700 underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
             >
               {footer.linkLabel}

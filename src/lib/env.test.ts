@@ -62,6 +62,12 @@ describe("Slice 0 environment validation", () => {
     ).toThrow();
   });
 
+  it("fails closed when DEMO_MODE is missing", () => {
+    expect(() =>
+      parsePublicEnv({ ...validInput, DEMO_MODE: undefined }),
+    ).toThrow();
+  });
+
   it("does not expose server-only values through either client schema", () => {
     const inputWithSecrets = {
       ...validInput,

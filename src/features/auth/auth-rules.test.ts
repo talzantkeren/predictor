@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  getConfirmationReturnPath,
+  getRegistrationConfirmationUrl,
+} from "@/features/auth/confirmation-return";
 import { getSafeAuthErrorMessage } from "@/features/auth/errors";
 import {
   getSafeAuthOrigin,
@@ -81,6 +85,8 @@ describe("display-name validation", () => {
 });
 
 describe("safe authentication redirects", () => {
+  const validInvitePublicId = "26000000-0000-4000-8000-000000000031";
+
   it.each([
     "/dashboard",
     "/profile",
@@ -88,6 +94,8 @@ describe("safe authentication redirects", () => {
     "/leagues/new",
     "/leagues/26000000-0000-4000-8000-000000000027",
     "/leagues/26000000-0000-4000-8000-0000000000AB",
+    "/leagues/26000000-0000-4000-8000-000000000027/settings",
+    `/invite/${validInvitePublicId}`,
   ])("accepts the approved internal path %s", (path) => {
     expect(getSafeAuthRedirect(path)).toBe(path);
   });
@@ -110,11 +118,16 @@ describe("safe authentication redirects", () => {
     "/leagues/",
     "/leagues/not-a-uuid",
     "/leagues/26000000-0000-4000-8000-000000000027/edit",
+    "/leagues/26000000-0000-4000-8000-000000000027/settings/extra",
     "/leagues/26000000-0000-4000-8000-000000000027?x=1",
     "/leagues/26000000-0000-4000-8000-000000000027#frag",
     "/leagues/../profile",
     "/leagues/26000000-0000-4000-8000-00000000002",
     "/LEAGUES/26000000-0000-4000-8000-000000000027",
+    "/invite/26000000-0000-4000-8000-0000000000AB",
+    "/invite/not-a-uuid",
+    `/invite/${validInvitePublicId}?next=/dashboard`,
+    `/invite/${validInvitePublicId}#invite=${"A".repeat(43)}`,
     "",
     null,
     undefined,
@@ -158,6 +171,47 @@ describe("safe authentication redirects", () => {
         "https://predictor-swart.vercel.app",
       ),
     ).toBe("https://predictor-swart.vercel.app");
+  });
+});
+
+describe("registration confirmation return handoff", () => {
+  const invitePath = "/invite/26000000-0000-4000-8000-000000000031";
+
+  it("keeps the invite bearer and public return path out of the email callback URL", () => {
+    const callbackUrl = getRegistrationConfirmationUrl(
+      "https://predictor.example/some-path?ignored=true",
+    );
+
+    expect(callbackUrl).toBe("https://predictor.example/auth/confirm");
+    expect(callbackUrl).not.toContain("invite");
+    expect(callbackUrl).not.toContain("A".repeat(43));
+  });
+
+  it("resumes a validated invite from the same-browser HttpOnly cookie", () => {
+    expect(
+      getConfirmationReturnPath({ cookieNext: invitePath, queryNext: null }),
+    ).toBe(invitePath);
+  });
+
+  it("falls back safely when the confirmation is opened in another browser", () => {
+    expect(
+      getConfirmationReturnPath({ cookieNext: undefined, queryNext: null }),
+    ).toBe("/dashboard");
+    expect(
+      getConfirmationReturnPath({
+        cookieNext: "https://attacker.example",
+        queryNext: null,
+      }),
+    ).toBe("/dashboard");
+  });
+
+  it("honors an explicit validated recovery or legacy return path", () => {
+    expect(
+      getConfirmationReturnPath({
+        cookieNext: invitePath,
+        queryNext: "/update-password",
+      }),
+    ).toBe("/update-password");
   });
 });
 

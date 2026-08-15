@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.3 |
-| תאריך עדכון | 13 באוגוסט 2026 |
+| גרסה | 2.4 |
+| תאריך עדכון | 14 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
 
@@ -76,7 +76,7 @@ flowchart TD
 | Route Handlers | Cron, AI, upload, signed-file access וכניסות HTTP | לעקוף Services או RLS ללא הצדקה מתועדת |
 | Services | חוקים עסקיים, orchestration, adapters וחישובים | לגשת ישירות ל־Request/Response או להחזיק state בזיכרון |
 | Supabase user client | פעולות בשם המשתמש עם JWT ו־RLS | לבצע פעולות מערכת |
-| Supabase admin client | Sync, scoring, תמיכת מערכת ופעולות מוגבלות | להיכנס ל־Actions רגילים או ל־Client bundle |
+| Supabase admin client | Sync, scoring, תמיכת מערכת ושער Storage פרטי ומצומצם | להיכנס ל־Actions רגילים, ל־Client bundle או לשמש לעקיפת כתיבות עסקיות |
 | PostgreSQL | constraints, RLS, זמן אמת, transactions וניקוד set-based | להכיל UI או קריאות ספק חיצוני בתוך trigger |
 | Storage | קובצי WebP פרטיים ומדיניות גישה | bucket ציבורי או שמירת קובץ גולמי לא מאומת |
 
@@ -123,7 +123,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — `sb_publishable_...`; מותר בדפדפן רק יחד עם RLS תקין.
 - `SUPABASE_SECRET_KEY` — `sb_secret_...`; שרת בלבד, עוקף RLS.
 
-לא משתמשים בפרויקט חדש בשמות legacy `anon` ו־`service_role`. ה־secret client מוגדר בקובץ יחיד עם `import 'server-only'`, ואסור לייבא אותו מ־Client Component או מ־Service שאינו ברשימת הפעולות המורשות.
+לא משתמשים בפרויקט חדש בשמות legacy `anon` ו־`service_role`. ה־secret client מוגדר בקובץ יחיד עם `import 'server-only'`, ואסור לייבא אותו מ־Client Component או מ־Service שאינו ברשימת הפעולות המורשות. ב־Slice 3 הצרכן היחיד שלו הוא שער Storage קבוע ל־bucket `payment-proofs`: ה־API המצומצם מקבל מזהי DB, גוזר נתיב פנימי ואינו חושף client כללי, bucket או path שרירותיים. הוא מקבל את טיפוס פלט ה־sanitizer ובודק מחדש WebP signature, גודל, ממדים ו־digest לפני upload; הוא רשאי למחוק object בפיצוי, לבדוק metadata פנימי וליצור signed URL רק לאחר הרשאת משאב.
 
 מפתחות Sports, AI ו־Cron הם משתני server-only ולעולם אינם מתחילים ב־`NEXT_PUBLIC_`.
 
@@ -131,7 +131,14 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`. אין לשמור access token ידנית ב־`localStorage`, אין להעביר Bearer token לשירות Backend נפרד ואין CORS פנימי, מפני שאין גבול origin נוסף.
 
-ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת token. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+
+גישת invite נפרדת מ־Auth session: הדפדפן קורא secret רק מ־URL Fragment,
+מחשב SHA-256 באמצעות Web Crypto ומחליף אותו דרך Route Handler same-origin. השרת
+מציב digest מאומת ב־cookie HttpOnly, `SameSite=Lax`, מוגבל לנתיב
+`/invite/[publicId]` ול־30 דקות. ה־cookie הוא credential קצר־חיים ולא מקור
+הרשאה בפני עצמו; כל resolve/submit בודק מחדש את זוג `publicId`+digest, מצב
+ההזמנה, תפוגה וזכאות במסד.
 
 אין Auth Context או Redux גלובלי. Server Components הם מקור האמת ל־session, ו־Client Components נשארים בגבול הטופס האינטראקטיבי בלבד. OAuth ותמונת פרופיל אינם חלק מ־Slice 1.
 
@@ -171,7 +178,14 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 - `predictions (league_id, match_id, user_id)` — unique.
 - `prize_rules (league_id, position)` — unique.
 - `matches (external_provider, external_id)` — unique כאשר מזהה חיצוני קיים.
-- `invite_links.token_hash` — unique; token גולמי אינו נשמר.
+- `invite_links.public_id` ו־`invite_links.token_hash` — כל אחד unique; secret
+  גולמי אינו נשמר, ושניהם נדרשים יחד כדי לפתור הזמנה.
+- הקישור הציבורי הוא `/invite/[publicId]#invite=[secret]`. לפי סמנטיקת URI,
+  ה־Fragment מופרד לפני dereference ולכן Vercel מקבל רק נתיב עם UUID ציבורי.
+  Client Component מסיר אותו מיד עם `history.replaceState`, מחשב SHA-256
+  בדפדפן ושולח ל־exchange רק digest קנוני. resolve/submit מעבירים ל־Data API
+  `p_public_id` ו־`p_token_hash`; ה־DB מאמת digest בן 64 תווי hex ואת ההתאמה
+  לאותה רשומת הזמנה לפני lookup.
 - `join_requests` — partial unique על `(league_id, user_id)` כאשר הסטטוס פעיל/מאושר, כדי לאפשר בקשה חדשה רק אחרי דחייה.
 - `ai_match_analyses (match_id)` — unique ב־MVP; `data_as_of` ו־`result_version` קובעים טריות.
 
@@ -185,7 +199,7 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 - `payment_proofs (join_request_id, uploaded_at desc)`.
 - `sync_runs (started_at desc)`.
 - `audit_logs (entity_type, entity_id, created_at desc)`.
-- `rate_limit_events (user_id, action, created_at)`.
+- `rate_limit_events (user_id, join_request_id, action, created_at)`.
 
 אינדקס נוסף דורש query שמצדיק אותו או המלצה של Performance Advisor; לא מוסיפים אינדקס לכל עמודה.
 
@@ -286,9 +300,9 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `system_admins` | ללא גישת משתמש רגיל; ניהול שרת/DB בלבד |
 | ספורט גלובלי | authenticated read; כתיבה למנהל מערכת/secret בלבד |
 | `leagues`, חוקים ופרסים | חברים רואים; רק מנהל הליגה משנה ובכפוף לסטטוס |
-| `invite_links` | מנהל הליגה רואה ומנהל; token נפתר בשרת לפי hash |
+| `invite_links` | אין גישה ישירה; מנהל מקבל metadata בטוח, ופתרון דורש public ID ו־hash תואמים דרך RPC מצומצם |
 | `join_requests` | המשתמש רואה את שלו; מנהל רואה בקשות של הליגה שלו |
-| `payment_proofs` | בעל ההעלאה, מנהל הליגה ומנהל מערכת בלבד |
+| `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
 | `league_members` | חברי אותה ליגה רואים חברות פעילה; שינוי דרך פעולות ניהול מוגנות |
 | `predictions` | בעלים רואה תמיד; חברי אותה ליגה רק אחרי `kickoff_at`; בעלים כותב רק לפני `kickoff_at` |
 | `ai_match_analyses` | חבר פעיל בליגה הכוללת את המשחק |
@@ -304,14 +318,21 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 - Route Handler ייעודי, לא Server Action: ברירת המחדל של Server Actions היא גוף של 1 MB, ו־Vercel Functions מוגבלות ל־4.5 MB.
 - ה־Handler רץ ב־Node.js runtime. גודל הקובץ המרבי הוא **4,000,000 bytes** וגודל בקשת ה־multipart המרבי הוא **4,250,000 bytes**, כדי להשאיר מרווח מתחת למגבלת 4.5 MB של Vercel.
+- Origin חייב להתאים ל־`NEXT_PUBLIC_APP_URL` או ל־URL פריסה מדויק שמוזרק בידי
+  Vercel; Host headers של המשתמש אינם מקור אמון. כך Preview פועל בלי לפתוח
+  allowlist לפי suffix או לפי forwarded host.
 - allowlist: JPEG, PNG או WebP בלבד. SVG, PDF, HTML, ZIP וקבצי executable נדחים.
 - בדיקה בשלוש שכבות: סיומת, declared MIME ו־magic bytes; אין אמון ב־`Content-Type` בלבד.
 - `sharp` חייב לפענח עם `limitInputPixels: 20_000_000`, להקטין לתיבה של 2000×2000 בלי הגדלה, להסיר metadata ולקודד מחדש ל־WebP. נשמר רק הפלט המקודד מחדש, לא המקור.
+- `file-type` ו־`sharp` הן dependencies ייצור מפורשות: ל־Node/Next אין זיהוי magic bytes או codec תמונה בטוח מובנים. אין framework multipart נוסף; ה־Web Streams/FormData המובנים מספיקים אחרי קריאה חסומה.
 - שם הקובץ הוא UUID שנוצר בשרת. שם הקובץ המקורי אינו חלק מהנתיב.
 - נתיב מוצע: `league/{leagueId}/request/{requestId}/{proofId}.webp`.
 - bucket בשם `payment-proofs` הוא private.
+- אין policies ל־`storage.objects` עבור `anon` או `authenticated`; גישת Data API ישירה ל־object נדחית תמיד, והגישה עוברת רק דרך שער השרת המצומצם.
 - צפייה מתבצעת רק אחרי AuthZ לפי מזהה רשומת DB, ואז signed URL של עד 60 שניות.
-- קיימות מכסה לבקשה וקצב העלאות למשתמש.
+- קיימת מכסה של חמש הוכחות לבקשה. מכסת הקצב נשמרת ב־PostgreSQL: עד חמש ניסיונות למשתמש ולבקשה ב־15 דקות ועד 20 ניסיונות למשתמש ב־24 שעות; גם ניסיונות שנדחו אחרי בדיקות ה־session/Origin והקשר הבקשה נספרים.
+- אחרי upload, פונקציית DB אטומית מאמתת את ה־object והנתיב הצפוי, אוכפת idempotency ומכסה, ורק אז יוצרת metadata. מחיקת פיצוי מותרת רק אחרי SQLSTATE שמוכיח rollback: `P0001`, מחלקות `22`/`23`, או מחלקה `40` למעט `40003`. מחלקה `08`, הקוד `40003` (`statement_completion_unknown`), shutdown וקוד חסר/לא מוכר הם תוצאה עמומה כי ייתכן שה־commit הושלם. במצב עמום ה־Handler משחזר פעם אחת בדיוק את אותה קריאת finalizer האידמפוטנטית; replay מוצלח שומר את ה־object שאליו מצביעה רשומת ה־DB, ואם גם ה־replay אינו מכריע ה־object נשאר פרטי ונשלח אירוע reconciliation מסונן. גם כשל במחיקת פיצוי נשלח לאותו מסלול, ללא חשיפת path ללקוח.
+- רק rejection של Storage שמזוהה ברשימת status סגורה ככשל לפני commit (`400`, `401`, `403`, `404`, `409`, `411`, `413`, `415`, `422`, `429`) אינו מפעיל finalizer או reconciliation. תשובות `408`, `425`, `499`, כל `5xx`, כשל transport ו־status חסר/לא מוכר הן עמומות כי upload עשוי היה להישמר. במקרה כזה אין finalization ואין מחיקה: `upsert: false` אינו מספק הוכחת בעלות שמאפשרת למחוק בבטחה בלי לסכן object קיים בהתנגשות, ולכן ה־object האפשרי נשאר פרטי ונשלח אירוע reconciliation מסונן. מחיקה מותנית בעתיד תחייב marker בעלות ייחודי וחוזה Gateway מפורש.
 
 ### 13.2 היסטוריה ושמירה
 
@@ -319,7 +340,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 ב־Demo משתמשים בקובצי דוגמה בלבד. אם יתקבל אישור להפעלה אמיתית בעתיד, ברירת מחדל מוצעת היא מחיקת קובצי Storage 90 יום לאחר ארכוב הליגה, תוך שמירת audit metadata לא־רגיש; המדיניות הסופית נקבעת בבדיקת הפרטיות והציות.
 
-סריקת malware מלאה אינה חלק מה־MVP. הסיכון השיורי מתועד; allowlist, signature check, decode/re-encode, bucket פרטי והיעדר הגשה כ־HTML מצמצמים אותו אך אינם שקולים לאנטי־וירוס.
+סריקת malware מלאה אינה חלק מה־MVP. זיהוי magic bytes הוא best-effort ואינו מוכיח שקובץ בטוח. הסיכון השיורי מתועד; allowlist, התאמת סיומת/MIME/signature, decode/re-encode חד־עמודי, bucket פרטי והיעדר הגשה כ־HTML מצמצמים אותו אך אינם שקולים לאנטי־וירוס.
 
 ## 14. Sports Sync
 
@@ -422,8 +443,9 @@ Services מחזירים error codes יציבים כגון:
 | שינוי ניחוש אחרי נעילה | תנאי `now() < kickoff_at` ב־DB/RLS | שנייה לפני/בדיוק/שנייה אחרי |
 | צפייה בניחוש אחר לפני פתיחה | RLS תלוי זמן וחברות | שני משתמשים באותה ליגה לפני/אחרי |
 | IDOR בין ליגות | AuthZ לפי resource + RLS | החלפת `leagueId/requestId/proofId` |
-| קובץ זדוני או MIME מזויף | allowlist, magic bytes, decode/re-encode, private bucket | SVG, exe מוסווה, polyglot וקובץ גדול |
+| קובץ זדוני או MIME מזויף | allowlist, magic bytes, decode/re-encode, private bucket | SVG/exe מוסווים וקובץ גדול נדחים; payload נלווה לתמונה תקינה אינו שורד את ה־re-encode |
 | דליפת secret | server-only module, env, bundle scan | חיפוש build ו־Network tab |
+| עקיפת route דרך Storage API | bucket פרטי ללא policies ללקוחות ושער שרת מצומצם | CRUD ישיר כ־anon/authenticated |
 | אישור כפול | transaction + unique + idempotency | שתי קריאות מקבילות |
 | ניקוד כפול | overwrite דטרמיניסטי + versions | אותה תוצאה פעמיים ותיקון תוצאה |
 | Cron מזויף או מקביל | secret + advisory lock | secret חסר/שגוי ושתי ריצות יחד |
@@ -473,6 +495,7 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Publishable/secret keys חדשים | מחייב | legacy keys מיועדים ל־deprecation; secret עוקף RLS |
 | `join_requests` ו־`league_members` נפרדות | התקבל | תהליך מול עובדת חברות |
 | `payment_proofs` 1:N | התקבל | שומר היסטוריה ופרטיות בלי overwrite |
+| גישה ישירה של לקוח ל־Storage | נדחה | route מאמת קובץ והרשאת משאב; השער הקבוע הוא consumer יחיד של secret ב־Slice 3 |
 | `points` נשמר ב־`predictions` | התקבל | דירוג יעיל ותמיכה בחוקי ניקוד שונים לכל ליגה |
 | Leaderboard כ־View/query | התקבל | אין הצדקה לטבלה משוכפלת ב־MVP |
 | ניקוד ב־PostgreSQL | התקבל | אטומיות, idempotency ו־set-based update |

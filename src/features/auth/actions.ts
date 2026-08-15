@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import {
+  AUTH_CONFIRM_RETURN_COOKIE,
+  AUTH_CONFIRM_RETURN_MAX_AGE_SECONDS,
+  getAuthConfirmReturnCookieOptions,
+  getRegistrationConfirmationUrl,
+} from "@/features/auth/confirmation-return";
 import { getSafeAuthErrorMessage } from "@/features/auth/errors";
 import {
   getSafeAuthOrigin,
@@ -73,6 +79,7 @@ export async function registerAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const nextPath = getSafeAuthRedirect(formData.get("next"));
   const parsed = registerSchema.safeParse({
     displayName: formData.get("displayName"),
     email: formData.get("email"),
@@ -91,7 +98,7 @@ export async function registerAction(
     password: parsed.data.password,
     options: {
       data: { display_name: parsed.data.displayName },
-      emailRedirectTo: `${origin}/auth/confirm?next=/dashboard`,
+      emailRedirectTo: getRegistrationConfirmationUrl(origin),
     },
   });
 
@@ -101,6 +108,13 @@ export async function registerAction(
       message: getSafeAuthErrorMessage(error, "register"),
     };
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(
+    AUTH_CONFIRM_RETURN_COOKIE,
+    nextPath,
+    getAuthConfirmReturnCookieOptions(AUTH_CONFIRM_RETURN_MAX_AGE_SECONDS),
+  );
 
   return {
     status: "success",

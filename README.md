@@ -5,9 +5,13 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Slice 2 Preview: [https://predictor-git-feature-slice-2-leagues-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-2-leagues-tals-projects-19902e47.vercel.app)
+- Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
+
+זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
+הקשר ההזמנה לאחר אישור ורענון. השלמת החלטת המנהל נדרשת להיבדק ידנית שוב לאחר כל
+שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slices 3–4.
 
 ## דרישות
 
@@ -29,22 +33,26 @@ npm run dev
 ```
 
 לאחר `supabase start`, העתיקו מ־`supabase status -o env` אל `.env.local` את
-`API_URL` בתור `NEXT_PUBLIC_SUPABASE_URL` ואת `PUBLISHABLE_KEY` בתור
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. אין להדפיס או לשמור ב־Git את
-`SECRET_KEY`, JWTs או סיסמת מסד הנתונים. `.env.local` חסום ב־Git.
+`API_URL` בתור `NEXT_PUBLIC_SUPABASE_URL`, את `PUBLISHABLE_KEY` בתור
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ואת `SECRET_KEY` בתור
+`SUPABASE_SECRET_KEY`. הסוד נדרש רק ל־gateway הפרטי של Storage ב־Slice 3;
+אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
+חסום ב־Git.
 
-המשתנים הפעילים ב־Slice 2:
+המשתנים הפעילים ב־Slice 3:
 
 | משתנה | שימוש |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL=http://localhost:3000` | כתובת האפליקציה המקומית |
 | `NEXT_PUBLIC_SUPABASE_URL` | כתובת Supabase המקומית או hosted |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ציבורי המותר בדפדפן עם RLS |
+| `SUPABASE_SECRET_KEY` | server-only; gateway מצומצם ל־`payment-proofs` בלבד |
 | `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
-`SUPABASE_SECRET_KEY` אינו נדרש ואינו מיובא ב־Auth/Profile/Leagues. `CRON_SECRET`,
-מפתח Sports ומפתחות AI שמורים ל־slices מאוחרים יותר.
+`SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues, אינו נשלח לדפדפן
+ואינו משמש לכתיבות עסקיות. `CRON_SECRET`, מפתח Sports ומפתחות AI שמורים
+ל־slices מאוחרים יותר.
 
 ## זרימת Auth ופרופיל
 
@@ -87,6 +95,43 @@ Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
 `2026/27` בלבד. teams, fixtures, scores ו־provider IDs נשארים ריקים עד למסלול
 הידני/המאומת ב־slice הייעודי.
 
+## זרימות Slices 3–4: הזמנה, הוכחת Demo והחלטת מנהל
+
+- מנהל הליגה נכנס ל־`/leagues/[leagueId]/settings`, יוצר קישור הזמנה ומעתיק
+  אותו מהתצוגה החד־פעמית. הקישור תקף שבעה ימים; refresh מציג רק metadata בטוח,
+  ו־rotation מבטל אטומית את הקישור הקודם. revoke חוסם בקשות חדשות.
+- אורח פותח `/invite/[publicId]#invite=[secret]`. ה־Fragment נשאר בדפדפן ואינו
+  נשלח כחלק מבקשת HTTP או נתיב Vercel; ה־bootstrap מסיר אותו מיד מהכתובת,
+  מחשב SHA-256 בדפדפן ושולח ל־`/api/invites/[publicId]/exchange` רק digest.
+  הצלחה יוצרת cookie HttpOnly מוגבל לאותו נתיב ול־30 דקות. אז מוצגים פרטי ליגה
+  מצומצמים ואזהרת Demo, ו־login/register חוזרים לנתיב הציבורי בלבד. בהרשמה
+  היעד נשמר ב־cookie נפרד וקצר המוגבל ל־callback; קישור אישור ה־Email אינו
+  כולל secret. Supabase מקבל רק public ID ו־SHA-256 hash תואמים.
+  בקשה חדשה נוצרת כ־
+  `pending_proof`; refresh/double-submit מחזירים את אותה בקשה.
+- המשתמש מעלה רק תמונה סינתטית מסוג JPEG/PNG/WebP. זהו דמו בלבד — אין להעביר
+  כסף ואין להעלות מסמך פיננסי אמיתי. אין תשלום, סליקה, אימות קבלה או קישור
+  לספק תשלום.
+- ה־Route Handler מגביל בקשה ל־4,250,000 bytes, קובץ ל־4,000,000 bytes ותמונה
+  מפוענחת ל־20,000,000 pixels; הוא מתאים לתיבה 2000×2000, מסיר metadata ושומר
+  WebP חדש בלבד ב־bucket הפרטי `payment-proofs`.
+- כל החלפה מכוונת מוסיפה proof חדש, עד חמש לבקשה. retry משתמש במפתח
+  idempotency, והמסד אוכף מכסות של 5 ניסיונות ב־15 דקות לבקשה ו־20 ב־24 שעות
+  למשתמש. העלאה תקינה מעבירה את הבקשה ל־`pending_approval`.
+- Dashboard מציג את בקשות המשתמש ואת הפעולה הבאה. תוכן proof נפתח רק דרך
+  `/api/payment-proofs/[proofId]`, לאחר הרשאת uploader או מנהל הליגה ובאמצעות
+  signed access של עד 60 שניות. כתיבה ישירה ל־Data API ו־CRUD ישיר ב־Storage
+  אינם מורשים; קריאת עמודות סיכום בטוחות בלבד מוגנת ב־RLS, ולעולם אינה חושפת
+  token hash, נתיב Storage, digest או מפתח idempotency.
+- ב־Slice 4 מנהל/ת הליגה נכנס/ת מ־Summary אל `/leagues/[leagueId]/members`, רואה תור
+  מצומצם של בקשות והיסטוריית הוכחות, וצופה בתמונה רק דרך אותו signed access
+  קצר. אישור יוצר או מפעיל חברות ומעדכן את הבקשה באותה transaction; דחייה
+  דורשת סיבה בטוחה. שליחה חוזרת של אותה החלטה אידמפוטנטית ונרשמת פעם אחת.
+
+Slice 3 מסתיים בבקשת `pending_approval` ובהוכחת Demo פרטית. Slice 4 ממשיך בתור
+מנהל, צפייה מורשית, approve/reject וחברות פעילה. PR #4 מוסר את שני ה־Slices;
+אין קיצור דרך דרך כתיבה ישירה לטבלאות או ל־Storage.
+
 ### Mailpit
 
 Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מופיעה בשדה `MAILPIT_URL`
@@ -106,9 +151,11 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Redirect URL: `http://localhost:3000/auth/confirm`
 - Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
+- Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי, ולכן Preview עובד רק אחרי
-הוספת הכתובת המדויקת שלו ל־allowlist.
+טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של PR #4
+מגדירה `NEXT_PUBLIC_APP_URL` ל־branch alias היציב, וה־alias המדויק מופיע
+ב־allowlist; `Site URL` נשאר כתובת ה־Production.
 
 ## Migrations וטיפוסים
 

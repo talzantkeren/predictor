@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-import { registerConfirmedUser } from "./support/local-auth";
+import {
+  fillPasswordWithoutReportValue,
+  registerConfirmedUser,
+} from "./support/local-auth";
 
 test.describe("league creation and isolation", () => {
   test("creates an atomic Demo league and hides it from another user", async ({
@@ -9,7 +12,7 @@ test.describe("league creation and isolation", () => {
     request,
   }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const password = "Predictor123!";
+    const password = `Aa1!${crypto.randomUUID()}`;
     const leagueName = `ליגת Slice 2 ${suffix}`;
     const first = await registerConfirmedUser({
       browser,
@@ -92,10 +95,12 @@ test.describe("league creation and isolation", () => {
     // after login, not fall back to the dashboard.
     const returning = await browser.newContext();
     const returningPage = await returning.newPage();
-    await returningPage.goto(`/leagues/${leagueId}`);
+    await returningPage.goto(
+      new URL(`/leagues/${leagueId}`, first.page.url()).toString(),
+    );
     await expect(returningPage).toHaveURL(/\/login\?next=/);
     await returningPage.getByLabel("כתובת אימייל").fill(`league-owner-${suffix}@example.com`);
-    await returningPage.getByLabel("סיסמה").fill(password);
+    await fillPasswordWithoutReportValue(returningPage, "סיסמה", password);
     await returningPage.getByRole("button", { name: "התחברות" }).click();
     await expect(returningPage).toHaveURL(new RegExp(`/leagues/${leagueId}$`));
     await expect(returningPage.getByRole("heading", { name: leagueName })).toBeVisible();
