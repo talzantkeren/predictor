@@ -185,10 +185,11 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
+- Redirect URL: `https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app/**`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של PR #4
-מגדירה `NEXT_PUBLIC_APP_URL` ל־branch alias היציב, וה־alias המדויק מופיע
-ב־allowlist; `Site URL` נשאר כתובת ה־Production.
+טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבות ה־Preview של PR #4 ו־PR
+#5 מגדירות `NEXT_PUBLIC_APP_URL` ל־branch alias היציב שלהן, וה־aliases המדויקים
+מופיעים ב־allowlist; `Site URL` נשאר כתובת ה־Production.
 
 ## Migrations וטיפוסים
 
