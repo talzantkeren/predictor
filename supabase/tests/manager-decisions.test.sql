@@ -160,6 +160,20 @@ select throws_ok(
   'P0001', 'FORBIDDEN',
   'another league manager cannot approve the request'
 );
+select throws_ok(
+  format('select * from public.reject_join_request(%L::uuid, %L)',
+    (select reject_request_id from decision_fixture), 'דחייה לא מורשית'),
+  'P0001', 'FORBIDDEN',
+  'another league manager cannot reject the request'
+);
+
+select pg_temp.set_actor('a2000000-0000-4000-8000-000000000002');
+select throws_ok(
+  format('select * from public.reject_join_request(%L::uuid, %L)',
+    (select reject_request_id from decision_fixture), 'דחייה לא מורשית'),
+  'P0001', 'FORBIDDEN',
+  'an ordinary authenticated requester cannot reject another request'
+);
 
 insert into public.join_requests (id, league_id, user_id, status)
 values (
@@ -257,6 +271,37 @@ select is(
      and user_id = 'a3000000-0000-4000-8000-000000000003'),
   0,
   'rejection does not create membership'
+);
+
+select throws_ok(
+  format('select * from public.approve_join_request(%L::uuid)',
+    (select reject_request_id from decision_fixture)),
+  'P0001', 'STATE_CONFLICT',
+  'an already rejected request cannot be approved by replay or a stale UI'
+);
+select throws_ok(
+  format('select * from public.reject_join_request(%L::uuid, %L)',
+    (select approve_request_id from decision_fixture), 'הכרעה סותרת'),
+  'P0001', 'STATE_CONFLICT',
+  'an already approved request cannot be rejected by replay or a stale UI'
+);
+select results_eq(
+  $$select request.user_id::text, request.status::text,
+           count(member.id)::integer
+    from public.join_requests as request
+    left join public.league_members as member
+      on member.league_id = request.league_id
+     and member.user_id = request.user_id
+    where request.id in (
+      (select approve_request_id from decision_fixture),
+      (select reject_request_id from decision_fixture)
+    )
+    group by request.user_id, request.status
+    order by request.user_id$$,
+  $$values
+    ('a2000000-0000-4000-8000-000000000002'::text, 'approved'::text, 1),
+    ('a3000000-0000-4000-8000-000000000003'::text, 'rejected'::text, 0)$$,
+  'cross-terminal replays preserve one approved membership and no rejected membership'
 );
 
 select pg_temp.set_actor('a3000000-0000-4000-8000-000000000003');

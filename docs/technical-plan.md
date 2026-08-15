@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.6 |
+| גרסה | 2.7 |
 | תאריך עדכון | 15 באוגוסט 2026 |
 | סטטוס | Ready for implementation |
 | דדליין | 6 בספטמבר 2026 |
@@ -12,6 +12,12 @@
 מסמך זה מתרגם את [`product.md`](./product.md) ואת [`architecture.md`](./architecture.md) לתכנית מימוש שאפשר לבצע לפי סדר. הוא מכסה את מבנה התיקיות, הקומפוננטות, בסיס הנתונים, CRUD, פעולות שרת, APIs, state, validation, שגיאות, UX, בדיקות, פריסה ותוצרי הקורס.
 
 זה אינו מסמך ארכיטקטורה נוסף. אם נדרש שינוי גבול מערכת, טכנולוגיה, מודל נתונים מהותי או חוק עסקי — מעדכנים קודם את המסמך הקנוני המתאים.
+
+**החלטת גבול מאושרת — 15 באוגוסט 2026:** בהתאם לחוזה B26, Slice 3 מסתיים
+בבקשת `pending_approval` ובהוכחת Demo פרטית. Slice 4 כולל את תור המנהל, הצפייה
+המורשית בהוכחה, approve/reject ויצירת חברות פעילה. PR #4 מוסר את שני ה־Slices.
+תחזוקת חברות כללית לאחר ההצטרפות, כגון הסרה והפעלה מחדש, היא היקף עתידי ואינה
+חלק מתנאי הסיום של Slice 4.
 
 ## 2. מצב התחלתי ושערי התחלה
 
@@ -212,10 +218,11 @@ DEMO_MODE=true
 | 002 `identity` | `profiles`, trigger פרופיל ו־RLS | פרופיל נוצר בהרשמה; משתמש קורא/מעדכן רק את עצמו |
 | 003 `sports_core` | competitions, seasons, teams, matches, indexes ו־RLS; prerequisite שמגיע ב־Slice 2 | catalog עונה זמין בלי fixtures מומצאים |
 | 004 `leagues` | leagues, scoring rules, prize rules, minimal creator membership, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
-| 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable; migration המשך מוסיפה תור החלטות ו־approve/reject | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי, החלטה אטומית ו־IDOR חסום |
-| 006 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
-| 007 `operations_and_ai` | `system_admins`, analyses ו־sync runs; מרחיבה את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | הרשאות, observability ו־cleanup מוגדרים |
-| 008 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
+| 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
+| 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
+| 007 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
+| 008 `operations_and_ai` | `system_admins`, analyses ו־sync runs; מרחיבה את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | הרשאות, observability ו־cleanup מוגדרים |
+| 009 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -452,7 +459,7 @@ DEMO_MODE=true
 | Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
 | Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
 | Invite | `createInvite` | manager; bootstrap עם public ID + Fragment secret | אין edit token | `revokeInvite` |
-| Join request | `submitJoinRequest` | owner/manager | approve/reject ב־Slice 3 דרך RPC מנהל בלבד | אין delete |
+| Join request | `submitJoinRequest` | owner/manager | approve/reject ב־Slice 4 דרך RPC מנהל בלבד | אין delete |
 | Proof | upload Handler | signed access אחרי AuthZ | אין overwrite | retention job בלבד |
 | Membership | approval RPC | same league/manager | activate/remove | status `removed` |
 | Match | provider/admin | authenticated scoped | provider/admin override | cancel, לא hard delete |
@@ -517,7 +524,7 @@ DEMO_MODE=true
 
 1. session.
 2. lookup metadata לפי proof id.
-3. AuthZ ב־Slice 3: uploader או manager של הליגה המדויקת. מנהל מערכת אינו חריג לפני שמודל התמיכה ימומש.
+3. AuthZ ב־Slices 3–4: uploader או manager של הליגה המדויקת. מנהל מערכת אינו חריג לפני שמודל התמיכה ימומש.
 4. השער הקבוע גוזר את הנתיב מתוך IDs שמקורם ב־DB ויוצר signed URL ל־60 שניות. ה־path אינו מופיע בטבלאות/DTOs ציבוריים או בתגובת upload, אך לאחר AuthZ הוא בהכרח נכלל ב־`Location` של Supabase ונראה למחזיק/ת ה־URL הקצר; אין לרשום אותו בלוגים או artifacts.
 5. `Cache-Control: private, no-store`.
 
@@ -724,7 +731,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ### Slice 3 — Invite, בקשה ו־upload מאובטח
 
-**תוצר:** קישור הזמנה, בקשה, upload Demo פרטי, תור מנהל והחלטה אטומית.
+**תוצר:** קישור הזמנה, בקשה, upload Demo פרטי וסטטוס `pending_approval`.
 
 - token אקראי של 32 bytes, `public_id` אקראי נפרד, שמירת hash בלבד, תוקף קבוע של שבעה ימים ו־rotation של active link יחיד; יצירה ראשונה פותחת ליגה `draft` אטומית.
 - הקישור הוא public-ID path עם Fragment secret. bootstrap בדפדפן מסיר את
@@ -738,20 +745,23 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - rate limit durable של 5 ניסיונות למשתמש+בקשה ב־15 דקות ו־20 למשתמש ב־24 שעות, עם audit לא־רגיש ופיצוי orphan.
 - signed access route ל־60 שניות עבור uploader או manager של אותה ליגה בלבד.
 - unit/DB/Playwright tests לקבצים, race/retry, Data API denial והרשאות cross-user/cross-league.
-- תור מנהל מוגבל ומצומצם, צפייה דרך signed access הקיים ו־approve/reject
-  אידמפוטנטיים; אישור מפעיל חברות ודחייה שומרת סיבה בטוחה ו־audit אטומי.
+- תור ההחלטות, approve/reject ויצירת חברות אינם חלק מ־Slice 3 ונמסרים ב־Slice 4.
 
-**Exit:** rotate/revoke/expired/idempotent submit עובדים; SVG/exe מוסווים ו־oversize נדחים, ו־payload נלווה לתמונה תקינה מנוטרל כי רק פלט ה־decode/re-encode נשמר; retry בטוח; IDOR proof ו־Storage CRUD ישיר נכשלים; מנהל מדויק יכול לאשר או לדחות, replay אינו מכפיל חברות או audit, ומנהל זר נדחה; אין bucket ציבורי או raw object נשמר.
+**Exit:** rotate/revoke/expired/idempotent submit עובדים; SVG/exe מוסווים ו־oversize נדחים, ו־payload נלווה לתמונה תקינה מנוטרל כי רק פלט ה־decode/re-encode נשמר; retry בטוח; IDOR proof ו־Storage CRUD ישיר נכשלים; אין bucket ציבורי או raw object נשמר.
 
-### Slice 4 — תחזוקת חברות
+### Slice 4 — החלטת מנהל וחברות
 
-**תוצר:** פעולות תחזוקה בחברות לאחר ההצטרפות, מעבר לזרימת האישור שנמסרה ב־Slice 3.
+**תוצר:** manager queue, צפייה מורשית, approve/reject וחברות פעילה.
 
-- הסרה והפעלה מחודשת של חברות קיימת דרך פעולות מנהל מוגנות, לפי צורכי ה־MVP.
-- concurrency tests.
-- E2E לתחזוקת חברים.
+- תור מנהל מוגבל ומצומצם עם קישור ברור ממסך הליגה ו־signed access הקיים להוכחה.
+- RPCs אטומיים ואידמפוטנטיים ל־approve/reject; אישור יוצר או מפעיל חברות יחידה,
+  ודחייה שומרת סיבה בטוחה ו־audit יחיד.
+- בדיקות הרשאה שליליות למנהל ליגה זרה ולמשתמש רגיל, ובדיקות replay בין מצבים
+  סופיים כדי למנוע approve אחרי reject או reject אחרי approve.
+- E2E לזרימת ההחלטה ולחברות הפעילה.
 
-**Exit:** הסרה/הפעלה מחודשת שומרות היסטוריה; מנהל ליגה זרה נדחה.
+**Exit:** אישור כפול מייצר חבר אחד; החלטה סופית אינה מתהפכת; מנהל ליגה זרה
+ומשתמש רגיל נדחים; דחייה אינה יוצרת חברות.
 
 ### Slice 5 — משחקים ידניים, ניחושים ונעילה
 
@@ -889,10 +899,11 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-המשימה הפעילה היא סגירת **Slice 3**: invite עם public-ID path ו־Fragment secret,
-בקשת הצטרפות, אסמכתאת Demo פרטית ותור החלטות מנהל לפי חוזי האבטחה בסעיפים 7,
-10 ו־15. אישור/דחייה ויצירת החברות נכללים בזרימת הקבלה המלאה; ניהול חברות כללי
-לאחר ההצטרפות נשאר ב־Slice 4.
+המשימה הפעילה היא סגירת **Slices 3–4** ב־PR #4. Slice 3 כולל invite עם
+public-ID path ו־Fragment secret, בקשת הצטרפות ואסמכתאת Demo פרטית עד
+`pending_approval`. Slice 4 כולל את תור החלטות המנהל, צפייה מורשית, approve/reject
+ויצירת חברות פעילה לפי חוזי האבטחה בסעיפים 7, 10 ו־15. תחזוקת חברות כללית לאחר
+ההצטרפות נשארת היקף עתידי ואינה מגדירה מחדש את תנאי הסיום של Slice 4.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

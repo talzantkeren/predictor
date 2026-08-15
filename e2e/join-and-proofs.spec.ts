@@ -318,7 +318,7 @@ async function revokeActiveInviteForCleanup(
   }
 }
 
-test.describe("Slice 3 invite, join request, and private Demo proof", () => {
+test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
   test("handles an invite that expires between render and submission", async ({
     browser,
     page,

@@ -5,13 +5,13 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Slice 3 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
+- Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
 זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
 הקשר ההזמנה לאחר אישור ורענון. השלמת החלטת המנהל נדרשת להיבדק ידנית שוב לאחר כל
-שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slice 3.
+שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slices 3–4.
 
 ## דרישות
 
@@ -95,7 +95,7 @@ Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
 `2026/27` בלבד. teams, fixtures, scores ו־provider IDs נשארים ריקים עד למסלול
 הידני/המאומת ב־slice הייעודי.
 
-## זרימת Slice 3: הזמנה והוכחת Demo
+## זרימות Slices 3–4: הזמנה, הוכחת Demo והחלטת מנהל
 
 - מנהל הליגה נכנס ל־`/leagues/[leagueId]/settings`, יוצר קישור הזמנה ומעתיק
   אותו מהתצוגה החד־פעמית. הקישור תקף שבעה ימים; refresh מציג רק metadata בטוח,
@@ -123,13 +123,14 @@ Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
   signed access של עד 60 שניות. כתיבה ישירה ל־Data API ו־CRUD ישיר ב־Storage
   אינם מורשים; קריאת עמודות סיכום בטוחות בלבד מוגנת ב־RLS, ולעולם אינה חושפת
   token hash, נתיב Storage, digest או מפתח idempotency.
-- מנהל/ת הליגה נכנס/ת מ־Summary אל `/leagues/[leagueId]/members`, רואה תור
+- ב־Slice 4 מנהל/ת הליגה נכנס/ת מ־Summary אל `/leagues/[leagueId]/members`, רואה תור
   מצומצם של בקשות והיסטוריית הוכחות, וצופה בתמונה רק דרך אותו signed access
   קצר. אישור יוצר או מפעיל חברות ומעדכן את הבקשה באותה transaction; דחייה
   דורשת סיבה בטוחה. שליחה חוזרת של אותה החלטה אידמפוטנטית ונרשמת פעם אחת.
 
-Slice 3 כולל את זרימת ההצטרפות המלאה עד החלטת מנהל וחברות פעילה. אין קיצור דרך
-דרך כתיבה ישירה לטבלאות או ל־Storage.
+Slice 3 מסתיים בבקשת `pending_approval` ובהוכחת Demo פרטית. Slice 4 ממשיך בתור
+מנהל, צפייה מורשית, approve/reject וחברות פעילה. PR #4 מוסר את שני ה־Slices;
+אין קיצור דרך דרך כתיבה ישירה לטבלאות או ל־Storage.
 
 ### Mailpit
 
@@ -152,7 +153,7 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של ענף Slice 3
+טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של PR #4
 מגדירה `NEXT_PUBLIC_APP_URL` ל־branch alias היציב, וה־alias המדויק מופיע
 ב־allowlist; `Site URL` נשאר כתובת ה־Production.
 

@@ -547,7 +547,7 @@ select ok(
 select ok(
   to_regprocedure('public.approve_join_request(uuid)') is not null
   and to_regprocedure('public.reject_join_request(uuid,text)') is not null,
-  'hosted Slice 3 includes the manager approval and rejection RPCs'
+  'the hosted Slice 4 manager workflow includes approval and rejection RPCs'
 );
 
 -- ===== Test actors and helpers; raw tokens remain stack-local only =====
