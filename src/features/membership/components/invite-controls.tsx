@@ -13,6 +13,7 @@ import {
   getInviteEffectiveStatus,
   isInviteEffectivelyActive,
 } from "@/features/membership/display";
+import { buildInviteShareUrl } from "@/features/membership/invite-fragment";
 import type { InviteMetadata } from "@/features/membership/types";
 
 export function InviteControls({
@@ -42,12 +43,14 @@ export function InviteControls({
   const inviteActive =
     Boolean(invite && isInviteEffectivelyActive(invite)) &&
     revokeState.status !== "success";
-  const relativeLink = createState.rawToken
-    ? `/invite/${createState.rawToken}`
-    : undefined;
-  const shareableLink = relativeLink
-    ? new URL(relativeLink, applicationOrigin).toString()
-    : undefined;
+  const shareableLink =
+    createState.publicId && createState.rawToken
+      ? buildInviteShareUrl(
+          applicationOrigin,
+          createState.publicId,
+          createState.rawToken,
+        )
+      : undefined;
 
   async function copyLink() {
     if (!shareableLink) {

@@ -9,7 +9,7 @@ import {
   submitJoinRequestAction,
 } from "@/features/membership/actions";
 
-export function JoinRequestForm({ token }: { token: string }) {
+export function JoinRequestForm({ publicId }: { publicId: string }) {
   const router = useRouter();
   const initialState: MembershipActionState = { status: "idle" };
   const [state, formAction, pending] = useActionState(
@@ -25,7 +25,7 @@ export function JoinRequestForm({ token }: { token: string }) {
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="publicId" value={publicId} />
       {state.message ? (
         <FormMessage kind={state.status === "success" ? "success" : "error"}>
           {state.message}

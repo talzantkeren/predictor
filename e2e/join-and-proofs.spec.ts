@@ -73,11 +73,14 @@ async function callAuthenticatedRpc(
 }
 
 function isInviteResultRow(value: unknown): value is {
+  public_id: string;
   raw_token: string;
 } {
   return (
     typeof value === "object" &&
     value !== null &&
+    "public_id" in value &&
+    typeof value.public_id === "string" &&
     "raw_token" in value &&
     typeof value.raw_token === "string"
   );
@@ -164,13 +167,46 @@ async function assertLocatorCount(locator: Locator, expected: number) {
 }
 
 async function navigateToInvite(page: Page, url: string) {
+  const rawTokenMatch = new URL(url).hash.match(
+    /^#invite=([A-Za-z0-9_-]{43})$/,
+  );
+  if (!rawTokenMatch) {
+    throw new Error("Sensitive invite URL was malformed.");
+  }
+
+  const rawToken = rawTokenMatch[1];
+  let rawTokenReachedNetwork = false;
+  const observeRequest = (request: {
+    headers(): Record<string, string>;
+    postData(): string | null;
+    url(): string;
+  }) => {
+    if (
+      request.url().includes(rawToken) ||
+      request.postData()?.includes(rawToken) ||
+      Object.values(request.headers()).some((value) =>
+        value.includes(rawToken),
+      )
+    ) {
+      rawTokenReachedNetwork = true;
+    }
+  };
+  page.on("request", observeRequest);
+
   try {
     // Playwright serializes page.goto targets into its HTML step report.
     // Navigate inside the browser so the invite bearer is never a step title.
     await page.evaluate((target) => window.location.assign(target), url);
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForFunction(() => window.location.hash === "");
   } catch {
     throw new Error("Sensitive invite navigation failed.");
+  } finally {
+    page.off("request", observeRequest);
+  }
+
+  if (rawTokenReachedNetwork) {
+    throw new Error("Invite bearer reached the network boundary.");
   }
 }
 
@@ -341,9 +377,12 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
     const firstInvite = await manager.page.getByLabel("הקישור החדש").inputValue();
     const firstInviteUrl = new URL(firstInvite);
     expect(firstInviteUrl.origin).toBe("http://localhost:3000");
-    expect(/^\/invite\/[A-Za-z0-9_-]{43}$/.test(firstInviteUrl.pathname)).toBe(
+    expect(/^\/invite\/[0-9a-f-]{36}$/.test(firstInviteUrl.pathname)).toBe(
       true,
     );
+    expect(/^#invite=[A-Za-z0-9_-]{43}$/.test(firstInviteUrl.hash)).toBe(true);
+    const firstInvitePublicId = firstInviteUrl.pathname.split("/").at(-1);
+    const firstInviteToken = firstInviteUrl.hash.replace(/^#invite=/, "");
 
     await manager.page.getByRole("button", { name: "העתקת הקישור" }).click();
     await assertVisible(manager.page.getByText("הקישור הועתק ללוח."));
@@ -379,31 +418,37 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
     const concurrentRotationPayloads = (await Promise.all(
       concurrentRotations.map((response) => response.json()),
     )) as unknown[];
-    const concurrentTokens = concurrentRotationPayloads.map((payload) => {
+    const concurrentInvites = concurrentRotationPayloads.map((payload) => {
       const rows = Array.isArray(payload) ? payload : [];
       const row = rows.length === 1 ? rows[0] : null;
       expect(isInviteResultRow(row)).toBe(true);
-      return (row as { raw_token: string }).raw_token;
+      return row as { public_id: string; raw_token: string };
     });
-    expect(new Set(concurrentTokens).size).toBe(2);
+    expect(new Set(concurrentInvites.map((invite) => invite.raw_token)).size).toBe(2);
+    expect(new Set(concurrentInvites.map((invite) => invite.public_id)).size).toBe(2);
     expect(
-      concurrentTokens.every((token) => /^[A-Za-z0-9_-]{43}$/.test(token)),
+      concurrentInvites.every((invite) =>
+        /^[A-Za-z0-9_-]{43}$/.test(invite.raw_token),
+      ),
     ).toBe(true);
 
     const { publishableKey, url: supabaseUrl } =
       getLocalSupabaseConfiguration();
     const concurrentTokenHashes = await Promise.all(
-      concurrentTokens.map((token) => hashInviteToken(token)),
+      concurrentInvites.map((invite) => hashInviteToken(invite.raw_token)),
     );
     const concurrentResolutions = await Promise.all(
-      concurrentTokenHashes.map((tokenHash) =>
+      concurrentTokenHashes.map((tokenHash, index) =>
         fetchSensitiveUrl(`${supabaseUrl}/rest/v1/rpc/resolve_invite`, {
           method: "POST",
           headers: {
             apikey: publishableKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ p_token_hash: tokenHash }),
+          body: JSON.stringify({
+            p_public_id: concurrentInvites[index]?.public_id,
+            p_token_hash: tokenHash,
+          }),
         }),
       ),
     );
@@ -436,7 +481,10 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
       .getByRole("button", { name: "אישור החלפת הקישור" })
       .click();
     const secondInvite = await manager.page.getByLabel("הקישור החדש").inputValue();
-    const secondInvitePath = new URL(secondInvite).pathname;
+    const secondInviteUrl = new URL(secondInvite);
+    const secondInvitePath = secondInviteUrl.pathname;
+    const secondInvitePublicId = secondInvitePath.split("/").at(-1);
+    const secondInviteToken = secondInviteUrl.hash.replace(/^#invite=/, "");
     expect(secondInvite !== firstInvite).toBe(true);
 
     await navigateToInvite(page, firstInvite);
@@ -485,26 +533,36 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
       true,
     );
 
+    // A valid path-scoped cookie may already exist when the same share link is
+    // opened again. The rendered invite must still scrub the raw fragment.
+    await navigateToInvite(requester.page, secondInvite);
+    await assertVisible(
+      requester.page.getByRole("heading", { name: leagueName }),
+    );
+
     // Two tabs submitting the same invite must converge on one request. A
     // subsequent submission with an older token remains an idempotent replay.
     const requesterAccessToken = await signInForDataApi(
       requesterEmail,
       password,
     );
-    const activeInviteToken = secondInvitePath.split("/").at(-1);
     expect(
-      typeof activeInviteToken === "string" &&
-        /^[A-Za-z0-9_-]{43}$/.test(activeInviteToken),
+      typeof secondInvitePublicId === "string" &&
+        /^[0-9a-f-]{36}$/.test(secondInvitePublicId) &&
+        /^[A-Za-z0-9_-]{43}$/.test(secondInviteToken),
     ).toBe(true);
-    const submitJoinRequest = async (token: string) =>
+    const submitJoinRequest = async (publicId: string, token: string) =>
       callAuthenticatedRpc(
         requesterAccessToken,
         "submit_join_request",
-        { p_token_hash: await hashInviteToken(token) },
+        {
+          p_public_id: publicId,
+          p_token_hash: await hashInviteToken(token),
+        },
       );
     const concurrentSubmissions = await Promise.all([
-      submitJoinRequest(activeInviteToken as string),
-      submitJoinRequest(activeInviteToken as string),
+      submitJoinRequest(secondInvitePublicId as string, secondInviteToken),
+      submitJoinRequest(secondInvitePublicId as string, secondInviteToken),
     ]);
     expect(concurrentSubmissions.every((response) => response.ok)).toBe(true);
     const concurrentSubmissionPayloads = (await Promise.all(
@@ -518,8 +576,10 @@ test.describe("Slice 3 invite, join request, and private Demo proof", () => {
     });
     expect(new Set(concurrentRequestIds).size).toBe(1);
 
-    const firstInviteToken = firstInviteUrl.pathname.split("/").at(-1);
-    const oldTokenReplay = await submitJoinRequest(firstInviteToken as string);
+    const oldTokenReplay = await submitJoinRequest(
+      firstInvitePublicId as string,
+      firstInviteToken,
+    );
     expect(oldTokenReplay.ok).toBe(true);
     const oldTokenReplayPayload = (await oldTokenReplay.json()) as unknown;
     const oldTokenReplayRows = Array.isArray(oldTokenReplayPayload)

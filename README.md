@@ -96,11 +96,13 @@ Auth, גם עבור קריאה ישירה שאינה מגיעה מה־UI.
 - מנהל הליגה נכנס ל־`/leagues/[leagueId]/settings`, יוצר קישור הזמנה ומעתיק
   אותו מהתצוגה החד־פעמית. הקישור תקף שבעה ימים; refresh מציג רק metadata בטוח,
   ו־rotation מבטל אטומית את הקישור הקודם. revoke חוסם בקשות חדשות.
-- אורח פותח `/invite/[token]`, רואה פרטי ליגה מצומצמים ואזהרת Demo, ומשלים
-  login/register תוך חזרה לאותו נתיב פנימי מאומת. בהרשמה היעד נשמר ב־cookie
-  HttpOnly קצר ומוגבל ל־callback; קישור אישור ה־Email עצמו אינו כולל invite token.
-  שרת Next מאמת את הצורה המדויקת ומעביר ל־Supabase Data API רק SHA-256 hash,
-  לא את ה־token הגולמי.
+- אורח פותח `/invite/[publicId]#invite=[secret]`. ה־Fragment נשאר בדפדפן ואינו
+  נשלח כחלק מבקשת HTTP או נתיב Vercel; ה־bootstrap מסיר אותו מיד מהכתובת,
+  מחשב SHA-256 בדפדפן ושולח ל־`/api/invites/[publicId]/exchange` רק digest.
+  הצלחה יוצרת cookie HttpOnly מוגבל לאותו נתיב ול־30 דקות. אז מוצגים פרטי ליגה
+  מצומצמים ואזהרת Demo, ו־login/register חוזרים לנתיב הציבורי בלבד. בהרשמה
+  היעד נשמר ב־cookie נפרד וקצר המוגבל ל־callback; קישור אישור ה־Email אינו
+  כולל secret. Supabase מקבל רק public ID ו־SHA-256 hash תואמים.
   בקשה חדשה נוצרת כ־
   `pending_proof`; refresh/double-submit מחזירים את אותה בקשה.
 - המשתמש מעלה רק תמונה סינתטית מסוג JPEG/PNG/WebP. זהו דמו בלבד — אין להעביר

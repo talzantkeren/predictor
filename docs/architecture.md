@@ -133,6 +133,13 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 
 ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת token. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
 
+גישת invite נפרדת מ־Auth session: הדפדפן קורא secret רק מ־URL Fragment,
+מחשב SHA-256 באמצעות Web Crypto ומחליף אותו דרך Route Handler same-origin. השרת
+מציב digest מאומת ב־cookie HttpOnly, `SameSite=Lax`, מוגבל לנתיב
+`/invite/[publicId]` ול־30 דקות. ה־cookie הוא credential קצר־חיים ולא מקור
+הרשאה בפני עצמו; כל resolve/submit בודק מחדש את זוג `publicId`+digest, מצב
+ההזמנה, תפוגה וזכאות במסד.
+
 אין Auth Context או Redux גלובלי. Server Components הם מקור האמת ל־session, ו־Client Components נשארים בגבול הטופס האינטראקטיבי בלבד. OAuth ותמונת פרופיל אינם חלק מ־Slice 1.
 
 ### 7.3 תפקידים
@@ -171,10 +178,14 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 - `predictions (league_id, match_id, user_id)` — unique.
 - `prize_rules (league_id, position)` — unique.
 - `matches (external_provider, external_id)` — unique כאשר מזהה חיצוני קיים.
-- `invite_links.token_hash` — unique; token גולמי אינו נשמר.
-- resolve/submit מקבלים ב־Data API רק SHA-256 digest שאומת בשרת Next.js; ה־token
-  הגולמי נשאר בגבול הנתיב/Action ואינו מועבר ל־PostgREST. פונקציית DB מאמתת גם
-  היא digest בן 64 תווי hex לפני lookup.
+- `invite_links.public_id` ו־`invite_links.token_hash` — כל אחד unique; secret
+  גולמי אינו נשמר, ושניהם נדרשים יחד כדי לפתור הזמנה.
+- הקישור הציבורי הוא `/invite/[publicId]#invite=[secret]`. לפי סמנטיקת URI,
+  ה־Fragment מופרד לפני dereference ולכן Vercel מקבל רק נתיב עם UUID ציבורי.
+  Client Component מסיר אותו מיד עם `history.replaceState`, מחשב SHA-256
+  בדפדפן ושולח ל־exchange רק digest קנוני. resolve/submit מעבירים ל־Data API
+  `p_public_id` ו־`p_token_hash`; ה־DB מאמת digest בן 64 תווי hex ואת ההתאמה
+  לאותה רשומת הזמנה לפני lookup.
 - `join_requests` — partial unique על `(league_id, user_id)` כאשר הסטטוס פעיל/מאושר, כדי לאפשר בקשה חדשה רק אחרי דחייה.
 - `ai_match_analyses (match_id)` — unique ב־MVP; `data_as_of` ו־`result_version` קובעים טריות.
 
@@ -289,7 +300,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `system_admins` | ללא גישת משתמש רגיל; ניהול שרת/DB בלבד |
 | ספורט גלובלי | authenticated read; כתיבה למנהל מערכת/secret בלבד |
 | `leagues`, חוקים ופרסים | חברים רואים; רק מנהל הליגה משנה ובכפוף לסטטוס |
-| `invite_links` | מנהל הליגה רואה ומנהל; token נפתר בשרת לפי hash |
+| `invite_links` | אין גישה ישירה; מנהל מקבל metadata בטוח, ופתרון דורש public ID ו־hash תואמים דרך RPC מצומצם |
 | `join_requests` | המשתמש רואה את שלו; מנהל רואה בקשות של הליגה שלו |
 | `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
 | `league_members` | חברי אותה ליגה רואים חברות פעילה; שינוי דרך פעולות ניהול מוגנות |

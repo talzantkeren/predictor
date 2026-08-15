@@ -75,6 +75,7 @@ select results_eq(
     ('audit_logs', 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
     ('audit_logs', 'created_at', 'timestamptz', 'NO', 'now()'),
     ('invite_links', 'id', 'uuid', 'NO', 'extensions.gen_random_uuid()'),
+    ('invite_links', 'public_id', 'uuid', 'NO', 'extensions.gen_random_uuid()'),
     ('invite_links', 'league_id', 'uuid', 'NO', null::text),
     ('invite_links', 'token_hash', 'text', 'NO', null::text),
     ('invite_links', 'status', 'invite_status', 'NO', '''active''::invite_status'),
@@ -222,6 +223,7 @@ select results_eq(
     ('invite_links', 'invite_links_league_created_idx'),
     ('invite_links', 'invite_links_one_active_per_league_idx'),
     ('invite_links', 'invite_links_pkey'),
+    ('invite_links', 'invite_links_public_id_key'),
     ('invite_links', 'invite_links_token_hash_key'),
     ('join_requests', 'join_requests_league_status_created_idx'),
     ('join_requests', 'join_requests_one_active_per_user_league_idx'),
@@ -363,14 +365,14 @@ select is(
 );
 
 select is(
-  pg_get_function_arguments('public.resolve_invite(text)'::regprocedure),
-  'p_token_hash text',
-  'invite resolution accepts only a named token digest argument'
+  pg_get_function_arguments('public.resolve_invite(uuid,text)'::regprocedure),
+  'p_public_id uuid, p_token_hash text',
+  'invite resolution binds a public identifier to a named token digest'
 );
 select is(
-  pg_get_function_arguments('public.submit_join_request(text)'::regprocedure),
-  'p_token_hash text',
-  'join submission accepts only a named token digest argument'
+  pg_get_function_arguments('public.submit_join_request(uuid,text)'::regprocedure),
+  'p_public_id uuid, p_token_hash text',
+  'join submission binds a public identifier to a named token digest'
 );
 select ok(
   to_regprocedure('private.invite_token_is_valid(text)') is null
@@ -386,20 +388,20 @@ select ok(
 );
 select ok(
   to_regprocedure(
-    'private.join_request_eligibility(text,uuid,timestamptz,boolean)'
+    'private.join_request_eligibility(uuid,text,uuid,timestamptz,boolean)'
   ) is not null
   and not has_function_privilege(
     'authenticated',
-    'private.join_request_eligibility(text,uuid,timestamptz,boolean)',
+    'private.join_request_eligibility(uuid,text,uuid,timestamptz,boolean)',
     'EXECUTE'
   )
   and position(
     'private.join_request_eligibility' in
-    pg_get_functiondef('public.resolve_invite(text)'::regprocedure)
+    pg_get_functiondef('public.resolve_invite(uuid,text)'::regprocedure)
   ) > 0
   and position(
     'private.join_request_eligibility' in
-    pg_get_functiondef('public.submit_join_request(text)'::regprocedure)
+    pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
   ) > 0,
   'one private admission rule is reused by resolution and submission'
 );
@@ -425,9 +427,9 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('anon', 'public.resolve_invite(text)', 'EXECUTE')
+  has_function_privilege('anon', 'public.resolve_invite(uuid,text)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.create_or_rotate_invite(uuid)', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.submit_join_request(text)', 'EXECUTE'),
+  and not has_function_privilege('anon', 'public.submit_join_request(uuid,text)', 'EXECUTE'),
   'anon can execute only the safe invite resolver'
 );
 select results_eq(
@@ -467,9 +469,9 @@ select results_eq(
   'anonymous execution is limited to the safe invite resolver'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.resolve_invite(text)', 'EXECUTE')
+  has_function_privilege('authenticated', 'public.resolve_invite(uuid,text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.create_or_rotate_invite(uuid)', 'EXECUTE')
-  and has_function_privilege('authenticated', 'public.submit_join_request(text)', 'EXECUTE')
+  and has_function_privilege('authenticated', 'public.submit_join_request(uuid,text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.finalize_payment_proof(uuid,uuid,uuid,text,integer)', 'EXECUTE'),
   'authenticated can execute the intended user RPCs'
 );
@@ -657,6 +659,7 @@ create function pg_temp.create_invite_facts(
 )
 returns table (
   invite_id uuid,
+  public_id_format_valid boolean,
   token_format_valid boolean,
   expires_in_seven_days boolean
 )
@@ -664,18 +667,21 @@ language plpgsql
 as $$
 declare
   v_invite_id uuid;
+  v_public_id uuid;
   v_created_at timestamptz;
   v_expires_at timestamptz;
   v_raw_token text;
 begin
   perform pg_temp.set_actor(p_manager_id);
-  select created.invite_id, created.created_at, created.expires_at, created.raw_token
-    into v_invite_id, v_created_at, v_expires_at, v_raw_token
+  select created.invite_id, created.public_id, created.created_at,
+         created.expires_at, created.raw_token
+    into v_invite_id, v_public_id, v_created_at, v_expires_at, v_raw_token
     from public.create_or_rotate_invite(p_league_id) as created;
 
   return query
   select
     v_invite_id,
+    v_public_id is not null and v_public_id <> v_invite_id,
     v_raw_token ~ '^[A-Za-z0-9_-]{43}$',
     v_expires_at - v_created_at = interval '7 days';
 end;
@@ -688,32 +694,50 @@ create function pg_temp.rotation_visibility(
 returns table (
   old_available boolean,
   new_available boolean,
+  cross_pair_available boolean,
   active_count integer
 )
 language plpgsql
 as $$
 declare
+  v_old_public_id uuid;
+  v_new_public_id uuid;
   v_old_token text;
   v_new_token text;
   v_old_available boolean;
   v_new_available boolean;
+  v_cross_pair_available boolean;
 begin
   perform pg_temp.set_actor(p_manager_id);
-  select created.raw_token into v_old_token
+  select created.public_id, created.raw_token
+    into v_old_public_id, v_old_token
   from public.create_or_rotate_invite(p_league_id) as created;
-  select created.raw_token into v_new_token
+  select created.public_id, created.raw_token
+    into v_new_public_id, v_new_token
   from public.create_or_rotate_invite(p_league_id) as created;
 
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
   select resolved.available into v_old_available
-  from public.resolve_invite(pg_temp.hash_invite_for_rpc(v_old_token)) as resolved;
+  from public.resolve_invite(
+    v_old_public_id,
+    pg_temp.hash_invite_for_rpc(v_old_token)
+  ) as resolved;
   select resolved.available into v_new_available
-  from public.resolve_invite(pg_temp.hash_invite_for_rpc(v_new_token)) as resolved;
+  from public.resolve_invite(
+    v_new_public_id,
+    pg_temp.hash_invite_for_rpc(v_new_token)
+  ) as resolved;
+  select resolved.available into v_cross_pair_available
+  from public.resolve_invite(
+    v_new_public_id,
+    pg_temp.hash_invite_for_rpc(v_old_token)
+  ) as resolved;
 
   return query
   select
     v_old_available,
     v_new_available,
+    v_cross_pair_available,
     (select count(*)::integer
      from public.invite_links as invite
      where invite.league_id = p_league_id and invite.status = 'active');
@@ -809,23 +833,33 @@ language plpgsql
 as $$
 declare
   v_invite_id uuid;
+  v_public_id uuid;
   v_raw_token text;
   v_first_request_id uuid;
   v_second_request_id uuid;
   v_viewer_state text;
 begin
   perform pg_temp.set_actor(p_manager_id);
-  select created.invite_id, created.raw_token
-    into v_invite_id, v_raw_token
+  select created.invite_id, created.public_id, created.raw_token
+    into v_invite_id, v_public_id, v_raw_token
     from public.create_or_rotate_invite(p_league_id) as created;
 
   perform pg_temp.set_actor(p_requester_id);
   select submitted.request_id into v_first_request_id
-  from public.submit_join_request(pg_temp.hash_invite_for_rpc(v_raw_token)) as submitted;
+  from public.submit_join_request(
+    v_public_id,
+    pg_temp.hash_invite_for_rpc(v_raw_token)
+  ) as submitted;
   select submitted.request_id into v_second_request_id
-  from public.submit_join_request(pg_temp.hash_invite_for_rpc(v_raw_token)) as submitted;
+  from public.submit_join_request(
+    v_public_id,
+    pg_temp.hash_invite_for_rpc(v_raw_token)
+  ) as submitted;
   select resolved.viewer_state into v_viewer_state
-  from public.resolve_invite(pg_temp.hash_invite_for_rpc(v_raw_token)) as resolved;
+  from public.resolve_invite(
+    v_public_id,
+    pg_temp.hash_invite_for_rpc(v_raw_token)
+  ) as resolved;
 
   return query
   select v_invite_id, v_first_request_id, v_second_request_id, v_viewer_state;
@@ -842,15 +876,19 @@ language plpgsql
 as $$
 declare
   v_invite_id uuid;
+  v_public_id uuid;
   v_raw_token text;
 begin
   perform pg_temp.set_actor(p_manager_id);
-  select created.invite_id, created.raw_token
-    into v_invite_id, v_raw_token
+  select created.invite_id, created.public_id, created.raw_token
+    into v_invite_id, v_public_id, v_raw_token
   from public.create_or_rotate_invite(p_league_id) as created;
   perform public.revoke_invite(v_invite_id);
   perform pg_temp.set_actor(p_requester_id);
-  perform public.submit_join_request(pg_temp.hash_invite_for_rpc(v_raw_token));
+  perform public.submit_join_request(
+    v_public_id,
+    pg_temp.hash_invite_for_rpc(v_raw_token)
+  );
 end;
 $$;
 
@@ -1028,6 +1066,10 @@ from pg_temp.create_invite_facts(
 );
 
 select ok(
+  (select public_id_format_valid from slice3_invite_facts),
+  'invite creation returns a distinct random public identifier for the path'
+);
+select ok(
   (select token_format_valid from slice3_invite_facts),
   'the database generates a 32-byte unpadded base64url token'
 );
@@ -1073,13 +1115,13 @@ select throws_ok(
 );
 
 select results_eq(
-  $$select old_available, new_available, active_count
+  $$select old_available, new_available, cross_pair_available, active_count
     from pg_temp.rotation_visibility(
       '71000000-0000-4000-8000-000000000001',
       (select id from slice3_leagues where label = 'manager-a')
     )$$,
-  $$values (false, true, 1)$$,
-  'rotation atomically revokes the old token and leaves one active token'
+  $$values (false, true, false, 1)$$,
+  'rotation revokes the old pair, binds digest to public ID, and leaves one active invite'
 );
 
 select results_eq(
@@ -1222,19 +1264,28 @@ select results_eq(
 
 select results_eq(
   $$select available, league_name
-    from public.resolve_invite('malformed')$$,
+    from public.resolve_invite(
+      '26000000-0000-4000-8000-000000000099',
+      'malformed'
+    )$$,
   $$values (false, null::text)$$,
   'malformed invite digests return the same unavailable DTO without lookup data'
 );
 select results_eq(
   $$select available, league_name
-    from public.resolve_invite(repeat('A', 43))$$,
+    from public.resolve_invite(
+      '26000000-0000-4000-8000-000000000099',
+      repeat('A', 43)
+    )$$,
   $$values (false, null::text)$$,
   'a raw-token-shaped value is rejected before invite lookup'
 );
 select results_eq(
   $$select available, league_name
-    from public.resolve_invite(repeat('A', 64))$$,
+    from public.resolve_invite(
+      '26000000-0000-4000-8000-000000000099',
+      repeat('A', 64)
+    )$$,
   $$values (false, null::text)$$,
   'an uppercase digest is rejected before invite lookup'
 );
@@ -1400,6 +1451,7 @@ as $$
 declare
   v_league_id uuid;
   v_invite_id uuid;
+  v_public_id uuid;
   v_raw_token text;
   v_token_hash text;
   v_available boolean;
@@ -1413,8 +1465,8 @@ begin
     p_allow_late_join
   );
   perform pg_temp.set_actor(p_manager_id);
-  select created.invite_id, created.raw_token
-    into v_invite_id, v_raw_token
+  select created.invite_id, created.public_id, created.raw_token
+    into v_invite_id, v_public_id, v_raw_token
     from public.create_or_rotate_invite(v_league_id) as created;
   v_token_hash := pg_temp.hash_invite_for_rpc(v_raw_token);
 
@@ -1439,12 +1491,12 @@ begin
   perform pg_temp.set_actor(p_requester_id);
   select resolved.available, resolved.viewer_state
     into v_available, v_viewer_state
-    from public.resolve_invite(v_token_hash) as resolved;
+    from public.resolve_invite(v_public_id, v_token_hash) as resolved;
 
   begin
     select submitted.status::text
       into v_submit_outcome
-      from public.submit_join_request(v_token_hash) as submitted;
+      from public.submit_join_request(v_public_id, v_token_hash) as submitted;
   exception
     when others then
       v_submit_outcome := sqlerrm;
@@ -1477,6 +1529,7 @@ declare
   v_requester_id constant uuid := '75000000-0000-4000-8000-000000000005';
   v_league_id uuid;
   v_invite_id uuid;
+  v_public_id uuid;
   v_raw_token text;
   v_token_hash text;
   v_boundary timestamptz;
@@ -1491,8 +1544,8 @@ begin
     end
   );
   perform pg_temp.set_actor(v_manager_id);
-  select created.invite_id, created.raw_token
-    into v_invite_id, v_raw_token
+  select created.invite_id, created.public_id, created.raw_token
+    into v_invite_id, v_public_id, v_raw_token
   from public.create_or_rotate_invite(v_league_id) as created;
   v_token_hash := pg_temp.hash_invite_for_rpc(v_raw_token);
   v_boundary := clock_timestamp() + interval '30 milliseconds';
@@ -1516,7 +1569,7 @@ begin
   perform pg_temp.set_actor(v_requester_id);
 
   begin
-    perform public.submit_join_request(v_token_hash);
+    perform public.submit_join_request(v_public_id, v_token_hash);
     v_submit_outcome := 'unexpected_success';
   exception
     when others then v_submit_outcome := sqlerrm;
@@ -1739,6 +1792,7 @@ declare
   v_manager_id constant uuid := '74000000-0000-4000-8000-000000000004';
   v_requester_id constant uuid := '75000000-0000-4000-8000-000000000005';
   v_league_id uuid;
+  v_public_id uuid;
   v_raw_token text;
   v_request_id uuid;
   v_replayed_id uuid;
@@ -1749,12 +1803,14 @@ begin
     'ליגה עם בקשה מאושרת קיימת'
   );
   perform pg_temp.set_actor(v_manager_id);
-  select created.raw_token into v_raw_token
+  select created.public_id, created.raw_token
+    into v_public_id, v_raw_token
   from public.create_or_rotate_invite(v_league_id) as created;
 
   perform pg_temp.set_actor(v_requester_id);
   select submitted.request_id into v_request_id
   from public.submit_join_request(
+    v_public_id,
     pg_temp.hash_invite_for_rpc(v_raw_token)
   ) as submitted;
 
@@ -1767,6 +1823,7 @@ begin
   select submitted.request_id, submitted.status::text
     into v_replayed_id, v_replayed_status
   from public.submit_join_request(
+    v_public_id,
     pg_temp.hash_invite_for_rpc(v_raw_token)
   ) as submitted;
 

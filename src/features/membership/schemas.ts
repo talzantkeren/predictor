@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { INVITE_TOKEN_PATTERN } from "@/features/membership/invite-token";
+import {
+  INVITE_PUBLIC_ID_PATTERN,
+  INVITE_TOKEN_HASH_PATTERN,
+  INVITE_TOKEN_PATTERN,
+} from "@/features/membership/invite-token";
 
 const timestampSchema = z.string().datetime({ offset: true });
 const nullableTimestampSchema = timestampSchema.nullable().optional().default(null);
@@ -10,6 +14,12 @@ export const inviteIdSchema = z.string().uuid("מזהה ההזמנה אינו ת
 export const inviteTokenSchema = z
   .string()
   .regex(INVITE_TOKEN_PATTERN, "קישור ההזמנה אינו תקין.");
+export const invitePublicIdSchema = z
+  .string()
+  .regex(INVITE_PUBLIC_ID_PATTERN, "מזהה ההזמנה אינו תקין.");
+export const inviteTokenHashSchema = z
+  .string()
+  .regex(INVITE_TOKEN_HASH_PATTERN, "קישור ההזמנה אינו תקין.");
 
 export const createOrRotateInviteInputSchema = z.object({
   leagueId: leagueIdSchema,
@@ -21,8 +31,14 @@ export const revokeInviteInputSchema = z.object({
 });
 
 export const submitJoinRequestInputSchema = z.object({
-  token: inviteTokenSchema,
+  publicId: invitePublicIdSchema,
 });
+
+export const inviteExchangeInputSchema = z
+  .object({
+    tokenHash: inviteTokenHashSchema,
+  })
+  .strict();
 
 const proofSummarySchema = z
   .object({
@@ -59,6 +75,7 @@ export const inviteMetadataRpcSchema = z
 export const createdInviteRpcSchema = z
   .object({
     invite_id: z.string().uuid(),
+    public_id: invitePublicIdSchema,
     status: z.literal("active"),
     created_at: timestampSchema,
     expires_at: timestampSchema,
@@ -73,6 +90,7 @@ export const createdInviteRpcSchema = z
       expiresAt: invite.expires_at,
       revokedAt: invite.revoked_at,
     },
+    publicId: invite.public_id,
     rawToken: invite.raw_token,
   }));
 

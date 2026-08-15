@@ -156,15 +156,18 @@ returns uuid
 language plpgsql
 as $$
 declare
+  v_public_id uuid;
   v_raw_token text;
   v_request_id uuid;
 begin
   perform pg_temp.set_proof_actor(p_manager_id);
-  select created.raw_token into v_raw_token
+  select created.public_id, created.raw_token
+    into v_public_id, v_raw_token
   from public.create_or_rotate_invite(p_league_id) as created;
   perform pg_temp.set_proof_actor(p_requester_id);
   select submitted.request_id into v_request_id
   from public.submit_join_request(
+    v_public_id,
     encode(
       extensions.digest(convert_to(v_raw_token, 'UTF8'), 'sha256'),
       'hex'

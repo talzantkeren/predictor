@@ -84,7 +84,7 @@ npx playwright install
 │   ├── app/
 │   │   ├── (public)/
 │   │   │   ├── page.tsx
-│   │   │   └── invite/[token]/page.tsx
+│   │   │   └── invite/[publicId]/page.tsx
 │   │   ├── (auth)/
 │   │   │   ├── login/page.tsx
 │   │   │   ├── register/page.tsx
@@ -306,10 +306,13 @@ DEMO_MODE=true
 
 #### `invite_links`
 
-- `id`, `league_id`, `token_hash text unique`, `status`, `expires_at`, `created_by`, timestamps.
+- `id`, `public_id uuid unique`, `league_id`, `token_hash text unique`, `status`, `expires_at`, `created_by`, timestamps.
 - פונקציית DB מייצרת 32 bytes אקראיים ומחזירה token גולמי base64url פעם אחת; נשמר רק SHA-256 hash.
-- resolve/submit מאמתים את ה־token בגבול Next.js, מחשבים SHA-256 ומעבירים ל־RPC
-  רק `p_token_hash` קנוני; ה־DB מאמת digest של 64 תווי hex לפני lookup.
+- הקישור הוא `/invite/[publicId]#invite=[secret]`. ה־Fragment אינו חלק מבקשת
+  HTTP; Client Component מסיר אותו מהיסטוריית הכתובת, מחשב SHA-256 בדפדפן
+  ושולח ל־exchange רק digest. resolve/submit מעבירים ל־RPC את
+  `p_public_id` ואת `p_token_hash` הקנוני; ה־DB מאמת digest של 64 תווי hex ואת
+  התאמת הזוג לפני lookup.
 - תוקף קבוע של שבעה ימים; rotation נועל את הליגה, מבטל כל הזמנה פעילה קודמת ופותח ליגה במצב `draft` ל־`open` באותה transaction.
 
 ### 6.5 הצטרפות ואסמכתאות
@@ -448,7 +451,7 @@ DEMO_MODE=true
 | League | `createLeague` | member/manager | `updateLeagueSettings` | archive, לא hard delete |
 | Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
 | Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
-| Invite | `createInvite` | manager; resolve token בשרת | אין edit token | `revokeInvite` |
+| Invite | `createInvite` | manager; bootstrap עם public ID + Fragment secret | אין edit token | `revokeInvite` |
 | Join request | `submitJoinRequest` | owner/manager | ב־Slice 3 אין decision; approve/reject ב־Slice 4 | אין delete |
 | Proof | upload Handler | signed access אחרי AuthZ | אין overwrite | retention job בלבד |
 | Membership | approval RPC | same league/manager | activate/remove | status `removed` |
@@ -462,9 +465,9 @@ DEMO_MODE=true
 | --- | --- | --- | --- |
 | `createLeague` | league + scoring + prizes | RPC `create_league` | redirect לליגה חדשה; creator active |
 | `updateLeagueSettings` | fields allowed by status | league service | revalidate settings/summary |
-| `createInvite` | league id | RPC אטומי עם expiry קבוע | raw token פעם אחת |
+| `createInvite` | league id | RPC אטומי עם expiry קבוע | public ID + raw secret פעם אחת |
 | `revokeInvite` | invite id | invite service | link disabled |
-| `submitJoinRequest` | invite token | membership service | status `pending_proof` |
+| `submitJoinRequest` | public ID; digest נקרא מ־cookie HttpOnly | membership service + RPC | status `pending_proof` |
 | `approveJoinRequest` | request id | RPC approve | member active |
 | `rejectJoinRequest` | request id + reason | RPC reject | request rejected |
 | `savePrediction` | league, match, two scores | user-client upsert + RLS | saved timestamp |
@@ -476,7 +479,25 @@ DEMO_MODE=true
 
 ## 10. Route Handlers
 
-### 10.1 `POST /api/join-requests/[requestId]/proofs`
+### 10.1 `POST /api/invites/[publicId]/exchange`
+
+1. הנתיב מכיל UUID ציבורי בלבד; secret הזמנה נמצא ב־Fragment ולכן אינו מגיע
+   ל־Vercel, ל־Proxy או ל־Route Handler.
+2. Client Component קורא Fragment קנוני יחיד, מסיר אותו מיד באמצעות
+   `history.replaceState`, מחשב SHA-256 ב־Web Crypto ושולח JSON חסום של digest
+   בלבד. raw secret אינו נשלח גם בגוף הבקשה.
+3. ה־Handler דורש Origin מדויק של האפליקציה/Preview, body עד 256 bytes,
+   `application/json`, public ID קנוני ו־digest קטן־אותיות בן 64 hex.
+4. user-scoped Supabase client קורא `resolve_invite(p_public_id,p_token_hash)`;
+   UUID בלבד, זוג שגוי, revoke או expiry מחזירים אותה תשובת unavailable.
+5. הצלחה מציבה `predictor_invite_access` כ־HttpOnly, `SameSite=Lax`, Secure
+   בפריסה, מוגבל ל־`/invite/[publicId]` ול־30 דקות. ערכו כולל public ID ו־digest
+   בלבד. ה־DB נשאר מקור האמת ובודק מחדש בכל resolve/submit.
+6. כל התגובות הן `private, no-store`, `no-referrer` ו־`nosniff`; אין token,
+   digest או פרטי ליגה בתגובה. ללא JavaScript אין exchange ולכן פרטי ההזמנה
+   אינם נחשפים.
+
+### 10.2 `POST /api/join-requests/[requestId]/proofs`
 
 הקובץ מגדיר `export const runtime = 'nodejs'`.
 
@@ -492,7 +513,7 @@ DEMO_MODE=true
 10. rejection של DB נחשב definitive ומאפשר מחיקת פיצוי רק עבור `P0001`, מחלקות SQLSTATE `22`/`23`, או מחלקה `40` למעט `40003`. מחלקה `08`, `40003`, shutdown וקוד חסר/לא מוכר הם תוצאה עמומה, משום שה־commit אולי כבר הושלם: ה־Handler משחזר פעם אחת בדיוק את אותה קריאת finalizer האידמפוטנטית. replay מוצלח שומר את ה־object שאליו מצביעה רשומת ה־DB; אם גם ה־replay אינו מכריע, ה־object הפרטי נשמר ונשלח אירוע reconciliation מסונן ללא path רגיש. כשל במחיקת פיצוי נשלח לאותו מסלול reconciliation.
 11. רק rejection של Storage עם status ברשימה הסגורה `400/401/403/404/409/411/413/415/422/429` הוא definitive ואינו מפעיל finalizer או reconciliation. `408`, `425`, `499`, כל `5xx`, transport ו־status חסר/לא מוכר הם תוצאת upload עמומה: אין finalization ואין מחיקה של הנתיב החדש, משום ש־`upsert: false` אינו מוכיח אם ה־object נוצר בקריאה הזו או היה collision קיים. נשמרת פרטיות ונשלח signal מסונן לסריקת orphan; מחיקה מדויקת תדרוש בעתיד ownership marker וחוזה Gateway מותנה.
 
-### 10.2 `GET /api/payment-proofs/[proofId]`
+### 10.3 `GET /api/payment-proofs/[proofId]`
 
 1. session.
 2. lookup metadata לפי proof id.
@@ -500,7 +521,7 @@ DEMO_MODE=true
 4. השער הקבוע גוזר את הנתיב מתוך IDs שמקורם ב־DB ויוצר signed URL ל־60 שניות. ה־path אינו מופיע בטבלאות/DTOs ציבוריים או בתגובת upload, אך לאחר AuthZ הוא בהכרח נכלל ב־`Location` של Supabase ונראה למחזיק/ת ה־URL הקצר; אין לרשום אותו בלוגים או artifacts.
 5. `Cache-Control: private, no-store`.
 
-### 10.3 `POST /api/cron/sync`
+### 10.4 `POST /api/cron/sync`
 
 1. secret, method ו־content-type צפויים; ה־job קורא את הסוד מ־Supabase Vault והוא תואם ל־`CRON_SECRET` ב־Vercel.
 2. advisory lock.
@@ -509,7 +530,7 @@ DEMO_MODE=true
 5. upsert + `score_match` + sync log.
 6. תשובה קצרה ללא נתונים רגישים.
 
-### 10.4 `POST /api/matches/[matchId]/analysis`
+### 10.5 `POST /api/matches/[matchId]/analysis`
 
 1. session וחברות פעילה בליגה הכוללת את המשחק.
 2. cache lookup ו־freshness.
@@ -605,7 +626,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - כל טבלה קיימת עם RLS enabled.
 - grants ופונקציות EXECUTE מצומצמים.
 - משתמש A אינו קורא/כותב נתוני משתמש B או ליגה זרה.
-- invite rotation/revoke/expiry, hash-only persistence ו־submit אידמפוטנטי; בקשה קיימת נשארת תקפה גם אחרי ביטול ההזמנה.
+- public-ID/hashed-secret pairing, invite rotation/revoke/expiry, hash-only persistence ו־submit אידמפוטנטי; בקשה קיימת נשארת תקפה גם אחרי ביטול ההזמנה.
 - bucket `payment-proofs` פרטי ובעל מגבלת 4,000,000 bytes; CRUD ישיר ב־`storage.objects` נדחה עבור anon/authenticated.
 - proof ownership/manager isolation, מכסת חמש הוכחות, idempotency ורישום rate-limit/audit ללא מידע רגיש.
 - prediction מותר לפני kickoff ונדחה ב־/אחרי kickoff לפי DB time.
@@ -621,7 +642,9 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 1. הרשמה → login → logout → password reset smoke.
 2. מנהל יוצר ליגה עם חוקים ופרסים.
-3. מנהל יוצר/מסובב invite, משתמש פותח אותו, נרשם או מתחבר עם `next` שמור, מגיש בקשה ומעלה תמונת Demo פרטית.
+3. מנהל יוצר/מסובב invite; הדפדפן פותח public-ID path עם Fragment secret,
+   מוכיח שאין secret ב־network target ומנקה את ה־Fragment; המשתמש נרשם או
+   מתחבר עם `next` ציבורי שמור, מגיש בקשה ומעלה תמונת Demo פרטית.
 4. משתמש לא מאושר מנסה URL/API ישיר ונדחה.
 5. שני חברים מנחשים; לפני פתיחה אין חשיפה, אחרי פתיחה יש.
 6. שמירה לפני/אחרי נעילה.
@@ -701,8 +724,12 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** קישור הזמנה, בקשה, upload Demo פרטי וסטטוס.
 
-- token אקראי של 32 bytes, שמירת hash בלבד, תוקף קבוע של שבעה ימים ו־rotation של active link יחיד; יצירה ראשונה פותחת ליגה `draft` אטומית.
-- public landing מינימלי ולא־מאנדקס, ללא token ב־analytics/logs של האפליקציה; login משתמש ב־`next` יחסי ומאומת. registration משתמש ב־cookie HttpOnly קצר ומוגבל ל־callback, כך שכתובת אישור ה־Email אינה מכילה token.
+- token אקראי של 32 bytes, `public_id` אקראי נפרד, שמירת hash בלבד, תוקף קבוע של שבעה ימים ו־rotation של active link יחיד; יצירה ראשונה פותחת ליגה `draft` אטומית.
+- הקישור הוא public-ID path עם Fragment secret. bootstrap בדפדפן מסיר את
+  ה־Fragment לפני רשת, שולח רק digest ל־exchange ומקבל cookie HttpOnly
+  קצר־חיים ומוגבל לנתיב. כך Runtime Logs של Vercel רואים UUID ציבורי בלבד ולא
+  bearer secret. login משתמש ב־`next` יחסי שמכיל public ID בלבד; registration
+  שומר אותו ב־cookie callback נפרד, וכתובת אישור ה־Email נטולת secret.
 - submit אידמפוטנטי ל־request פעילה; revoke/expiry חוסמים submission חדש אך אינם מבטלים request קיימת.
 - bucket `payment-proofs` פרטי ללא policies ל־client. שער server-only קבוע הוא consumer היחיד של secret ב־Slice 3.
 - Node runtime, hard request/file/pixel/page limits, התאמת extension/MIME/magic, re-encode WebP, hash, history של עד חמש הוכחות ו־idempotency key.
@@ -859,12 +886,13 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-המשימה הפעילה היא **Slice 3 בלבד**: invite token מאובטח, בקשת הצטרפות והעלאת
+המשימה הפעילה היא **Slice 3 בלבד**: invite עם public-ID path ו־Fragment secret,
+בקשת הצטרפות והעלאת
 אסמכתאת Demo פרטית לפי חוזי האבטחה בסעיפים 10 ו־15. מודל החברות המינימלי שכבר
 קיים אינו מרחיב הרשאה להצטרפות ישירה; אישור/דחייה, יצירת חברות וניהול חברים כללי
 נשארים במפורש ב־Slice 4.
 
-## 21. מקורות טכניים — אומתו ב־11 באוגוסט 2026
+## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 
 - [Next.js — Installation and Node.js requirement](https://nextjs.org/docs/app/getting-started/installation)
 - [Next.js — Vitest](https://nextjs.org/docs/app/guides/testing/vitest)
@@ -876,3 +904,6 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - [Supabase — Performance and Security Advisors](https://supabase.com/docs/guides/database/database-advisors)
 - [Playwright — webServer configuration](https://playwright.dev/docs/test-webserver)
 - [Playwright — best practices](https://playwright.dev/docs/best-practices)
+- [IETF RFC 3986 §3.5 — Fragment מופרד לפני dereference](https://datatracker.ietf.org/doc/html/rfc3986#section-3.5)
+- [Next.js — `cookies`](https://nextjs.org/docs/app/api-reference/functions/cookies)
+- [Vercel — Runtime Logs ו־Request Path](https://vercel.com/docs/logs/runtime)

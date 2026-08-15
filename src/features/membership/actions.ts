@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAuthenticatedUser } from "@/features/auth/session";
+import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
+import { getInvitePath } from "@/features/membership/invite-fragment";
 import {
   createOrRotateInviteInputSchema,
   revokeInviteInputSchema,
@@ -19,6 +21,7 @@ export type MembershipActionState = {
   status: "idle" | "success" | "error";
   message?: string;
   rawToken?: string;
+  publicId?: string;
   fieldErrors?: MembershipFieldErrors;
 };
 
@@ -68,6 +71,7 @@ export async function createOrRotateInviteAction(
     message:
       "הקישור נוצר. יש להעתיק אותו עכשיו — לאחר רענון לא ניתן יהיה להציגו שוב.",
     rawToken: result.data.rawToken,
+    publicId: result.data.publicId,
   };
 }
 
@@ -104,23 +108,36 @@ export async function submitJoinRequestAction(
   _previousState: MembershipActionState,
   formData: FormData,
 ): Promise<MembershipActionState> {
-  const tokenValue = formData.get("token");
-  const nextPath =
-    typeof tokenValue === "string" ? `/invite/${tokenValue}` : "/dashboard";
+  const publicIdValue = formData.get("publicId");
+  const parsed = submitJoinRequestInputSchema.safeParse({
+    publicId: publicIdValue,
+  });
+  const nextPath = parsed.success
+    ? getInvitePath(parsed.data.publicId)
+    : "/dashboard";
   const { supabase } = await requireAuthenticatedUser(nextPath);
-  const parsed = submitJoinRequestInputSchema.safeParse({ token: tokenValue });
 
   if (!parsed.success) {
     return { status: "error", message: "קישור ההזמנה אינו זמין." };
   }
 
-  const result = await submitJoinRequest(supabase, parsed.data.token);
+  const tokenHash = await getInviteAccessTokenHash(parsed.data.publicId);
+  if (!tokenHash) {
+    return { status: "error", message: "קישור ההזמנה אינו זמין." };
+  }
+
+  const result = await submitJoinRequest(
+    supabase,
+    parsed.data.publicId,
+    tokenHash,
+  );
 
   if (!result.ok) {
     return { status: "error", message: result.message };
   }
 
   revalidatePath("/dashboard");
+  revalidatePath(nextPath);
 
   return {
     status: "success",

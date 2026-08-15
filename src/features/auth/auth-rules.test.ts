@@ -85,7 +85,7 @@ describe("display-name validation", () => {
 });
 
 describe("safe authentication redirects", () => {
-  const validInviteToken = "A".repeat(43);
+  const validInvitePublicId = "26000000-0000-4000-8000-000000000031";
 
   it.each([
     "/dashboard",
@@ -95,7 +95,7 @@ describe("safe authentication redirects", () => {
     "/leagues/26000000-0000-4000-8000-000000000027",
     "/leagues/26000000-0000-4000-8000-0000000000AB",
     "/leagues/26000000-0000-4000-8000-000000000027/settings",
-    `/invite/${validInviteToken}`,
+    `/invite/${validInvitePublicId}`,
   ])("accepts the approved internal path %s", (path) => {
     expect(getSafeAuthRedirect(path)).toBe(path);
   });
@@ -124,11 +124,10 @@ describe("safe authentication redirects", () => {
     "/leagues/../profile",
     "/leagues/26000000-0000-4000-8000-00000000002",
     "/LEAGUES/26000000-0000-4000-8000-000000000027",
-    `/invite/${"A".repeat(42)}`,
-    `/invite/${"A".repeat(44)}`,
-    `/invite/${"A".repeat(42)}=`,
-    `/invite/${"A".repeat(42)}%2F`,
-    `/invite/${validInviteToken}?next=/dashboard`,
+    "/invite/26000000-0000-4000-8000-0000000000AB",
+    "/invite/not-a-uuid",
+    `/invite/${validInvitePublicId}?next=/dashboard`,
+    `/invite/${validInvitePublicId}#invite=${"A".repeat(43)}`,
     "",
     null,
     undefined,
@@ -176,9 +175,9 @@ describe("safe authentication redirects", () => {
 });
 
 describe("registration confirmation return handoff", () => {
-  const invitePath = `/invite/${"A".repeat(43)}`;
+  const invitePath = "/invite/26000000-0000-4000-8000-000000000031";
 
-  it("keeps the invite bearer token out of the email callback URL", () => {
+  it("keeps the invite bearer and public return path out of the email callback URL", () => {
     const callbackUrl = getRegistrationConfirmationUrl(
       "https://predictor.example/some-path?ignored=true",
     );

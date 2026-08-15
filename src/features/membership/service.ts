@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getSafeMembershipErrorMessage } from "@/features/membership/errors";
 import {
-  hashInviteToken,
-  isValidInviteToken,
+  isValidInvitePublicId,
+  isValidInviteTokenHash,
 } from "@/features/membership/invite-token";
 import {
   getSingleMembershipRpcRecord,
@@ -60,17 +60,20 @@ export async function revokeInvite(
 
 export async function submitJoinRequest(
   supabase: SupabaseClient<Database>,
-  token: string,
+  publicId: string,
+  tokenHash: string,
 ) {
-  if (!isValidInviteToken(token)) {
+  if (
+    !isValidInvitePublicId(publicId) ||
+    !isValidInviteTokenHash(tokenHash)
+  ) {
     return { ok: false as const, message: "קישור ההזמנה אינו זמין." };
   }
 
-  const tokenHash = await hashInviteToken(token);
   const { data, error } = await invokeMembershipRpc(
     supabase,
     "submit_join_request",
-    { p_token_hash: tokenHash },
+    { p_public_id: publicId, p_token_hash: tokenHash },
   );
 
   if (error) {

@@ -89,28 +89,39 @@
 
 ### הזמנה ו־return path
 
-- פונקציית PostgreSQL מייצרת token של 32 bytes אקראיים ומחזירה base64url ללא
-  padding פעם אחת בלבד. רק SHA-256 hash נשמר; אין עמודה, לוג, audit metadata או
-  snapshot שמכילים את ה־token הגולמי. קישור חדש תקף בדיוק שבעה ימים לפי זמן DB.
-- גבול Next.js מאמת תחילה base64url קנוני באורך 43 תווים, מחשב SHA-256 ומעביר
-  ל־PostgREST/RPC רק digest קטן־אותיות בן 64 תווי hex. ה־RPC מאמת שוב את צורת
-  ה־digest לפני lookup. כך ה־token הגולמי אינו נכנס לגוף בקשת Data API.
+- פונקציית PostgreSQL מייצרת secret של 32 bytes אקראיים ומחזירה base64url ללא
+  padding פעם אחת בלבד, יחד עם `public_id` אקראי נפרד. רק SHA-256 hash נשמר;
+  אין עמודה, לוג, audit metadata או snapshot שמכילים את ה־secret הגולמי. קישור
+  חדש תקף בדיוק שבעה ימים לפי זמן DB.
+- הקישור הוא `/invite/[publicId]#invite=[secret]`. RFC 3986 מפריד Fragment לפני
+  dereference, ולכן בקשת הדף ולוגי הנתיב של Vercel מכילים רק UUID ציבורי. Client
+  Component מקבל רק Fragment יחיד וקנוני, מסיר אותו מיד מהיסטוריית הכתובת עם
+  `history.replaceState`, מחשב SHA-256 ב־Web Crypto ושולח ל־exchange רק digest
+  קטן־אותיות בן 64 hex. ה־secret הגולמי אינו נשלח ל־Vercel גם בגוף בקשה,
+  ל־PostgREST או ל־Server Action.
+- `POST /api/invites/[publicId]/exchange` דורש Origin מדויק, JSON חסום ל־256
+  bytes וזוג `publicId`+digest תקין. ה־RPC מאמת שוב את הצורה ואת ההתאמה לרשומה.
+  הצלחה מציבה cookie `predictor_invite_access` מסוג HttpOnly, `SameSite=Lax`,
+  Secure בפריסה, מוגבל ל־`/invite/[publicId]` ול־30 דקות. ערכו הוא public ID
+  ו־digest בלבד; הוא bearer-equivalent ולכן אסור בלוגים, אך JavaScript אינו יכול
+  לקרוא אותו וכל שימוש עדיין נבדק מול revoke/expiry/eligibility במסד.
 - לכל ליגה יש לכל היותר הזמנה `active` אחת. create/rotate נועלת את שורת הליגה,
   מבטלת קישור קודם ויוצרת חדש באותה transaction. ההזמנה הראשונה מעבירה ליגה
   `draft` ל־`open`; אין פתיחה מחדש של ליגה שהושלמה או אורכבה.
 - revoke ו־expiry חוסמים בקשה חדשה מיד, אך אינם מוחקים או שוללים העלאה מבקשה
   קיימת. submission נועל ואוכף שוב status, late join, `joins_close_at`, מנהל,
   חברות ובקשה פעילה; partial unique index הוא ההגנה הסופית בפני race.
-- `/invite/[token]` הוא dynamic ו־no-store, עם `noindex`, `nofollow` ו־
-  `Referrer-Policy: no-referrer`. קישור לא זמין מחזיר מצב אחיד שאינו מגלה ליגה.
-  אין analytics או משאבי צד שלישי בעמוד. ה־URL עדיין עשוי להופיע בלוג הגישה של
-  פלטפורמת האירוח; לכן אין לטעון שהוא אינו מגיע לעולם לתשתית, ומצמצמים את הסיכון
-  באמצעות expiry, rotation, אי־שמירה באפליקציה והיעדר referrer.
-- `next` מקבל רק נתיב יחסי מדויק ב־allowlist, כולל token base64url קנוני.
+- `/invite/[publicId]` ו־exchange הם dynamic ו־no-store, עם `noindex`,
+  `nofollow` ו־`Referrer-Policy: no-referrer`. קישור לא זמין מחזיר מצב אחיד
+  שאינו מגלה ליגה. אין analytics או משאבי צד שלישי בעמוד. Vercel Runtime Logs
+  עשויים לשמור את הנתיב, אך כעת הוא מכיל public ID בלבד ולא secret. ה־Fragment
+  נראה לזמן קצר למשתמש, ל־clipboard ולסביבת הדפדפן; תוסף דפדפן זדוני או צילום
+  כתובת נשארים סיכון משתמש שיורי, וה־bootstrap דורש JavaScript.
+- `next` מקבל רק נתיב יחסי מדויק ב־allowlist, כולל public ID קנוני בלבד.
   absolute/protocol-relative URLs, query/fragment לא צפויים, backslash, קידוד
   עוקף ותווי בקרה נדחים. login משמר את היעד המאומת בפרמטר פנימי. registration
   שומר אותו עד 30 דקות ב־cookie `HttpOnly`, `SameSite=Lax`, שמוגבל ל־
-  `/auth/confirm`; כתובת callback שנשלחת ל־Supabase/Email אינה כוללת invite token.
+  `/auth/confirm`; כתובת callback שנשלחת ל־Supabase/Email אינה כוללת invite secret.
   ה־callback צורך ומוחק את ה־cookie. אישור בדפדפן אחר חסר את ה־cookie ואת PKCE
   verifier ולכן חוזר ל־login/Dashboard בלי לשכפל את token בהודעת Email.
 
@@ -179,7 +190,7 @@
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| token גולמי או קישור ישן | hash-only, הצגה חד־פעמית, rotation/expiry ב־DB | refresh, rotate, revoke ו־חיפוש diff/log |
+| secret גולמי בנתיב/לוג או קישור ישן | public-ID path + Fragment שנמחק לפני רשת, hash-only, cookie HttpOnly קצר, rotation/expiry ב־DB | network-target assertion, exchange Route, refresh, rotate, revoke וחיפוש diff/log |
 | בקשה כפולה או invite race | row lock + partial unique + idempotent RPC | שתי submissions/rotations מקבילות |
 | IDOR של request/proof | session + resource AuthZ + RLS/opaque 404 | requester/outsider/manager ליגה אחרת |
 | עקיפת sanitization | אין Storage policies ללקוחות; gateway קבוע | CRUD ישיר כ־anon/authenticated |

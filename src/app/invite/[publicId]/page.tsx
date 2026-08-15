@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
+import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
+import { InviteBootstrap } from "@/features/membership/components/invite-bootstrap";
+import { InviteFragmentScrubber } from "@/features/membership/components/invite-fragment-scrubber";
 import { JoinRequestForm } from "@/features/membership/components/join-request-form";
 import { ProofHistory } from "@/features/membership/components/proof-history";
+import { UnavailableInvite } from "@/features/membership/components/unavailable-invite";
 import {
   formatMembershipDate,
   getJoinRequestStatusLabel,
 } from "@/features/membership/display";
 import { resolveInvite } from "@/features/membership/queries";
+import { isValidInvitePublicId } from "@/features/membership/invite-token";
 import type { InviteResolution } from "@/features/membership/types";
 import { formatDemoAmount } from "@/features/leagues/display";
 import { createClient } from "@/lib/supabase/server";
@@ -25,31 +30,6 @@ export const metadata: Metadata = {
   },
   referrer: "no-referrer",
 };
-
-function UnavailableInvite() {
-  return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
-      <section
-        aria-labelledby="invite-unavailable-title"
-        className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-      >
-        <p className="text-sm font-semibold text-blue-700">Predictor1</p>
-        <h1 id="invite-unavailable-title" className="mt-2 text-3xl font-bold">
-          קישור ההזמנה אינו זמין
-        </h1>
-        <p className="mt-3 leading-7 text-slate-600">
-          ייתכן שהקישור אינו תקין, בוטל או שפג תוקפו. אפשר לבקש ממנהל/ת הליגה קישור חדש.
-        </p>
-        <Link
-          href="/"
-          className="mt-6 inline-flex rounded-lg border border-slate-300 px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-        >
-          חזרה לעמוד הראשי
-        </Link>
-      </section>
-    </main>
-  );
-}
 
 function InviteRequestSummary({
   resolution,
@@ -105,12 +85,12 @@ function InviteRequestSummary({
 
 function InviteViewerPanel({
   resolution,
-  token,
+  publicId,
 }: {
   resolution: InviteResolution;
-  token: string;
+  publicId: string;
 }) {
-  const nextPath = `/invite/${token}`;
+  const nextPath = `/invite/${publicId}`;
   const encodedNextPath = encodeURIComponent(nextPath);
 
   if (resolution.viewerState === "guest") {
@@ -156,7 +136,7 @@ function InviteViewerPanel({
         <p className="leading-7 text-slate-700">
           פתיחת הבקשה אינה מצרפת לליגה מיד. הבקשה תתחיל בהמתנה לתמונת Demo.
         </p>
-        <JoinRequestForm token={token} />
+        <JoinRequestForm publicId={publicId} />
       </div>
     );
   }
@@ -229,20 +209,31 @@ function InviteViewerPanel({
 export default async function InvitePage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ publicId: string }>;
 }) {
-  const { token } = await params;
+  const { publicId } = await params;
+
+  if (!isValidInvitePublicId(publicId)) {
+    return <UnavailableInvite />;
+  }
+
+  const tokenHash = await getInviteAccessTokenHash(publicId);
+  if (!tokenHash) {
+    return <InviteBootstrap publicId={publicId} />;
+  }
+
   const supabase = await createClient();
-  const result = await resolveInvite(supabase, token);
+  const result = await resolveInvite(supabase, publicId, tokenHash);
 
   if (result.status !== "found") {
-    return <UnavailableInvite />;
+    return <InviteBootstrap publicId={publicId} />;
   }
 
   const resolution = result.data;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
+      <InviteFragmentScrubber />
       <div className="mx-auto max-w-3xl space-y-6">
         <section
           aria-labelledby="invite-title"
@@ -300,7 +291,7 @@ export default async function InvitePage({
             מצב ההצטרפות
           </h2>
           <div className="mt-5">
-            <InviteViewerPanel resolution={resolution} token={token} />
+            <InviteViewerPanel resolution={resolution} publicId={publicId} />
           </div>
         </section>
       </div>

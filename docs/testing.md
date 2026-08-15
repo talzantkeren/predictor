@@ -86,14 +86,21 @@ cookie, signed URL או proof path משתמשות ב־`fetch` של Node עם ש�
 או signed proof path; artifact ה־canary נמחק לאחר הבדיקה. כל invite פעיל מבוטל
 ב־cleanup ככל שה־session המקומי זמין.
 
+בקישור invite ה־bearer נמצא רק ב־URL Fragment. helper הניווט מבצע browser-side
+navigation, מאזין לכל בקשות הרשת עד שה־bootstrap מסיר את ה־Fragment ומכשיל את
+הבדיקה בשגיאה קבועה אם secret מופיע ב־request target, headers או body. התרחיש פותח את
+אותו קישור שוב עם cookie תקף ומוודא שגם המסך המאומת מנקה את ה־Fragment. בדיקות Route מאמתות
+שה־exchange מקבל רק public ID ו־digest, מציב cookie HttpOnly מוגבל לנתיב,
+חוסם Origin/body עוינים ומחזיר תשובה אטומה לזוג לא תואם.
+
 ### מטריצת כיסוי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | token base64url באורך/entropy הנדרשים, validation ו־SHA-256 לפני RPC ללא העברת raw token, ו־redirect allowlist; mapping שגיאות; request-body bounded גם בלי `Content-Length`; Origin; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
-| pgTAP | schema, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; בידוד owner/manager/outsider/ליגה אחרת וללא decision/membership mutation |
-| Route integration | JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
-| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; guest → register/login → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
+| Vitest | secret base64url באורך/entropy הנדרשים, URL Fragment קנוני, public ID/digest/cookie binding, Origin ו־redirect allowlist; mapping שגיאות; request-body bounded גם בלי `Content-Length`; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
+| pgTAP | schema, public-ID+hash pairing, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; בידוד owner/manager/outsider/ליגה אחרת וללא decision/membership mutation |
+| Route integration | invite exchange עם Origin/body/public-ID/digest/cookie/opaque denial; JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
+| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
 | Visual/manual | 390px ו־desktop, RTL, keyboard/focus, labels ו־error summary, `aria-live`, preview מקומי, loading/empty/success/failure וללא overflow |
 
 pgTAP רץ בחיבור יחיד ואינו מוכיח race אמיתי לבדו. בדיקות Playwright/API
@@ -122,7 +129,9 @@ npm run test:e2e
 ה־gateway נטען lazy כדי ש־build שאינו מפעיל Storage יישאר בטוח, אך route
 העלאה/צפייה נכשל סגור ללא הסוד.
 
-לבדיקה ידנית: יוצרים ליגה, נכנסים ל־settings, יוצרים קישור, פותחים אותו בחלון
-פרטי, משלימים Auth דרך Mailpit, מגישים בקשה ומעלים תמונה סינתטית. מאמתים
+לבדיקה ידנית: יוצרים ליגה, נכנסים ל־settings, יוצרים קישור בצורת
+`/invite/[publicId]#invite=[secret]`, פותחים אותו בחלון פרטי ומוודאים שה־Fragment
+נעלם מיד אך פרטי הליגה נטענים. משלימים Auth דרך Mailpit, מגישים בקשה ומעלים
+תמונה סינתטית. מאמתים
 `pending_approval` גם ב־Dashboard ופותחים את התמונה דרך endpoint ההרשאה בלבד.
 אין להשתמש ב־`supabase db reset --linked` או בתמונה פיננסית אמיתית.

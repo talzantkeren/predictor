@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  hashInviteToken,
-  isValidInviteToken,
+  isValidInvitePublicId,
+  isValidInviteTokenHash,
 } from "@/features/membership/invite-token";
 import {
   getSingleMembershipRpcRecord,
@@ -24,22 +24,24 @@ import type { Database } from "@/types/database.generated";
 
 export async function resolveInvite(
   supabase: SupabaseClient<Database>,
-  token: string,
+  publicId: string,
+  tokenHash: string,
 ): Promise<
   | { status: "found"; data: InviteResolution }
   | { status: "unavailable" }
   | { status: "error" }
 > {
-  if (!isValidInviteToken(token)) {
+  if (
+    !isValidInvitePublicId(publicId) ||
+    !isValidInviteTokenHash(tokenHash)
+  ) {
     return { status: "unavailable" };
   }
-
-  const tokenHash = await hashInviteToken(token);
 
   const { data, error } = await invokeMembershipRpc(
     supabase,
     "resolve_invite",
-    { p_token_hash: tokenHash },
+    { p_public_id: publicId, p_token_hash: tokenHash },
   );
 
   if (error) {

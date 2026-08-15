@@ -25,6 +25,7 @@ $$;
 
 create table public.invite_links (
   id uuid primary key default extensions.gen_random_uuid(),
+  public_id uuid not null default extensions.gen_random_uuid(),
   league_id uuid not null references public.leagues(id) on delete restrict,
   token_hash text not null,
   status public.invite_status not null default 'active',
@@ -33,6 +34,7 @@ create table public.invite_links (
   created_at timestamptz not null default now(),
   revoked_at timestamptz,
   updated_at timestamptz not null default now(),
+  constraint invite_links_public_id_key unique (public_id),
   constraint invite_links_token_hash_key unique (token_hash),
   constraint invite_links_token_hash_check check (token_hash ~ '^[0-9a-f]{64}$'),
   constraint invite_links_expiry_range_check check (
@@ -165,7 +167,7 @@ create index audit_logs_entity_created_idx
   on public.audit_logs (entity_type, entity_id, created_at desc);
 
 comment on table public.invite_links is
-  'Hashed private-league invite tokens. Raw tokens are generated and returned once by an RPC and are never stored.';
+  'Public invite identifiers plus hashed private-league invite secrets. Raw secrets are generated and returned once by an RPC and are never stored.';
 comment on table public.join_requests is
   'Append-preserved join request history. Slice 3 creates pending states only.';
 comment on table public.payment_proofs is
@@ -310,6 +312,7 @@ as $$
 $$;
 
 create function private.join_request_eligibility(
+  p_public_id uuid,
   p_token_hash text,
   p_actor_id uuid,
   p_at timestamptz,
@@ -336,7 +339,8 @@ declare
   v_invite_available boolean := false;
   v_viewer_state text := 'unavailable';
 begin
-  if not private.invite_token_hash_is_valid(p_token_hash) then
+  if p_public_id is null
+     or not private.invite_token_hash_is_valid(p_token_hash) then
     return query
     select false, null::uuid, 'unavailable'::text, null::uuid,
       null::public.join_request_status, null::timestamptz, null::timestamptz;
@@ -346,7 +350,8 @@ begin
   select invite.*
     into v_invite
     from public.invite_links as invite
-    where invite.token_hash = p_token_hash;
+    where invite.public_id = p_public_id
+      and invite.token_hash = p_token_hash;
 
   if not found then
     return query
@@ -481,7 +486,7 @@ revoke all on function private.league_accepts_new_requests(
   public.league_status, boolean, timestamptz, timestamptz
 ) from public, anon, authenticated, service_role;
 revoke all on function private.join_request_eligibility(
-  text, uuid, timestamptz, boolean
+  uuid, text, uuid, timestamptz, boolean
 ) from public, anon, authenticated, service_role;
 revoke all on function private.payment_proof_summaries(uuid)
   from public, anon, authenticated, service_role;
@@ -489,6 +494,7 @@ revoke all on function private.payment_proof_summaries(uuid)
 create function public.create_or_rotate_invite(p_league_id uuid)
 returns table (
   invite_id uuid,
+  public_id uuid,
   status public.invite_status,
   created_at timestamptz,
   expires_at timestamptz,
@@ -660,6 +666,7 @@ begin
   return query
   select
     invite.id,
+    invite.public_id,
     invite.status,
     invite.created_at,
     invite.expires_at,
@@ -808,7 +815,7 @@ begin
 end;
 $$;
 
-create function public.resolve_invite(p_token_hash text)
+create function public.resolve_invite(p_public_id uuid, p_token_hash text)
 returns table (
   available boolean,
   league_name text,
@@ -837,6 +844,7 @@ begin
   select eligibility.*
     into v_eligibility
     from private.join_request_eligibility(
+      p_public_id,
       p_token_hash,
       v_actor_id,
       v_at,
@@ -887,7 +895,7 @@ begin
 end;
 $$;
 
-create function public.submit_join_request(p_token_hash text)
+create function public.submit_join_request(p_public_id uuid, p_token_hash text)
 returns table (
   request_id uuid,
   status public.join_request_status,
@@ -913,6 +921,7 @@ begin
   select eligibility.*
     into v_eligibility
     from private.join_request_eligibility(
+      p_public_id,
       p_token_hash,
       v_actor_id,
       v_at,
@@ -942,6 +951,7 @@ begin
   select eligibility.*
     into v_eligibility
     from private.join_request_eligibility(
+      p_public_id,
       p_token_hash,
       v_actor_id,
       v_at,
@@ -1445,9 +1455,9 @@ revoke all on function public.get_league_invite_metadata(uuid)
   from public, anon, authenticated, service_role;
 revoke all on function public.revoke_invite(uuid)
   from public, anon, authenticated, service_role;
-revoke all on function public.resolve_invite(text)
+revoke all on function public.resolve_invite(uuid, text)
   from public, anon, authenticated, service_role;
-revoke all on function public.submit_join_request(text)
+revoke all on function public.submit_join_request(uuid, text)
   from public, anon, authenticated, service_role;
 revoke all on function public.get_my_join_requests()
   from public, anon, authenticated, service_role;
@@ -1460,11 +1470,11 @@ revoke all on function public.finalize_payment_proof(uuid, uuid, uuid, text, int
 revoke all on function public.authorize_payment_proof_access(uuid)
   from public, anon, authenticated, service_role;
 
-grant execute on function public.resolve_invite(text) to anon, authenticated;
+grant execute on function public.resolve_invite(uuid, text) to anon, authenticated;
 grant execute on function public.create_or_rotate_invite(uuid) to authenticated;
 grant execute on function public.get_league_invite_metadata(uuid) to authenticated;
 grant execute on function public.revoke_invite(uuid) to authenticated;
-grant execute on function public.submit_join_request(text) to authenticated;
+grant execute on function public.submit_join_request(uuid, text) to authenticated;
 grant execute on function public.get_my_join_requests() to authenticated;
 grant execute on function public.get_join_request_upload_context(uuid) to authenticated;
 grant execute on function public.consume_proof_upload_rate_limit(uuid) to authenticated;

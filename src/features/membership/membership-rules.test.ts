@@ -3,12 +3,24 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getSafeMembershipErrorMessage } from "@/features/membership/errors";
 import {
+  encodeInviteAccessCookie,
+  getInviteAccessCookieOptions,
+  isTrustedInviteExchangeOrigin,
+  parseInviteAccessCookie,
+} from "@/features/membership/invite-access";
+import {
   getInviteEffectiveStatus,
   isInviteEffectivelyActive,
 } from "@/features/membership/display";
 import {
+  buildInviteShareUrl,
+  parseInviteSecretFragment,
+} from "@/features/membership/invite-fragment";
+import {
   hashInviteToken,
+  isValidInvitePublicId,
   isValidInviteToken,
+  isValidInviteTokenHash,
 } from "@/features/membership/invite-token";
 import {
   createdInviteRpcSchema,
@@ -22,6 +34,7 @@ import { submitJoinRequest } from "@/features/membership/service";
 import type { Database } from "@/types/database.generated";
 
 const validToken = "A".repeat(43);
+const publicId = "26000000-0000-4000-8000-000000000031";
 const validTokenHash =
   "0f007385b6f9d4b7eeb2748605afe1a984a0a3bfa3f014d09e2a784ce9e5cd1a";
 const timestamp = "2026-08-14T10:00:00+00:00";
@@ -54,12 +67,103 @@ describe("secure invite token boundary", () => {
       "INVALID_INVITE_TOKEN",
     );
   });
+
+  it("validates the public identifier and lowercase digest independently", () => {
+    expect(isValidInvitePublicId(publicId)).toBe(true);
+    expect(isValidInviteTokenHash(validTokenHash)).toBe(true);
+
+    expect(
+      isValidInvitePublicId("26000000-0000-4000-8000-0000000000AB"),
+    ).toBe(false);
+    expect(isValidInvitePublicId("not-a-uuid")).toBe(false);
+    expect(isValidInviteTokenHash(validTokenHash.toUpperCase())).toBe(false);
+    expect(isValidInviteTokenHash(validToken)).toBe(false);
+  });
+
+  it("keeps the raw bearer in an exact URL Fragment and out of the request path", () => {
+    const shareUrl = buildInviteShareUrl(
+      "https://predictor.example/app",
+      publicId,
+      validToken,
+    );
+    const parsedUrl = new URL(shareUrl);
+
+    expect(parsedUrl.pathname).toBe(`/invite/${publicId}`);
+    expect(parsedUrl.pathname).not.toContain(validToken);
+    expect(parsedUrl.search).toBe("");
+    expect(parseInviteSecretFragment(parsedUrl.hash)).toBe(validToken);
+  });
+
+  it("rejects ambiguous, encoded, duplicated, or malformed invite fragments", () => {
+    for (const fragment of [
+      "",
+      `#${validToken}`,
+      `#invite=${validToken}&invite=${validToken}`,
+      `#invite=${encodeURIComponent(validToken).replace("A", "%41")}`,
+      `#invite=${"A".repeat(42)}`,
+      `#other=${validToken}`,
+      null,
+    ]) {
+      expect(parseInviteSecretFragment(fragment)).toBeNull();
+    }
+  });
+});
+
+describe("short-lived invite access cookie", () => {
+  it("binds one validated digest to the exact public path", () => {
+    const value = encodeInviteAccessCookie(publicId, validTokenHash);
+
+    expect(parseInviteAccessCookie(value, publicId)).toBe(validTokenHash);
+    expect(
+      parseInviteAccessCookie(
+        value,
+        "26000000-0000-4000-8000-000000000032",
+      ),
+    ).toBeNull();
+    expect(parseInviteAccessCookie(`${value}.extra`, publicId)).toBeNull();
+    expect(getInviteAccessCookieOptions(publicId, 1_800)).toMatchObject({
+      httpOnly: true,
+      maxAge: 1_800,
+      path: `/invite/${publicId}`,
+      sameSite: "lax",
+    });
+  });
+
+  it("allows only the configured or exact HTTPS preview Origin", () => {
+    expect(
+      isTrustedInviteExchangeOrigin(
+        "https://predictor.example",
+        "https://predictor.example/app",
+      ),
+    ).toBe(true);
+    expect(
+      isTrustedInviteExchangeOrigin(
+        "https://slice.example.vercel.app",
+        "https://predictor.example",
+        ["slice.example.vercel.app"],
+      ),
+    ).toBe(true);
+
+    for (const origin of [
+      null,
+      "https://attacker.example",
+      "https://slice.example.vercel.app.attacker.test",
+      "http://slice.example.vercel.app",
+    ]) {
+      expect(
+        isTrustedInviteExchangeOrigin(origin, "https://predictor.example", [
+          "slice.example.vercel.app",
+        ]),
+      ).toBe(false);
+    }
+  });
 });
 
 describe("membership RPC response validation", () => {
   it("accepts a one-time raw token only in the invite-creation response", () => {
     const result = createdInviteRpcSchema.parse({
       invite_id: "26000000-0000-4000-8000-000000000031",
+      public_id: publicId,
       status: "active",
       created_at: timestamp,
       expires_at: "2026-08-21T10:00:00+00:00",
@@ -68,6 +172,7 @@ describe("membership RPC response validation", () => {
     });
 
     expect(result.rawToken).toBe(validToken);
+    expect(result.publicId).toBe(publicId);
     expect(result.metadata).not.toHaveProperty("rawToken");
   });
 
@@ -156,22 +261,23 @@ describe("membership RPC token boundary", () => {
   it("rejects a malformed token before querying the database", async () => {
     const rpc = vi.fn();
 
-    await expect(resolveInvite(clientWithRpc(rpc), "short")).resolves.toEqual({
-      status: "unavailable",
-    });
+    await expect(
+      resolveInvite(clientWithRpc(rpc), "short", validTokenHash),
+    ).resolves.toEqual({ status: "unavailable" });
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("passes only the validated token hash to invite resolution", async () => {
+  it("passes only the public ID and validated digest to invite resolution", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [{ available: false }],
       error: null,
     });
 
-    await expect(resolveInvite(clientWithRpc(rpc), validToken)).resolves.toEqual({
-      status: "unavailable",
-    });
+    await expect(
+      resolveInvite(clientWithRpc(rpc), publicId, validTokenHash),
+    ).resolves.toEqual({ status: "unavailable" });
     expect(rpc).toHaveBeenCalledWith("resolve_invite", {
+      p_public_id: publicId,
       p_token_hash: validTokenHash,
     });
     expect(JSON.stringify(rpc.mock.calls)).not.toContain(validToken);
@@ -181,7 +287,7 @@ describe("membership RPC token boundary", () => {
     const rpc = vi.fn();
 
     await expect(
-      submitJoinRequest(clientWithRpc(rpc), "short"),
+      submitJoinRequest(clientWithRpc(rpc), publicId, "short"),
     ).resolves.toEqual({
       ok: false,
       message: "קישור ההזמנה אינו זמין.",
@@ -189,7 +295,7 @@ describe("membership RPC token boundary", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("passes only the validated token hash to join submission", async () => {
+  it("passes only the public ID and validated digest to join submission", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: [
         {
@@ -203,9 +309,10 @@ describe("membership RPC token boundary", () => {
     });
 
     await expect(
-      submitJoinRequest(clientWithRpc(rpc), validToken),
+      submitJoinRequest(clientWithRpc(rpc), publicId, validTokenHash),
     ).resolves.toMatchObject({ ok: true });
     expect(rpc).toHaveBeenCalledWith("submit_join_request", {
+      p_public_id: publicId,
       p_token_hash: validTokenHash,
     });
     expect(JSON.stringify(rpc.mock.calls)).not.toContain(validToken);

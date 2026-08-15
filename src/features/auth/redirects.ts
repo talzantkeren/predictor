@@ -1,4 +1,4 @@
-import { INVITE_TOKEN_PATTERN } from "@/features/membership/invite-token";
+import { INVITE_PUBLIC_ID_PATTERN } from "@/features/membership/invite-token";
 
 const AUTH_REDIRECT_PATHS = new Set([
   "/dashboard",
@@ -14,7 +14,7 @@ const LEAGUE_SUMMARY_PATH_PATTERN =
 const LEAGUE_SETTINGS_PATH_PATTERN =
   /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/settings$/;
 const INVITE_PATH_PATTERN = new RegExp(
-  `^/invite/${INVITE_TOKEN_PATTERN.source.slice(1, -1)}$`,
+  `^/invite/${INVITE_PUBLIC_ID_PATTERN.source.slice(1, -1)}$`,
 );
 
 export function getSafeAuthRedirect(

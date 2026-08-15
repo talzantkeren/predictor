@@ -104,6 +104,7 @@ export type Database = {
           expires_at: string
           id: string
           league_id: string
+          public_id: string
           revoked_at: string | null
           status: Database["public"]["Enums"]["invite_status"]
           token_hash: string
@@ -115,6 +116,7 @@ export type Database = {
           expires_at: string
           id?: string
           league_id: string
+          public_id?: string
           revoked_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token_hash: string
@@ -126,6 +128,7 @@ export type Database = {
           expires_at?: string
           id?: string
           league_id?: string
+          public_id?: string
           revoked_at?: string | null
           status?: Database["public"]["Enums"]["invite_status"]
           token_hash?: string
@@ -650,6 +653,7 @@ export type Database = {
           created_at: string
           expires_at: string
           invite_id: string
+          public_id: string
           raw_token: string
           revoked_at: string
           status: Database["public"]["Enums"]["invite_status"]
@@ -701,7 +705,7 @@ export type Database = {
         }[]
       }
       resolve_invite: {
-        Args: { p_token_hash: string }
+        Args: { p_public_id: string; p_token_hash: string }
         Returns: {
           available: boolean
           demo_entry_fee_agorot: number
@@ -727,7 +731,7 @@ export type Database = {
         }[]
       }
       submit_join_request: {
-        Args: { p_token_hash: string }
+        Args: { p_public_id: string; p_token_hash: string }
         Returns: {
           created_at: string
           request_id: string
