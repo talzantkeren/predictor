@@ -100,12 +100,18 @@ navigation, מאזין לכל בקשות הרשת עד שה־bootstrap מסיר 
 | Vitest | secret base64url באורך/entropy הנדרשים, URL Fragment קנוני, public ID/digest/cookie binding, Origin ו־redirect allowlist; mapping שגיאות; request-body bounded גם בלי `Content-Length`; UUID/idempotency; סיומת/MIME/magic; empty/duplicate/missing fields; Sharp decode, WebP, orientation, dimensions, no-enlarge, metadata stripping, multi-page/pixel/size limits; path derivation וגבול admin import |
 | pgTAP | schema, public-ID+hash pairing, checks, indexes, RLS/grants ו־`search_path`; one-active invite ו־request; rotation/revoke/expiry/late join/close boundary; actor/status spoofing; בקשה קיימת אחרי revoke; rejected retry; proof append-only/quota/idempotency/current ordering; rate windows; finalizer מאמת object מדויק ואטומיות; bucket פרטי ומגבלותיו; CRUD ישיר ב־Storage נדחה ל־anon/authenticated; בידוד owner/manager/outsider/ליגה אחרת וללא decision/membership mutation |
 | Route integration | invite exchange עם Origin/body/public-ID/digest/cookie/opaque denial; JPEG/PNG/WebP תקינים; spoofed SVG/HTML/PDF/executable, mismatch, corrupt/empty/oversize/extreme/multi-page; Origin/session/UUID; owner מול IDOR/manager-upload; replace/retry/rate limit; Storage/finalize/cleanup failures; signed access owner/manager מול opaque denial וכותרות no-store |
-| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
+| Playwright | יצירה/הצגה חד־פעמית/refresh/rotate/revoke של invite; Fragment secret אינו מופיע בשום network target ונמחק מהכתובת; expiry שמתרחש אחרי render נבדק דרך UI → Server Action → DB ומחזיר שגיאה בטוחה ומצב מנהל מדויק; guest → register/login עם public-ID return path → חזרה בטוחה; submit, `pending_proof`, upload סינתטי, `pending_approval`, dashboard, retry והחלפה; request/proof substitution ומניעת Storage ישיר; Desktop Chrome ו־Pixel 5 |
 | Visual/manual | 390px ו־desktop, RTL, keyboard/focus, labels ו־error summary, `aria-live`, preview מקומי, loading/empty/success/failure וללא overflow |
 
 pgTAP רץ בחיבור יחיד ואינו מוכיח race אמיתי לבדו. בדיקות Playwright/API
 משתמשות ב־`Promise.all` עבור rotate, submit ו־upload retry, בעוד constraints,
 locks ו־RLS נבדקים בנוסף במסד.
+
+תרחיש ה־expiry של Playwright משנה רק fixture סינתטי בתוך מכולת PostgreSQL של
+Supabase המקומי והחד־פעמי. הוא מאמת UUID קנוני, משתמש ב־timestamp יחיד כדי
+לשמור על אילוצי lifecycle, דורש בדיוק `UPDATE 1` ואינו מציג stderr של PostgreSQL
+שעלול להכיל שורת invite רגישה. העזר אינו קורא URL או credentials ואינו מסוגל
+לפנות לפרויקט Supabase מקושר.
 
 ### הכנת הסביבה והרצה
 

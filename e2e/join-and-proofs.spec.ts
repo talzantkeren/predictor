@@ -11,6 +11,7 @@ import sharp from "sharp";
 
 import { hashInviteToken } from "@/features/membership/invite-token";
 
+import { expireInviteInDisposableLocalDatabase } from "./support/local-database";
 import { registerConfirmedUser } from "./support/local-auth";
 
 test.use({ screenshot: "off", trace: "off", video: "off" });
@@ -315,6 +316,89 @@ async function revokeActiveInviteForCleanup(
 }
 
 test.describe("Slice 3 invite, join request, and private Demo proof", () => {
+  test("handles an invite that expires between render and submission", async ({
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    page.setDefaultTimeout(10_000);
+    const secondaryContextOptions = getSecondaryContextOptions(
+      testInfo.project.name,
+    );
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const password = `Aa1!${crypto.randomUUID()}`;
+    const leagueName = `ליגת תפוגה ${suffix}`;
+    const manager = await registerConfirmedUser({
+      browser,
+      registrationPage: page,
+      request,
+      email: `slice3-expiry-manager-${suffix}@example.com`,
+      password,
+      displayName: "מנהלת בדיקת תפוגה",
+      contextOptions: secondaryContextOptions,
+    });
+
+    const leagueId = await createLeague(manager.page, leagueName);
+    await manager.page
+      .getByRole("link", { name: "ניהול קישור ההזמנה" })
+      .click();
+    await expect(manager.page).toHaveURL(
+      new RegExp(`/leagues/${leagueId}/settings$`),
+    );
+    await manager.page
+      .getByRole("button", { name: "יצירת קישור חדש" })
+      .click();
+    const invite = await manager.page.getByLabel("הקישור החדש").inputValue();
+    const inviteUrl = new URL(invite);
+    const publicId = inviteUrl.pathname.split("/").at(-1);
+    expect(publicId).toMatch(/^[0-9a-f-]{36}$/);
+
+    const requesterContext = await browser.newContext(secondaryContextOptions);
+    const requesterRegistrationPage = await requesterContext.newPage();
+    await navigateToInvite(requesterRegistrationPage, invite);
+    await assertVisible(
+      requesterRegistrationPage.getByRole("heading", { name: leagueName }),
+    );
+    const requester = await registerConfirmedUser({
+      browser,
+      registrationPage: requesterRegistrationPage,
+      request,
+      email: `slice3-expiry-requester-${suffix}@example.com`,
+      password,
+      displayName: "מבקש בדיקת תפוגה",
+      nextPath: inviteUrl.pathname,
+      confirmInRegistrationContext: true,
+      contextOptions: secondaryContextOptions,
+    });
+    await assertVisible(
+      requester.page.getByRole("heading", { name: leagueName }),
+    );
+
+    expireInviteInDisposableLocalDatabase(publicId as string);
+    await requester.page
+      .getByRole("button", { name: "פתיחת בקשת הצטרפות" })
+      .click();
+    await assertVisible(
+      requester.page.getByText("קישור ההזמנה אינו זמין.", { exact: true }),
+    );
+    await requester.page.reload();
+    await assertVisible(
+      requester.page.getByRole("heading", {
+        name: "קישור ההזמנה אינו זמין",
+      }),
+    );
+
+    await manager.page.reload();
+    await assertVisible(manager.page.getByText("פג תוקף", { exact: true }));
+    await assertVisible(
+      manager.page.getByRole("button", { name: "יצירת קישור חדש" }),
+    );
+
+    await requester.context.close();
+    await manager.context.close();
+  });
+
   test("rotates a one-time invite, resumes Auth, preserves proof history, and blocks IDOR", async ({
     browser,
     page,
