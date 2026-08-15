@@ -11,7 +11,8 @@ import type {
 } from "@/features/predictions/types";
 import type { Database } from "@/types/database.generated";
 
-const MAX_MATCHES_PER_PAGE = 100;
+const MAX_MATCHES_PER_SEASON = 500;
+const MATCH_QUERY_LIMIT = MAX_MATCHES_PER_SEASON + 1;
 const MAX_LEAGUES_PER_USER = 100;
 const MAX_ACTIVE_MEMBERS_PER_LEAGUE = 200;
 
@@ -63,7 +64,7 @@ export async function getLeagueMatchList(
   const { data: league, error: leagueError } = await supabase
     .from("leagues")
     .select(
-      "id, name, manager_id, season_id, season:seasons!inner(name, competition:competitions!inner(name))",
+      "id, name, manager_id, season_id, status, season:seasons!inner(name, competition:competitions!inner(name))",
     )
     .eq("id", leagueId)
     .maybeSingle();
@@ -78,7 +79,7 @@ export async function getLeagueMatchList(
     )
     .eq("season_id", league.season_id)
     .order("kickoff_at", { ascending: true })
-    .limit(MAX_MATCHES_PER_PAGE);
+    .limit(MATCH_QUERY_LIMIT);
 
   if (filter?.kind === "round") {
     matchesQuery = matchesQuery.eq("round_number", filter.round);
@@ -104,7 +105,7 @@ export async function getLeagueMatchList(
         .select("round_number")
         .eq("season_id", league.season_id)
         .order("round_number", { ascending: true })
-        .limit(MAX_MATCHES_PER_PAGE),
+        .limit(MATCH_QUERY_LIMIT),
     ]);
 
   if (
@@ -114,6 +115,13 @@ export async function getLeagueMatchList(
     !matchesResult.data ||
     roundsResult.error ||
     !roundsResult.data
+  ) {
+    return { status: "error" };
+  }
+
+  if (
+    matchesResult.data.length > MAX_MATCHES_PER_SEASON ||
+    roundsResult.data.length > MAX_MATCHES_PER_SEASON
   ) {
     return { status: "error" };
   }
@@ -130,7 +138,7 @@ export async function getLeagueMatchList(
           .eq("league_id", leagueId)
           .eq("user_id", userId)
           .in("match_id", matchIds)
-          .limit(MAX_MATCHES_PER_PAGE)
+          .limit(MAX_MATCHES_PER_SEASON)
       : { data: [], error: null };
 
   if (predictionsResult.error || !predictionsResult.data) {
@@ -170,6 +178,7 @@ export async function getLeagueMatchList(
       league: {
         id: league.id,
         name: league.name,
+        status: league.status,
         seasonName: league.season.name,
         competitionName: league.season.competition.name,
       },
@@ -192,7 +201,7 @@ export async function getPredictionWriteAuthorization(
   const [leagueResult, membershipResult, matchResult] = await Promise.all([
     supabase
       .from("leagues")
-      .select("season_id")
+      .select("season_id, status")
       .eq("id", leagueId)
       .maybeSingle(),
     supabase
@@ -220,6 +229,13 @@ export async function getPredictionWriteAuthorization(
     leagueResult.data.season_id !== matchResult.data.season_id
   ) {
     return { status: "denied" as const };
+  }
+
+  if (
+    leagueResult.data.status === "completed" ||
+    leagueResult.data.status === "archived"
+  ) {
+    return { status: "state-conflict" as const };
   }
 
   return { status: "authorized" as const };
@@ -276,7 +292,7 @@ export async function getMatchDetail(
 
   const { data: leagues, error: leaguesError } = await supabase
     .from("leagues")
-    .select("id, name")
+    .select("id, name, status")
     .in("id", membershipLeagueIds)
     .eq("season_id", match.season_id)
     .order("created_at", { ascending: true })
@@ -288,6 +304,7 @@ export async function getMatchDetail(
   const eligibleLeagues: EligibleLeague[] = leagues.map((league) => ({
     id: league.id,
     name: league.name,
+    status: league.status,
   }));
   const mappedMatch: MatchDetail["match"] = {
     id: match.id,

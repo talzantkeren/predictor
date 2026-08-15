@@ -78,6 +78,7 @@ export default async function MatchDetailPage({
   const data = result.data;
   const locked = isKickoffLocked(data.match.kickoffAt, data.databaseNow);
   const writable = canWritePrediction({
+    leagueStatus: data.league.status,
     status: data.match.status,
     kickoffAt: data.match.kickoffAt,
     now: data.databaseNow,
@@ -155,7 +156,13 @@ export default async function MatchDetailPage({
               {writable ? (
                 <LockCountdown initialSeconds={getCountdownSeconds(data.match.kickoffAt, data.databaseNow)} />
               ) : (
-                <span className="font-semibold">{locked ? "הניחוש נעול" : "ניחוש אינו זמין בסטטוס זה"}</span>
+                <span className="font-semibold">
+                  {locked
+                    ? "הניחוש נעול"
+                    : data.league.status === "completed" || data.league.status === "archived"
+                      ? "הליגה זמינה לקריאה בלבד"
+                      : "ניחוש אינו זמין בסטטוס זה"}
+                </span>
               )}
             </dd>
           </div>
@@ -198,7 +205,11 @@ export default async function MatchDetailPage({
               />
             </p>
             <p className="mt-2 font-semibold text-slate-800">
-              {locked ? "הניחוש נשמר ונעול לעריכה." : "הניחוש נשמר, אך סטטוס המשחק אינו מאפשר עריכה."}
+              {locked
+                ? "הניחוש נשמר ונעול לעריכה."
+                : data.league.status === "completed" || data.league.status === "archived"
+                  ? "הניחוש נשמר, והליגה זמינה כעת לקריאה בלבד."
+                  : "הניחוש נשמר, אך סטטוס המשחק אינו מאפשר עריכה."}
             </p>
           </div>
         ) : (

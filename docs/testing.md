@@ -160,8 +160,8 @@ kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־see
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | parsing קשיח של ציונים שלמים 0–30; דחיית ריק/שלילי/31/fraction; מיפוי חמשת הסטטוסים ומצבי open/editable/locked/unavailable; גבול millisecond לפני/בדיוק/אחרי; countdown טהור; UTC→`Asia/Jerusalem` ואזור זמן נוסף; גבולות תאריך DST; round/date search params; allowlist לנתיבי המשחקים ומיפוי `PREDICTION_LOCKED` בטוח |
-| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; `now()` ו־`now()+1 second`; exact/after lock; scheduled/postponed לעומת live/finished/canceled; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
+| Vitest | parsing קשיח של ציונים שלמים 0–30; דחיית ריק/שלילי/31/fraction; מיפוי חמשת הסטטוסים ומצבי open/editable/locked/unavailable; `draft`/`open`/`active` לעומת `completed`/`archived`; גבול millisecond לפני/בדיוק/אחרי; countdown טהור עם יחיד/רבים תקינים; UTC→`Asia/Jerusalem` ואזור זמן נוסף; גבולות תאריך DST; round/date search params; allowlist לנתיבי המשחקים ומיפוי `PREDICTION_LOCKED` בטוח |
+| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; `now()` ו־`now()+1 second`; exact/after lock; scheduled/postponed לעומת live/finished/canceled; `completed`/`archived` read-only ו־FORBIDDEN אטום לזר; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
 | Playwright | שני חברים מאומתים ב־Desktop Chrome/UTC וב־Pixel 5/`Asia/Jerusalem`; רשימת משחקים וכל חמשת הסטטוסים/תוצאה/שעה מקומית/נעילה; create→refresh timestamp→edit; `Promise.all` כפול שמחזיר שורה אחת; UI, תוכן ה־RSC ו־PostgREST שמסתירים ניחוש אחר לפני kickoff; שינוי kickoff מקומי לעבר ללא sleep; stale create/edit וה־RPC הישיר נדחים; reveal לשני החברים; outsider ולאחר מכן pending requester מקבלים not-found ואפס שורות; RTL וללא overflow |
 | Manual/Preview | כניסה כחבר פעיל, בדיקת רשימה ומסנן, שמירה ועריכה, שעה מוחלטת + timezone, stale-tab בטוח וחשיפה בשני חשבונות. Preview דורש שה־migrations החדשות יוחלו בפרויקט Supabase המורשה לפני בדיקה מאומתת |
 
@@ -180,6 +180,10 @@ pgTAP הוא חיבור יחיד ואינו מוכיח race רשת אמיתי. u
 המועד המוקדם ביותר בעונה: לאחר שמועד ה־Demo הראשון יעבור, עדכון חוקי ניקוד לכל
 ליגה באותה עונה יידחה. אין ב־seed תוצאה finished או kickoff עבר; תצוגת finished
 נבדקת רק ב־fixtures המבודדים של pgTAP/Playwright.
+
+בדיקת `leagues.test.sql` לעריכת חוקי ניקוד משתמשת בעונה ובליגה מבודדות שנוצרות
+בתוך ה־transaction. לכן הגעת ה־seed הקבוע למועד kickoff בעתיד אינה שוברת את
+ה־suite; הבדיקה עצמה מזיזה רק את משחק ה־fixture המבודד אל `now()`.
 
 הרצה ממוקדת בזמן פיתוח:
 

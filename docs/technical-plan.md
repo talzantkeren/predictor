@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.8 |
-| תאריך עדכון | 15 באוגוסט 2026 |
-| סטטוס | Ready for implementation |
+| גרסה | 2.9 |
+| תאריך עדכון | 16 באוגוסט 2026 |
+| סטטוס | Slice 5 delivered; Slice 6 next |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -365,8 +365,11 @@ DEMO_MODE=true
 - עד Slice 6, מצב "טרם נוקד" מזוהה באמצעות `scored_at is null`: `points` נשאר
   `0` וכל metadata הניקוד נשאר `null`.
 - כתיבה עוברת דרך `save_prediction` בלבד. ה־RPC גוזר actor מ־`auth.uid()`,
-  דורש חברות `active`, נועל את שורות החברות והמשחק, מאמת התאמת עונה ומאפשר
-  upsert רק עבור `scheduled` או `postponed` כאשר `now() < kickoff_at`.
+  נועל את שורות הליגה, החברות והמשחק, דורש חברות `active`, מאמת התאמת עונה
+  ומאפשר upsert רק בליגה `draft`/`open`/`active` ועבור משחק
+  `scheduled` או `postponed` כאשר `now() < kickoff_at`.
+  ליגות `completed` ו־`archived` הן read-only; הבדיקה מתבצעת אחרי אימות חברות
+  כדי שלא לחשוף קיום או סטטוס של ליגה פרטית דרך הבדל שגיאות.
   `live`, `finished` ו־`canceled` אינם ניתנים לכתיבה גם אם המועד עתידי.
 - RLS של `SELECT` דורשת חברות פעילה: הבעלים רואה את שורתו לפני ואחרי הנעילה;
   חברים פעילים אחרים באותה ליגה רואים אותה רק כאשר `now() >= kickoff_at`.
@@ -486,7 +489,7 @@ DEMO_MODE=true
 | `submitJoinRequest` | public ID; digest נקרא מ־cookie HttpOnly | membership service + RPC | status `pending_proof` |
 | `approveJoinRequest` | request id | RPC approve | member active |
 | `rejectJoinRequest` | request id + reason | RPC reject | request rejected |
-| `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/status/season נאכפים במסד | saved timestamp |
+| `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/match+league status/season נאכפים במסד | saved timestamp |
 | `removeMember` | league + member | membership service | status removed + audit |
 | `applyManualResult` | match + result/status | `score_match` via admin client | result and ranking updated |
 | `completeLeague` | league id | report/league service | final report read-only |
@@ -785,7 +788,10 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - `/matches/[matchId]` עם הקשר ליגה מאומת, בחירה מפורשת כאשר יש כמה ליגות
   זכאיות, יצירה/עריכה, מצב נעול וחשיפת ניחושי חברים פעילים אחרי kickoff.
 - `predictions`, outcome generated, התאמת עונה, indexes, RLS, grants ו־RPC
-  `save_prediction` אטומי. ה־Action נשאר session → Zod → resource AuthZ → RPC.
+  `save_prediction` אטומי. ה־RPC נועל גם את הליגה ודוחה כתיבה לאחר
+  `completed`/`archived`; ה־Action נשאר session → Zod → resource AuthZ → RPC.
+- שאילתות העונה מוגבלות מפורשות ל־500 משחקים, עם שורת sentinel שמחזירה שגיאה
+  במקום רשימה חלקית; התקרה גבוהה מלוח MVP מלא ונשארת גבול בטיחות עד pagination.
 - Vitest לגבולות קלט/זמן/אזור זמן, pgTAP למטריצת הרשאה ונעילה, ו־Playwright
   דטרמיניסטי לשני משתמשים ב־Desktop Chrome וב־Pixel 5.
 
@@ -920,7 +926,8 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-Slice 5 נמסר וממתין לביקורת PR. המשימה הבאה לאחר אישורו היא **Slice 6 —
+Slice 5 נמסר, תוקן בעקבות ביקורת עצמאית וממתין לקבלה/אישור PR. המשימה הבאה
+לאחר אישורו היא **Slice 6 —
 תוצאות, ניקוד ודירוג**: `score_match`, כתיבת metadata הניקוד ו־result/rule
 versions, leaderboard ו־prize split לפי מטריצת הבדיקות בסעיפים 7, 10 ו־15.
 אסור להוסיף ניקוד מצטבר; כל ריצה מחליפה דטרמיניסטית את המצב. Sports Sync/Cron

@@ -72,11 +72,27 @@ describe("database-time lock and prediction view state", () => {
     expect(getCountdownSeconds(kickoffAt, kickoffAt)).toBe(0);
   });
 
+  it.each(["draft", "open", "active"] as const)(
+    "allows an active member before kickoff while the league is %s",
+    (leagueStatus) => {
+      expect(
+        canWritePrediction({
+          leagueStatus,
+          status: "scheduled",
+          kickoffAt,
+          now: "2026-08-22T15:59:59.999Z",
+          isActiveMember: true,
+        }),
+      ).toBe(true);
+    },
+  );
+
   it.each(["scheduled", "postponed"] as const)(
-    "allows an active member before kickoff when status is %s",
+    "allows an active member before kickoff when match status is %s",
     (status) => {
       expect(
         canWritePrediction({
+          leagueStatus: "active",
           status,
           kickoffAt,
           now: "2026-08-22T15:59:59.999Z",
@@ -86,11 +102,27 @@ describe("database-time lock and prediction view state", () => {
     },
   );
 
+  it.each(["completed", "archived"] as const)(
+    "keeps a %s league read-only even before kickoff",
+    (leagueStatus) => {
+      expect(
+        canWritePrediction({
+          leagueStatus,
+          status: "scheduled",
+          kickoffAt,
+          now: "2026-08-22T15:00:00.000Z",
+          isActiveMember: true,
+        }),
+      ).toBe(false);
+    },
+  );
+
   it.each(["live", "finished", "canceled"] as const)(
     "never opens a future-dated %s match for writing",
     (status) => {
       expect(
         canWritePrediction({
+          leagueStatus: "active",
           status,
           kickoffAt,
           now: "2026-08-22T15:00:00.000Z",
@@ -102,6 +134,7 @@ describe("database-time lock and prediction view state", () => {
 
   it("derives open, editable, locked, and unavailable states", () => {
     const base = {
+      leagueStatus: "active" as const,
       status: "scheduled" as const,
       kickoffAt,
       isActiveMember: true,
@@ -167,7 +200,13 @@ describe("match and timestamp presentation", () => {
   });
 
   it("formats countdown states without relying on a browser clock", () => {
-    expect(formatRemainingDuration(90)).toBe("נותרו 1 דקות ו־30 שניות");
+    expect(formatRemainingDuration(90)).toBe("נותרו דקה אחת ו־30 שניות");
+    expect(formatRemainingDuration(3_661)).toBe("נותרו שעה אחת ו־דקה אחת");
+    expect(formatRemainingDuration(90_000)).toBe("נותרו יום אחד ו־שעה אחת");
+    expect(formatRemainingDuration(86_400)).toBe("נותר יום אחד");
+    expect(formatRemainingDuration(3_600)).toBe("נותרה שעה אחת");
+    expect(formatRemainingDuration(60)).toBe("נותרה דקה אחת");
+    expect(formatRemainingDuration(1)).toBe("נותרה שנייה אחת");
     expect(formatRemainingDuration(0)).toBe("הניחוש נעול");
   });
 });

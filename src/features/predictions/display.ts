@@ -1,4 +1,7 @@
-import type { MatchStatus } from "@/features/predictions/types";
+import type {
+  LeagueStatus,
+  MatchStatus,
+} from "@/features/predictions/types";
 
 export const DEFAULT_MATCH_TIME_ZONE = "Asia/Jerusalem";
 
@@ -48,11 +51,13 @@ export function isKickoffLocked(kickoffAt: string, now: string | Date) {
 }
 
 export function canWritePrediction({
+  leagueStatus,
   status,
   kickoffAt,
   now,
   isActiveMember,
 }: {
+  leagueStatus: LeagueStatus;
   status: MatchStatus;
   kickoffAt: string;
   now: string | Date;
@@ -60,18 +65,22 @@ export function canWritePrediction({
 }) {
   return (
     isActiveMember &&
+    leagueStatus !== "completed" &&
+    leagueStatus !== "archived" &&
     (status === "scheduled" || status === "postponed") &&
     !isKickoffLocked(kickoffAt, now)
   );
 }
 
 export function derivePredictionDisplayState({
+  leagueStatus,
   status,
   kickoffAt,
   now,
   isActiveMember,
   hasPrediction,
 }: {
+  leagueStatus: LeagueStatus;
   status: MatchStatus;
   kickoffAt: string;
   now: string | Date;
@@ -79,7 +88,13 @@ export function derivePredictionDisplayState({
   hasPrediction: boolean;
 }): PredictionDisplayState {
   if (
-    canWritePrediction({ status, kickoffAt, now, isActiveMember })
+    canWritePrediction({
+      leagueStatus,
+      status,
+      kickoffAt,
+      now,
+      isActiveMember,
+    })
   ) {
     return hasPrediction ? "editable" : "open";
   }
@@ -106,10 +121,29 @@ export function formatRemainingDuration(seconds: number) {
   const minutes = Math.floor((safeSeconds % 3_600) / 60);
   const remainingSeconds = safeSeconds % 60;
 
-  if (days > 0) return `נותרו ${days} ימים ו־${hours} שעות`;
-  if (hours > 0) return `נותרו ${hours} שעות ו־${minutes} דקות`;
-  if (minutes > 0) return `נותרו ${minutes} דקות ו־${remainingSeconds} שניות`;
-  return `נותרו ${remainingSeconds} שניות`;
+  const daysText = days === 1 ? "יום אחד" : `${days} ימים`;
+  const hoursText = hours === 1 ? "שעה אחת" : `${hours} שעות`;
+  const minutesText = minutes === 1 ? "דקה אחת" : `${minutes} דקות`;
+  const secondsText =
+    remainingSeconds === 1 ? "שנייה אחת" : `${remainingSeconds} שניות`;
+
+  if (days > 0) {
+    if (hours > 0) return `נותרו ${daysText} ו־${hoursText}`;
+    return days === 1 ? `נותר ${daysText}` : `נותרו ${daysText}`;
+  }
+  if (hours > 0) {
+    if (minutes > 0) return `נותרו ${hoursText} ו־${minutesText}`;
+    return hours === 1 ? `נותרה ${hoursText}` : `נותרו ${hoursText}`;
+  }
+  if (minutes > 0) {
+    if (remainingSeconds > 0) {
+      return `נותרו ${minutesText} ו־${secondsText}`;
+    }
+    return minutes === 1 ? `נותרה ${minutesText}` : `נותרו ${minutesText}`;
+  }
+  return remainingSeconds === 1
+    ? `נותרה ${secondsText}`
+    : `נותרו ${secondsText}`;
 }
 
 export function formatDateTimeInTimeZone(

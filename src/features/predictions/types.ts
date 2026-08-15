@@ -1,6 +1,7 @@
 import type { Database } from "@/types/database.generated";
 
 export type MatchStatus = Database["public"]["Enums"]["match_status"];
+export type LeagueStatus = Database["public"]["Enums"]["league_status"];
 export type PredictedOutcome = Database["public"]["Enums"]["outcome"];
 
 export type MatchListFilter =
@@ -39,6 +40,7 @@ export type LeagueMatchList = {
   league: {
     id: string;
     name: string;
+    status: LeagueStatus;
     seasonName: string;
     competitionName: string;
   };
@@ -51,6 +53,7 @@ export type LeagueMatchList = {
 export type EligibleLeague = {
   id: string;
   name: string;
+  status: LeagueStatus;
 };
 
 export type RevealedPrediction = OwnPrediction & {

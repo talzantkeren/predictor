@@ -425,6 +425,56 @@ select results_eq(
 );
 reset role;
 
+-- Completed and archived leagues remain readable but reject new prediction writes.
+update public.leagues
+set status = 'completed'
+where id = (select league_id from prediction_fixture);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"a2222222-2222-4222-8222-222222222222","role":"authenticated"}', true);
+select throws_ok(
+  format($sql$select * from public.save_prediction(%L::uuid, '51000000-0000-4000-8000-000000000009', 1, 1)$sql$,
+    (select league_id from prediction_fixture)),
+  'P0001', 'STATE_CONFLICT',
+  'an active member cannot save in a completed league'
+);
+select is(
+  (select count(*)::integer from public.predictions
+   where league_id = (select league_id from prediction_fixture)
+     and match_id = '51000000-0000-4000-8000-000000000001'),
+  1,
+  'a completed league preserves the owner existing prediction for reading'
+);
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"a4444444-4444-4444-8444-444444444444","role":"authenticated"}', true);
+select throws_ok(
+  format($sql$select * from public.save_prediction(%L::uuid, '51000000-0000-4000-8000-000000000009', 1, 1)$sql$,
+    (select league_id from prediction_fixture)),
+  'P0001', 'FORBIDDEN',
+  'league lifecycle errors stay opaque to a non-member'
+);
+reset role;
+
+update public.leagues
+set status = 'archived'
+where id = (select league_id from prediction_fixture);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"a2222222-2222-4222-8222-222222222222","role":"authenticated"}', true);
+select throws_ok(
+  format($sql$select * from public.save_prediction(%L::uuid, '51000000-0000-4000-8000-000000000009', 1, 1)$sql$,
+    (select league_id from prediction_fixture)),
+  'P0001', 'STATE_CONFLICT',
+  'an active member cannot save in an archived league'
+);
+reset role;
+
+update public.leagues
+set status = 'active'
+where id = (select league_id from prediction_fixture);
+
 -- Before kickoff, each active member sees only their own row, with zero rows for another ID.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"a2222222-2222-4222-8222-222222222222","role":"authenticated"}', true);

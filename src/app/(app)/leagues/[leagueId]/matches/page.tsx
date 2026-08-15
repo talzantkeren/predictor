@@ -149,6 +149,7 @@ export default async function LeagueMatchesPage({
         <ol className="mt-6 grid gap-5 lg:grid-cols-2">
           {data.matches.map((match) => {
             const displayState = derivePredictionDisplayState({
+              leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
               now: data.databaseNow,
@@ -156,6 +157,7 @@ export default async function LeagueMatchesPage({
               hasPrediction: Boolean(match.ownPrediction),
             });
             const writable = canWritePrediction({
+              leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
               now: data.databaseNow,

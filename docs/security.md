@@ -227,10 +227,12 @@
   ל־`authenticated`; ל־`anon` ול־`service_role` אין גישת טבלה או RPC. הגישה
   היחידה לכתיבת משתמש היא `save_prediction`, `SECURITY DEFINER` עם
   `search_path = ''`, שמות schema מלאים ו־`EXECUTE` ל־authenticated בלבד.
-- ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורת החברות ואת שורת המשחק, דורש
-  `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הסטטוס אינו
-  `scheduled`/`postponed` או כאשר `now() >= kickoff_at`. ה־Action מבצע מחדש
-  session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן.
+- ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורות הליגה, החברות והמשחק, דורש
+  `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הליגה
+  `completed`/`archived`, כאשר סטטוס המשחק אינו `scheduled`/`postponed`, או
+  כאשר `now() >= kickoff_at`. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
+  זר מקבל `FORBIDDEN` זהה בלי ללמוד אם הליגה קיימת או read-only. ה־Action מבצע
+  מחדש session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן או לסטטוס.
 - `predicted_outcome` הוא generated column. הלקוח שולח רק שני ציונים שלמים
   0–30; אין `user_id`, outcome, points, status, kickoff או role סמכותיים בקלט.
   unique `(league_id, match_id, user_id)` ו־upsert משאירים רשומה יחידה.
@@ -257,3 +259,4 @@
 | IDOR בין ליגות/עונות | Action AuthZ, RPC התאמת membership/season, consistency trigger ו־RLS | other league, cross-season, outsider ו־`?league=` זר נדחים; parent season change עם prediction נכשל |
 | זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
 | סטטוס עמום מחליש זמן | allowlist סגור `scheduled`/`postponed` וגם זמן DB | live/finished/canceled עתידיים נדחים; postponed עתידי מותר |
+| כתיבה לליגה שהושלמה/אורכבה או דליפת הסטטוס שלה | lock על שורת league + `completed`/`archived` read-only אחרי membership AuthZ | active member מקבל `STATE_CONFLICT`; outsider מקבל `FORBIDDEN`; prediction קיים נשאר קריא |

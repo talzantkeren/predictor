@@ -6,6 +6,7 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
 - Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
+- Slice 5 Preview: [https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
@@ -148,9 +149,10 @@ Slice 3 מסתיים בבקשת `pending_approval` ובהוכחת Demo פרטי�
 → רענון שמציג את זמן השמירה מהשרת → עריכה → הגעה ל־`kickoff_at` → דחיית טופס
 ישן בהודעה בטוחה → חשיפת ניחושי חברים פעילים. ה־countdown והנטרול בדפדפן הם
 עזרי UX בלבד. `save_prediction` במסד גוזר את המשתמש מה־session, נועל את שורת
-החברות ואת שורת המשחק, דורש חברות פעילה והתאמת עונה ומאפשר upsert רק עבור
-`scheduled`/`postponed` כאשר `now() < kickoff_at`. אין כתיבת טבלה ישירה ואין
-מחיקה.
+הליגה, החברות והמשחק, דורש חברות פעילה והתאמת עונה ומאפשר upsert רק בליגה
+שאינה `completed`/`archived` ועבור `scheduled`/`postponed` כאשר
+`now() < kickoff_at`. ליגה שהושלמה או אורכבה נשארת זמינה לקריאה בלבד. אין
+כתיבת טבלה ישירה ואין מחיקה.
 
 ה־seed של Slice 5 הוא **Demo ידני וסינתטי**: שש קבוצות וחמישה משחקים עתידיים
 בשני מחזורים, עם שמות קבוצות אמיתיים לצורכי תצוגה אך ללא טענה שהמועדים הם לוח

@@ -50,6 +50,8 @@ export async function savePredictionAction(
       message:
         authorization.status === "error"
           ? "לא ניתן לבדוק את הרשאת הניחוש כרגע. יש לנסות שוב."
+          : authorization.status === "state-conflict"
+            ? "הליגה הושלמה או הועברה לארכיון ולכן היא זמינה לקריאה בלבד."
           : "המשחק המבוקש אינו זמין בליגה הזו.",
     };
   }
