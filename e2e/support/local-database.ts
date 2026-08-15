@@ -51,3 +51,36 @@ export function expireInviteInDisposableLocalDatabase(publicId: string) {
     throw new Error("Local expired-invite fixture could not be created.");
   }
 }
+
+export function removeInviteFromDisposableLocalDatabase(publicId: string) {
+  if (!canonicalUuidPattern.test(publicId)) {
+    throw new Error("Local invite cleanup ID was malformed.");
+  }
+
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `delete from public.invite_links where public_id = '${publicId}'::uuid;`,
+    ],
+    {
+      encoding: "utf8",
+      windowsHide: true,
+    },
+  );
+
+  if (cleanup.status !== 0 || cleanup.stdout.trim() !== "DELETE 1") {
+    // Preserve the primary assertion error and never include PostgreSQL stderr,
+    // which could contain the stored invite digest.
+    throw new Error("Local expired-invite fixture could not be removed.");
+  }
+}

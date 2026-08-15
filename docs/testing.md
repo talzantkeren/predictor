@@ -81,10 +81,11 @@ Playwright מבטל trace, screenshots ו־video, וה־runner מבטל snapshot
 הבדיקות משתמשות בהשוואות boolean, המתנות UI עם שגיאה קבועה ובעטיפות navigation
 מסוננות כדי ש־matcher snapshot או דו"ח כשל לא ידפיסו token. קריאות עם JWT,
 cookie, signed URL או proof path משתמשות ב־`fetch` של Node עם שגיאה מסוננת ולא
-ב־`APIRequestContext` המתועד של Playwright. canary מכוון שנכשל וסורק גם את
-ה־ZIP המוטמע בדוח HTML מאמת שאין בו sentinel של invite, JWT, cookie, password
-או signed proof path; artifact ה־canary נמחק לאחר הבדיקה. כל invite פעיל מבוטל
-ב־cleanup ככל שה־session המקומי זמין.
+ב־`APIRequestContext` המתועד של Playwright. אין בדיקת canary ייעודית לדוח HTML;
+ההגנה הקיימת היא ביטול trace, screenshots, video ו־page snapshots, יחד עם
+שגיאות מסוננות והימנעות מצעדי Playwright שמקבלים URL רגיש. דוחות כשל ו־artifacts
+עדיין נסרקים כחלק מבדיקת הדליפה לפני מסירה. כל invite פעיל מבוטל ב־cleanup ככל
+שה־session המקומי זמין, ו־fixture התפוגה נמחק ישירות מהמסד המקומי ב־`finally`.
 
 בקישור invite ה־bearer נמצא רק ב־URL Fragment. helper הניווט מבצע browser-side
 navigation, מאזין לכל בקשות הרשת עד שה־bootstrap מסיר את ה־Fragment ומכשיל את

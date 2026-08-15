@@ -9,6 +9,10 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
+ה־Preview זמין לבדיקות ציבוריות, אך זרימת אישור Email hosted המלאה עדיין ממתינה
+לאימות עם תיבת בדיקה אמיתית. עד להשלמת האימות אין לראות בקישור לבדו הוכחה לסיום
+Slice 3.
+
 ## דרישות
 
 - Node.js 24.16.0
@@ -142,9 +146,11 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Redirect URL: `http://localhost:3000/auth/confirm`
 - Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
+- Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי, ולכן Preview עובד רק אחרי
-הוספת הכתובת המדויקת שלו ל־allowlist.
+טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של ענף Slice 3
+מגדירה `NEXT_PUBLIC_APP_URL` ל־branch alias היציב, וה־alias המדויק מופיע
+ב־allowlist; `Site URL` נשאר כתובת ה־Production.
 
 ## Migrations וטיפוסים
 
