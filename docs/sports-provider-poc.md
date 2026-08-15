@@ -178,3 +178,15 @@ remain open, so the documented safe fallback is active: `ManualSportsProvider` w
 the checked-in fixture set at `src/features/sports/fixtures.ts`. Run the one-off
 `npm run poc:sports` command to inspect its normalized output; this command is not
 part of CI and does not make network requests.
+
+## Slice 5 consumption
+
+Slice 5 reads match data only from PostgreSQL. A forward migration seeds a small,
+clearly labeled manual Demo catalog for the 2026/27 season using the same team-name
+vocabulary as `src/features/sports/fixtures.ts`. Its fixture timestamps are
+synthetic future examples, not a verified real schedule; `external_provider` and
+`external_id` remain `NULL`.
+
+No provider was selected, no external request, synchronization job, Cron, lease,
+`sync_runs` table, or result override was added in Slice 5. Those decisions remain
+behind the Slice 7 POC gate. Browser and CI flows always consume stored/manual data.

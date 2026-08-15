@@ -452,6 +452,75 @@ export type Database = {
           },
         ]
       }
+      predictions: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct_outcome: boolean | null
+          is_exact: boolean | null
+          league_id: string
+          match_id: string
+          points: number
+          predicted_away_score: number
+          predicted_home_score: number
+          predicted_outcome: Database["public"]["Enums"]["outcome"]
+          scored_at: string | null
+          scored_result_version: number | null
+          scored_rule_version: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct_outcome?: boolean | null
+          is_exact?: boolean | null
+          league_id: string
+          match_id: string
+          points?: number
+          predicted_away_score: number
+          predicted_home_score: number
+          predicted_outcome?: Database["public"]["Enums"]["outcome"]
+          scored_at?: string | null
+          scored_result_version?: number | null
+          scored_rule_version?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct_outcome?: boolean | null
+          is_exact?: boolean | null
+          league_id?: string
+          match_id?: string
+          points?: number
+          predicted_away_score?: number
+          predicted_home_score?: number
+          predicted_outcome?: Database["public"]["Enums"]["outcome"]
+          scored_at?: string | null
+          scored_result_version?: number | null
+          scored_rule_version?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predictions_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predictions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_rules: {
         Row: {
           created_at: string
@@ -739,6 +808,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_prediction_database_time: { Args: never; Returns: string }
       reject_join_request: {
         Args: { p_reason: string; p_request_id: string }
         Returns: {
@@ -774,6 +844,24 @@ export type Database = {
           status: Database["public"]["Enums"]["invite_status"]
         }[]
       }
+      save_prediction: {
+        Args: {
+          p_league_id: string
+          p_match_id: string
+          p_predicted_away_score: number
+          p_predicted_home_score: number
+        }
+        Returns: {
+          created_at: string
+          league_id: string
+          match_id: string
+          predicted_away_score: number
+          predicted_home_score: number
+          predicted_outcome: Database["public"]["Enums"]["outcome"]
+          prediction_id: string
+          updated_at: string
+        }[]
+      }
       submit_join_request: {
         Args: { p_public_id: string; p_token_hash: string }
         Returns: {
@@ -794,6 +882,7 @@ export type Database = {
       league_status: "draft" | "open" | "active" | "completed" | "archived"
       match_status: "scheduled" | "live" | "finished" | "postponed" | "canceled"
       member_status: "active" | "removed"
+      outcome: "HOME" | "DRAW" | "AWAY"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -934,6 +1023,7 @@ export const Constants = {
       league_status: ["draft", "open", "active", "completed", "archived"],
       match_status: ["scheduled", "live", "finished", "postponed", "canceled"],
       member_status: ["active", "removed"],
+      outcome: ["HOME", "DRAW", "AWAY"],
     },
   },
 } as const

@@ -148,3 +148,43 @@ npm run test:e2e
 לאחר מכן נכנסים כמנהל/ת דרך קישור "ניהול בקשות הצטרפות", צופים בהוכחה, מאשרים
 או דוחים ומוודאים את מצב הבקשה והחברות משני החשבונות.
 אין להשתמש ב־`supabase db reset --linked` או בתמונה פיננסית אמיתית.
+
+## Slice 5: משחקים, ניחושים, נעילה וחשיפה
+
+בדיקות Slice 5 משתמשות רק ב־Supabase המקומי וב־fixtures שנוצרים בתוך transaction
+או בתוך מכולת PostgreSQL המקומית. אין קריאה לספק Sports, אין המתנה אמיתית עד
+kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־seed הקבוע הוא Demo ידני בלבד;
+בדיקות הניחושים יוצרות קבוצות ומשחקים משלהן ולכן אינן תלויות בו.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | parsing קשיח של ציונים שלמים 0–30; דחיית ריק/שלילי/31/fraction; מיפוי חמשת הסטטוסים ומצבי open/editable/locked/unavailable; גבול millisecond לפני/בדיוק/אחרי; countdown טהור; UTC→`Asia/Jerusalem` ואזור זמן נוסף; גבולות תאריך DST; round/date search params; allowlist לנתיבי המשחקים ומיפוי `PREDICTION_LOCKED` בטוח |
+| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; `now()` ו־`now()+1 second`; exact/after lock; scheduled/postponed לעומת live/finished/canceled; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
+| Playwright | שני חברים מאומתים ב־Desktop Chrome וב־Pixel 5; רשימת משחקים וכל חמשת הסטטוסים/תוצאה/שעה/נעילה; create→refresh timestamp→edit; `Promise.all` כפול שמחזיר שורה אחת; UI, תוכן ה־RSC ו־PostgREST שמסתירים ניחוש אחר לפני kickoff; שינוי kickoff מקומי לעבר ללא sleep; stale create/edit וה־RPC הישיר נדחים; reveal לשני החברים; outsider ולאחר מכן pending requester מקבלים not-found ואפס שורות; RTL וללא overflow |
+| Manual/Preview | כניסה כחבר פעיל, בדיקת רשימה ומסנן, שמירה ועריכה, שעה מוחלטת + timezone, stale-tab בטוח וחשיפה בשני חשבונות. Preview דורש שה־migrations החדשות יוחלו בפרויקט Supabase המורשה לפני בדיקה מאומתת |
+
+`now()` של PostgreSQL קבוע בתוך transaction של pgTAP. לכן fixture עם
+`kickoff_at := now()` מוכיח דחייה מדויקת, ו־`now() + interval '1 second'`
+מוכיח הרשאה ללא `sleep`. Playwright משנה fixture סינתטי ל־דקה בעבר דרך helper
+שמקבל UUIDs קנוניים בלבד, דורש בדיוק `UPDATE 1` ואינו מדפיס stderr. כך גם טופס
+שכבר פתוח נבדק מול זמן המסד בפעולת השמירה.
+
+pgTAP הוא חיבור יחיד ואינו מוכיח race רשת אמיתי. unique constraint, נעילת שורת
+המשחק וה־upsert נבדקים במסד; Playwright מוסיף שתי קריאות `save_prediction`
+מקבילות עם `Promise.all` ומאמת שנשארת רשומה יחידה.
+
+ה־seed הקבוע כולל רק מועדים עתידיים (`scheduled`, `postponed`, `canceled`) ולכן
+אינו נועל מיד את חוקי הניקוד. trigger `enforce_scoring_rule_lock` עדיין בוחן את
+המועד המוקדם ביותר בעונה: לאחר שמועד ה־Demo הראשון יעבור, עדכון חוקי ניקוד לכל
+ליגה באותה עונה יידחה. אין ב־seed תוצאה finished או kickoff עבר; תצוגת finished
+נבדקת רק ב־fixtures המבודדים של pgTAP/Playwright.
+
+הרצה ממוקדת בזמן פיתוח:
+
+```powershell
+npm run test -- src/features/predictions/predictions-rules.test.ts src/features/auth/auth-rules.test.ts
+npm exec -- supabase test db supabase/tests/predictions.test.sql
+npm run test:e2e -- prediction-lock.spec.ts
+```

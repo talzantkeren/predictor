@@ -73,7 +73,9 @@
 - שדות הטקסט של הליגה דוחים תווי בקרה ב־Zod וב־check constraints: שם הליגה הוא
   חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים רק tab ומעברי שורה.
 - allowlist ההפניות לאחר התחברות מקבל בדיוק את `/dashboard`, `/profile`,
-  `/update-password`, `/leagues/new` ונתיב סיכום ליגה עם UUID תקין. כל ערך אחר —
+  `/update-password`, `/leagues/new`, נתיב סיכום/הגדרות/משחקי ליגה עם UUID תקין
+  ונתיב `/matches/[matchId]` עם UUID תקין. query string של הקשר ליגה אינו נכנס
+  ל־`next`; אם יש כמה הקשרים המשתמש בוחר אותם מחדש במסך המורשה. כל ערך אחר —
   כולל origin חיצוני, `//`, backslash, query או fragment — חוזר ל־`/dashboard`.
 - יצירת ליגה אינה אידמפוטנטית גלובלית: שליחה חוזרת מפורשת יוצרת ליגה חדשה
   ותקינה. ה־UI מנטרל double-submit באמצעות pending state ו־redirect לאחר הצלחה,
@@ -215,3 +217,43 @@
 | retry שיוצר היסטוריה כפולה | digest + idempotency unique + compensation | retry זהה/שונה ומקביל |
 | החלטה כפולה או של מנהל זר | row lock + manager AuthZ בתוך RPC + unique membership | approve/reject replay, audit יחיד ומנהל ליגה אחרת |
 | דליפת path או signed URL למשתמש לא מורשה או ל־artifact | DTO allowlist, AuthZ, TTL קצר, no-store ולוגים מסוננים | תגובות upload/denial, bundle וחיפוש repository; משתמש מורשה רואה אותו ב־redirect בלבד |
+
+## משחקים וניחושים ב־Slice 5
+
+- `matches` נשאר catalog גלובלי לקריאת `authenticated`; הדפדפן אינו קורא ספק
+  Sports. עמודי הליגה והמשחק מאמתים UUID, session ומשאב ומחזירים אותו not-found
+  עבור משאב חסר או משתמש לא מורשה.
+- `predictions` מפעילה RLS ונשללות ממנה כל הרשאות `INSERT`, `UPDATE` ו־`DELETE`
+  ל־`authenticated`; ל־`anon` ול־`service_role` אין גישת טבלה או RPC. הגישה
+  היחידה לכתיבת משתמש היא `save_prediction`, `SECURITY DEFINER` עם
+  `search_path = ''`, שמות schema מלאים ו־`EXECUTE` ל־authenticated בלבד.
+- ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורת החברות ואת שורת המשחק, דורש
+  `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הסטטוס אינו
+  `scheduled`/`postponed` או כאשר `now() >= kickoff_at`. ה־Action מבצע מחדש
+  session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן.
+- `predicted_outcome` הוא generated column. הלקוח שולח רק שני ציונים שלמים
+  0–30; אין `user_id`, outcome, points, status, kickoff או role סמכותיים בקלט.
+  unique `(league_id, match_id, user_id)` ו־upsert משאירים רשומה יחידה.
+- Policy הקריאה דורשת תחילה חברות פעילה. לפני kickoff רק `user_id=auth.uid()`
+  עובר; ב־/אחרי kickoff חבר פעיל באותה ליגה רואה את השורות. removed,
+  pending/rejected, זר ולא־מחובר רואים אפס שורות. שאילתת ה־Server Component
+  מוגבלת לליגה/משחק ול־user IDs של חברים פעילים, ו־RLS מסירה את האחרים לפני
+  שה־RSC payload נבנה; אין over-fetch ולא filter ב־React.
+- מסך detail נבחר רק מתוך חברות פעילות של הצופה שעונתן תואמת למשחק. UUID
+  `?league=` נבדק מול אותה רשימה; החלפה בליגה זרה מחזירה not-found. profiles
+  נקראים רק עבור שורות prediction שכבר עברו RLS וה־shared-league policy.
+- הזמן המוחלט והמצב הראשוני מגיעים מ־PostgreSQL. רכיב timezone/countdown הוא
+  enhancement אחרי hydration ואינו יכול לפתוח כתיבה. טופס ישן שנשלח אחרי
+  הנעילה מקבל `PREDICTION_LOCKED` ממופה להודעה עברית ללא SQL או הבדל קיום.
+- אין שימוש ב־`SUPABASE_SECRET_KEY`, ב־admin client, ב־Route Handler חדש או
+  ב־log אישי ב־Slice 5.
+
+### מטריצת איומים ובדיקות Slice 5
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| שינוי או יצירה אחרי נעילה | membership/match row locks + `now() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי ו־stale replay; Playwright מזיז kickoff לעבר ובודק stale create/edit + RPC |
+| הצצה לניחוש אחר לפני הפתיחה | RLS חברות+זמן; שאילתות ממוקדות; אין hidden rows ב־payload | שני משתמשים: UI ללא שם/score ו־PostgREST מסונן מחזיר `[]`; אחרי kickoff שתי השורות נחשפות |
+| IDOR בין ליגות/עונות | Action AuthZ, RPC התאמת membership/season, consistency trigger ו־RLS | other league, cross-season, outsider ו־`?league=` זר נדחים; parent season change עם prediction נכשל |
+| זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
+| סטטוס עמום מחליש זמן | allowlist סגור `scheduled`/`postponed` וגם זמן DB | live/finished/canceled עתידיים נדחים; postponed עתידי מותר |

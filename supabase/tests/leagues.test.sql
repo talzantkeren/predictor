@@ -145,8 +145,15 @@ select is(
   '2026/27',
   'the MVP season is versioned reference data'
 );
-select is((select count(*)::integer from public.teams), 0, 'the catalog migration invents no teams');
-select is((select count(*)::integer from public.matches), 0, 'the catalog migration invents no fixtures or scores');
+select is((select count(*)::integer from public.teams), 6, 'the catalog includes the bounded Slice 5 manual Demo team set');
+select is((select count(*)::integer from public.matches), 5, 'the catalog includes the bounded Slice 5 manual Demo fixture set');
+select ok(
+  not exists (
+    select 1 from public.matches
+    where external_provider is not null or external_id is not null
+  ),
+  'manual Demo fixtures do not claim external provider provenance'
+);
 
 -- RLS and least-privilege grants for every Slice 2 public table.
 select ok(
