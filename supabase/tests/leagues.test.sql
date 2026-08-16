@@ -145,8 +145,15 @@ select is(
   '2026/27',
   'the MVP season is versioned reference data'
 );
-select is((select count(*)::integer from public.teams), 0, 'the catalog migration invents no teams');
-select is((select count(*)::integer from public.matches), 0, 'the catalog migration invents no fixtures or scores');
+select is((select count(*)::integer from public.teams), 6, 'the catalog includes the bounded Slice 5 manual Demo team set');
+select is((select count(*)::integer from public.matches), 5, 'the catalog includes the bounded Slice 5 manual Demo fixture set');
+select ok(
+  not exists (
+    select 1 from public.matches
+    where external_provider is not null or external_id is not null
+  ),
+  'manual Demo fixtures do not claim external provider provenance'
+);
 
 -- RLS and least-privilege grants for every Slice 2 public table.
 select ok(
@@ -565,12 +572,43 @@ select is(
 reset role;
 
 -- Scoring changes are versioned before start, then rejected at lock/database kickoff time.
+-- Keep this fixture in an isolated season so versioned Demo seed kickoffs cannot
+-- turn a date-dependent product assertion into a future test-suite failure.
+insert into public.seasons (
+  id, competition_id, name, starts_on, ends_on, is_current
+)
+values (
+  '2f000000-0000-4000-8000-000000000027',
+  '26000000-0000-4000-8000-000000000001',
+  'עונת בדיקת נעילת ניקוד',
+  '2099-07-01',
+  '2100-06-30',
+  false
+);
+insert into public.leagues (
+  id, manager_id, season_id, name
+)
+values (
+  'f1000000-0000-4000-8000-000000000001',
+  'a0000000-0000-4000-8000-000000000001',
+  '2f000000-0000-4000-8000-000000000027',
+  'ליגת נעילת ניקוד מבודדת'
+);
+insert into public.league_scoring_rules (league_id)
+values ('f1000000-0000-4000-8000-000000000001');
+insert into public.league_members (league_id, user_id, approved_by)
+values (
+  'f1000000-0000-4000-8000-000000000001',
+  'a0000000-0000-4000-8000-000000000001',
+  'a0000000-0000-4000-8000-000000000001'
+);
+
 update public.league_scoring_rules
 set exact_points = 4
-where league_id = (select id from public.leagues where name = 'ליגת א הראשונה');
+where league_id = 'f1000000-0000-4000-8000-000000000001';
 select is(
   (select version from public.league_scoring_rules
-   where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')),
+   where league_id = 'f1000000-0000-4000-8000-000000000001'),
   2,
   'an allowed pre-start scoring change advances the version'
 );
@@ -595,7 +633,7 @@ insert into public.matches (
 )
 values (
   'e0000000-0000-4000-8000-000000000001',
-  '26000000-0000-4000-8000-000000000027',
+  '2f000000-0000-4000-8000-000000000027',
   1,
   'd0000000-0000-4000-8000-000000000001',
   'd0000000-0000-4000-8000-000000000002',
@@ -604,10 +642,10 @@ values (
 
 update public.league_scoring_rules
 set exact_points = 5
-where league_id = (select id from public.leagues where name = 'ליגת א הראשונה');
+where league_id = 'f1000000-0000-4000-8000-000000000001';
 select is(
   (select version from public.league_scoring_rules
-   where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')),
+   where league_id = 'f1000000-0000-4000-8000-000000000001'),
   3,
   'rules remain editable before the first season kickoff and version again'
 );
@@ -618,14 +656,14 @@ where id = 'e0000000-0000-4000-8000-000000000001';
 select throws_ok(
   $$update public.league_scoring_rules
     set exact_points = 6
-    where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')$$,
+    where league_id = 'f1000000-0000-4000-8000-000000000001'$$,
   'P0001', 'SCORING_RULES_LOCKED',
   'database time at the first kickoff locks scoring changes'
 );
 select throws_ok(
   $$update public.league_scoring_rules
     set version = version + 1
-    where league_id = (select id from public.leagues where name = 'ליגת א הראשונה')$$,
+    where league_id = 'f1000000-0000-4000-8000-000000000001'$$,
   'P0001', 'SCORING_RULE_VERSION_INVALID',
   'the scoring version cannot be changed without rule values'
 );

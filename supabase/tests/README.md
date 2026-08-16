@@ -13,3 +13,9 @@ transaction and rolls back its fixtures.
 - `proofs.test.sql` covers Slice 3 private proof storage, upload quotas,
   finalization/idempotency, historical proof limits, signed-access
   authorization, narrow service-role access and hostile direct access.
+- `manager-decisions.test.sql` covers the Slice 4 manager queue, safe proof
+  summaries, atomic approve/reject, replay behavior and cross-league denial.
+- `predictions.test.sql` covers the Slice 5 prediction schema, generated
+  outcome, season consistency, database-time/status locking, one-row upsert,
+  active-member denial matrix and owner-only/pre-kickoff versus same-league
+  post-kickoff visibility.

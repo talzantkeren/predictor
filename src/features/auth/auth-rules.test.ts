@@ -95,6 +95,8 @@ describe("safe authentication redirects", () => {
     "/leagues/26000000-0000-4000-8000-000000000027",
     "/leagues/26000000-0000-4000-8000-0000000000AB",
     "/leagues/26000000-0000-4000-8000-000000000027/settings",
+    "/leagues/26000000-0000-4000-8000-000000000027/matches",
+    "/matches/26000000-0000-4000-8000-000000000201",
     `/invite/${validInvitePublicId}`,
   ])("accepts the approved internal path %s", (path) => {
     expect(getSafeAuthRedirect(path)).toBe(path);
@@ -119,6 +121,11 @@ describe("safe authentication redirects", () => {
     "/leagues/not-a-uuid",
     "/leagues/26000000-0000-4000-8000-000000000027/edit",
     "/leagues/26000000-0000-4000-8000-000000000027/settings/extra",
+    "/leagues/26000000-0000-4000-8000-000000000027/matches/extra",
+    "/leagues/26000000-0000-4000-8000-000000000027/matches?round=1",
+    "/matches/not-a-uuid",
+    "/matches/26000000-0000-4000-8000-000000000201?league=26000000-0000-4000-8000-000000000027",
+    "/matches/26000000-0000-4000-8000-000000000201/extra",
     "/leagues/26000000-0000-4000-8000-000000000027?x=1",
     "/leagues/26000000-0000-4000-8000-000000000027#frag",
     "/leagues/../profile",

@@ -6,6 +6,7 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
 - Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
+- Slice 5 Preview: [https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
@@ -39,7 +40,7 @@ npm run dev
 אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
 חסום ב־Git.
 
-המשתנים הפעילים ב־Slice 3:
+המשתנים הפעילים ב־Slices 3–5:
 
 | משתנה | שימוש |
 | --- | --- |
@@ -132,6 +133,38 @@ Slice 3 מסתיים בבקשת `pending_approval` ובהוכחת Demo פרטי�
 מנהל, צפייה מורשית, approve/reject וחברות פעילה. PR #4 מוסר את שני ה־Slices;
 אין קיצור דרך דרך כתיבה ישירה לטבלאות או ל־Storage.
 
+## זרימת Slice 5: משחקים, ניחושים, נעילה וחשיפה
+
+הנתיבים החדשים מוגנים ודינמיים:
+
+- `/leagues/[leagueId]/matches` — משחקי העונה של הליגה עם סינון מחזור או
+  תאריך, שעה מוחלטת באזור הזמן המקומי, סטטוס, תוצאה ל־finished בלבד, countdown
+  וניחוש המשתמש הנוכחי.
+- `/matches/[matchId]?league=[leagueId]` — פרטי משחק והקשר ליגה מאומת, יצירה
+  או החלפה של ניחוש מדויק לפני הנעילה, ניחוש עצמי נעול אחריה וחשיפת ניחושי
+  החברים הפעילים. כאשר אותו משתמש חבר בכמה ליגות לאותה עונה, המסך דורש בחירת
+  ליגה ואינו מנחש את ההקשר מה־URL בלבד.
+
+זרימת ההדגמה: חבר/ה פעיל/ה → רשימת משחקים → פתיחת משחק → שמירת תוצאה מדויקת
+→ רענון שמציג את זמן השמירה מהשרת → עריכה → הגעה ל־`kickoff_at` → דחיית טופס
+ישן בהודעה בטוחה → חשיפת ניחושי חברים פעילים. ה־countdown והנטרול בדפדפן הם
+עזרי UX בלבד. `save_prediction` במסד גוזר את המשתמש מה־session, נועל את שורת
+הליגה, החברות והמשחק, דורש חברות פעילה והתאמת עונה ומאפשר upsert רק בליגה
+שאינה `completed`/`archived` ועבור `scheduled`/`postponed` כאשר
+`now() < kickoff_at`. ליגה שהושלמה או אורכבה נשארת זמינה לקריאה בלבד. אין
+כתיבת טבלה ישירה ואין מחיקה.
+
+ה־seed של Slice 5 הוא **Demo ידני וסינתטי**: שש קבוצות וחמישה משחקים עתידיים
+בשני מחזורים, עם שמות קבוצות אמיתיים לצורכי תצוגה אך ללא טענה שהמועדים הם לוח
+2026/27 מאומת. `external_provider` ו־`external_id` נשארים `NULL`. לא נבחר ספק
+Sports ולא מתבצעת קריאה חיצונית מהדפדפן. המועדים העתידיים מונעים מה־seed לנעול
+מיד את חוקי הניקוד של כל ליגות 2026/27; כשהמועד הראשון יעבור, trigger הנעילה
+הקיים יפעל לפי זמן המסד כרגיל.
+
+Slice 5 אינו כולל scoring, leaderboard או prize split (Slice 6), אינו כולל
+Sports Sync, Cron או result override (Slice 7), ואינו כולל AI או finance
+(Slices 8–9). יכולות אלה לא מומשו ולא נטענות כתוצר של ה־Slice הנוכחי.
+
 ### Mailpit
 
 Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מופיעה בשדה `MAILPIT_URL`
@@ -152,10 +185,11 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 - Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
 - Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
+- Redirect URL: `https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app/**`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבת ה־Preview של PR #4
-מגדירה `NEXT_PUBLIC_APP_URL` ל־branch alias היציב, וה־alias המדויק מופיע
-ב־allowlist; `Site URL` נשאר כתובת ה־Production.
+טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבות ה־Preview של PR #4 ו־PR
+#5 מגדירות `NEXT_PUBLIC_APP_URL` ל־branch alias היציב שלהן, וה־aliases המדויקים
+מופיעים ב־allowlist; `Site URL` נשאר כתובת ה־Production.
 
 ## Migrations וטיפוסים
 

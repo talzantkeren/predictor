@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.7 |
-| תאריך עדכון | 15 באוגוסט 2026 |
-| סטטוס | Ready for implementation |
+| גרסה | 2.9 |
+| תאריך עדכון | 16 באוגוסט 2026 |
+| סטטוס | Slice 5 delivered; Slice 6 next |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -220,9 +220,9 @@ DEMO_MODE=true
 | 004 `leagues` | leagues, scoring rules, prize rules, minimal creator membership, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
 | 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
-| 007 `predictions_and_scoring` | predictions, policies, `score_match`, leaderboard view | כל מטריצת הניקוד עוברת |
+| 007 `predictions_and_scoring` | חלק הניחושים נמסר ב־Slice 5: `predictions`, RLS, `save_prediction` ונעילה; חלק הניקוד נשאר ל־Slice 6: `score_match` ו־leaderboard view | Slice 5: נעילה/חשיפה; Slice 6: מטריצת ניקוד מלאה |
 | 008 `operations_and_ai` | `system_admins`, analyses ו־sync runs; מרחיבה את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | הרשאות, observability ו־cleanup מוגדרים |
-| 009 `seed_current_season` | נתוני בסיס ידניים/fixture מאומת | האפליקציה עובדת ללא ספק חיצוני |
+| 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -362,6 +362,18 @@ DEMO_MODE=true
 - timestamps.
 - unique `(league_id, match_id, user_id)`.
 - foreign-key consistency נבדקת: הליגה והמשחק חייבים להשתייך לאותה עונה.
+- עד Slice 6, מצב "טרם נוקד" מזוהה באמצעות `scored_at is null`: `points` נשאר
+  `0` וכל metadata הניקוד נשאר `null`.
+- כתיבה עוברת דרך `save_prediction` בלבד. ה־RPC גוזר actor מ־`auth.uid()`,
+  נועל את שורות הליגה, החברות והמשחק, דורש חברות `active`, מאמת התאמת עונה
+  ומאפשר upsert רק בליגה `draft`/`open`/`active` ועבור משחק
+  `scheduled` או `postponed` כאשר `now() < kickoff_at`.
+  ליגות `completed` ו־`archived` הן read-only; הבדיקה מתבצעת אחרי אימות חברות
+  כדי שלא לחשוף קיום או סטטוס של ליגה פרטית דרך הבדל שגיאות.
+  `live`, `finished` ו־`canceled` אינם ניתנים לכתיבה גם אם המועד עתידי.
+- RLS של `SELECT` דורשת חברות פעילה: הבעלים רואה את שורתו לפני ואחרי הנעילה;
+  חברים פעילים אחרים באותה ליגה רואים אותה רק כאשר `now() >= kickoff_at`.
+  חבר שהוסר, מבקש pending/rejected ומשתמש זר רואים אפס שורות.
 
 #### `league_leaderboard` View
 
@@ -477,7 +489,7 @@ DEMO_MODE=true
 | `submitJoinRequest` | public ID; digest נקרא מ־cookie HttpOnly | membership service + RPC | status `pending_proof` |
 | `approveJoinRequest` | request id | RPC approve | member active |
 | `rejectJoinRequest` | request id + reason | RPC reject | request rejected |
-| `savePrediction` | league, match, two scores | user-client upsert + RLS | saved timestamp |
+| `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/match+league status/season נאכפים במסד | saved timestamp |
 | `removeMember` | league + member | membership service | status removed + audit |
 | `applyManualResult` | match + result/status | `score_match` via admin client | result and ranking updated |
 | `completeLeague` | league id | report/league service | final report read-only |
@@ -767,12 +779,27 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 **תוצר:** seed/מסך משחקים, save prediction, lock ו־visibility.
 
-- seed משחקי העונה והזנה ידנית על גבי sports core שכבר נמסר ב־Slice 2, ורק ככל שהמידע מאומת.
-- round/date pages.
-- prediction Action, policy ו־countdown.
-- boundary tests ו־two-user E2E.
+**סטטוס: נמסר ב־15 באוגוסט 2026.**
 
-**Exit:** DB מכריע את גבול הזמן; ניחושי אחרים מוסתרים לפני הפתיחה.
+- seed ידני קטן ומסומן של קבוצות ומשחקי Demo עתידיים על גבי sports core, ללא
+  `external_provider`/`external_id` וללא טענה שמדובר בלוח אמיתי מאומת.
+- `/leagues/[leagueId]/matches` עם סינון מחזור/תאריך, סטטוסים, תוצאה רשמית רק
+  ל־finished, שעה מוחלטת מקומית, countdown ושורת הניחוש של הצופה בלבד.
+- `/matches/[matchId]` עם הקשר ליגה מאומת, בחירה מפורשת כאשר יש כמה ליגות
+  זכאיות, יצירה/עריכה, מצב נעול וחשיפת ניחושי חברים פעילים אחרי kickoff.
+- `predictions`, outcome generated, התאמת עונה, indexes, RLS, grants ו־RPC
+  `save_prediction` אטומי. ה־RPC נועל גם את הליגה ודוחה כתיבה לאחר
+  `completed`/`archived`; ה־Action נשאר session → Zod → resource AuthZ → RPC.
+- שאילתות העונה מוגבלות מפורשות ל־500 משחקים, עם שורת sentinel שמחזירה שגיאה
+  במקום רשימה חלקית; התקרה גבוהה מלוח MVP מלא ונשארת גבול בטיחות עד pagination.
+- Vitest לגבולות קלט/זמן/אזור זמן, pgTAP למטריצת הרשאה ונעילה, ו־Playwright
+  דטרמיניסטי לשני משתמשים ב־Desktop Chrome וב־Pixel 5.
+
+**Exit:** הושלם — DB מכריע את גבול הזמן והסטטוס; ניחושי אחרים מחזירים אפס
+שורות לפני הפתיחה ונחשפים רק לחברים פעילים אחרי הפתיחה.
+
+Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6), Sports Sync/Cron
+או override (Slice 7), AI (Slice 8) או finance (Slice 9).
 
 ### Slice 6 — תוצאות, ניקוד ודירוג
 
@@ -899,11 +926,12 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-המשימה הפעילה היא סגירת **Slices 3–4** ב־PR #4. Slice 3 כולל invite עם
-public-ID path ו־Fragment secret, בקשת הצטרפות ואסמכתאת Demo פרטית עד
-`pending_approval`. Slice 4 כולל את תור החלטות המנהל, צפייה מורשית, approve/reject
-ויצירת חברות פעילה לפי חוזי האבטחה בסעיפים 7, 10 ו־15. תחזוקת חברות כללית לאחר
-ההצטרפות נשארת היקף עתידי ואינה מגדירה מחדש את תנאי הסיום של Slice 4.
+Slice 5 נמסר, תוקן בעקבות ביקורת עצמאית וממתין לקבלה/אישור PR. המשימה הבאה
+לאחר אישורו היא **Slice 6 —
+תוצאות, ניקוד ודירוג**: `score_match`, כתיבת metadata הניקוד ו־result/rule
+versions, leaderboard ו־prize split לפי מטריצת הבדיקות בסעיפים 7, 10 ו־15.
+אסור להוסיף ניקוד מצטבר; כל ריצה מחליפה דטרמיניסטית את המצב. Sports Sync/Cron
+נשאר Slice 7 ואינו תנאי להתחלת Slice 6, משום שהמסלול הידני נשאר זמין.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 
