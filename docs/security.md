@@ -174,6 +174,16 @@
   ונשלח אותו signal מסונן. מחיקה של הנתיב
   אינה בטוחה בשלב זה כי `upsert: false` אינו מוכיח שה־object שייך לניסיון הנוכחי
   ולא להתנגשות קיימת; cleanup מותנה ידרוש ownership marker ייחודי בחוזה ה־Gateway.
+- **אימות hosted — 16 באוגוסט 2026:** ה־fixed-bucket gateway הקיים הופעל מול
+  הפרויקט המקושר עם מפתח `sb_secret_*` הנוכחי, WebP סינתטי שעבר את כל בדיקות
+  ה־sanitizer ו־UUIDs אקראיים שנוצרו בצד השרת. `uploadPrivateProof` הצליח
+  ו־`removePrivateProof` מחק מיד את אותו object; לא נשאר artifact. כשל ה־`403`
+  עם `Invalid Compact JWS` שתועד בבדיקת Slice 5 לא שוחזר. לא הוחלף מפתח ולא
+  נעשה fallback ל־service-role הישן: metadata של מפתח הפרויקט לא השתנה מאז
+  11 באוגוסט, משתנה Vercel קדם לדוח, וקוד gateway ההוכחות לא השתנה. endpoint
+  הגרסה של Storage החזיר `HTTP 200` ו־`1.69.0`. לכן הראיות מצביעות על rollout
+  או תיקון propagation בשכבת ה־API gateway/Storage של Supabase, ולא על שינוי
+  הגדרת פרויקט או משתנה סביבה; Supabase אינה חושפת לפרויקט מזהה rollout מדויק.
 
 ### צפייה, RLS וסיכון שיורי
 
