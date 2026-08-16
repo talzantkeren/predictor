@@ -76,6 +76,12 @@ export default async function LeagueSummaryPage({
               >
                 משחקים וניחושים
               </Link>
+              <Link
+                href={`/leagues/${league.id}/standings`}
+                className="flex justify-center rounded-lg border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+              >
+                טבלת דירוג
+              </Link>
               {league.role === "manager" ? (
                 <div className="grid gap-2">
                   <Link

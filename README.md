@@ -36,24 +36,26 @@ npm run dev
 לאחר `supabase start`, העתיקו מ־`supabase status -o env` אל `.env.local` את
 `API_URL` בתור `NEXT_PUBLIC_SUPABASE_URL`, את `PUBLISHABLE_KEY` בתור
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ואת `SECRET_KEY` בתור
-`SUPABASE_SECRET_KEY`. הסוד נדרש רק ל־gateway הפרטי של Storage ב־Slice 3;
+`SUPABASE_SECRET_KEY`. הסוד נדרש רק ל־gateways המצומצמים של Storage ושל
+ניקוד מערכת;
 אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
 חסום ב־Git.
 
-המשתנים הפעילים ב־Slices 3–5:
+המשתנים הפעילים ב־Slices 3–6:
 
 | משתנה | שימוש |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL=http://localhost:3000` | כתובת האפליקציה המקומית |
 | `NEXT_PUBLIC_SUPABASE_URL` | כתובת Supabase המקומית או hosted |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ציבורי המותר בדפדפן עם RLS |
-| `SUPABASE_SECRET_KEY` | server-only; gateway מצומצם ל־`payment-proofs` בלבד |
+| `SUPABASE_SECRET_KEY` | server-only; gateways מצומצמים ל־`payment-proofs` ול־scoring בלבד |
 | `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
-`SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues, אינו נשלח לדפדפן
-ואינו משמש לכתיבות עסקיות. `CRON_SECRET`, מפתח Sports ומפתחות AI שמורים
-ל־slices מאוחרים יותר.
+`SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
+כתיבת ניקוד privileged עוברת רק דרך `score_match`, שמאמת actor מול
+`system_admins`. `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתח Sports ומפתחות AI
+שמורים ל־slices מאוחרים יותר.
 
 ## זרימת Auth ופרופיל
 
@@ -161,9 +163,29 @@ Sports ולא מתבצעת קריאה חיצונית מהדפדפן. המועד�
 מיד את חוקי הניקוד של כל ליגות 2026/27; כשהמועד הראשון יעבור, trigger הנעילה
 הקיים יפעל לפי זמן המסד כרגיל.
 
-Slice 5 אינו כולל scoring, leaderboard או prize split (Slice 6), אינו כולל
-Sports Sync, Cron או result override (Slice 7), ואינו כולל AI או finance
-(Slices 8–9). יכולות אלה לא מומשו ולא נטענות כתוצר של ה־Slice הנוכחי.
+Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
+Sports Sync ו־Cron נשארים Slice 7, ו־AI ו־finance נשארים Slices 8–9.
+
+## זרימת Slice 6: תוצאות, ניקוד ודירוג
+
+הנתיבים החדשים מוגנים ודינמיים:
+
+- `/admin/matches` — זמין רק לזהות שמופיעה ב־`system_admins`; מאפשר להזין
+  תוצאה בתום הזמן החוקי או לבטל משחק. אין ממשק שמעניק הרשאת מנהל מערכת.
+- `/leagues/[leagueId]/standings` — זמין רק לחבר פעיל או למנהל הליגה ומציג
+  נקודות, כיוונים נכונים, תוצאות מדויקות ומספר ניחושים. השוויון משתמש
+  ב־competition ranking: מקומות 1,1,3 ולא `dense_rank`.
+
+`applyManualResult` מאמת session, קלט והרשאת מנהל מערכת בצד השרת, ואז קורא
+ל־`score_match` דרך gateway `server-only`. הפונקציה נועלת את המשחק בלבד,
+מעדכנת את התוצאה ואת ה־audit באותה transaction ומחליפה את שדות הניקוד של כל
+ניחוש לפי חוקי הליגה שלו. retry זהה אינו משנה נקודות או timestamps; תיקון
+מחשב מחדש; ביטול מאפס נקודות בלי למחוק ניחושים. `league_leaderboard` הוא
+`security_invoker` ונשען על RLS, ולכן זהות מערכת שאינה חברה בליגה אינה מקבלת
+גישה לדירוג רק מכוח תפקידה.
+
+חלוקת פרסי Demo למקומות משותפים מחושבת במודול טהור ב־basis points. המערכת אינה
+מחלקת כסף, אינה מציגה פרסים כספיים אמיתיים ואינה פותחת את שער הציות.
 
 ### Mailpit
 

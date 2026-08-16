@@ -5,6 +5,7 @@ const AUTH_REDIRECT_PATHS = new Set([
   "/profile",
   "/update-password",
   "/leagues/new",
+  "/admin/matches",
 ]);
 
 // Exactly one protected league-summary path: a UUID segment with no query
@@ -15,6 +16,8 @@ const LEAGUE_SETTINGS_PATH_PATTERN =
   /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/settings$/;
 const LEAGUE_MATCHES_PATH_PATTERN =
   /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/matches$/;
+const LEAGUE_STANDINGS_PATH_PATTERN =
+  /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/standings$/;
 const MATCH_DETAIL_PATH_PATTERN =
   /^\/matches\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
 const INVITE_PATH_PATTERN = new RegExp(
@@ -39,6 +42,7 @@ export function getSafeAuthRedirect(
     LEAGUE_SUMMARY_PATH_PATTERN.test(candidate) ||
     LEAGUE_SETTINGS_PATH_PATTERN.test(candidate) ||
     LEAGUE_MATCHES_PATH_PATTERN.test(candidate) ||
+    LEAGUE_STANDINGS_PATH_PATTERN.test(candidate) ||
     MATCH_DETAIL_PATH_PATTERN.test(candidate) ||
     INVITE_PATH_PATTERN.test(candidate)
   ) {
