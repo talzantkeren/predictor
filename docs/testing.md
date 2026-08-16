@@ -192,3 +192,32 @@ npm run test -- src/features/predictions/predictions-rules.test.ts src/features/
 npm exec -- supabase test db supabase/tests/predictions.test.sql
 npm run test:e2e -- prediction-lock.spec.ts
 ```
+
+## Slice 6: תוצאות, ניקוד ודירוג
+
+בדיקות Slice 6 משתמשות בתוצאות ובחוקי ליגה סינתטיים בלבד. אין קריאת Sports
+חיה ואין תלות בתוצאה אמיתית. כל fixture של pgTAP נגלל לאחור; Playwright יוצר
+משתמשים, ליגה ומשחק ייעודיים ב־Supabase המקומי ומסיר אותם בסיום.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | סיווג HOME/DRAW/AWAY; exact/correct/wrong ב־3/1/0 ובחוקים מותאמים; Zod ל־finished/canceled וציונים 0–30; חלוקת אחוזי מקומות משותפים ב־basis points ללא floating point |
+| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; exact, בית, חוץ, תיקו וטעות; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
+| DB concurrency | שני חיבורי `dblink` אמיתיים מפעילים `score_match` ו־`save_prediction` במקביל. ה־score נועל match בלבד; השמירה ממתינה לו ומסתיימת ב־`PREDICTION_LOCKED` הצפוי, ללא deadlock או lock timeout |
+| Playwright | מנהל מערכת מאומת מזין 2–1 דרך `/admin/matches`; משתמש רגיל נדחה גם מהנתיב וגם מקריאת RPC ישירה; `/leagues/[leagueId]/standings` מציג לחבר דירוג 1,1,3 ב־Desktop וב־Mobile; RTL וללא overflow |
+
+בדיקת המקביליות משתמשת רק במכולת PostgreSQL המקומית וב־credentials המקומיים
+הקבועים של Supabase CLI. היא חוסמת זמנית את שורת actor של audit כדי ליצור סדר
+מתוזמן: `score_match` מחזיקה את match, ובאותו זמן `save_prediction` מחזיקה את
+league ואת membership וממתינה ל־match. שחרור החסימה מוכיח ששני התהליכים
+מסתיימים בלי מעגל נעילות. אין להריץ את קובץ הבדיקה מול פרויקט linked/hosted.
+
+הרצה ממוקדת בזמן פיתוח:
+
+```powershell
+npm run test -- src/features/scoring/scoring-rules.test.ts src/features/scoring/prize-allocation.test.ts src/features/scoring/schemas.test.ts
+npm exec -- supabase test db supabase/tests/scoring.test.sql
+npm run test:e2e -- scoring.spec.ts
+```

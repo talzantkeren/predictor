@@ -19,3 +19,8 @@ transaction and rolls back its fixtures.
   outcome, season consistency, database-time/status locking, one-row upsert,
   active-member denial matrix and owner-only/pre-kickoff versus same-league
   post-kickoff visibility.
+- `scoring.test.sql` covers the Slice 6 system-admin boundary, deterministic
+  scoring and correction/cancel behavior, per-league rule versions,
+  service-only execution, security-invoker standings, competition ranks,
+  cross-league denial and real concurrent `score_match`/`save_prediction`
+  sessions without a lock-order deadlock.

@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.9 |
+| גרסה | 3.0 |
 | תאריך עדכון | 16 באוגוסט 2026 |
-| סטטוס | Slice 5 delivered; Slice 6 next |
+| סטטוס | Slice 6 delivered; Slice 7 next |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -220,8 +220,8 @@ DEMO_MODE=true
 | 004 `leagues` | leagues, scoring rules, prize rules, minimal creator membership, `create_league` ו־RLS | יצירה אטומית; סכום פרסים וחוקי ניקוד תקינים |
 | 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
-| 007 `predictions_and_scoring` | חלק הניחושים נמסר ב־Slice 5: `predictions`, RLS, `save_prediction` ונעילה; חלק הניקוד נשאר ל־Slice 6: `score_match` ו־leaderboard view | Slice 5: נעילה/חשיפה; Slice 6: מטריצת ניקוד מלאה |
-| 008 `operations_and_ai` | `system_admins`, analyses ו־sync runs; מרחיבה את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | הרשאות, observability ו־cleanup מוגדרים |
+| 007 `predictions_and_scoring` | נמסר בשני שלבים: Slice 5 הוסיף `predictions`, RLS, `save_prediction` ונעילה; Slice 6 הוסיף `score_match`, metadata ניקוד ו־`league_leaderboard` | נעילה/חשיפה ומטריצת ניקוד מלאה, כולל retry, correction, cancel ושוויון |
+| 008 `operations_and_ai` | טבלת `system_admins` המינימלית הוקדמה ל־Slice 6 כדי לאכוף `applyManualResult` בצד השרת; אין לה CRUD למשתמש רגיל. `sync_runs` ו־analyses נשארים ל־Slices 7–8, ומרחיבים את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | Slice 6: זהות מנהל מערכת מצומצמת; Slices 7–8: הרשאות, observability ו־cleanup של Sync/AI |
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
@@ -253,7 +253,7 @@ DEMO_MODE=true
 #### `system_admins`
 
 - `user_id uuid primary key references auth.users(id)`.
-- `granted_by uuid`, `granted_at timestamptz`.
+- `granted_by uuid not null references auth.users(id)`, `granted_at timestamptz`.
 - אין CRUD דרך משתמש רגיל; seed ידני מאובטח או migration ייעודית בלבד.
 
 ### 6.3 ספורט
@@ -362,7 +362,7 @@ DEMO_MODE=true
 - timestamps.
 - unique `(league_id, match_id, user_id)`.
 - foreign-key consistency נבדקת: הליגה והמשחק חייבים להשתייך לאותה עונה.
-- עד Slice 6, מצב "טרם נוקד" מזוהה באמצעות `scored_at is null`: `points` נשאר
+- מצב "טרם נוקד" מזוהה באמצעות `scored_at is null`: `points` נשאר
   `0` וכל metadata הניקוד נשאר `null`.
 - כתיבה עוברת דרך `save_prediction` בלבד. ה־RPC גוזר actor מ־`auth.uid()`,
   נועל את שורות הליגה, החברות והמשחק, דורש חברות `active`, מאמת התאמת עונה
@@ -385,7 +385,9 @@ DEMO_MODE=true
 - `predictions_submitted`.
 - `rank()` לפי points ואז correct outcomes. אין `dense_rank()`: שני חברים במקום 1 גורמים למקום הבא להיות 3, בהתאם לחלוקת מקומות הפרס.
 
-ה־View הוא `security_invoker` במידת התמיכה, או query מוגנת שלא עוקפת RLS. אין `SECURITY DEFINER VIEW` חשופה.
+ה־View נמסר ב־Slice 6 כ־`security_invoker`, עם `SELECT` ל־`authenticated` בלבד;
+הוא נשען על RLS של החברות והניחושים ואינו עוקף אותה. שאילתת השרת מאמתת חברות
+בליגה המבוקשת לפני הקריאה. אין `SECURITY DEFINER VIEW` חשופה.
 
 ### 6.7 תפעול ו־AI
 
@@ -451,8 +453,12 @@ DEMO_MODE=true
 
 התנהגות:
 
-1. caller הוא secret/system operation בלבד.
-2. lock על match.
+1. caller הוא secret/system operation בלבד. `applyManualResult` מאמת session
+   ו־`system_admins`; gateway שרתי סגור מעביר את actor המאומת לקריאת
+   service-role, וה־RPC מאמת שוב שה־actor עדיין מנהל מערכת.
+2. lock על match בלבד. אין lock על `leagues` או על `league_scoring_rules`, כדי
+   לא להפוך את סדר `leagues → league_members → matches` של `save_prediction`
+   וליצור מעגל deadlock.
 3. validation של score/status.
 4. עדכון result ו־version רק כאשר השתנו.
 5. set-based overwrite של כל prediction fields לפי חוקי כל ליגה.
@@ -811,13 +817,17 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 
 **Exit:** retry אינו משנה נקודות; correction מחשב מחדש; tie rules מדויקים.
 
+נמסר ב־16 באוגוסט 2026: הזנה ידנית מורשית, ניקוד overwrite אטומי לפי חוקי כל
+ליגה, correction/cancel, audit, דירוג member-only וחלוקת פרסי Demo טהורה
+ב־basis points. בדיקת DB מקבילית מוכיחה שאין deadlock מול `save_prediction`.
+
 ### Slice 7 — Sports Sync אמיתי או adapter ידני סופי
 
 **תוצר:** sync logs, override, Cron ו־admin status.
 
 - provider adapter לפי POC, contract fixtures ו־timeout.
 - Cron secret ב־Supabase Vault וב־Vercel, due-window ו־advisory lock.
-- manual override.
+- Sync מכבד את דגל ה־manual override שנמסר ב־Slice 6 ואינו דורס אותו.
 
 **Exit:** כפילות ריצה בטוחה; ספק שנופל אינו פוגע בנתונים הקיימים. אם POC נכשל, ה־slice נסגר עם Manual provider מתועד.
 
@@ -926,12 +936,12 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-Slice 5 נמסר, תוקן בעקבות ביקורת עצמאית וממתין לקבלה/אישור PR. המשימה הבאה
-לאחר אישורו היא **Slice 6 —
-תוצאות, ניקוד ודירוג**: `score_match`, כתיבת metadata הניקוד ו־result/rule
-versions, leaderboard ו־prize split לפי מטריצת הבדיקות בסעיפים 7, 10 ו־15.
-אסור להוסיף ניקוד מצטבר; כל ריצה מחליפה דטרמיניסטית את המצב. Sports Sync/Cron
-נשאר Slice 7 ואינו תנאי להתחלת Slice 6, משום שהמסלול הידני נשאר זמין.
+Slice 6 נמסר וממתין לקבלה/אישור PR. המשימה הבאה לאחר אישורו היא **Slice 7 —
+Sports Sync אמיתי או adapter ידני סופי**: להכריע לפי ה־POC המתועד, להוסיף
+`sync_runs`, Cron מאומת, advisory lock, contract fixtures ו־observability, ולהעביר
+כל תוצאה דרך `score_match` הקיים. ה־Sync חייב לכבד `is_manually_overridden`
+ולא לדרוס תיקון ידני. אם ה־POC אינו עובר, המסלול הידני שנמסר ב־Slice 6 נשאר
+המסלול הקנוני ואין להמציא תלות בספק.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

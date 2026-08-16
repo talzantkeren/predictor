@@ -286,3 +286,119 @@ export function removePredictionMatchesFromDisposableLocalDatabase(
     throw new Error("Local prediction-match fixtures could not be removed safely.");
   }
 }
+
+export type ScoringMatchFixtureIds = {
+  homeTeamId: string;
+  awayTeamId: string;
+  matchId: string;
+};
+
+export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
+  assertCanonicalUuid(userId, "system administrator");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `insert into public.system_admins (user_id, granted_by) values ('${userId}'::uuid, '${userId}'::uuid) on conflict (user_id) do nothing;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (fixture.status !== 0 || fixture.stdout.trim() !== "INSERT 0 1") {
+    throw new Error("Local system-administrator fixture could not be created.");
+  }
+}
+
+export function seedScoringMatchInDisposableLocalDatabase(
+  ids: ScoringMatchFixtureIds,
+) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, label);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const suffix = ids.matchId.slice(0, 8);
+  const homeTeamName = `קבוצת ניקוד בית ${suffix}`;
+  const awayTeamName = `קבוצת ניקוד חוץ ${suffix}`;
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `insert into public.teams (id, name, short_name) values ('${ids.homeTeamId}'::uuid, '${homeTeamName}', 'בית ${suffix}'), ('${ids.awayTeamId}'::uuid, '${awayTeamName}', 'חוץ ${suffix}'); insert into public.matches (id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status) values ('${ids.matchId}'::uuid, '26000000-0000-4000-8000-000000000027'::uuid, 98, '${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid, clock_timestamp() + interval '1 day', 'scheduled');`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output.length !== 2 ||
+    output[0] !== "INSERT 0 2" ||
+    output[1] !== "INSERT 0 1"
+  ) {
+    throw new Error("Local scoring-match fixture could not be created.");
+  }
+
+  return { homeTeamName, awayTeamName };
+}
+
+export function removeScoringFixturesFromDisposableLocalDatabase({
+  ids,
+  systemAdminUserId,
+}: {
+  ids: ScoringMatchFixtureIds;
+  systemAdminUserId: string;
+}) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, label);
+  }
+  assertCanonicalUuid(systemAdminUserId, "system administrator");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; delete from public.audit_logs where entity_type = 'match_result' and entity_id = '${ids.matchId}'::uuid; delete from public.predictions where match_id = '${ids.matchId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; delete from public.matches where id = '${ids.matchId}'::uuid; delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = cleanup.stdout.trim().split(/\r?\n/);
+  const matchDelete = output[4]?.match(/^DELETE ([0-9]+)$/);
+  const teamDelete = output[5]?.match(/^DELETE ([0-9]+)$/);
+  if (
+    cleanup.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    !matchDelete ||
+    Number(matchDelete[1]) !== 1 ||
+    !teamDelete ||
+    Number(teamDelete[1]) !== 2 ||
+    output[6] !== "COMMIT"
+  ) {
+    throw new Error("Local scoring fixtures could not be removed safely.");
+  }
+}

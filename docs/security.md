@@ -260,3 +260,44 @@
 | זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
 | סטטוס עמום מחליש זמן | allowlist סגור `scheduled`/`postponed` וגם זמן DB | live/finished/canceled עתידיים נדחים; postponed עתידי מותר |
 | כתיבה לליגה שהושלמה/אורכבה או דליפת הסטטוס שלה | lock על שורת league + `completed`/`archived` read-only אחרי membership AuthZ | active member מקבל `STATE_CONFLICT`; outsider מקבל `FORBIDDEN`; prediction קיים נשאר קריא |
+
+## תוצאות, ניקוד ודירוג ב־Slice 6
+
+- `system_admins` הוקדמה כטבלה מינימלית מוגנת. RLS מופעלת, אין policies ואין
+  הרשאות טבלה ל־`anon`, ל־`authenticated` או ל־`service_role`. אין מסך CRUD;
+  הענקה נעשית רק ב־seed מאובטח או migration ייעודית. `is_system_admin()` מחזירה
+  למשתמש מאומת רק אם הזהות שלו קיימת בטבלה ואינה מאפשרת לשאול על משתמש אחר.
+- `applyManualResult` מבצעת session → Zod → בדיקת מנהל מערכת → אימות המשחק →
+  gateway שרתי → `score_match`. הטופס אינו שולח actor, role, points, גרסת תוצאה
+  או נתיב משאב סמכותי מלבד מזהה המשחק והתוצאה המבוקשת.
+- `score_match` אינה ניתנת להרצה ל־`anon` או ל־`authenticated`; גם ברירת המחדל
+  של `service_role` נשללת ומוענק לה `EXECUTE` מפורש ומצומצם בלבד. ה־admin client
+  נשאר `server-only` ונצרך לניקוד רק דרך gateway ייעודי, לא כלקוח גנרי.
+- מאחר שקריאת service-role אינה נושאת `auth.uid()` של המשתמש, ה־Action מעביר
+  ללקוח השרת header פנימי וקבוע עם מזהה ה־session המאומת. המשתמש אינו יכול
+  להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
+  ומאמתת מחדש מול `system_admins` לפני lock או שינוי. כך ה־actor באודיט אינו
+  נלקח מקלט דפדפן, ושינוי הרשאה בין בדיקת ה־Action ל־RPC נכשל סגור.
+- הפונקציה נועלת רק את שורת `matches`. היא קוראת את חוקי כל ליגה ללא
+  `FOR UPDATE` ואינה נועלת `leagues`, ולכן אינה הופכת את סדר הנעילות הקיים של
+  `save_prediction` (`leagues → league_members → matches`). התוצאה, גרסתה,
+  כל שדות הניקוד וה־audit נכתבים באותה transaction. retry זהה הוא no-op ואינו
+  מזיז timestamps או מוסיף audit; תיקון מבצע overwrite מלא; cancel מאפס בלי
+  למחוק ניחושים.
+- `league_leaderboard` הוא `security_invoker`, מתחיל מחברים פעילים ונשען על
+  RLS הקיים של `league_members`, `profiles` ו־`predictions`. הקריאה האפליקטיבית
+  מאמתת חברות פעילה או ניהול של הליגה המבוקשת לפני query מסונן ל־`league_id`;
+  משתמש זר ומנהל מערכת שאינו חבר אינם מקבלים דירוג.
+- חובות Slice 5 של עוצמת `FOR UPDATE`/`FOR SHARE` ושל חשיפת ניחושי משחק
+  `canceled` לפי `kickoff_at` לא שונו ב־Slice 6.
+
+### מטריצת איומים ובדיקות Slice 6
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| משתמש רגיל מזין או מתקן תוצאה | Server Action מאמת session+admin; RPC היא service-only ומאמתת actor שוב | pgTAP ל־anon/authenticated/service actor חסר או זר; Playwright לקריאת RPC ישירה ולנתיב admin |
+| זיוף actor דרך הטופס או קריאת gateway לא מורשית | אין actor בקלט; header פנימי נוצר רק במודול `server-only`; `system_admins` ללא CRUD | בדיקות schema/grants/import boundary ו־actor שאינו בטבלה |
+| ניקוד כפול או שאריות מתוצאה קודמת | overwrite set-based לפי result/rule version בתוך transaction אחת | exact/outcome/wrong/draw, retry זהה, correction ו־cancel |
+| deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד ואינה נועלת league/rules | pgTAP עם שני חיבורי `dblink` שמריצים `score_match` ו־`save_prediction` במקביל |
+| דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
+| שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |

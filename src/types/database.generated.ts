@@ -647,6 +647,24 @@ export type Database = {
           },
         ]
       }
+      system_admins: {
+        Row: {
+          granted_at: string
+          granted_by: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           created_at: string
@@ -682,7 +700,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      league_leaderboard: {
+        Row: {
+          correct_outcomes: number | null
+          display_name: string | null
+          exact_scores: number | null
+          league_id: string | null
+          predictions_submitted: number | null
+          rank: number | null
+          total_points: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_members_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_join_request: {
@@ -809,6 +847,7 @@ export type Database = {
         }[]
       }
       get_prediction_database_time: { Args: never; Returns: string }
+      is_system_admin: { Args: never; Returns: boolean }
       reject_join_request: {
         Args: { p_reason: string; p_request_id: string }
         Returns: {
@@ -860,6 +899,25 @@ export type Database = {
           predicted_outcome: Database["public"]["Enums"]["outcome"]
           prediction_id: string
           updated_at: string
+        }[]
+      }
+      score_match: {
+        Args: {
+          p_away_score: number
+          p_home_score: number
+          p_is_manual_override: boolean
+          p_match_id: string
+          p_source: string
+          p_status: Database["public"]["Enums"]["match_status"]
+        }
+        Returns: {
+          predictions_scored: number
+          result_away_score: number
+          result_changed: boolean
+          result_home_score: number
+          result_match_id: string
+          result_status: Database["public"]["Enums"]["match_status"]
+          result_version: number
         }[]
       }
       submit_join_request: {
