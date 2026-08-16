@@ -1,3 +1,10 @@
+/**
+ * Executable scoring specification for Vitest only.
+ *
+ * Production scoring runs inside public.score_match in PostgreSQL. Keep this
+ * fixture aligned with SCORE-01/SCORE-02, while pgTAP remains authoritative
+ * for the SQL implementation that writes prediction points.
+ */
 export type FootballScore = {
   homeScore: number;
   awayScore: number;

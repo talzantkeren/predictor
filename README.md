@@ -36,24 +36,26 @@ npm run dev
 לאחר `supabase start`, העתיקו מ־`supabase status -o env` אל `.env.local` את
 `API_URL` בתור `NEXT_PUBLIC_SUPABASE_URL`, את `PUBLISHABLE_KEY` בתור
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` ואת `SECRET_KEY` בתור
-`SUPABASE_SECRET_KEY`. הסוד נדרש רק ל־gateway הפרטי של Storage ב־Slice 3;
+`SUPABASE_SECRET_KEY`. הסוד נדרש רק ל־gateways המצומצמים של Storage ושל
+ניקוד מערכת;
 אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
 חסום ב־Git.
 
-המשתנים הפעילים ב־Slices 3–5:
+המשתנים הפעילים ב־Slices 3–6:
 
 | משתנה | שימוש |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL=http://localhost:3000` | כתובת האפליקציה המקומית |
 | `NEXT_PUBLIC_SUPABASE_URL` | כתובת Supabase המקומית או hosted |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ציבורי המותר בדפדפן עם RLS |
-| `SUPABASE_SECRET_KEY` | server-only; gateway מצומצם ל־`payment-proofs` בלבד |
+| `SUPABASE_SECRET_KEY` | server-only; gateways מצומצמים ל־`payment-proofs` ול־scoring בלבד |
 | `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
-`SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues, אינו נשלח לדפדפן
-ואינו משמש לכתיבות עסקיות. `CRON_SECRET`, מפתח Sports ומפתחות AI שמורים
-ל־slices מאוחרים יותר.
+`SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
+כתיבת ניקוד privileged עוברת רק דרך `score_match`, שמאמת actor מול
+`system_admins`. `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתח Sports ומפתחות AI
+שמורים ל־slices מאוחרים יותר.
 
 ## זרימת Auth ופרופיל
 

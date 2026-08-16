@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.0 |
-| תאריך עדכון | 16 באוגוסט 2026 |
-| סטטוס | Slice 6 delivered; Slice 7 next |
+| גרסה | 3.1 |
+| תאריך עדכון | 17 באוגוסט 2026 |
+| סטטוס | Slice 6 review addressed; Slice 7 next |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -191,6 +191,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
 CRON_SECRET=
+SYNC_SYSTEM_ACTOR_ID=
 SPORTS_API_PROVIDER=manual
 SPORTS_API_KEY=
 AI_API_KEY=
@@ -203,7 +204,10 @@ DEMO_MODE=true
 - `DEMO_MODE` חייב להיות `true` בפריסת הקורס.
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`.
 - `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
-- `SUPABASE_SECRET_KEY`, `CRON_SECRET`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
+- `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
+- `SYNC_SYSTEM_ACTOR_ID` נדרש החל מ־Slice 7 ומכיל UUID קנוני של principal
+  לא־אינטראקטיבי ייעודי ב־`auth.users` שקיים ב־`system_admins`. הוא נטען בשרת
+  בלבד, אינו מתקבל מה־Cron request ואינו credential להתחברות.
 - `SUPABASE_SECRET_KEY` נשמר עבור פעולות מערכת עתידיות, אך אינו נדרש ואינו מיובא ב־Slice 1. כל פעולת Auth/Profile רגילה משתמשת ב־publishable key וב־session המשתמש תחת RLS.
 - `env.ts` מאמת env בצד שרת עם Zod ונכשל בזמן startup כאשר ערך חובה חסר.
 - `admin.ts` כולל `import 'server-only'` ונבדק בבדיקת import boundary.
@@ -385,6 +389,11 @@ DEMO_MODE=true
 - `predictions_submitted`.
 - `rank()` לפי points ואז correct outcomes. אין `dense_rank()`: שני חברים במקום 1 גורמים למקום הבא להיות 3, בהתאם לחלוקת מקומות הפרס.
 
+ארבעת האגרגטים כוללים רק ניחושים של משחקים שעבורם `now() >= kickoff_at`.
+הספירה של ניחוש עתידי נשארת 0 גם לבעל הניחוש, ולכן ה־View אינו מחזיר totals
+תלויי־צופה ואינו חושף השתתפות לפני חלון החשיפה. כאשר שורת חברות גלויה אך
+`profiles` מוסתרת ב־RLS, מוחזרת תווית ניטרלית בטוחה לשם התצוגה.
+
 ה־View נמסר ב־Slice 6 כ־`security_invoker`, עם `SELECT` ל־`authenticated` בלבד;
 הוא נשען על RLS של החברות והניחושים ואינו עוקף אותה. שאילתת השרת מאמתת חברות
 בליגה המבוקשת לפני הקריאה. אין `SECURITY DEFINER VIEW` חשופה.
@@ -456,10 +465,15 @@ DEMO_MODE=true
 1. caller הוא secret/system operation בלבד. `applyManualResult` מאמת session
    ו־`system_admins`; gateway שרתי סגור מעביר את actor המאומת לקריאת
    service-role, וה־RPC מאמת שוב שה־actor עדיין מנהל מערכת.
+   ב־Slice 7 ה־Cron משתמש ב־`SYNC_SYSTEM_ACTOR_ID` של principal ייעודי,
+   לא־אינטראקטיבי וללא session UI, שמוקם באופן מאובטח לכל סביבה ב־
+   `auth.users` וב־`system_admins`. חסרון env או הסרת ההרשאה מכשילים סגור;
+   direct `pg_cron`/SQL invocation ללא context אינו מסלול נתמך.
 2. lock על match בלבד. אין lock על `leagues` או על `league_scoring_rules`, כדי
    לא להפוך את סדר `leagues → league_members → matches` של `save_prediction`
    וליצור מעגל deadlock.
-3. validation של score/status.
+3. validation של score/status ושל זמן DB לאחר השגת ה־lock; `finished` לפני
+   `kickoff_at` נדחה, ו־`canceled` לפני kickoff נשאר מותר.
 4. עדכון result ו־version רק כאשר השתנו.
 5. set-based overwrite של כל prediction fields לפי חוקי כל ליגה.
 6. canceled מאפס נקודות ומסמן flags false בלי למחוק תחזיות.
@@ -549,11 +563,14 @@ DEMO_MODE=true
 ### 10.4 `POST /api/cron/sync`
 
 1. secret, method ו־content-type צפויים; ה־job קורא את הסוד מ־Supabase Vault והוא תואם ל־`CRON_SECRET` ב־Vercel.
-2. advisory lock.
-3. due-window check.
-4. adapter call עם timeout.
-5. upsert + `score_match` + sync log.
-6. תשובה קצרה ללא נתונים רגישים.
+2. טעינת `SYNC_SYSTEM_ACTOR_ID` server-only ואימות fail-closed דרך
+   `score_match` שה־principal הייעודי עדיין קיים ב־`system_admins`; אין actor
+   בפרמטרי הבקשה ואין fallback לזהות אנושית או ל־RPC ישיר.
+3. advisory lock.
+4. due-window check.
+5. adapter call עם timeout.
+6. upsert + `score_match` דרך gateway scoring + sync log.
+7. תשובה קצרה ללא נתונים רגישים.
 
 ### 10.5 `POST /api/matches/[matchId]/analysis`
 
@@ -619,6 +636,7 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 | `FORBIDDEN` | 403 | אין הרשאה לפעולה |
 | `VALIDATION_ERROR` | 400/field errors | תיקון שדות |
 | `PREDICTION_LOCKED` | 409 | המשחק כבר ננעל |
+| `MATCH_NOT_STARTED` | 409 | אפשר להזין תוצאת סיום רק לאחר מועד הפתיחה |
 | `STATE_CONFLICT` | 409 | המידע השתנה; רענון |
 | `RATE_LIMITED` | 429 + retry hint | נסה מאוחר יותר |
 | `UPLOAD_REJECTED` | 400/413/415 | סוג/גודל קובץ לא תקין |
@@ -646,6 +664,10 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 
 Async Server Components אינם יעד ל־Vitest; בודקים את ה־Service/queries בנפרד ואת העמוד ב־Playwright.
 
+מטריצת הניקוד ב־Vitest היא specification executable שממוקמת תחת
+`src/features/scoring/__tests__`; קוד הייצור אינו מייבא אותה. הסמכות להתאמה
+בין החוזה לבין SQL הייצור היא בדיקת pgTAP שמפעילה את `score_match` האמיתי.
+
 ### 14.2 pgTAP / DB integration
 
 - כל טבלה קיימת עם RLS enabled.
@@ -659,7 +681,9 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - unique constraints תחת concurrency.
 - approve/reject atomicity ו־idempotency.
 - `score_match`: מדויק, בית, חוץ, תיקו, טעות, canceled, retry ותיקון תוצאה.
+- `score_match` דוחה `finished` לפני kickoff ואינו משנה את המשחק או הניחושים.
 - שתי ליגות עם חוקי ניקוד שונים מקבלות `points` שונים לאותו משחק.
+- leaderboard אינו סופר ניחוש עתידי גם לבעליו, ולכן האגרגט זהה בין צופים.
 
 ### 14.3 Playwright
 
@@ -820,6 +844,8 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 נמסר ב־16 באוגוסט 2026: הזנה ידנית מורשית, ניקוד overwrite אטומי לפי חוקי כל
 ליגה, correction/cancel, audit, דירוג member-only וחלוקת פרסי Demo טהורה
 ב־basis points. בדיקת DB מקבילית מוכיחה שאין deadlock מול `save_prediction`.
+ביקורת 17 באוגוסט הוסיפה דחיית `finished` לפני kickoff, אגרגטים עקביים לפני
+חשיפה, fallback בטוח לשם חסר וחוזה principal ייעודי ל־Cron של Slice 7.
 
 ### Slice 7 — Sports Sync אמיתי או adapter ידני סופי
 
@@ -940,7 +966,8 @@ Slice 6 נמסר וממתין לקבלה/אישור PR. המשימה הבאה ל
 Sports Sync אמיתי או adapter ידני סופי**: להכריע לפי ה־POC המתועד, להוסיף
 `sync_runs`, Cron מאומת, advisory lock, contract fixtures ו־observability, ולהעביר
 כל תוצאה דרך `score_match` הקיים. ה־Sync חייב לכבד `is_manually_overridden`
-ולא לדרוס תיקון ידני. אם ה־POC אינו עובר, המסלול הידני שנמסר ב־Slice 6 נשאר
+באמצעות `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי ב־
+`system_admins`, ולא לדרוס תיקון ידני. אם ה־POC אינו עובר, המסלול הידני שנמסר ב־Slice 6 נשאר
 המסלול הקנוני ואין להמציא תלות בספק.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026

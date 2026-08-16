@@ -288,16 +288,28 @@
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
   ומאמתת מחדש מול `system_admins` לפני lock או שינוי. כך ה־actor באודיט אינו
   נלקח מקלט דפדפן, ושינוי הרשאה בין בדיקת ה־Action ל־RPC נכשל סגור.
+- מסלול ה־Cron של Slice 7 ישתמש באותו header רק מתוך gateway server-only ועם
+  `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי. ה־principal מוקם
+  באופן מאובטח לכל סביבה ב־`auth.users` וב־`system_admins`, אינו משמש ל־UI
+  ואינו מגיע מהבקשה. env חסר, UUID שגוי או הסרת השורה מ־`system_admins`
+  מכשילים את הריצה סגור; אין fallback ל־service-role ישן, לזהות אנושית או
+  לקריאת SQL/pg_cron ללא context.
 - הפונקציה נועלת רק את שורת `matches`. היא קוראת את חוקי כל ליגה ללא
   `FOR UPDATE` ואינה נועלת `leagues`, ולכן אינה הופכת את סדר הנעילות הקיים של
   `save_prediction` (`leagues → league_members → matches`). התוצאה, גרסתה,
   כל שדות הניקוד וה־audit נכתבים באותה transaction. retry זהה הוא no-op ואינו
   מזיז timestamps או מוסיף audit; תיקון מבצע overwrite מלא; cancel מאפס בלי
   למחוק ניחושים.
+- זמן ההכרעה נדגם במסד אחרי השגת נעילת המשחק. `finished` לפני `kickoff_at`
+  נדחה ב־`MATCH_NOT_STARTED` לפני mutation, בעוד `canceled` מוקדם נשאר מותר.
 - `league_leaderboard` הוא `security_invoker`, מתחיל מחברים פעילים ונשען על
   RLS הקיים של `league_members`, `profiles` ו־`predictions`. הקריאה האפליקטיבית
   מאמתת חברות פעילה או ניהול של הליגה המבוקשת לפני query מסונן ל־`league_id`;
   משתמש זר ומנהל מערכת שאינו חבר אינם מקבלים דירוג.
+- אגרגטי הדירוג כוללים רק ניחושים שמשחקם הגיע ל־kickoff. גם ניחושו העתידי של
+  הצופה עצמו אינו נספר, כך שהסכומים אינם תלויי־צופה ואין דליפת עצם ההגשה לפני
+  החלון. כאשר RLS מתירה חברות אך מסתירה `display_name`, מוחזרת התווית
+  הניטרלית "משתתף" במקום כשל עמוד או חשיפת UUID.
 - חובות Slice 5 של עוצמת `FOR UPDATE`/`FOR SHARE` ושל חשיפת ניחושי משחק
   `canceled` לפי `kickoff_at` לא שונו ב־Slice 6.
 
@@ -308,6 +320,7 @@
 | משתמש רגיל מזין או מתקן תוצאה | Server Action מאמת session+admin; RPC היא service-only ומאמתת actor שוב | pgTAP ל־anon/authenticated/service actor חסר או זר; Playwright לקריאת RPC ישירה ולנתיב admin |
 | זיוף actor דרך הטופס או קריאת gateway לא מורשית | אין actor בקלט; header פנימי נוצר רק במודול `server-only`; `system_admins` ללא CRUD | בדיקות schema/grants/import boundary ו־actor שאינו בטבלה |
 | ניקוד כפול או שאריות מתוצאה קודמת | overwrite set-based לפי result/rule version בתוך transaction אחת | exact/outcome/wrong/draw, retry זהה, correction ו־cancel |
+| תוצאת סיום מוקדמת יוצרת totals תלויי־צופה | זמן DB אחרי match lock + דחיית `finished` לפני kickoff; אגרגטים מסננים לפי kickoff | pgTAP לתוצאה מוקדמת ללא mutation ולניחוש עתידי שאינו נספר גם לבעליו |
 | deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד ואינה נועלת league/rules | pgTAP עם שני חיבורי `dblink` שמריצים `score_match` ו־`save_prediction` במקביל |
 | דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
 | שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |

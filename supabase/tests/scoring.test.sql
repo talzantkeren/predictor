@@ -185,7 +185,7 @@ select is(
       1,
       'c6000000-0000-4000-8000-000000000101',
       'c6000000-0000-4000-8000-000000000102',
-      now() + interval '1 day',
+      now() - interval '1 minute',
       'scheduled'
     );
     insert into public.leagues (
@@ -511,8 +511,11 @@ values
    'e6000000-0000-4000-8000-000000000001', 'e6000000-0000-4000-8000-000000000002',
    now() - interval '2 days', 'scheduled'),
   ('61000000-0000-4000-8000-000000000002', '28000000-0000-4000-8000-000000000027', 2,
-   'e6000000-0000-4000-8000-000000000001', 'e6000000-0000-4000-8000-000000000002',
-   now() - interval '1 day', 'scheduled');
+    'e6000000-0000-4000-8000-000000000001', 'e6000000-0000-4000-8000-000000000002',
+    now() - interval '1 day', 'scheduled'),
+  ('61000000-0000-4000-8000-000000000003', '28000000-0000-4000-8000-000000000027', 3,
+    'e6000000-0000-4000-8000-000000000001', 'e6000000-0000-4000-8000-000000000002',
+    now() + interval '1 day', 'scheduled');
 
 insert into public.leagues (id, manager_id, season_id, name, status)
 values
@@ -584,9 +587,13 @@ values
   ('62000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000002',
    'b6111111-1111-4111-8111-111111111111', 1, 1),
   ('62000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000002',
-   'b6222222-2222-4222-8222-222222222222', 0, 0),
+    'b6222222-2222-4222-8222-222222222222', 0, 0),
   ('62000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000002',
-   'b6333333-3333-4333-8333-333333333333', 2, 1);
+    'b6333333-3333-4333-8333-333333333333', 2, 1),
+  ('62000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000003',
+    'b6111111-1111-4111-8111-111111111111', 1, 0),
+  ('62000000-0000-4000-8000-000000000001', '61000000-0000-4000-8000-000000000003',
+    'b6222222-2222-4222-8222-222222222222', 0, 1);
 
 -- User-facing authorization and direct-RPC denial.
 set local role authenticated;
@@ -691,6 +698,27 @@ select throws_ok(
   'P0001', 'VALIDATION_ERROR',
   'audit source uses a constrained machine-readable value'
 );
+select throws_ok(
+  $$select * from public.score_match(
+    '61000000-0000-4000-8000-000000000003', 'finished', 2, 1, true, 'manual'
+  )$$,
+  'P0001', 'MATCH_NOT_STARTED',
+  'a finished result is rejected before the database kickoff time'
+);
+reset role;
+select results_eq(
+  $$select status::text, home_score, away_score, result_version
+    from public.matches
+    where id = '61000000-0000-4000-8000-000000000003'$$,
+  $$values ('scheduled'::text, null::smallint, null::smallint, 0)$$,
+  'a premature result rejection leaves the match unchanged'
+);
+set local role service_role;
+select set_config(
+  'request.headers',
+  '{"x-predictor-system-actor":"b6111111-1111-4111-8111-111111111111"}',
+  true
+);
 
 -- Home, exact, wrong, custom rules, and initial metadata.
 select results_eq(
@@ -784,6 +812,20 @@ select results_eq(
       and user_id = 'b6666666-6666-4666-8666-666666666666'$$,
   $$values (0::bigint, 0::bigint, 0::bigint, 0::bigint, 3::bigint)$$,
   'an active member without a prediction appears with zero aggregates'
+);
+select results_eq(
+  $$select user_id, predictions_submitted
+    from public.league_leaderboard
+    where league_id = '62000000-0000-4000-8000-000000000001'
+      and user_id in (
+        'b6111111-1111-4111-8111-111111111111'::uuid,
+        'b6222222-2222-4222-8222-222222222222'::uuid
+      )
+    order by user_id$$,
+  $$values
+    ('b6111111-1111-4111-8111-111111111111'::uuid, 2::bigint),
+    ('b6222222-2222-4222-8222-222222222222'::uuid, 2::bigint)$$,
+  'submission counts exclude every pre-kickoff prediction, including the viewer own row'
 );
 reset role;
 

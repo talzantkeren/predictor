@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyOutcome,
   scorePrediction,
-} from "@/features/scoring/scoring-rules";
+} from "@/features/scoring/__tests__/scoring-specification";
 
 describe("football outcome classification", () => {
   it.each([

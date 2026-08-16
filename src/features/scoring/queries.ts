@@ -83,13 +83,12 @@ function isSafeMetric(value: number | null, minimum = 0): value is number {
   return value !== null && Number.isSafeInteger(value) && value >= minimum;
 }
 
-function mapStanding(
+export function mapStanding(
   row: Database["public"]["Views"]["league_leaderboard"]["Row"],
 ): LeagueStanding | null {
   if (
     !row.league_id ||
     !row.user_id ||
-    !row.display_name ||
     !isSafeMetric(row.total_points) ||
     !isSafeMetric(row.correct_outcomes) ||
     !isSafeMetric(row.exact_scores) ||
@@ -102,7 +101,7 @@ function mapStanding(
   return {
     leagueId: row.league_id,
     userId: row.user_id,
-    displayName: row.display_name,
+    displayName: row.display_name?.trim() || "משתתף",
     totalPoints: row.total_points,
     correctOutcomes: row.correct_outcomes,
     exactScores: row.exact_scores,

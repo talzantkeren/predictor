@@ -1,6 +1,7 @@
 const safeScoringErrors: Record<string, string> = {
   FORBIDDEN: "אין הרשאה להזין או לתקן תוצאות משחקים.",
   MATCH_NOT_FOUND: "המשחק המבוקש אינו זמין.",
+  MATCH_NOT_STARTED: "אפשר להזין תוצאת סיום רק לאחר מועד פתיחת המשחק.",
   SCORING_RULES_MISSING: "לא ניתן לחשב ניקוד למשחק במצב הנתונים הנוכחי.",
   VALIDATION_ERROR: "פרטי התוצאה אינם תקינים.",
 };

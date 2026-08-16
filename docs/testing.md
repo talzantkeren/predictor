@@ -203,8 +203,8 @@ npm run test:e2e -- prediction-lock.spec.ts
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | סיווג HOME/DRAW/AWAY; exact/correct/wrong ב־3/1/0 ובחוקים מותאמים; Zod ל־finished/canceled וציונים 0–30; חלוקת אחוזי מקומות משותפים ב־basis points ללא floating point |
-| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; exact, בית, חוץ, תיקו וטעות; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
+| Vitest | specification executable בדיקתי לסיווג HOME/DRAW/AWAY ול־exact/correct/wrong ב־3/1/0 ובחוקים מותאמים; Zod ל־finished/canceled וציונים 0–30; מיפוי שגיאת kickoff ושם חסר בטוחים; חלוקת אחוזי מקומות משותפים ב־basis points ללא floating point |
+| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; exact, בית, חוץ, תיקו וטעות; דחיית `finished` לפני kickoff ללא mutation; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, ספירת הגשות רק אחרי kickoff, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
 | DB concurrency | שני חיבורי `dblink` אמיתיים מפעילים `score_match` ו־`save_prediction` במקביל. ה־score נועל match בלבד; השמירה ממתינה לו ומסתיימת ב־`PREDICTION_LOCKED` הצפוי, ללא deadlock או lock timeout |
 | Playwright | מנהל מערכת מאומת מזין 2–1 דרך `/admin/matches`; משתמש רגיל נדחה גם מהנתיב וגם מקריאת RPC ישירה; `/leagues/[leagueId]/standings` מציג לחבר דירוג 1,1,3 ב־Desktop וב־Mobile; RTL וללא overflow |
 
@@ -214,10 +214,15 @@ npm run test:e2e -- prediction-lock.spec.ts
 league ואת membership וממתינה ל־match. שחרור החסימה מוכיח ששני התהליכים
 מסתיימים בלי מעגל נעילות. אין להריץ את קובץ הבדיקה מול פרויקט linked/hosted.
 
+קובץ `src/features/scoring/__tests__/scoring-specification.ts` הוא חוזה בדיקתי
+בלבד ואינו מיובא בקוד הייצור. הוא מגן על דוגמאות SCORE-01/02 ועל מטריצת
+החוקים; בדיקת pgTAP שמפעילה את `public.score_match` האמיתי היא הסמכות לכך
+שמימוש SQL הייצורי תואם לחוזה.
+
 הרצה ממוקדת בזמן פיתוח:
 
 ```powershell
-npm run test -- src/features/scoring/scoring-rules.test.ts src/features/scoring/prize-allocation.test.ts src/features/scoring/schemas.test.ts
+npm run test -- src/features/scoring/scoring-rules.test.ts src/features/scoring/prize-allocation.test.ts src/features/scoring/schemas.test.ts src/features/scoring/errors.test.ts src/features/scoring/queries.test.ts
 npm exec -- supabase test db supabase/tests/scoring.test.sql
 npm run test:e2e -- scoring.spec.ts
 ```
