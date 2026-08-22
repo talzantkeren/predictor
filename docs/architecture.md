@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.6 |
-| תאריך עדכון | 17 באוגוסט 2026 |
+| גרסה | 2.7 |
+| תאריך עדכון | 22 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
 
@@ -107,7 +107,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 - `POST /api/join-requests/[requestId]/proofs` — multipart upload.
 - `GET /api/payment-proofs/[proofId]` — הרשאה והפניה ל־signed URL קצר־חיים.
-- `POST /api/cron/sync` — הפעלת Sync עם secret ונעילת ריצה.
+- `POST /api/cron/sync` — תיעוד ניסיון Sync מאומת דרך RPC אטומי יחיד.
 - `GET /auth/confirm` — החלפת PKCE code ב־session והפניה בטוחה ליעד פנימי.
 - `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
@@ -315,7 +315,8 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `league_members` | חברי אותה ליגה רואים חברות פעילה; שינוי דרך פעולות ניהול מוגנות |
 | `predictions` | חבר פעיל רואה את התחזית שלו לפני ואחרי `kickoff_at`; חברים פעילים אחרים באותה ליגה רואים אותה רק ב־`kickoff_at` או אחריו; חבר שהוסר מאבד גישה; הבעלים כותב רק כל עוד הוא חבר פעיל ולפני `kickoff_at` |
 | `ai_match_analyses` | חבר פעיל בליגה הכוללת את המשחק |
-| `audit_logs`, `sync_runs` | מנהל רלוונטי או מנהל מערכת; append דרך שרת/פונקציות בלבד |
+| `audit_logs` | מנהל רלוונטי או מנהל מערכת; append דרך שרת/פונקציות בלבד |
+| `sync_runs` | מנהל מערכת בלבד; append דרך RPC מערכת מצומצם בלבד |
 
 מדיניות תחזיות בודקת `now()` של PostgreSQL באותה פעולת insert/update. ה־Client אינו שולח `user_id` סמכותי; הוא נגזר מ־`auth.uid()` או מאומת מולו.
 
@@ -379,24 +380,71 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 אם השער נכשל, `ManualSportsProvider` ו־seed files הם מקור הנתונים ל־MVP. אין לעכב ניחושים, ניקוד ודירוג בגלל ספק.
 
+ב־Slice 7 השער נסגר עבור גרסת הקורס ללא ספק חי: לא בוצע POC מאושר, אין
+credentials וקטלוג ה־Demo סינתטי וללא provider IDs. לכן `ManualSportsProvider`
+והזנת התוצאות הידנית הם המסלול הקנוני ל־MVP. אין לחבר את fixtures הידניים
+לכתיבת משחקים או להציג אותם כנתונים שסונכרנו מספק.
+
 ### 14.3 Scheduling וריצה
 
-Supabase Cron מפעיל את `/api/cron/sync` בתדירות מתאימה. ערך הסוד נשמר ב־Supabase Vault וב־Vercel כ־`CRON_SECRET`; ה־job קורא אותו בזמן ריצה, והוא אינו מופיע ב־migration או ב־Git. ה־Handler:
+Supabase Cron מפעיל את `/api/cron/sync` בתדירות שמרנית. ערך הסוד נשמר
+ב־Supabase Vault וב־Vercel כ־`CRON_SECRET`; ה־job קורא אותו בזמן ריצה, והוא
+אינו מופיע ב־migration או ב־Git.
 
-1. מאמת `CRON_SECRET` בלי לכתוב אותו ללוג.
-2. טוען `SYNC_SYSTEM_ACTOR_ID` server-only של principal לא־אינטראקטיבי ייעודי
-   ב־`auth.users`, שהוענק מראש ל־`system_admins`; ערך חסר או הרשאה שהוסרה
-   מכשילים את הריצה סגור. ה־actor אינו מגיע מהבקשה ואינו משמש להתחברות UI.
-3. בודק האם קיימים משחקים בחלון שמצדיק קריאת ספק.
-4. מקבל PostgreSQL advisory lock כדי למנוע ריצה כפולה.
-5. יוצר `sync_runs` במצב `running`.
-6. קורא ל־adapter פעם אחת לפי תאריך/מחזור, לא פעם לכל משחק.
-7. מבצע upsert לפי provider/id, בלי לדרוס manual override.
-8. מעביר תוצאות חדשות או מתוקנות ל־`score_match` דרך gateway השרת, עם ה־actor
-   הייעודי לצורכי אימות חוזר ו־audit.
-9. מסיים את log עם ספירת שינויים ושגיאה מסוננת.
+#### החלטת Slice 7 — RPC ידני אטומי
 
-סנכרון יומי מלא מעדכן לוח עתידי. סביב חלונות משחק ניתן להריץ כל 5–10 דקות, אך ה־Handler יוצא ללא קריאת ספק אם אין משחק רלוונטי. התדירות הסופית כפופה למכסת הספק.
+הטרנספורט הקיים הוא `supabase-js` מול Supabase Data API/PostgREST. כל קריאת
+`.rpc()` היא בקשת HTTP וטרנזקציה נפרדת על connection מתוך pool; ל־Route
+Handler אין connection קבוע שאפשר להחזיק לאורך כמה קריאות. לכן נעילת
+`pg_try_advisory_lock` ברמת session אסורה: היא עלולה להישאר על connection
+שחזר ל־pool, בעוד ניסיון unlock יגיע ל־connection אחר. גם
+`pg_try_advisory_xact_lock` אינו יכול להגן על עבודה שממשיכה אחרי סיום ה־RPC;
+הוא חוקי רק כאשר כל המצב המוגן נמצא באותה טרנזקציה קצרה.
+
+כל עוד ה־provider הוא `manual`, ה־Handler נשאר דק ואינו קורא adapter, אינו
+מעריך due-window, אינו יוצר lifecycle של `running`, אינו מבצע upsert ואינו
+קורא ל־`score_match`. הזרימה היא:
+
+1. ה־Handler מאמת method, content type ו־`CRON_SECRET` בלי לכתוב סוד ללוג.
+2. הוא טוען `SYNC_SYSTEM_ACTOR_ID` server-only של principal לא־אינטראקטיבי
+   ייעודי ב־`auth.users`, שהוענק מראש ל־`system_admins`. הערך אינו מגיע
+   מהבקשה ואינו credential להתחברות UI.
+3. ה־Handler מבצע קריאת Data API יחידה ל־`record_sync_attempt`; ה־RPC מאמת
+   מחדש את actor השרת מתוך `x-predictor-system-actor` מול `system_admins`.
+4. ה־RPC מנסה `pg_try_advisory_xact_lock` עם מפתח יישומי קבוע ומתועד. הנעילה
+   מגנה רק על ההכרעה והכתיבה באותה טרנזקציה ומשתחררת אוטומטית ב־commit.
+5. אם הנעילה תפוסה, ה־RPC אינו ממתין ואינו מעבד חלון; הוא מוסיף שורה סופית
+   `skipped` עם `CONCURRENT_ATTEMPT`. הכתיבה append-only ואינה משנה אינווריאנט,
+   ולכן מותר לה לבצע מחוץ להגנת הנעילה.
+6. אם הנעילה הושגה, ה־RPC מוסיף שורה סופית `skipped` עם `MANUAL_PROVIDER`.
+   הקוד `OUTSIDE_DUE_WINDOW` שמור למסלול ספק חי עתידי ואינו מתאר את המצב
+   הידני.
+7. שני סוגי הדילוג כוללים `finished_at`, אינם משאירים שורת `running`, מחזירים
+   HTTP 200 ומוצגים בממשק כסיבת דילוג ניטרלית.
+
+כל קריאת Cron מורשית שהגיעה ל־RPC היא ניסיון Sync ומתועדת, גם כאשר הפסידה
+בנעילה. בקשה עם secret שגוי, actor חסר/לא תקין או actor שאינו עוד מנהל מערכת
+אינה ניסיון מורשה ואינה כותבת ל־`sync_runs` או ל־`audit_logs`; observability
+לבקשות כאלה נשארת ב־runtime logs מסוננים ללא הסוד או ה־actor.
+
+העמודה `sync_runs.error_code` שומרת קוד תוצאה גם כאשר הסטטוס אינו שגיאה.
+ה־schema מתעד זאת ב־`COMMENT ON COLUMN`; כל query, מסך או התראה מזהים כשל רק
+באמצעות `status = 'failed'`, ולעולם לא באמצעות `error_code is not null`.
+`error_message_safe` נשאר `null` בדילוגים.
+
+#### מסלול ספק חי עתידי
+
+חיבור ספק חי דורש שינוי ארכיטקטוני ומימוש יחד, לאחר POC מאושר. ריצה שחוצה
+קריאת רשת לא תישען על advisory lock ארוך־חיים אלא על claim/lease עמיד במסד:
+
+- יצירת claim אטומית עם `lease_token` המשמש fencing token, `expires_at`
+  ו־`holder`; advisory xact lock קצר רשאי להגן רק על יצירת ה־claim.
+- קריאת הספק מתבצעת מחוץ לטרנזקציה ועם timeout.
+- כל apply ו־finalize מותנים ב־lease token התקף שטרם פג או הוחלף; token ישן
+  נדחה כדי שריצה שהתעוררה מאוחר לא תכתוב מעל ריצה חדשה.
+- lease שפג ניתן ל־reclaim, ושורת `running` יתומה נסגרת לפי `expires_at`.
+- רק במסלול זה מתווספים due-window אמיתי, adapter call, upsert לפי provider/id
+  והעברת תוצאות דרך `score_match` תוך כיבוד `is_manually_overridden`.
 
 ## 15. ניתוח AI
 
@@ -461,7 +509,7 @@ Services מחזירים error codes יציבים כגון:
 | עקיפת route דרך Storage API | bucket פרטי ללא policies ללקוחות ושער שרת מצומצם | CRUD ישיר כ־anon/authenticated |
 | אישור כפול | transaction + unique + idempotency | שתי קריאות מקבילות |
 | ניקוד כפול | overwrite דטרמיניסטי + versions | אותה תוצאה פעמיים ותיקון תוצאה |
-| Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins` + advisory lock | secret/actor חסר או שגוי ושתי ריצות יחד |
+| Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins` + RPC יחיד עם xact lock קצר; בקשה לא מורשית אינה כותבת, וניסיון מקביל נרשם סופית כ־`CONCURRENT_ATTEMPT` | secret/actor חסר או שגוי, שתי sessions מקבילות ושחרור הנעילה אחרי commit |
 | AI abuse | membership, cache, rate limit, timeout | משתמש לא מאושר ולולאת קריאות |
 | עקיפה דרך Supabase Data API | RLS ו־grants לכל טבלה | קריאות ישירות עם publishable key |
 
@@ -514,6 +562,8 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | ניקוד ב־PostgreSQL | התקבל | אטומיות, idempotency ו־set-based update |
 | Supabase Cron | התקבל | Vercel Hobby Cron יומי בלבד; נדרש polling תכוף יותר |
 | ספק Sports קבוע מראש | נדחה | הבחירה תלויה ב־POC אמיתי לעונת 2026/27 |
+| Slice 7 עם ספק ידני | התקבל | ה־POC לא עבר; Data API אינו מחזיק session DB, ולכן ניסיון מורשה מתועד ב־RPC אטומי יחיד ומסלול ספק חי נדחה לחוזה lease/fencing |
+| advisory lock ברמת session דרך Data API | נדחה | connection אינו מוצמד ל־Route Handler והנעילה עלולה לדלוף ל־pool |
 | מסלול כסף אמיתי בגרסת הקורס | חסום | דורש שער ציות ומשתמשים בגיל מתאים; Demo בלבד |
 
 ## 22. התאמה לדרישות הקורס

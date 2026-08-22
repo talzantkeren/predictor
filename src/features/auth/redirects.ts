@@ -6,6 +6,7 @@ const AUTH_REDIRECT_PATHS = new Set([
   "/update-password",
   "/leagues/new",
   "/admin/matches",
+  "/admin/sync",
 ]);
 
 // Exactly one protected league-summary path: a UUID segment with no query

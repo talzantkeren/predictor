@@ -22,7 +22,7 @@ describe("Supabase admin boundary", () => {
     );
   });
 
-  it("confines the privileged client import to fixed proof and scoring gateways", () => {
+  it("confines the privileged client import to fixed proof, scoring, and sync gateways", () => {
     const repositoryRoot = process.cwd();
     const offenders = sourceFiles(resolve(repositoryRoot, "src"))
       .filter((path) =>
@@ -34,6 +34,7 @@ describe("Supabase admin boundary", () => {
     expect(offenders).toEqual([
       "src/features/files/private-proof-storage.ts",
       "src/features/scoring/private-scoring-gateway.ts",
+      "src/features/sync/private-sync-gateway.ts",
       "src/lib/supabase/admin-boundary.test.ts",
     ]);
   });
@@ -47,6 +48,12 @@ describe("Supabase admin boundary", () => {
   it("keeps the scoring gateway server-only as well", async () => {
     await expect(
       import("@/features/scoring/private-scoring-gateway"),
+    ).rejects.toThrow(/cannot be imported from a Client Component/i);
+  });
+
+  it("keeps the sync gateway server-only as well", async () => {
+    await expect(
+      import("@/features/sync/private-sync-gateway"),
     ).rejects.toThrow(/cannot be imported from a Client Component/i);
   });
 });

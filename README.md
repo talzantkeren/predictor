@@ -41,21 +41,24 @@ npm run dev
 אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
 חסום ב־Git.
 
-המשתנים הפעילים ב־Slices 3–6:
+המשתנים הפעילים ב־Slices 3–7:
 
 | משתנה | שימוש |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL=http://localhost:3000` | כתובת האפליקציה המקומית |
 | `NEXT_PUBLIC_SUPABASE_URL` | כתובת Supabase המקומית או hosted |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | מפתח ציבורי המותר בדפדפן עם RLS |
-| `SUPABASE_SECRET_KEY` | server-only; gateways מצומצמים ל־`payment-proofs` ול־scoring בלבד |
+| `SUPABASE_SECRET_KEY` | server-only; gateways מצומצמים ל־`payment-proofs`, scoring ו־Sync בלבד |
+| `CRON_SECRET` | server-only; סוד Bearer נפרד ל־`POST /api/cron/sync` |
+| `SYNC_SYSTEM_ACTOR_ID` | UUID server-only של principal לא־אינטראקטיבי ב־`system_admins` |
 | `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
 `SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
 כתיבת ניקוד privileged עוברת רק דרך `score_match`, שמאמת actor מול
-`system_admins`. `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתח Sports ומפתחות AI
-שמורים ל־slices מאוחרים יותר.
+`system_admins`. מסלול ה־Sync משתמש ב־principal נפרד, ב־RPC יחיד ובאותו גבול
+admin client מצומצם. מפתח Sports ומפתחות AI שמורים למסלולים עתידיים ואינם
+נדרשים ל־Slice 7 הידני.
 
 ## זרימת Auth ופרופיל
 
@@ -164,7 +167,8 @@ Sports ולא מתבצעת קריאה חיצונית מהדפדפן. המועד�
 הקיים יפעל לפי זמן המסד כרגיל.
 
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
-Sports Sync ו־Cron נשארים Slice 7, ו־AI ו־finance נשארים Slices 8–9.
+Slice 7 מוסיף observability ו־Cron ידני בלבד ואינו משנה את קטלוג ה־Demo;
+AI ו־finance נשארים Slices 8–9.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 
@@ -186,6 +190,48 @@ Sports Sync ו־Cron נשארים Slice 7, ו־AI ו־finance נשארים Slice
 
 חלוקת פרסי Demo למקומות משותפים מחושבת במודול טהור ב־basis points. המערכת אינה
 מחלקת כסף, אינה מציגה פרסים כספיים אמיתיים ואינה פותחת את שער הציות.
+
+## זרימת Slice 7: Cron וסטטוס Sync ידני
+
+- `POST /api/cron/sync` מקבל רק בקשת JSON עם `Authorization: Bearer ...`,
+  מאמת את הסוד בזמן קבוע וקורא פעם אחת ל־`record_sync_attempt` דרך Supabase
+  Data API. ה־Route אינו מחזיק חיבור PostgreSQL, אינו קורא adapter ואינו כותב
+  משחקים.
+- כל ניסיון מורשה נכתב מיד כשורה סופית ב־`sync_runs`: `MANUAL_PROVIDER` כאשר
+  ה־transaction lock הקצר הושג, או `CONCURRENT_ATTEMPT` כאשר ניסיון אחר מחזיק
+  אותו. שני הדילוגים מחזירים HTTP 200. בקשה עם secret או actor לא מורשים אינה
+  נכתבת ל־`sync_runs` או ל־`audit_logs`.
+- `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ניסיונות אחרונים, זמנים
+  מקומיים ו־UTC, ספירות וסיבת דילוג ניטרלית. כשל מזוהה רק לפי
+  `status='failed'`, לא לפי קיום ערך ב־`error_code`.
+- `src/features/sports/sync-planner.ts` הוא חוזה טהור ולא־מחובר למסלול ספק
+  עתידי. ה־fixtures הבדיקתיים מוכיחים שתוצאה ידנית לעולם לא תידרס, אך Slice 7
+  אינו מפעיל את המודול ואינו מבצע קריאת רשת חיה.
+
+### הקמת principal ו־Cron
+
+בסביבה מקומית, `supabase db reset --local` יוצר ב־seed principal בדיקה
+לא־אינטראקטיבי שמזהה שלו
+`70000000-0000-4000-8000-000000000007`. הגדירו אותו ב־`.env.local` בתור
+`SYNC_SYSTEM_ACTOR_ID`, צרו ערך אקראי משלכם ל־`CRON_SECRET` ואל תשמרו אותו
+ב־Git. `npm run test:e2e` מזריק סוד אקראי חדש לכל הרצה אוטומטית.
+
+לכל סביבת hosted מבצעים את ההקמה ידנית ומאובטחת:
+
+1. יוצרים דרך Supabase Auth Admin, בסשן תפעולי מבוקר, משתמש לא־אינטראקטיבי
+   ייעודי. אין להפיץ או לשמור credential להתחברות; שומרים רק את ה־UUID שלו.
+2. מעניקים ל־UUID שורה ב־`system_admins` דרך ערוץ ניהול מבוקר. אין מסך UI
+   שמעניק הרשאה זו. הסרת השורה מבטלת מיד את יכולת ה־RPC.
+3. מגדירים ב־Vercel את `SYNC_SYSTEM_ACTOR_ID` ואת `CRON_SECRET` כמשתני
+   server-only. את אותו סוד Cron שומרים ב־Supabase Vault, לא ב־migration.
+4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
+   `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
+   ב־SQL, ב־Git או בלוגים.
+5. לאחר deploy מפעילים ניסיון אחד ומוודאים במסך `/admin/sync` שנרשמה שורה
+   סופית `MANUAL_PROVIDER`. אין לפרש אותה כסנכרון לוח ממשי.
+
+חיבור ספק חי בעתיד דורש POC מאושר ומימוש claim/lease עמיד עם fencing token;
+ה־transaction lock הקצר של Slice 7 אינו מורחב סביב HTTP ואינו תחליף ל־lease.
 
 ### Mailpit
 

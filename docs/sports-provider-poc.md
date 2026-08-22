@@ -190,3 +190,36 @@ synthetic future examples, not a verified real schedule; `external_provider` and
 No provider was selected, no external request, synchronization job, Cron, lease,
 `sync_runs` table, or result override was added in Slice 5. Those decisions remain
 behind the Slice 7 POC gate. Browser and CI flows always consume stored/manual data.
+
+## Slice 7 gate closure
+
+The gate did not pass by 22 August 2026: no live POC was executed, no provider
+credentials were supplied, and the six evaluation questions above remain
+unanswered. `ManualSportsProvider` is therefore the canonical MVP path. The
+synthetic Slice 5 catalog remains stored Demo data with `external_provider` and
+`external_id` set to `NULL`; it must not be relabeled or rewritten as provider
+data.
+
+Slice 7 adds operational observability without pretending that a provider was
+selected:
+
+- `POST /api/cron/sync` makes one Data API call to an atomic
+  `record_sync_attempt()` RPC.
+- Every authorized attempt is terminal and skipped with either
+  `MANUAL_PROVIDER` or `CONCURRENT_ATTEMPT`; it performs no provider request,
+  fixture upsert, match change, result scoring, or application audit write.
+- The checked-in JSON contract fixture and pure `sync-planner` specify future
+  status normalization, corrections, and unconditional exclusion of
+  `is_manually_overridden` matches. The planner is not connected to Cron or the
+  database.
+- CI and browser tests make no live Sports network request.
+
+A future live provider can be proposed only after a new documented POC answers
+all six evaluation questions with recorded contract fixtures. Integration must
+then update the canonical architecture first and implement a durable database
+claim/lease with an expiring fencing token. Provider HTTP runs outside the
+transaction; every apply/finalize operation must reject an expired or superseded
+token. A session advisory lock through the Data API is not an acceptable lease.
+The live-provider change must add due-window logic, upserts, lifecycle handling,
+and scoring integration together rather than partially wiring any of them into
+the manual path.
