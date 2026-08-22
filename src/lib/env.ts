@@ -37,7 +37,7 @@ const cronEnvSchema = z.object({
     canonicalUuidPattern,
     "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID",
   ),
-  SPORTS_API_PROVIDER: z.literal("manual"),
+  SPORTS_API_PROVIDER: z.literal("manual").default("manual"),
 });
 
 const adminEnvSchema = z.object({

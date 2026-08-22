@@ -24,7 +24,6 @@ function syncRequest(
   options: {
     authorization?: string;
     contentType?: string | null;
-    method?: string;
   } = {},
 ) {
   const headers = new Headers();
@@ -36,7 +35,7 @@ function syncRequest(
   }
 
   return new Request("http://localhost:3000/api/cron/sync", {
-    method: options.method ?? "POST",
+    method: "POST",
     headers,
   });
 }
@@ -76,13 +75,7 @@ describe("POST /api/cron/sync", () => {
     },
   );
 
-  it("rejects the wrong method or media type before an RPC write", async () => {
-    const wrongMethod = await POST(
-      syncRequest({
-        authorization: `Bearer ${cronSecret}`,
-        method: "PUT",
-      }),
-    );
+  it("rejects the wrong media type before an RPC write", async () => {
     const wrongMedia = await POST(
       syncRequest({
         authorization: `Bearer ${cronSecret}`,
@@ -90,7 +83,6 @@ describe("POST /api/cron/sync", () => {
       }),
     );
 
-    expect(wrongMethod.status).toBe(405);
     expect(wrongMedia.status).toBe(415);
     expect(mocks.recordManualSyncAttempt).not.toHaveBeenCalled();
   });

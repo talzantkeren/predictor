@@ -134,6 +134,25 @@ describe("Slice 0 environment validation", () => {
     });
   });
 
+  it("defaults an omitted Cron provider to the manual path", () => {
+    const inputWithoutProvider: Record<string, string | undefined> = {
+      ...validInput,
+    };
+    delete inputWithoutProvider.SPORTS_API_PROVIDER;
+
+    expect(
+      parseCronEnv({
+        ...inputWithoutProvider,
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      }),
+    ).toEqual({
+      CRON_SECRET: "local-cron-secret",
+      SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      SPORTS_API_PROVIDER: "manual",
+    });
+  });
+
   it("fails the Cron boundary closed for missing or malformed system actors", () => {
     expect(() =>
       parseCronEnv({ ...validInput, CRON_SECRET: "local-cron-secret" }),

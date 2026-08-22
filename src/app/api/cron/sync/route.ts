@@ -58,10 +58,6 @@ function hasValidBearerSecret(request: Request, expectedSecret: string) {
 }
 
 export async function POST(request: Request) {
-  if (request.method !== "POST") {
-    return errorResponse(new SyncError("INVALID_REQUEST", 405));
-  }
-
   if (!isExpectedContentType(request)) {
     return errorResponse(new SyncError("INVALID_REQUEST", 415));
   }

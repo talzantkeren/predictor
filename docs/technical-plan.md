@@ -211,7 +211,9 @@ DEMO_MODE=true
   בשרת בלבד, אינו מתקבל מהבקשה ואינו credential להתחברות.
 - `SUPABASE_SECRET_KEY` נשמר עבור פעולות מערכת עתידיות, אך אינו נדרש ואינו מיובא ב־Slice 1. כל פעולת Auth/Profile רגילה משתמשת ב־publishable key וב־session המשתמש תחת RLS.
 - `env.ts` מאמת env בצד שרת עם Zod; גבול Cron ייעודי נכשל סגור בזמן הבקשה אם
-  `CRON_SECRET`, actor או provider ידני חסרים, בלי להפיל build שאינו מפעיל אותו.
+  `CRON_SECRET` או actor חסרים, או אם `SPORTS_API_PROVIDER=api` הוגדר במפורש.
+  provider שלא הוגדר מקבל את ברירת המחדל `manual`, בלי להפיל build שאינו
+  מפעיל את ה־Route.
 - `admin.ts` כולל `import 'server-only'` ונבדק בבדיקת import boundary.
 
 ## 5. תכנית migrations

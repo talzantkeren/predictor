@@ -1,3 +1,7 @@
+-- This test commits cross-session fixtures outside the pgTAP transaction so
+-- dblink sessions can see them. If execution stops before cleanup, run
+-- `npm exec -- supabase db reset --local` before relying on absolute local
+-- table counts. The fixed fixture identities self-heal on the next full run.
 begin;
 
 select no_plan();

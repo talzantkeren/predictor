@@ -81,7 +81,7 @@ async function getRegisteredUserId(email: string, password: string) {
   return payload.user.id;
 }
 
-async function callSyncRoute(authorization?: string) {
+async function callSyncRoute(authorization?: string, method = "POST") {
   const headers = new Headers({ "Content-Type": "application/json" });
   if (authorization !== undefined) {
     headers.set("Authorization", authorization);
@@ -89,7 +89,7 @@ async function callSyncRoute(authorization?: string) {
 
   try {
     return await fetch("http://localhost:3000/api/cron/sync", {
-      method: "POST",
+      method,
       headers,
       redirect: "manual",
     });
@@ -147,9 +147,11 @@ test.describe("manual Sync observability", () => {
     grantSystemAdminInDisposableLocalDatabase(adminUserId);
 
     const beforeUnauthorized = countSyncRunsInDisposableLocalDatabase();
+    const wrongMethod = await callSyncRoute(`Bearer ${cronSecret}`, "GET");
     const missingSecret = await callSyncRoute();
     const wrongSecret = await callSyncRoute("Bearer definitely-not-the-secret");
 
+    expect(wrongMethod.status).toBe(405);
     expect(missingSecret.status).toBe(401);
     expect(wrongSecret.status).toBe(401);
     for (const response of [missingSecret, wrongSecret]) {
