@@ -12,10 +12,16 @@ RTL לליגות ניחושי כדורגל פרטיות, עם Supabase (PostgreS
 ופריסה ב־Vercel. פרויקט גמר לקורס RUNI Internet Technologies 2026; דדליין
 6 בספטמבר.
 
-לפני כל תכנון או עריכה קרא לפי הסדר: `AGENTS.md`, `docs/product.md`,
-`docs/architecture.md`, `docs/technical-plan.md`, וכן
-`docs/sports-provider-poc.md`. המסמכים האלה קנוניים וגוברים על הפרומפט הזה.
-אם מצאת סתירה — עצור והסבר לפני שינוי קוד.
+לפני כל תכנון או עריכה קרא לפי הסדר: `docs/product.md`, `docs/architecture.md`,
+`docs/technical-plan.md`, וכן `AGENTS.md` ו־`docs/sports-provider-poc.md`.
+
+**סדר הסמכות מחייב אותך גם בתוך הפרומפט הזה:** `docs/architecture.md` הוא
+המסמך הקנוני היחיד לארכיטקטורה ולגבולות אבטחה, והוא גובר על
+`docs/technical-plan.md`. כאשר השניים סותרים, אסור "ליישר" את הארכיטקטורה
+לתכנית. או שהתכנית מתוקנת לפי הארכיטקטורה, או שמדובר בשינוי החלטה
+ארכיטקטונית — ואז מעדכנים תחילה את `docs/architecture.md` במפורש, עם הנימוק
+והאילוץ שהוליד אותו, ורק אחר כך את התכנית. אם מצאת סתירה שאינה מכוסה כאן —
+עצור והסבר לפני שינוי קוד.
 
 ## המשימה
 
@@ -34,20 +40,46 @@ RTL לליגות ניחושי כדורגל פרטיות, עם Supabase (PostgreS
 שש שאלות ההערכה פתוחות ואין credentials. לפי סעיף 20 בתכנית: "אם ה־POC אינו
 עובר, המסלול הידני שנמסר ב־Slice 6 נשאר המסלול הקנוני ואין להמציא תלות בספק."
 
-לכן ההכרעה עבור ה־Slice הזה היא: **סגירה עם Manual provider מתועד**, ובנייה
-מלאה של מנוע ה־Sync כך שספק אמיתי יוכל להתחבר בעתיד בלי לשנות ניקוד או UI:
+**ההכרעה: ה־slice נסגר עם Manual provider מתועד, בהיקף מצומצם ואמיתי.**
 
-- אין להוסיף תלות בספק חיצוני, קריאת רשת חיה, או SDK של ספק. CI לעולם אינו
-  קורא לספק חי (סעיף 14.4 בתכנית).
-- מנוע ה־Sync (Cron route, `sync_runs`, advisory lock, due-window, upsert,
-  מעבר תוצאות דרך `score_match`) נבנה **provider-agnostic** ונבדק מקצה לקצה
-  עם contract fixtures מוקלטים מול ה־DB המקומי בלבד.
-- **בפריסה בפועל, כאשר `SPORTS_API_PROVIDER=manual`, ריצת Cron אינה כותבת
-  נתוני משחקים כלל**: היא עוברת את כל שלבי האימות והנעילה ומסיימת בריצת
-  `skipped` מתועדת. הסיבה: קטלוג ה־Demo שנמסר ב־Slice 5 הוא סינתטי, ללא
-  `external_provider`/`external_id`, ו־upsert של fixtures ידניים היה מזהם את
-  הקטלוג ומציג לוח מומצא כלוח מסונכרן. הזנת תוצאות נשארת דרך
-  `applyManualResult` של Slice 6. תעד את ההחלטה הזאת (ראה "תהליך ותוצרים").
+מכאן נגזר גבול שאסור לחצות: **אין לבנות עכשיו צנרת Sync פעילה סביב קריאת רשת
+שאינה קיימת.** אין ספק חי, ולכן נעילת ריצה סביב קריאת ספק דמיונית היא מנגנון
+מדומה — היא לא תיבדק באמת, לא תוכיח דבר, ותיצור ביטחון שווא במנגנון שקריסתו
+מתגלה רק כשיחובר ספק. הסיבה השנייה: קטלוג ה־Demo שנמסר ב־Slice 5 סינתטי, ללא
+`external_provider`/`external_id`, ו־upsert של fixtures ידניים היה מזהם אותו
+ומציג לוח מומצא כלוח מסונכרן.
+
+לכן ב־Slice הזה:
+
+- `sync_runs`, Cron route מאומת, מסך סטטוס וסגירת ה־POC — **נבנים**.
+- upsert של fixtures, lifecycle של `running`, קריאת adapter מה־route
+  ו־gateway עם `p_source='sync'` — **אינם נבנים**. הם נכנסים יחד עם בחירת ספק
+  אמיתי, לפי חוזה ה־lease שמתועד בסעיף "מסלול הספק העתידי" למטה.
+- כיבוד `is_manually_overridden` נמסר כ**מודול תכנון טהור** עם בדיקות
+  מ־fixtures — specification executable, לא צנרת פעילה (ראה סעיף 5).
+
+הזנת תוצאות נשארת דרך `applyManualResult` של Slice 6.
+
+## אילוץ תשתית מכריע — קרא לפני שאתה מתכנן נעילה
+
+`src/lib/supabase/admin.ts` יוצר לקוח `supabase-js` מול **Supabase Data API
+(PostgREST)**. אין ל־Route Handler חיבור PostgreSQL קבוע, ואין session שנשמר
+בין קריאות. כל `.rpc()` הוא בקשת HTTP נפרדת, בטרנזקציה משתמעת נפרדת, על
+connection מתוך pool. שתי קריאות `supabase-js` נפרדות **אינן** טרנזקציה
+משותפת. מכאן:
+
+- **אסור `pg_try_advisory_lock`** (session-level). הנעילה נשארת על ה־connection
+  אחרי סיום הקריאה, ה־connection חוזר ל־pool, וקריאת ה־unlock המאוחרת עלולה
+  להגיע ל־connection אחר לגמרי — כלומר נעילה דלופה שלא משוחררת ומנעול שלא
+  משתחרר לעולם.
+- **`pg_try_advisory_xact_lock` תקף רק בתוך טרנזקציה אחת.** הוא משתחרר
+  ב־commit של ה־RPC — כלומר לפני קריאת הספק ולפני ה־upsert. הוא **אינו** מגן
+  על ריצה רב־שלבית שחוצה קריאת רשת. אל תשתמש בו כאילו כן.
+
+מסקנה מעשית: כל אמירה על "advisory lock סביב הריצה" בסעיף 14.3 בארכיטקטורה
+ובסעיף 10.4 בתכנית אינה ניתנת למימוש נכון בטרנספורט הזה כפי שנוסחה. זו
+**סתירה בין המסמך הקנוני לבין אילוץ תשתית אמיתי**, ולכן היא מטופלת כשינוי
+החלטה ארכיטקטונית מתועד — ראה "תהליך ותוצרים", סעיף 2.
 
 ## מה כבר קיים במאגר — אל תבנה מחדש
 
@@ -55,29 +87,23 @@ Slices 0–6 נמסרו ומוזגו. רלוונטי אליך:
 
 - `public.score_match(p_match_id uuid, p_status match_status, p_home_score
   numeric, p_away_score numeric, p_is_manual_override boolean, p_source text)`
-  קיים (migration `20260817005130`), `SECURITY DEFINER` עם `search_path = ''`,
-  ומחזיר טבלת תוצאה. הוא גוזר actor מה־header
-  `x-predictor-system-actor`, מאמת פורמט UUID ובודק חברות ב־
-  `public.system_admins` — fail-closed. **אל תשכתב אותו ואל תוסיף מסלול RPC
-  עוקף**; אם נדרש שינוי (למשל guard על override), עשה זאת ב־migration חדשה
-  forward-only.
+  קיים (migration `20260817005130`), `SECURITY DEFINER` עם `search_path = ''`.
+  הוא גוזר actor מה־header `x-predictor-system-actor`, מאמת פורמט UUID ובודק
+  חברות ב־`public.system_admins` — fail-closed. **אל תשכתב אותו ואל תוסיף
+  מסלול RPC עוקף.**
 - `src/features/scoring/private-scoring-gateway.ts` — `scoreMatchAsSystem`
   קורא ל־RPC דרך `createSystemActorAdminClient(systemActorId)` שמזריק את
-  ה־header. כרגע הוא **מקבע** `p_is_manual_override: true` ו־`p_source:
-  "manual"`. הרחב אותו (או הוסף פונקציה מקבילה) כך שמסלול ה־Sync יעביר
-  `p_is_manual_override: false` ו־`p_source: 'sync'`, בלי לשבור את המסלול
-  הידני ואת בדיקותיו הקיימות.
-- `src/lib/supabase/admin.ts` — `server-only`, כולל `createAdminClient` ו־
-  `createSystemActorAdminClient`. זה המקום היחיד לשימוש ב־secret key.
+  ה־header, עם `p_is_manual_override: true` ו־`p_source: "manual"` מקובעים.
+  **השאר אותו כפי שהוא.** מסלול `p_source='sync'` מגיע עם הספק, לא כאן.
+- `src/lib/supabase/admin.ts` — `server-only`, הטרנספורט היחיד ל־secret key.
 - `public.system_admins` קיימת מ־Slice 6 (ללא CRUD למשתמש רגיל).
 - `public.matches` כולל `result_version`, `is_manually_overridden`,
-  `external_provider`, `external_id` (nullable, unique חלקי על provider/id),
-  checks על סטטוס/תוצאה.
+  `external_provider`, `external_id`, checks על סטטוס/תוצאה.
 - `public.audit_logs` ו־`public.rate_limit_events` קיימות מ־Slice 3.
 - **enum `sync_status` וטבלת `sync_runs` עדיין לא קיימים** — הם התוצר שלך.
 - `src/features/sports/` כולל `types.ts` (חוזה `SportsProvider`),
-  `manual-provider.ts`, `fixtures.ts`, `normalization.ts` ובדיקות. השתמש בחוזה
-  הקיים; אל תמציא interface חדש.
+  `manual-provider.ts`, `fixtures.ts`, `normalization.ts` ובדיקות. השתמש
+  בחוזה הקיים; אל תמציא interface חדש.
 - `src/lib/env.ts` מאמת env עם Zod. `CRON_SECRET` ו־`SPORTS_API_KEY` כבר שם
   כ־optional; **`SYNC_SYSTEM_ACTOR_ID` מופיע ב־`.env.example` אך עדיין לא
   ב־`env.ts`** — עליך להוסיפו.
@@ -88,107 +114,141 @@ Slices 0–6 נמסרו ומוזגו. רלוונטי אליך:
 
 ### 1. Migration: `sync_status` enum ו־`sync_runs`
 
-- `create type public.sync_status as enum ('running','succeeded','failed','skipped')`.
+- `create type public.sync_status as enum ('running','succeeded','failed','skipped')`
+  — לפי סעיף 6.1 בתכנית. `running` נשאר בערכי ה־enum עבור מסלול הספק העתידי
+  ואינו בשימוש ב־Slice הזה; תעד זאת ב־`comment on type`.
 - `sync_runs`: `id`, `provider text`, `status sync_status`, `started_at`,
   `finished_at`, `fixtures_seen`, `matches_changed`, `results_changed`,
-  `error_code`, `error_message_safe` (סעיף 6.7 בתכנית). ספירות לא־שליליות;
-  `finished_at` נדרש לכל סטטוס סופי.
+  `error_code`, `error_message_safe` (סעיף 6.7). ספירות לא־שליליות;
+  CHECK שמחייב `finished_at` לכל סטטוס סופי ומאפשר `null` רק ב־`running`.
 - אינדקס `(started_at desc)` (סעיף 12 בארכיטקטורה).
 - **באותה migration**: `enable row level security`, `revoke all` מ־`public`,
-  `anon`, `authenticated`; קריאה למנהלי מערכת בלבד (policy שנשענת על
-  `system_admins`, בדפוס הקיים של Slice 6); אין insert/update/delete ללקוחות —
-  כתיבה רק דרך השרת (service role) או פונקציה ייעודית.
-- אם תידרש פונקציית DB לנעילה או ל־lifecycle של run — `SECURITY DEFINER` רק
-  אם הכרחי, ואז `search_path = ''`, שמות schema מלאים, `revoke` execute
-  ו־grant מצומצם, כמו בדפוסי המאגר.
+  `anon`, `authenticated`; `select` למנהלי מערכת בלבד (policy שנשענת על
+  `system_admins`, בדפוס הקיים של Slice 6); **אין** insert/update/delete
+  ללקוחות — כתיבה רק דרך ה־RPC של סעיף 2.
 
-### 2. env: `SYNC_SYSTEM_ACTOR_ID`
+### 2. `record_sync_attempt(...)` — RPC אטומי יחיד
+
+זהו לב ה־Slice, והוא נכתב **מתוך** אילוץ ה־Data API ולא סביבו. טרנזקציה אחת,
+קריאה אחת, בלי מצב שנשמר בין קריאות:
+
+1. אימות actor זהה לדפוס `score_match`: קריאת `x-predictor-system-actor`
+   מ־`request.headers`, אימות פורמט UUID קנוני ובדיקת חברות ב־
+   `system_admins`. כשל ⇒ `FORBIDDEN`. אין פרמטר actor מהלקוח.
+2. `pg_try_advisory_xact_lock` עם מפתח קבוע ומתועד (קבוע מספרי מוצהר בקוד
+   ובתיעוד). **הנעילה חוקית כאן בדיוק משום שכל מה שהיא מגנה עליו נמצא בתוך
+   אותה טרנזקציה.** אם לא הושגה — יציאה מיידית עם תוצאת "ריצה מקבילה", בלי
+   לכתוב שורה ובלי המתנה חוסמת.
+3. בדיקת due-window: האם קיימים משחקים בחלון שמצדיק קריאת ספק. עם provider
+   `manual` התשובה תמיד שלילית.
+4. כתיבת שורת `sync_runs` **סופית** (`skipped` עם קוד סיבה בטוח, או `failed`),
+   כולל `finished_at`. במסלול הנוכחי לא נוצרת שורת `running` לעולם.
+5. commit יחיד; החזרת מזהה הריצה, הסטטוס והסיבה.
+
+`SECURITY DEFINER` עם `set search_path = ''`, שמות schema מלאים,
+`revoke all ... from public, anon, authenticated` ו־grant מצומצם — כמו
+`score_match`. **אין EXECUTE ל־`anon`/`authenticated`.**
+
+סדר השלבים כאן (lock לפני due-window) אינו העדפת סגנון: הוא הכרחי כדי
+שהבדיקה והכתיבה יהיו אטומיות. הוא משנה את הרצף המתועד בסעיף 14.3 — ולכן
+מתועד כשינוי החלטה ארכיטקטונית מפורש.
+
+### 3. env: `SYNC_SYSTEM_ACTOR_ID`
 
 - הוסף ל־`env.ts` כערך server-only בפורמט UUID קנוני, optional בסכימה (כדי לא
   להפיל build קיים), אך **חובה בזמן ריצת ה־Cron route** — חסרונו מחזיר כשל
   סגור בלי לחשוף פרטים. עדכן את `env.test.ts`.
 - ה־principal הוא משתמש לא־אינטראקטיבי ייעודי ב־`auth.users` שנמצא ב־
   `system_admins`. הוא **אינו** נוצר ב־migration עם ערכים סודיים ואינו
-  credential להתחברות. תעד ב־README/`docs/security.md` את שלב ההקמה הידני
-  המאובטח לכל סביבה, ובסביבת בדיקות מקומית צור אותו ב־seed/בדיקות בלבד.
+  credential להתחברות. תעד ב־README ו־`docs/security.md` את שלב ההקמה הידני
+  המאובטח לכל סביבה; בסביבת בדיקות מקומית צור אותו ב־seed/בדיקות בלבד.
 
-### 3. `POST /api/cron/sync` — Route Handler
+### 4. `POST /api/cron/sync` — Route Handler דק
 
-לפי סעיף 10.4 בתכנית וסעיף 14.3 בארכיטקטורה:
+`export const runtime = 'nodejs'`.
 
-1. אימות `CRON_SECRET` (השוואה בזמן קבוע, למשל `timingSafeEqual`), method
-   ו־content-type צפויים. הסוד לעולם לא נכתב ללוג. חסרון `CRON_SECRET` ב־env
-   ⇒ כשל סגור.
+1. אימות `CRON_SECRET` בהשוואה בזמן קבוע (`timingSafeEqual` על buffers באורך
+   זהה), method ו־content-type צפויים. הסוד לעולם לא נכתב ללוג. חסרון
+   `CRON_SECRET` ב־env ⇒ כשל סגור.
 2. טעינת `SYNC_SYSTEM_ACTOR_ID` server-only. אין actor בפרמטרי הבקשה ואין
-   fallback לזהות אנושית. האימות שה־principal עדיין ב־`system_admins` הוא
-   fail-closed דרך מסלול `score_match`/gateway — כשל אימות מפיל את הריצה.
-3. PostgreSQL advisory lock למניעת ריצה כפולה: `pg_try_advisory_lock` (או
-   xact-lock בתוך פונקציה) עם מפתח קבוע ומתועד; אם הנעילה תפוסה — הריצה
-   מסתיימת מיד כ־`skipped` בלי לגעת בנתונים. אין המתנה חוסמת.
-4. due-window check: האם קיימים משחקים שמצדיקים קריאת ספק. עם provider
-   `manual` התשובה תמיד "אין" — ריצת `skipped` מתועדת עם קוד סיבה בטוח.
-   > סדר השלבים: lock לפני due-window, לפי סעיף 10.4 בתכנית. סעיף 14.3
-   > בארכיטקטורה מונה את השלבים בסדר הפוך — יישר את המסמך בקצרה באותו PR.
-5. יצירת `sync_runs` במצב `running` לפני קריאת adapter (במסלול api עתידי);
-   קריאת adapter אחת עם timeout מוגדר — לא קריאה פר משחק.
-6. upsert לפי `external_provider`/`external_id` בלבד, **בלי לדרוס
-   `is_manually_overridden`**: משחק עם override ידני אינו נשלח ל־`score_match`
-   ואין מאפסים את הדגל או את תוצאתו. תוצאות חדשות/מתוקנות עוברות **אך ורק**
-   דרך ה־gateway עם `p_is_manual_override=false`, `p_source='sync'`.
-7. סיום ה־run: `succeeded`/`failed`/`skipped`, ספירות
-   `fixtures_seen`/`matches_changed`/`results_changed`, `error_code` יציב
-   ו־`error_message_safe` מסונן. כשל ספק אינו משאיר run תקוע ב־`running`
-   ואינו פוגע בנתונים שכבר קיימים.
-8. תשובת HTTP קצרה (status + מזהה run + ספירות) ללא secrets, headers רגישים
+   fallback לזהות אנושית.
+3. קריאה **אחת** ל־`record_sync_attempt` דרך `createSystemActorAdminClient`.
+   ה־Handler לא מנהל נעילה, לא מנהל lifecycle ולא קורא לספק.
+4. תשובת HTTP קצרה (סטטוס, מזהה ריצה, סיבה בטוחה) ללא secrets, headers רגישים
    או payload ספק. `Cache-Control: private, no-store`.
 
-`export const runtime = 'nodejs'` אם נדרש crypto/timing — עקוב אחרי דפוס
-ה־handlers הקיימים.
+### 5. כיבוד manual override — מודול תכנון טהור
 
-### 4. מסך אדמין: `/admin/sync`
+`src/features/sports/` (למשל `sync-planner.ts`): פונקציה טהורה שמקבלת snapshot
+מנורמל מהספק ואת מצב המשחקים מה־DB, ומחזירה את רשימת התוצאות שהיו נשלחות
+ל־`score_match` — **תוך החרגה מלאה של כל משחק עם `is_manually_overridden=true`**,
+בלי לאפס את הדגל ובלי לגעת בתוצאתו.
 
-`src/app/(app)/admin/sync/page.tsx` — Server Component, מנהל מערכת בלבד
-(אותו דפוס AuthZ של `admin/matches`): רשימת ריצות אחרונות מ־`sync_runs`
-(מוגבלת/מדורגת, `order by started_at desc`), סטטוס, ספירות, שגיאה בטוחה,
-זמנים בשעה מקומית מוצגת + UTC. עברית, RTL, מצבי loading/empty/error, מובייל.
-משתמש רגיל מקבל דחייה — לא רק הסתרת קישור.
+זהו specification executable שנבדק ב־Vitest מול contract fixtures מוקלטים
+(JSON checked-in): כל הסטטוסים הנתמכים, תוצאה רשמית רק ל־`finished`, live ⇒
+score `null`, סטטוס לא מוכר שאינו הופך ל־`finished`, ותיקון תוצאה (אותו משחק
+בשני snapshots). **הוא אינו מחובר ל־route ואינו כותב ל־DB ב־Slice הזה** — אמור
+זאת במפורש ב־PR ובמסמכים; אל תתאר אותו כצנרת פעילה.
 
-### 5. Contract fixtures ו־adapter
+### 6. מסך אדמין: `/admin/sync`
 
-- קבע contract fixtures מוקלטים (JSON checked-in) שמכסים את כל הסטטוסים
-  הנתמכים, תוצאה רשמית רק ל־`finished`, live ⇒ score `null`, סטטוס לא מוכר
-  שאינו הופך ל־`finished`, ותיקון תוצאה (אותו משחק בשני snapshots).
-- מנוע ה־Sync נבדק מולם דרך `ManualSportsProvider`/fake provider — אותו קוד
-  שירוץ מול ספק אמיתי בעתיד. אין קריאות live ב־CI.
-- אל תשנה את חוזה `SportsProvider` באופן ששובר את הבדיקות הקיימות; הרחב רק
-  אם חסר משהו למנוע ה־Sync (למשל timeout wrapper) ותעד.
+`src/app/(app)/admin/sync/page.tsx` — Server Component, מנהל מערכת בלבד (אותו
+דפוס AuthZ של `admin/matches`): רשימת ריצות אחרונות מ־`sync_runs` (מוגבלת,
+`order by started_at desc`), סטטוס, ספירות, שגיאה בטוחה, זמנים בשעה מקומית
+מוצגת + UTC. עברית, RTL, מצבי loading/empty/error, מובייל. משתמש רגיל מקבל
+דחייה — לא רק הסתרת קישור.
+
+## מסלול הספק העתידי — חוזה מתועד, לא קוד
+
+תעד ב־`docs/architecture.md` (ובקצרה ב־POC doc) את החוזה שנדרש כדי לחבר ספק
+אמיתי, כדי שלא יאולתר בעתיד:
+
+- **claim/lease עמיד במסד**, לא advisory lock: שורת claim עם `lease_token`
+  (fencing token), `expires_at` ו־`holder`.
+- ה־advisory xact lock משמש **רק** ליצירת ה־claim באופן אטומי, ומשתחרר מיד
+  בסיום אותה טרנזקציה קצרה.
+- קריאת הספק מתבצעת **מחוץ** לטרנזקציה, עם timeout.
+- כל apply/finalize מותנה ב־`lease_token` תקף שעדיין לא פג ולא הוחלף; token
+  ישן נדחה — כך ריצה תקועה שהתעוררה אינה כותבת מעל ריצה חדשה.
+- reclaim של lease שפג, וסגירת `running` יתום לפי `expires_at`.
+
+אל תממש את זה עכשיו. ספק אינו קיים, והמימוש בלי יעד אמיתי לא ייבדק.
 
 ## בדיקות — נכשלות לפני המימוש ככל האפשר
 
-- **Vitest:** מיפוי adapter מ־contract fixtures; לוגיקת due-window; סיווג
-  שגיאות ספק/timeout לקוד יציב והודעה בטוחה; ולידציית env ל־
-  `SYNC_SYSTEM_ACTOR_ID`; שגיאת gateway ⇒ run `failed` בלי לגעת בנתונים.
-- **pgTAP (`supabase/tests/`, קובץ חדש למשל `sync.test.sql`):** `sync_runs`
-  קיימת עם RLS enabled; `anon`/`authenticated` נדחים ב־select/insert/update/
-  delete; מנהל מערכת קורא, משתמש רגיל לא; upsert של sync אינו משנה משחק עם
-  `is_manually_overridden=true` — התוצאה, ה־version והנקודות נשארים זהים;
-  תוצאה חדשה דרך `score_match` עם `p_source='sync'` מנקדת מחדש נכון (retry
-  אידמפוטנטי); actor שהוסר מ־`system_admins` נדחה.
-- **Playwright (`e2e/`, קובץ חדש למשל `sync.spec.ts` או הרחבת קיים):**
-  `POST /api/cron/sync` ללא secret / עם secret שגוי ⇒ 401 ללא הדלפת מידע;
-  קריאה עם secret נכון בסביבת manual ⇒ ריצת `skipped` נרשמת; שתי קריאות
-  מקבילות ⇒ ריצה אחת בלבד פעילה והשנייה `skipped`; מנהל מערכת רואה את
-  `/admin/sync`; משתמש רגיל נדחה (בדיקת הרשאה שלילית חובה).
+- **Vitest:** מודול התכנון מול contract fixtures, כולל החרגת משחק
+  `is_manually_overridden`; מיפוי סטטוסים ותיקון תוצאה; לוגיקת due-window
+  טהורה; ולידציית env ל־`SYNC_SYSTEM_ACTOR_ID`; סיווג שגיאות לקוד יציב
+  ולהודעה בטוחה.
+- **pgTAP (`supabase/tests/sync.test.sql`):**
+  - `sync_runs` קיימת עם RLS enabled; `anon`/`authenticated` נדחים
+    ב־select/insert/update/delete; מנהל מערכת קורא, משתמש רגיל לא.
+  - `record_sync_attempt`: EXECUTE נדחה ל־`anon`/`authenticated`; actor חסר,
+    לא־UUID, או שהוסר מ־`system_admins` ⇒ `FORBIDDEN` ואף שורה לא נכתבת.
+  - **בדיקת מקביליות אמיתית**: שני sessions; הראשון מחזיק את הטרנזקציה עם
+    ה־xact lock, השני קורא ל־`record_sync_attempt` ומקבל תוצאת "ריצה מקבילה"
+    בלי לכתוב שורה. אחרי commit של הראשון, קריאה נוספת מצליחה — כלומר הנעילה
+    אכן שוחררה ולא דלפה.
+  - CHECK של `finished_at` נאכף; שורה סופית בלי `finished_at` נדחית.
+- **Playwright (`e2e/sync.spec.ts`):** `POST /api/cron/sync` ללא secret / עם
+  secret שגוי ⇒ 401 ללא הדלפת מידע; קריאה עם secret נכון בסביבת manual ⇒
+  נרשמת ריצת `skipped` **סופית אחת**; מנהל מערכת רואה אותה ב־`/admin/sync`;
+  משתמש רגיל נדחה מהמסך (בדיקת הרשאה שלילית חובה).
+
+> אין לכתוב קריטריון של "ריצה אחת פעילה והשנייה `skipped`". במסלול הנוכחי לא
+> נוצרת שורת `running` כלל, ולכן קריטריון כזה אינו ניתן למימוש או לבדיקה.
+> המקבילות נבדקת ברמת ה־DB כמתואר למעלה.
 
 ## כללים שאין לחצות
 
 - הסוד וה־actor הם server-only: `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID` ו־
   `SUPABASE_SECRET_KEY` לעולם לא בלוג, בתשובת HTTP, ב־client bundle או ב־Git.
   עותק ה־Cron ל־Supabase נשמר ב־Vault אחרי deploy — **לא ב־migration**.
-- ה־admin client נשאר ב־`src/lib/supabase/admin.ts` (`server-only`); שימוש רק
-  במודולי scoring/sync/system מורשים.
-- Sync לעולם אינו דורס manual override ולעולם אינו כותב נקודות ישירות — כל
-  תוצאה עוברת דרך `score_match`; ניקוד הוא overwrite דטרמיניסטי, לא increment.
+- אין `pg_try_advisory_lock` session-level בשום מסלול. `pg_try_advisory_xact_lock`
+  רק בתוך טרנזקציה שמכילה את כל מה שהוא מגן עליו.
+- ה־admin client נשאר ב־`src/lib/supabase/admin.ts` (`server-only`).
+- אין כתיבת נקודות ישירה בשום מסלול; כל תוצאה עוברת דרך `score_match`. ניקוד
+  הוא overwrite דטרמיניסטי, לא increment.
 - אל תנעל שורת `leagues` אחרי `matches` בשום transaction חדשה — אילוץ סדר
   הנעילות מ־Slice 6 מונע deadlock מול `save_prediction`.
 - migrations הן forward-only; RLS ו־grants באותה migration שיוצרת כל טבלה
@@ -197,54 +257,55 @@ Slices 0–6 נמסרו ומוזגו. רלוונטי אליך:
 - זמנים כ־UTC `timestamptz`; שגיאות בקודי `AppError` יציבים והודעות עברית
   בטוחות; אין stack traces, SQL או payload ספק בלוג/לקוח.
 - קוד, migrations ו־commit messages באנגלית; טקסט למשתמש בעברית, RTL.
-- אין polling עם sleep, אין תור/queue חיצוני ואין dependency חדש בלי הצדקה
-  מתועדת.
+- אין dependency חדש בלי הצדקה מתועדת.
 
 ## תהליך ותוצרים
 
 1. אחרי כל שינוי סכימה הרץ `npm run types:db` ועדכן את
    `src/types/database.generated.ts`; drift מפיל את `types:check`.
-2. עדכן באותו PR:
-   - `docs/sports-provider-poc.md` — סעיף סגירה: ה־POC לא עבר, Manual הוא
-     המסלול הקנוני הסופי ל־MVP, ומה נדרש כדי לחבר ספק אמיתי בעתיד.
-   - `docs/technical-plan.md` — סעיף 5 (מסירת חלקה של migration 008), סעיף 15
-     (סטטוס Slice 7) וסעיף 20 (המשימה הבאה: Slice 8 — AI analysis).
-   - `docs/architecture.md` — יישור סדר השלבים בסעיף 14.3 אם בחרת lock לפני
-     due-window.
-   - `docs/security.md` — הקמת ה־principal, מודל הסוד של ה־Cron ו־RLS של
-     `sync_runs`; `docs/testing.md` — הבדיקות החדשות; `README.md` — הוראות
-     הגדרת Cron ב־Supabase (Vault) ו־env חדשים.
-3. לפני מסירה הרץ: `npm run lint && npm run typecheck && npm run test &&
-   npm run test:db && npm run types:check && npm run build && npm run
-   test:e2e` (או `npm run verify`). אל תדווח על בדיקה שלא רצה בפועל.
-4. כלול בתיאור ה־PR את ה־rollback המחשבתי של ה־migration ואת נקודות ההחלטה
-   שתועדו.
+2. **עדכון מסמכים לפי סדר הסמכות הנכון.** `docs/architecture.md` מתעדכן
+   ראשון וכהחלטה מפורשת, לא כ"יישור" לתכנית:
+   - `docs/architecture.md` §14.3 — נמק שהטרנספורט הוא Data API ללא חיבור
+     קבוע; החלף את רצף השלבים 3–5 בחוזה ה־RPC האטומי; קבע ש־advisory lock
+     ברמת session אסור; הוסף את חוזה ה־claim/lease כמסלול הספק העתידי. עדכן
+     בהתאם את שורת ה־Cron בסעיף 18 (מודל האיומים).
+   - `docs/technical-plan.md` §10.4 — יישר לארכיטקטורה המעודכנת; §5 (מסירה
+     חלקית של migration 008); §15 (סטטוס Slice 7 וההיקף המצומצם המנומק);
+     §20 (המשימה הבאה: Slice 8 — AI analysis).
+   - `docs/sports-provider-poc.md` — סגירת השער: ה־POC לא עבר, Manual הוא
+     המסלול הקנוני ל־MVP, ומה נדרש כדי לחבר ספק בעתיד.
+   - `docs/security.md` (הקמת ה־principal, מודל הסוד, RLS של `sync_runs`),
+     `docs/testing.md` (הבדיקות החדשות), `README.md` (הגדרת Cron ב־Supabase
+     Vault ו־env חדשים).
+3. לפני מסירה הרץ `npm run verify` (או השרשרת המלאה: lint, typecheck, test,
+   test:db, types:check, build, test:e2e). אל תדווח על בדיקה שלא רצה בפועל.
+4. כלול בתיאור ה־PR את ה־rollback המחשבתי של ה־migration, את שינוי ההחלטה
+   הארכיטקטונית ואת ההיקף שהוצא במפורש מה־Slice.
 
 ## קריטריוני יציאה
 
-- שתי קריאות Cron מקבילות או עוקבות בטוחות: לכל היותר ריצה פעילה אחת, retry
-  אינו משנה נתונים, ואין run שנשאר `running` לנצח.
-- secret חסר/שגוי, `SYNC_SYSTEM_ACTOR_ID` חסר או principal שהוסר מ־
-  `system_admins` — כולם נכשלים סגור עם תשובה בטוחה.
-- כשל ספק/gateway מסומן `failed` עם שגיאה מסוננת ואינו משנה משחקים, ניחושים
-  או נקודות קיימים.
-- משחק עם `is_manually_overridden=true` אינו מושפע מריצת sync בשום צורה.
+- קריאות Cron חוזרות ומקבילות בטוחות: קריאה מקבילה אינה כותבת שורה שנייה,
+  אין נעילה שדולפת מעבר לטרנזקציה, ואין שורת `sync_runs` שנשארת לא־סופית.
+- secret חסר/שגוי, `SYNC_SYSTEM_ACTOR_ID` חסר, או principal שהוסר מ־
+  `system_admins` — כולם נכשלים סגור עם תשובה בטוחה ובלי כתיבה.
+- אף מסלול ב־Slice אינו משנה משחקים, ניחושים או נקודות קיימים.
+- מודול התכנון מחריג משחק `is_manually_overridden` בכל fixture, ומתועד
+  במפורש כלא־מחובר.
 - מסך `/admin/sync` מציג ריצות למנהל מערכת בלבד; משתמש רגיל נדחה.
 - ה־POC סגור ומתועד עם Manual provider; אין תלות חדשה בספק חיצוני ואין קריאת
   live ב־CI.
-- כל הבדיקות והשערים ירוקים; ה־slice ניתן להדגמה מקצה לקצה ב־URL פרוס
-  (כולל הדגמת ריצת `skipped` ומסך הסטטוס).
+- הארכיטקטורה עודכנה כהחלטה מנומקת, והתכנית עודכנה אחריה — לא להפך.
+- כל הבדיקות והשערים ירוקים; ה־slice ניתן להדגמה מקצה לקצה ב־URL פרוס.
 
 ## נקודות החלטה מתועדות וחוב ידוע
 
-- **התנהגות manual בפריסה:** ריצת Cron עם provider `manual` היא `skipped`
-  מתועדת ואינה כותבת נתוני משחקים — החלטה שיש לקבע ב־POC doc ובתכנית. אם
-  תבחר אחרת, עצור והסבר קודם.
-- **guard על override ב־`score_match`:** כיום הכיבוד של override נאכף בשכבת
-  ה־Sync (לא לקרוא ל־RPC עבור משחק overridden). אם תוסיף guard גם בתוך
-  `score_match` (defense in depth) — migration חדשה + pgTAP + עדכון סעיף 7.4
-  בתכנית באותו PR.
-- תדירות ה־Cron הסופית כפופה למכסת ספק עתידי; לעת עתה מתעדים לוח שמרני
-  (למשל יומי) בהוראות ההקמה בלבד — אין קונפיגורציית תדירות בקוד.
-- Cleanup של `sync_runs`/`rate_limit_events` ישנים נשאר חוב מתועד ל־Slice
-  8–10 אלא אם הוא זול לצירוף כאן.
+- **היקף מצומצם מנומק:** upsert, lifecycle של `running`, קריאת adapter
+  מה־route ו־`p_source='sync'` נדחו לבחירת ספק. הסיבה היא היעדר יעד אמיתי
+  לבדיקה, לא חוסר זמן. אם תבחר אחרת — עצור והסבר קודם.
+- **guard על override ב־`score_match`:** כיום הכיבוד מתוכנן בשכבת התכנון. אם
+  תוסיף guard גם בתוך `score_match` (defense in depth) — migration חדשה +
+  pgTAP + עדכון §7.4 בתכנית באותו PR.
+- תדירות ה־Cron הסופית כפופה למכסת ספק עתידי; לעת עתה לוח שמרני בהוראות
+  ההקמה בלבד — אין קונפיגורציית תדירות בקוד.
+- Cleanup של `sync_runs`/`rate_limit_events` ישנים נשאר חוב מתועד ל־Slices
+  8–10.
