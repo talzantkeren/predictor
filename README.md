@@ -241,8 +241,24 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 שולח Email אמיתי.
 
 שירות ה־Email המובנה של Supabase hosted מיועד לניסוי, מוגבל בקצב וזמין על
-בסיס best-effort. לפני שימוש אמיתי יידרש SMTP ייעודי; מגבלה זו אינה נעקפת
-בפריסת הקורס.
+בסיס best-effort. Slice 10 מחייב Custom SMTP לפני הכרזת Production; עד להשלמת
+החוזה הזה אין לפרש הצלחת Mailpit או Email יחיד ב־Preview כהוכחת מוכנות.
+
+## חוזה Slice 10: Production Auth ותיקוני באגים
+
+- Custom SMTP מוגדר ישירות ב־Supabase Auth; SMTP host/user/password אינם נשמרים
+  ב־Git, ב־Vercel, ב־`.env.example`, בלוגים או ב־client bundle.
+- תבניות Confirm signup ו־Reset password משתמשות בחוזה SSR מאומת ל־
+  `/auth/confirm`, עם `token_hash` חד־פעמי, type מורשה ו־redirect פנימי בלבד.
+- הבאג הידוע שבו שחזור הסיסמה לא עבד הוא release blocker. הזרימה חייבת לעבור
+  ב־Hosted: שליחת recovery, פתיחת הקישור, עדכון סיסמה, login עם החדשה, דחיית
+  הישנה וחסימת קישור חוזר/פג/פגום.
+- כל תקלה מ־Slices 0–9 נכנסת ל־defect register. P0–P2 חוסם יציאה; P3 מתוקן או
+  נדחה עם owner, נימוק והשפעה, ובאג מתוקן מקבל regression test.
+- Local/CI ממשיכים להשתמש ב־Mailpit. בדיקת Hosted משתמשת בכתובת שאינה חברת
+  צוות ושומרת ראיות ללא כתובת מלאה, token, session, password או SMTP credential.
+- לפני פתיחה למשתמשים מאמתים From domain, SPF/DKIM/DMARC, מכסה שמרנית,
+  cooldown ו־CAPTCHA/abuse controls.
 
 ## הגדרות Redirect ב־Supabase hosted
 

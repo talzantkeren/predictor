@@ -205,6 +205,7 @@ DEMO_MODE=true
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`.
 - `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
+- Custom SMTP אינו מוסיף משתני Next.js: host, username ו־password מוגדרים ישירות ב־Supabase Auth Dashboard ונשארים מחוץ ל־`.env.example`, ל־Vercel ולמאגר. Local/CI ממשיכים להשתמש ב־Mailpit.
 - `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
   מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
   principal לא־אינטראקטיבי ייעודי ב־`auth.users` שקיים ב־`system_admins`, נטען
@@ -947,17 +948,28 @@ Vitest/pgTAP/Playwright ללא קריאות ספק חיות.
 
 **Exit:** נתונים שנדחו אינם בקופה; חישוב פרסים תואם unit tests.
 
-### Slice 10 — Hardening, מסמכים והצגה
+### Slice 10 — Production hardening, תיקוני באגים, מסמכים והצגה
 
-**תוצר:** מוצר שניתן להגיש ולהסביר.
+**תוצר:** מוצר יציב שניתן להגיש, להדגים ולהסביר, כולל מסירת Auth email אמיתית ושחזור סיסמה תקין.
 
+- פותחים defect register מכל Slices 0–9 עם צעדי שחזור, expected/actual, חומרה וראיית regression. כל P0–P2 חוסם יציאה ומתוקן; P3 מתוקן או נדחה במפורש עם נימוק והשפעה.
+- הבאג הידוע שבו שחזור הסיסמה לא עבד למשתמש הוא release blocker: משחזרים תחילה, מבדילים בין כשל delivery/rate limit, redirect/template, החלפת token/session ועדכון password, ומוסיפים בדיקה שנכשלת לפני התיקון כאשר ניתן.
+- מחברים Custom SMTP בפרויקט Supabase hosted ומאמתים דומיין שולח, From address, SPF/DKIM/DMARC, מכסה התחלתית שמרנית והגנת abuse. פרטי SMTP נשמרים רק ב־Supabase Auth; אין secrets חדשים ב־Git, ב־Vercel, ב־`.env.example`, ב־logs או ב־client bundle.
+- מיישרים את תבניות Confirm signup ו־Reset password ואת allowlist ה־Redirect URLs לחוזה SSR. היעד הוא `token_hash` חד־פעמי אל `/auth/confirm`, אימות type מדויק (`email` או `recovery`), redirect פנימי בלבד והסרת token מיד לאחר האימות.
+- משלימים את זרימת `/forgot-password` → הודעת recovery → `/auth/confirm` → `/update-password` → login: הודעה אחידה גם לכתובת לא קיימת, recovery session תקף בלבד, סיסמה חדשה מתקבלת, הסיסמה הישנה נדחית וקישור משומש/פג/פגום נכשל בבטחה.
+- Local ו־CI נשארים עם Mailpit וכוללים regression אוטומטי ודטרמיניסטי. בנוסף מבוצעת בדיקת Hosted ידנית לכתובת שאינה חברת צוות; אין לשמור בצילום או בלוג email מלא, token, session או SMTP credential.
 - E2E core suite, accessibility smoke ו־responsive pass.
 - Security/Performance Advisors ו־`EXPLAIN ANALYZE` לשאילתות מרכזיות.
 - השלמת `docs/testing.md`, `docs/security.md`, `docs/scale.md` ו־README.
 - env/deployment instructions, links ו־seeded demo accounts.
 - מצגת 10–15 דקות וחזרה מלאה.
 
-**Exit:** Definition of Done בסעיף 18.
+**Exit:**
+
+1. Custom SMTP פעיל ב־Hosted, הודעות confirmation ו־recovery מגיעות לכתובת שאינה חברת צוות, והמגבלות אינן נשענות על שירות המייל המובנה.
+2. שחזור סיסמה עבר מקצה לקצה: קישור תקף מאפשר שינוי פעם אחת, הסיסמה החדשה מתחברת, הישנה נכשלת, וקישור חוזר/פג/פגום מטופל ללא דליפת מידע.
+3. אין P0–P2 פתוח; כל P3 שנדחה מתועד עם נימוק והשפעה.
+4. כל שערי Definition of Done בסעיף 18 ירוקים וראיות ה־Hosted תועדו ללא secrets.
 
 ## 16. לוח זמנים מוצע
 
@@ -990,7 +1002,7 @@ Vitest/pgTAP/Playwright ללא קריאות ספק חיות.
 
 לא חותכים:
 
-- AuthN/AuthZ ו־RLS.
+- AuthN/AuthZ, Custom SMTP ושחזור סיסמה עובד ב־Hosted.
 - העלאת קובץ בטוחה או פרטיות.
 - ניחוש, נעילה והסתרה.
 - `points`, ניקוד אידמפוטנטי ודירוג.
@@ -1008,11 +1020,13 @@ Vitest/pgTAP/Playwright ללא קריאות ספק חיות.
 - generated DB types עודכנו.
 - כל input לא־מהימן עבר validation; כל פעולה רגישה בדקה session ו־resource authorization.
 - נוספו בדיקות ברמה המתאימה והן נכשלו לפני התיקון/מימוש במידת האפשר.
+- אין P0–P2 ידוע פתוח; P3 שנדחה מתועד עם owner, השפעה ונימוק.
 - lint, typecheck, unit, DB, build וה־E2E הרלוונטי ירוקים.
 - שגיאות, loading, empty state ו־mobile/RTL נבדקו.
 - secrets, proof paths ו־PII אינם בלוגים או ב־client bundle.
 - מסמכי testing/security/scale/README עודכנו כאשר השינוי משפיע עליהם.
 - ה־slice זמין ב־Preview/Production URL וניתן להדגים אותו מתחילתו ועד סופו.
+- לפני הגשת Production, Custom SMTP וזרימות confirmation/recovery נבדקו ב־Hosted; הסיסמה החדשה עובדת, הישנה נדחית וקישור recovery אינו ניתן לשימוש חוזר.
 
 ## 19. תוצרי הקורס ומיקום
 

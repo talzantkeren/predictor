@@ -262,3 +262,27 @@ npm run test -- src/app/api/cron/sync/route.test.ts src/features/sports/sync-pla
 npm exec -- supabase test db supabase/tests/sync.test.sql
 npm run test:e2e -- e2e/sync.spec.ts
 ```
+
+## Slice 10: Production hardening, SMTP ו־regression
+
+Slice 10 אינו מסתפק בהרצת הבדיקות הקיימות. כל תקלה שנצפתה ידנית מקבלת צעדי
+שחזור, חומרה ובדיקת regression; הבדיקה צריכה להיכשל לפני התיקון כאשר ניתן.
+התקלה הידועה שבה שחזור הסיסמה לא עבד היא release blocker עד שהסיבה הופרדה
+בין מכסת השליחה, SMTP, תבנית/redirect, אימות token/session ועדכון הסיסמה.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest/contract | בניית redirect מדויק ובטוח, allowlist ל־`next`, מיפוי `email`/`recovery`, שגיאות rate-limit/expired/reused בטוחות וללא user enumeration |
+| Playwright + Mailpit | signup/confirmation ו־forgot-password מקומיים; קישור recovery תקף מוביל ל־`/update-password`; סיסמה חדשה מתחברת, ישנה נכשלת, marker נמחק וקישור חוזר/פגום אינו מאפשר שינוי |
+| Hosted acceptance | Custom SMTP שולח confirmation ו־recovery לכתובת שאינה חברת צוות; קישור פועל בדפדפן נתמך, redirect נשאר ב־origin המורשה, ואותה מטריצת new/old/reused עוברת |
+| Security/operations | SMTP credentials אינם ב־Git/Vercel/client/logs; From domain מאומת; SPF/DKIM/DMARC, מכסה שמרנית, cooldown ו־CAPTCHA/abuse controls נבדקו; Auth/provider logs אינם כוללים token או password |
+| Regression | כל P0–P2 פתוח חוסם את ה־slice. P3 שנדחה מתועד עם owner, השפעה ונימוק; כל bug מתוקן מקבל בדיקה ברמה המתאימה |
+
+### ראיות Hosted
+
+שומרים תאריך, URL/commit, provider, תוצאת delivery וצעדי התרחיש בלבד. מצילומי
+מסך ומלוגים משחירים כתובת מלאה, token, query string, session ו־SMTP credential.
+כשל בגלל `email rate limit exceeded` אינו נפתר בלחיצות חוזרות: מאמתים
+Custom SMTP ומכסה, ממתינים ל־cooldown ומוודאים שה־UI מחזיר הודעה בטוחה.
