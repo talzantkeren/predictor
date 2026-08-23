@@ -41,6 +41,7 @@ When an approved decision changes, update the applicable canonical document in t
 - The public course deployment is Demo-only. Do not add a real payment link, money transfer, cash prize operation, or real financial document. Real-money operation is blocked by the compliance gate in `docs/product.md`.
 - AI may summarize stored match data and uncertainty; it must not invent facts, recommend gambling, or block prediction flows.
 - A Sports provider is not selected until the documented POC passes. The manual adapter and seed path must always work.
+- Local and CI Auth email uses Mailpit. The hosted release must use a dedicated custom SMTP provider configured in Supabase Auth; never put SMTP credentials in Git, `.env.example`, Vercel variables or application code. Slice 10 is blocked until hosted signup confirmation and password recovery pass end to end.
 
 ## Working method
 
@@ -121,6 +122,7 @@ A task is done only when:
 - migrations, RLS, grants, generated types and indexes are complete where relevant;
 - validation, authorization, errors and edge cases are handled;
 - relevant automated checks pass;
+- every known P0–P2 defect is fixed and protected by a regression test; any deferred P3 defect has an owner, rationale and documented user impact;
 - RTL/mobile/accessibility states were inspected for UI work;
 - canonical docs were updated when the decision or contract changed;
 - the feature can be explained and demonstrated from the deployed application.
