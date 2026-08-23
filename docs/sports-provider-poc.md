@@ -8,7 +8,8 @@ The application must not depend directly on the response format of a specific ex
 
 The first implementation will be `ManualSportsProvider`, which allows development and testing without external API credentials.
 
-A real external API provider will be evaluated and integrated in a later slice.
+API-Football by API-Sports was selected after a live POC on 23 August 2026.
+`ManualSportsProvider` remains the mandatory fallback and test provider.
 
 ## Responsibilities
 
@@ -131,21 +132,25 @@ Slice 0 does not include:
 - Rate-limit handling
 - Display of temporary live scores
 
-## Future External API Integration
+## Selected external provider
 
-A later sports-data slice will include:
+The live integration uses API-Football by API-Sports with the internal provider
+identifier `api-football`. The production base URL is the fixed server-only
+constant `https://v3.football.api-sports.io`; authentication uses the
+`x-apisports-key` header and only GET requests are allowed. The application
+stores normalized data in PostgreSQL before any user-facing flow consumes it.
 
-- Selection of an external provider
-- Verification that the provider supports the required leagues and seasons
-- API credentials stored in environment variables
-- An `ApiSportsProvider` implementation
-- Provider-specific response mapping
-- Timezone conversion
-- Synchronization with the database
-- Handling of retries and rate limits
-- Tests using recorded provider fixtures
+Allowed Slice 7b endpoints are limited to league 383 and season 2026:
 
-Adding an external provider must not require changes to prediction-scoring logic or the user interface.
+- `/leagues?id=383&season=2026`
+- `/teams?league=383&season=2026`
+- `/fixtures/rounds?league=383&season=2026&dates=true`
+- `/fixtures?league=383&season=2026&timezone=UTC`
+- `/fixtures?ids=<up-to-20-hyphen-separated-ids>&timezone=UTC`
+
+Predictions, odds, betting, events, lineups, injuries, players and fixture/player
+statistics are outside this integration. Adding the provider does not change the
+prediction-scoring rules or make provider responses a UI data source.
 
 ## Provider Evaluation Questions
 
@@ -171,13 +176,24 @@ The provider layer is accepted when:
 - The provider contract contains no Israeli-league-specific business logic.
 - A second provider could be added without changing scoring or UI code.
 
-## Slice 0 decision and evidence
+## POC decision and evidence
 
-No live external Sports API POC has been run or accepted. The six provider questions
-remain open, so the documented safe fallback is active: `ManualSportsProvider` with
-the checked-in fixture set at `src/features/sports/fixtures.ts`. Run the one-off
-`npm run poc:sports` command to inspect its normalized output; this command is not
-part of CI and does not make network requests.
+The gate passed on 23 August 2026. The sanitized evidence is stored in
+[`evidence/api-football-poc-2026-08-23.md`](./evidence/api-football-poc-2026-08-23.md).
+The verified facts were:
+
+- Ligat Ha'al is league ID `383`; the 2026/27 API season is `2026` and was current.
+- The observed season range was 2026-08-22 through 2027-03-06.
+- 14 stable team IDs, 26 published `Regular Season - N` round labels and 182
+  published fixtures were returned.
+- UTC fixture timestamps, `NS` and `FT` were observed; `FT` official scores came
+  from `score.fulltime`.
+- The Pro plan had 7,500 requests/day, 300/minute and up to 5/second. Targeted
+  fixture requests accept no more than 20 IDs.
+
+The provider may publish championship/relegation stages or additional fixtures
+later. The implementation therefore preserves the full round label, performs
+periodic discovery and never hard-codes 26 or 182 as a permanent invariant.
 
 ## Slice 5 consumption
 
@@ -191,35 +207,22 @@ No provider was selected, no external request, synchronization job, Cron, lease,
 `sync_runs` table, or result override was added in Slice 5. Those decisions remain
 behind the Slice 7 POC gate. Browser and CI flows always consume stored/manual data.
 
-## Slice 7 gate closure
+## Slice 7b integration decision
 
-The gate did not pass by 22 August 2026: no live POC was executed, no provider
-credentials were supplied, and the six evaluation questions above remain
-unanswered. `ManualSportsProvider` is therefore the canonical MVP path. The
-synthetic Slice 5 catalog remains stored Demo data with `external_provider` and
-`external_id` set to `NULL`; it must not be relabeled or rewritten as provider
-data.
+Slice 7b extends rather than relabels the delivered manual Slice 7:
 
-Slice 7 adds operational observability without pretending that a provider was
-selected:
-
-- `POST /api/cron/sync` makes one Data API call to an atomic
-  `record_sync_attempt()` RPC.
-- Every authorized attempt is terminal and skipped with either
-  `MANUAL_PROVIDER` or `CONCURRENT_ATTEMPT`; it performs no provider request,
-  fixture upsert, match change, result scoring, or application audit write.
-- The checked-in JSON contract fixture and pure `sync-planner` specify future
-  status normalization, corrections, and unconditional exclusion of
-  `is_manually_overridden` matches. The planner is not connected to Cron or the
-  database.
-- CI and browser tests make no live Sports network request.
-
-A future live provider can be proposed only after a new documented POC answers
-all six evaluation questions with recorded contract fixtures. Integration must
-then update the canonical architecture first and implement a durable database
-claim/lease with an expiring fencing token. Provider HTTP runs outside the
-transaction; every apply/finalize operation must reject an expired or superseded
-token. A session advisory lock through the Data API is not an acceptable lease.
-The live-provider change must add due-window logic, upserts, lifecycle handling,
-and scoring integration together rather than partially wiring any of them into
-the manual path.
+- `manual` still records a terminal `MANUAL_PROVIDER` skip and never mutates the
+  synthetic Slice 5 catalog.
+- `api-football` uses a due-aware durable row lease with monotonic generation,
+  an expiring fencing token and real `running/succeeded/failed/skipped` runs.
+- Provider HTTP occurs outside PostgreSQL. Every apply and finalize validates
+  the current unexpired lease, and official `FT` results call the existing
+  atomic scoring path inside the fenced apply transaction.
+- Provider-owned competition, season, teams and matches use external IDs only.
+  Demo rows remain external-ID-free and existing leagues are not rebound.
+- `is_manually_overridden` always wins. A match observed live/interrupted/terminal
+  receives an irreversible database prediction-lock latch.
+- `AET` and `PEN` are identified but quarantined from automatic scoring until a
+  product decision and recorded contract establish the correct 90-minute field.
+- Recorded sanitized fixtures and fake transport cover the client and adapter;
+  CI and browser tests never make live API-Football requests.

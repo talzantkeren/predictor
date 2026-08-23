@@ -1,0 +1,57 @@
+{
+  "get": "fixtures",
+  "parameters": { "league": "383", "season": "2026", "timezone": "UTC" },
+  "errors": [],
+  "results": 2,
+  "paging": { "current": 1, "total": 1 },
+  "response": [
+    {
+      "fixture": {
+        "id": 1900001,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-29T17:00:00+00:00",
+        "timestamp": 1788022800,
+        "periods": { "first": null, "second": null },
+        "venue": { "id": null, "name": null, "city": null },
+        "status": { "long": "Not Started", "short": "NS", "elapsed": null, "extra": null }
+      },
+      "league": { "id": 383, "name": "Ligat Ha'al", "country": "Israel", "season": 2026, "round": "Regular Season - 2", "standings": true },
+      "teams": {
+        "home": { "id": 604, "name": "Maccabi Tel Aviv", "logo": null, "winner": null },
+        "away": { "id": 4501, "name": "Hapoel Tel Aviv", "logo": null, "winner": null }
+      },
+      "goals": { "home": null, "away": null },
+      "score": {
+        "halftime": { "home": null, "away": null },
+        "fulltime": { "home": null, "away": null },
+        "extratime": { "home": null, "away": null },
+        "penalty": { "home": null, "away": null }
+      }
+    },
+    {
+      "fixture": {
+        "id": 1900002,
+        "referee": "Recorded Referee",
+        "timezone": "UTC",
+        "date": "2026-08-22T17:00:00+00:00",
+        "timestamp": 1787418000,
+        "periods": { "first": 1787418000, "second": 1787421600 },
+        "venue": { "id": 123, "name": "Recorded Stadium", "city": "Beer Sheva" },
+        "status": { "long": "Match Finished", "short": "FT", "elapsed": 90, "extra": null }
+      },
+      "league": { "id": 383, "name": "Ligat Ha'al", "country": "Israel", "season": 2026, "round": "Regular Season - 1", "standings": true },
+      "teams": {
+        "home": { "id": 563, "name": "Hapoel Beer Sheva", "logo": null, "winner": true },
+        "away": { "id": 657, "name": "Beitar Jerusalem", "logo": null, "winner": false }
+      },
+      "goals": { "home": 3, "away": 2 },
+      "score": {
+        "halftime": { "home": 1, "away": 1 },
+        "fulltime": { "home": 3, "away": 2 },
+        "extratime": { "home": null, "away": null },
+        "penalty": { "home": null, "away": null }
+      }
+    }
+  ]
+}

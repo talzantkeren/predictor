@@ -1,0 +1,8 @@
+{
+  "get": "fixtures",
+  "parameters": { "ids": "1900001", "timezone": "UTC" },
+  "errors": { "rateLimit": "Recorded provider error" },
+  "results": 0,
+  "paging": { "current": 1, "total": 1 },
+  "response": []
+}

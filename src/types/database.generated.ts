@@ -341,6 +341,9 @@ export type Database = {
           id: string
           is_manually_overridden: boolean
           kickoff_at: string
+          predictions_locked_at: string | null
+          provider_round_label: string | null
+          provider_status: string | null
           result_version: number
           round_number: number
           season_id: string
@@ -358,6 +361,9 @@ export type Database = {
           id?: string
           is_manually_overridden?: boolean
           kickoff_at: string
+          predictions_locked_at?: string | null
+          provider_round_label?: string | null
+          provider_status?: string | null
           result_version?: number
           round_number: number
           season_id: string
@@ -375,6 +381,9 @@ export type Database = {
           id?: string
           is_manually_overridden?: boolean
           kickoff_at?: string
+          predictions_locked_at?: string | null
+          provider_round_label?: string | null
+          provider_status?: string | null
           result_version?: number
           round_number?: number
           season_id?: string
@@ -611,6 +620,8 @@ export type Database = {
           competition_id: string
           created_at: string
           ends_on: string
+          external_id: string | null
+          external_provider: string | null
           id: string
           is_current: boolean
           name: string
@@ -621,6 +632,8 @@ export type Database = {
           competition_id: string
           created_at?: string
           ends_on: string
+          external_id?: string | null
+          external_provider?: string | null
           id?: string
           is_current?: boolean
           name: string
@@ -631,6 +644,8 @@ export type Database = {
           competition_id?: string
           created_at?: string
           ends_on?: string
+          external_id?: string | null
+          external_provider?: string | null
           id?: string
           is_current?: boolean
           name?: string
@@ -647,6 +662,94 @@ export type Database = {
           },
         ]
       }
+      sports_provider_rounds: {
+        Row: {
+          created_at: string
+          id: string
+          provider: string
+          provider_label: string
+          requires_review: boolean
+          round_number: number | null
+          season_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider: string
+          provider_label: string
+          requires_review: boolean
+          round_number?: number | null
+          season_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: string
+          provider_label?: string
+          requires_review?: boolean
+          round_number?: number | null
+          season_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sports_provider_rounds_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_leases: {
+        Row: {
+          backoff_until: string | null
+          fencing_token: string | null
+          generation: number
+          last_catalog_at: string | null
+          last_reconciliation_at: string | null
+          last_targeted_at: string | null
+          locked_until: string | null
+          provider: string
+          run_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          backoff_until?: string | null
+          fencing_token?: string | null
+          generation?: number
+          last_catalog_at?: string | null
+          last_reconciliation_at?: string | null
+          last_targeted_at?: string | null
+          locked_until?: string | null
+          provider: string
+          run_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          backoff_until?: string | null
+          fencing_token?: string | null
+          generation?: number
+          last_catalog_at?: string | null
+          last_reconciliation_at?: string | null
+          last_targeted_at?: string | null
+          locked_until?: string | null
+          provider?: string
+          run_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_leases_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sync_runs: {
         Row: {
           error_code: string | null
@@ -654,11 +757,19 @@ export type Database = {
           finished_at: string | null
           fixtures_seen: number
           id: string
+          lease_generation: number | null
+          locked_until: string | null
+          manual_overrides_skipped: number
           matches_changed: number
+          operator_notes: string[]
           provider: string
+          quota_remaining: number | null
           results_changed: number
+          rows_inserted: number
           started_at: string
           status: Database["public"]["Enums"]["sync_status"]
+          sync_kind: string
+          teams_changed: number
         }
         Insert: {
           error_code?: string | null
@@ -666,11 +777,19 @@ export type Database = {
           finished_at?: string | null
           fixtures_seen?: number
           id?: string
+          lease_generation?: number | null
+          locked_until?: string | null
+          manual_overrides_skipped?: number
           matches_changed?: number
+          operator_notes?: string[]
           provider: string
+          quota_remaining?: number | null
           results_changed?: number
+          rows_inserted?: number
           started_at?: string
           status: Database["public"]["Enums"]["sync_status"]
+          sync_kind?: string
+          teams_changed?: number
         }
         Update: {
           error_code?: string | null
@@ -678,11 +797,19 @@ export type Database = {
           finished_at?: string | null
           fixtures_seen?: number
           id?: string
+          lease_generation?: number | null
+          locked_until?: string | null
+          manual_overrides_skipped?: number
           matches_changed?: number
+          operator_notes?: string[]
           provider?: string
+          quota_remaining?: number | null
           results_changed?: number
+          rows_inserted?: number
           started_at?: string
           status?: Database["public"]["Enums"]["sync_status"]
+          sync_kind?: string
+          teams_changed?: number
         }
         Relationships: []
       }
@@ -762,6 +889,21 @@ export type Database = {
       }
     }
     Functions: {
+      apply_api_football_sync_batch: {
+        Args: {
+          p_generation: number
+          p_payload: Json
+          p_run_id: string
+          p_token: string
+        }
+        Returns: {
+          result_manual_overrides_skipped: number
+          result_matches_changed: number
+          result_results_changed: number
+          result_rows_inserted: number
+          result_teams_changed: number
+        }[]
+      }
       approve_join_request: {
         Args: { p_request_id: string }
         Returns: {
@@ -778,6 +920,20 @@ export type Database = {
           league_id: string
           proof_id: string
           request_id: string
+        }[]
+      }
+      claim_sports_sync: {
+        Args: { p_force?: boolean; p_provider: string }
+        Returns: {
+          result_code: string
+          result_fixture_ids: string[]
+          result_generation: number
+          result_locked_until: string
+          result_outcome: string
+          result_provider: string
+          result_run_id: string
+          result_sync_kind: string
+          result_token: string
         }[]
       }
       consume_proof_upload_rate_limit: {
@@ -828,6 +984,26 @@ export type Database = {
           replayed: boolean
           request_id: string
           status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      finalize_sports_sync: {
+        Args: {
+          p_error_code: string
+          p_error_message_safe: string
+          p_fixtures_seen: number
+          p_generation: number
+          p_operator_notes: string[]
+          p_quota_remaining: number
+          p_retry_after_seconds?: number
+          p_run_id: string
+          p_status: string
+          p_token: string
+        }
+        Returns: {
+          result_code: string
+          result_finished_at: string
+          result_run_id: string
+          result_status: Database["public"]["Enums"]["sync_status"]
         }[]
       }
       get_join_request_upload_context: {

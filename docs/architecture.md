@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.7 |
-| תאריך עדכון | 22 באוגוסט 2026 |
+| גרסה | 2.8 |
+| תאריך עדכון | 23 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
 
@@ -107,7 +107,8 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 - `POST /api/join-requests/[requestId]/proofs` — multipart upload.
 - `GET /api/payment-proofs/[proofId]` — הרשאה והפניה ל־signed URL קצר־חיים.
-- `POST /api/cron/sync` — תיעוד ניסיון Sync מאומת דרך RPC אטומי יחיד.
+- `POST /api/cron/sync` — Route דק ל־manual או API-Football דרך orchestration
+  שרתית, claim/apply/finalize מגודרים ו־HTTP ספק מחוץ לטרנזקציה.
 - `GET /auth/confirm` — החלפת PKCE code ב־session והפניה בטוחה ליעד פנימי.
 - `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
@@ -367,7 +368,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 קוד הליבה מכיר רק את המודל הפנימי. החלפת ספק היא adapter חדש, לא שינוי ב־UI, בסכמה העסקית או בניקוד.
 
-### 14.2 שער POC
+### 14.2 שער POC והספק הנבחר
 
 אין לבחור ספק לפי דף שיווק. לפני חיבור אמיתי נבדקים בתיעוד ובקריאות אמת:
 
@@ -380,71 +381,96 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 
 אם השער נכשל, `ManualSportsProvider` ו־seed files הם מקור הנתונים ל־MVP. אין לעכב ניחושים, ניקוד ודירוג בגלל ספק.
 
-ב־Slice 7 השער נסגר עבור גרסת הקורס ללא ספק חי: לא בוצע POC מאושר, אין
-credentials וקטלוג ה־Demo סינתטי וללא provider IDs. לכן `ManualSportsProvider`
-והזנת התוצאות הידנית הם המסלול הקנוני ל־MVP. אין לחבר את fixtures הידניים
-לכתיבת משחקים או להציג אותם כנתונים שסונכרנו מספק.
+ה־POC החי עבר ב־23 באוגוסט 2026 ו־API-Football של API-Sports נבחר לספק החי.
+הראיות המאושרות מכסות את ליגת העל (`league=383`), עונת `2026`, 14 קבוצות,
+26 מחזורי עונה סדירה ו־182 משחקים שפורסמו בזמן הבדיקה. אין להסיק מכך שהעונה
+תישאר תמיד בגודל הזה: שלבי אליפות/ירידה או משחקים נוספים עשויים להתפרסם
+בהמשך ומתגלים באמצעות reconciliation תקופתי.
 
-### 14.3 Scheduling וריצה
+`ManualSportsProvider` והזנת התוצאות הידנית נשארים Plan B מחייב. קטלוג ה־Demo
+של Slice 5 סינתטי וחסר provider IDs; אין להצמיד אליו מזהי API-Football לפי שם,
+קוד, מיקום במערך או אצטדיון. נתוני ספק נשמרים בישויות provider-owned נפרדות.
 
-Supabase Cron מפעיל את `/api/cron/sync` בתדירות שמרנית. ערך הסוד נשמר
+### 14.3 Scheduling, lease ו־fencing
+
+Supabase Cron מפעיל את `POST /api/cron/sync` בערך פעם בדקה. ערך הסוד נשמר
 ב־Supabase Vault וב־Vercel כ־`CRON_SECRET`; ה־job קורא אותו בזמן ריצה, והוא
-אינו מופיע ב־migration או ב־Git.
+אינו מופיע ב־migration או ב־Git. תדירות ה־Cron היא רק תדירות בדיקת העבודה:
+claim שאינו due מחזיר `NOT_DUE` בלי קריאת ספק ובלי שורת `sync_runs`.
 
-#### החלטת Slice 7 — RPC ידני אטומי
-
-הטרנספורט הקיים הוא `supabase-js` מול Supabase Data API/PostgREST. כל קריאת
+הטרנספורט למסד הוא `supabase-js` מול Supabase Data API/PostgREST. כל קריאת
 `.rpc()` היא בקשת HTTP וטרנזקציה נפרדת על connection מתוך pool; ל־Route
-Handler אין connection קבוע שאפשר להחזיק לאורך כמה קריאות. לכן נעילת
-`pg_try_advisory_lock` ברמת session אסורה: היא עלולה להישאר על connection
-שחזר ל־pool, בעוד ניסיון unlock יגיע ל־connection אחר. גם
-`pg_try_advisory_xact_lock` אינו יכול להגן על עבודה שממשיכה אחרי סיום ה־RPC;
-הוא חוקי רק כאשר כל המצב המוגן נמצא באותה טרנזקציה קצרה.
+Handler אין connection קבוע. לכן session advisory lock אסור, ו־transaction
+advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Football משתמש ב־lease
+עמיד בשורה וב־fencing:
 
-כל עוד ה־provider הוא `manual`, ה־Handler נשאר דק ואינו קורא adapter, אינו
-מעריך due-window, אינו יוצר lifecycle של `running`, אינו מבצע upsert ואינו
-קורא ל־`score_match`. הזרימה היא:
+1. ה־Handler מאמת content type ו־`CRON_SECRET`, וטוען principal שרת קבוע מתוך
+   `SYNC_SYSTEM_ACTOR_ID`. manual trigger מאומת משתמש בזהות מנהל המערכת המחובר.
+   בשני המקרים ה־actor נבדק שוב בתוך ה־RPC מול `system_admins`.
+2. claim RPC נועלת לזמן קצר את שורת `sync_leases` של `api-football`, בודקת אם
+   קטלוג, reconciliation או targeted refresh הם due, ומונעת lease מקביל.
+3. claim מוצלח מגדיל `generation` מונוטוני, יוצר token UUID חדש שאינו ממוחזר,
+   יוצר `sync_runs.status='running'` ומגדיר `locked_until`. manual trigger רשאי
+   לעקוף due-window אך לא lease פעיל.
+4. אם lease קודם פג, ה־claim מסיים את הריצה הנטושה כ־`failed/LEASE_EXPIRED`
+   לפני reclaim. אם lease עדיין פעיל, ניסיון מורשה נרשם סופית כ־
+   `skipped/CONCURRENT_ATTEMPT`. `NOT_DUE` אינו נשמר.
+5. API-Football נקרא מחוץ לטרנזקציה, דרך client server-only עם GET בלבד,
+   timeout, response-size cap, validation, retry מוגבל ומכסה נצפית. ה־UI לעולם
+   אינו קורא לספק; PostgreSQL הוא מקור האמת לכל דף משתמש.
+6. apply RPC מקבלת רק payload פנימי מנורמל וחסום. היא נועלת את שורת ה־lease
+   ומאמתת run, provider, generation, token ו־expiry לפני mutation ושוב בסוף
+   הטרנזקציה. בדיקת הסיום גורמת rollback מלא אם ה־lease פג בזמן batch.
+7. תוצאת `FT` רשמית עוברת ל־`score_match` הקיימת מתוך אותו wrapper ובאותה
+   טרנזקציה. אין שכפול ניקוד ב־TypeScript או SQL. `is_manually_overridden=true`
+   גורם skip מדיד ואינו נדרס.
+8. finalize RPC מאמתת אותו fencing, כותבת counters ותוצאה בטוחה, מסיימת את
+   הריצה ומשחררת את ה־lease. token ישן, token של provider אחר או token שפג
+   נדחים תמיד.
 
-1. ה־Handler מאמת method, content type ו־`CRON_SECRET` בלי לכתוב סוד ללוג.
-2. הוא טוען `SYNC_SYSTEM_ACTOR_ID` server-only של principal לא־אינטראקטיבי
-   ייעודי ב־`auth.users`, שהוענק מראש ל־`system_admins`. הערך אינו מגיע
-   מהבקשה ואינו credential להתחברות UI.
-3. ה־Handler מבצע קריאת Data API יחידה ל־`record_sync_attempt`; ה־RPC מאמת
-   מחדש את actor השרת מתוך `x-predictor-system-actor` מול `system_admins`.
-4. ה־RPC מנסה `pg_try_advisory_xact_lock` עם מפתח יישומי קבוע ומתועד. הנעילה
-   מגנה רק על ההכרעה והכתיבה באותה טרנזקציה ומשתחררת אוטומטית ב־commit.
-5. אם הנעילה תפוסה, ה־RPC אינו ממתין ואינו מעבד חלון; הוא מוסיף שורה סופית
-   `skipped` עם `CONCURRENT_ATTEMPT`. הכתיבה append-only ואינה משנה אינווריאנט,
-   ולכן מותר לה לבצע מחוץ להגנת הנעילה.
-6. אם הנעילה הושגה, ה־RPC מוסיף שורה סופית `skipped` עם `MANUAL_PROVIDER`.
-   הקוד `OUTSIDE_DUE_WINDOW` שמור למסלול ספק חי עתידי ואינו מתאר את המצב
-   הידני.
-7. שני סוגי הדילוג כוללים `finished_at`, אינם משאירים שורת `running`, מחזירים
-   HTTP 200 ומוצגים בממשק כסיבת דילוג ניטרלית.
+משך ה־lease גדול מהתקציב החסום של HTTP ו־apply. אין renew ב־MVP; אם מדידה
+תראה שהעבודה התקינה מתקרבת לתוקף, מוסיפים renew RPC צר לפני שמאריכים זמן רשת.
+ריצת קטלוג מחולקת ל־batches אטומיים וחסומים; partial catalog שנשמר לפני כשל
+הוא תקין, provider-owned ואידמפוטנטי, והריצה הבאה משלימה אותו. תוצאה וניקוד של
+כל משחק נשארים אטומיים באותו batch.
 
-כל קריאת Cron מורשית שהגיעה ל־RPC היא ניסיון Sync ומתועדת, גם כאשר הפסידה
-בנעילה. בקשה עם secret שגוי, actor חסר/לא תקין או actor שאינו עוד מנהל מערכת
-אינה ניסיון מורשה ואינה כותבת ל־`sync_runs` או ל־`audit_logs`; observability
-לבקשות כאלה נשארת ב־runtime logs מסוננים ללא הסוד או ה־actor.
+במצב `manual`, הזרימה הקיימת נשארת סופית וללא I/O: `record_sync_attempt()`
+כותבת `skipped/MANUAL_PROVIDER` או `skipped/CONCURRENT_ATTEMPT` ואינה משנה
+משחקים. בקשה לא מורשית אינה כותבת `sync_runs` או `audit_logs` בשני המצבים.
 
-העמודה `sync_runs.error_code` שומרת קוד תוצאה גם כאשר הסטטוס אינו שגיאה.
-ה־schema מתעד זאת ב־`COMMENT ON COLUMN`; כל query, מסך או התראה מזהים כשל רק
-באמצעות `status = 'failed'`, ולעולם לא באמצעות `error_code is not null`.
-`error_message_safe` נשאר `null` בדילוגים.
+### 14.4 Due planner ומדיניות מכסה
 
-#### מסלול ספק חי עתידי
+- קטלוג league/teams/rounds/fixtures מתרענן כל 12 שעות; גבול מתועד של 6–24
+  שעות מאפשר התאמה עתידית בלי לשנות את חוזה ה־lease.
+- reconciliation של fixtures מתבצע כל 6 שעות כדי לגלות תיקוני מועד, משחקים
+  ומחזורים נוספים.
+- משחקים חיים, משחקים שמועדיהם קרובים ומשחקים שעדיין אינם terminal אחרי
+  kickoff מתרעננים בבקשת `ids` ממוקדת בערך פעם בדקה, עד 20 IDs לבקשה.
+- 429/`Retry-After` מעדכן `backoff_until`; quota headers נשמרים כאיתות תפעולי.
+  מדיניות threshold אוטומטית למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry
+  storm ואין polling כל 15 שניות.
+- ה־Base URL, league ID והעונה הם constants/configuration typed ולא קלט
+  משתמש. ה־API key נשמר רק ב־Vercel עבור Next.js ואינו נשמר ב־Vault.
 
-חיבור ספק חי דורש שינוי ארכיטקטוני ומימוש יחד, לאחר POC מאושר. ריצה שחוצה
-קריאת רשת לא תישען על advisory lock ארוך־חיים אלא על claim/lease עמיד במסד:
+### 14.5 זהות, סטטוסים ונעילת ניחושים
 
-- יצירת claim אטומית עם `lease_token` המשמש fencing token, `expires_at`
-  ו־`holder`; advisory xact lock קצר רשאי להגן רק על יצירת ה־claim.
-- קריאת הספק מתבצעת מחוץ לטרנזקציה ועם timeout.
-- כל apply ו־finalize מותנים ב־lease token התקף שטרם פג או הוחלף; token ישן
-  נדחה כדי שריצה שהתעוררה מאוחר לא תכתוב מעל ריצה חדשה.
-- lease שפג ניתן ל־reclaim, ושורת `running` יתומה נסגרת לפי `expires_at`.
-- רק במסלול זה מתווספים due-window אמיתי, adapter call, upsert לפי provider/id
-  והעברת תוצאות דרך `score_match` תוך כיבוד `is_manually_overridden`.
+API-Football מזוהה פנימית כ־`api-football`. תחרות, עונה, קבוצות ומשחקים
+provider-owned מזוהים רק באמצעות `(external_provider, external_id)`. קוד או
+שם קבוצה אינם זהות. העונה שומרת external season `2026`, ומשחק שומר גם את
+`league.round` המלא לצד `round_number`; פורמט stage לא מוכר נכנס ל־review ואינו
+מתנגש בשקט במחזור קיים. קטלוג `sports_provider_rounds` שומר כל label lossless;
+stage לא מוכר נשמר בו עם `round_number=null` ואינו נוסף אוטומטית לקיבוץ ה־UI.
+
+`FT` בלבד נחשב תוצאה רשמית אוטומטית, ורק `score.fulltime` משמש לניקוד. ציוני
+live אינם נשמרים כתוצאה. `AET` ו־`PEN` מזוהים ונשמרים ב־`provider_status`,
+קובעים את latch הנעילה ונרשמים כ־review, אך אינם משנים את המשחק ל־finished
+ואינם מפעילים ניקוד עד שתתקבל הכרעת מוצר ושדה 90 דקות יוכח בחוזה מוקלט.
+status לא מוכר מכשיל את ה־snapshot לפני mutation.
+
+`matches.predictions_locked_at` הוא latch מסדי בלתי־הפיך של נעילת ספק. הוא
+נקבע כאשר נצפה live, `SUSP`, `INT` או terminal, ואינו מתאפס בשינוי מועד או
+status מאוחר. `save_prediction`, RLS של חשיפה וה־UI בודקים אותו בנוסף ל־
+`kickoff_at`; לכן reschedule לאחר צפייה בחלק מהמשחק אינו פותח ניחושים מחדש.
 
 ## 15. ניתוח AI
 
@@ -509,7 +535,9 @@ Services מחזירים error codes יציבים כגון:
 | עקיפת route דרך Storage API | bucket פרטי ללא policies ללקוחות ושער שרת מצומצם | CRUD ישיר כ־anon/authenticated |
 | אישור כפול | transaction + unique + idempotency | שתי קריאות מקבילות |
 | ניקוד כפול | overwrite דטרמיניסטי + versions | אותה תוצאה פעמיים ותיקון תוצאה |
-| Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins` + RPC יחיד עם xact lock קצר; בקשה לא מורשית אינה כותבת, וניסיון מקביל נרשם סופית כ־`CONCURRENT_ATTEMPT` | secret/actor חסר או שגוי, שתי sessions מקבילות ושחרור הנעילה אחרי commit |
+| Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins`; manual משתמש ב־RPC הקצר הקיים ו־API-Football ב־row lease עם generation/token/expiry | secret/actor שגוי, claim מקביל, reclaim, token ישן ו־expiry בזמן apply |
+| שינוי מועד פותח ניחושים אחרי live | `predictions_locked_at` בלתי־הפיך ב־DB ומשולב ב־RPC/RLS/UI | live או suspension, reschedule לעתיד וניסיון שמירה/חשיפה |
+| worker ישן כותב אחרי reclaim | fencing נבדק בתחילת ובסוף apply/finalize תחת row lock | generation/token/provider שגויים ו־lease שפג |
 | AI abuse | membership, cache, rate limit, timeout | משתמש לא מאושר ולולאת קריאות |
 | עקיפה דרך Supabase Data API | RLS ו־grants לכל טבלה | קריאות ישירות עם publishable key |
 
@@ -521,7 +549,7 @@ Services מחזירים error codes יציבים כגון:
 - pagination לבקשות, audit, היסטוריית ניחושים ומשחקים; מחזור הוא pagination טבעי למשחקים.
 - ניקוד set-based ב־PostgreSQL במקום לולאות Serverless.
 - `points` שמור ו־leaderboard מסכם במקום חישוב כל ניחוש מהתחלה.
-- cache גלובלי לניתוח AI ו־upsert לנתוני ספורט.
+- cache גלובלי לניתוח AI ו־upsert לפי provider ID לנתוני ספורט.
 - אינדקסים לפי דפוסי גישה, וניתוח `EXPLAIN ANALYZE` לפני אופטימיזציה נוספת.
 - Client bundle קטן באמצעות Server Components כברירת מחדל.
 
@@ -529,7 +557,10 @@ Services מחזירים error codes יציבים כגון:
 
 - leaderboard query רגיל אינו יעד לאלפי משתתפים בליגה; במקרה כזה נבחן materialized view.
 - `rate_limit_events` ב־PostgreSQL מתאים ל־MVP, לא לתעבורה גדולה או רב־אזורית.
-- Sync ו־AI רצים ב־request lifecycle; עומסים או ריצות ארוכות יצדיקו queue/worker נפרד.
+- Sync ו־AI רצים ב־request lifecycle; Sync מוגבל ב־lease, timeout ו־batches.
+  עומסים או ריצות ארוכות שיימדדו יצדיקו worker נפרד, לא נבנה כזה מראש.
+- API-Football מתעד rate limit גם לפי IP. Vercel משתמשת ב־outbound IP משותף,
+  ולכן 429 אפשרי גם מתעבורה שאינה שלנו; backoff ונתונים שמורים הם ההגנה ב־MVP.
 - Supabase/Vercel free tiers הם מגבלת קיבולת תפעולית, לא יעד ארכיטקטוני קבוע.
 
 ## 20. סביבות, migrations ופריסה
@@ -561,8 +592,10 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Leaderboard כ־View/query | התקבל | אין הצדקה לטבלה משוכפלת ב־MVP |
 | ניקוד ב־PostgreSQL | התקבל | אטומיות, idempotency ו־set-based update |
 | Supabase Cron | התקבל | Vercel Hobby Cron יומי בלבד; נדרש polling תכוף יותר |
-| ספק Sports קבוע מראש | נדחה | הבחירה תלויה ב־POC אמיתי לעונת 2026/27 |
-| Slice 7 עם ספק ידני | התקבל | ה־POC לא עבר; Data API אינו מחזיק session DB, ולכן ניסיון מורשה מתועד ב־RPC אטומי יחיד ומסלול ספק חי נדחה לחוזה lease/fencing |
+| ספק Sports קבוע מראש | הוחלף | API-Football נבחר ב־23.8.2026 לאחר POC חי לליגה 383/עונה 2026; Manual נשאר fallback |
+| Slice 7 manual-only | הוחלף | Slice 7b מוסיף API-Football provider-owned catalog ו־Sync מלא; המסלול הידני נשמר ללא mutation |
+| lease לספק חי | התקבל | Data API אינו מצמיד connection; row lease עמיד עם generation/token/expiry מגן על HTTP שחוצה transactions |
+| תוצאת AET/PEN אוטומטית | נדחה לעת עתה | מדיניות המוצר היא זמן חוקי, אך ה־POC לא הוכיח שדה 90 דקות מתאים; הרשומה נכנסת ל־review ללא scoring |
 | advisory lock ברמת session דרך Data API | נדחה | connection אינו מוצמד ל־Route Handler והנעילה עלולה לדלוף ל־pool |
 | מסלול כסף אמיתי בגרסת הקורס | חסום | דורש שער ציות ומשתמשים בגיל מתאים; Demo בלבד |
 

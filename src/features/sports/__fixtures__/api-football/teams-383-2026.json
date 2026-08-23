@@ -1,0 +1,23 @@
+{
+  "get": "teams",
+  "parameters": { "league": "383", "season": "2026" },
+  "errors": [],
+  "results": 14,
+  "paging": { "current": 1, "total": 1 },
+  "response": [
+    { "team": { "id": 563, "name": "Hapoel Beer Sheva", "code": "HAP", "country": "Israel", "founded": 1949, "national": false, "logo": null }, "venue": { "id": 123, "name": "Turner Stadium", "address": null, "city": "Beer Sheva", "capacity": 16000, "surface": "grass", "image": null } },
+    { "team": { "id": 604, "name": "Maccabi Tel Aviv", "code": "MAC", "country": "Israel", "founded": 1906, "national": false, "logo": null }, "venue": { "id": 124, "name": "Bloomfield Stadium", "address": null, "city": "Tel Aviv", "capacity": 29000, "surface": "grass", "image": null } },
+    { "team": { "id": 657, "name": "Beitar Jerusalem", "code": "BEI", "country": "Israel", "founded": 1936, "national": false, "logo": null }, "venue": { "id": 125, "name": "Teddi Malcha Stadium", "address": null, "city": "Jerusalem", "capacity": 31000, "surface": "grass", "image": null } },
+    { "team": { "id": 2253, "name": "Hapoel Haifa", "code": "HAP", "country": "Israel", "founded": 1924, "national": false, "logo": null }, "venue": { "id": 126, "name": "Sammy Ofer Stadium", "address": null, "city": "Haifa", "capacity": 30000, "surface": "grass", "image": null } },
+    { "team": { "id": 4195, "name": "Maccabi Haifa", "code": "MAC", "country": "Israel", "founded": 1913, "national": false, "logo": null }, "venue": { "id": 126, "name": "Sammy Ofer Stadium", "address": null, "city": "Haifa", "capacity": 30000, "surface": "grass", "image": null } },
+    { "team": { "id": 4481, "name": "Bnei Sakhnin", "code": "BNE", "country": "Israel", "founded": 1991, "national": false, "logo": null }, "venue": { "id": null, "name": null, "address": null, "city": "Sakhnin", "capacity": null, "surface": null, "image": null } },
+    { "team": { "id": 4486, "name": "Hapoel Katamon", "code": "HAP", "country": "Israel", "founded": 2007, "national": false, "logo": null }, "venue": { "id": 125, "name": "Teddi Malcha Stadium", "address": null, "city": "Jerusalem", "capacity": 31000, "surface": "grass", "image": null } },
+    { "team": { "id": 4488, "name": "Hapoel Petah Tikva", "code": "HAP", "country": "Israel", "founded": 1934, "national": false, "logo": null }, "venue": { "id": 128, "name": "Petach Tikva Stadium", "address": null, "city": "Petah Tikva", "capacity": 11500, "surface": "grass", "image": null } },
+    { "team": { "id": 4489, "name": "Hapoel Ramat Gan", "code": "HAP", "country": "Israel", "founded": 1927, "national": false, "logo": null }, "venue": { "id": null, "name": null, "address": null, "city": "Ramat Gan", "capacity": null, "surface": null, "image": null } },
+    { "team": { "id": 4495, "name": "Maccabi Petah Tikva", "code": "MAC", "country": "Israel", "founded": 1912, "national": false, "logo": null }, "venue": { "id": 128, "name": "Petach Tikva Stadium", "address": null, "city": "Petah Tikva", "capacity": 11500, "surface": "grass", "image": null } },
+    { "team": { "id": 4501, "name": "Hapoel Tel Aviv", "code": "HAP", "country": "Israel", "founded": 1927, "national": false, "logo": null }, "venue": { "id": 124, "name": "Bloomfield Stadium", "address": null, "city": "Tel Aviv", "capacity": 29000, "surface": "grass", "image": null } },
+    { "team": { "id": 4505, "name": "Maccabi Netanya", "code": "MAC", "country": "Israel", "founded": 1934, "national": false, "logo": null }, "venue": { "id": 131, "name": "Netanya Stadium", "address": null, "city": "Netanya", "capacity": 13600, "surface": "grass", "image": null } },
+    { "team": { "id": 4510, "name": "Ironi Kiryat Shmona", "code": "IRO", "country": "Israel", "founded": 2000, "national": false, "logo": null }, "venue": { "id": null, "name": null, "address": null, "city": "Kiryat Shmona", "capacity": null, "surface": null, "image": null } },
+    { "team": { "id": 6181, "name": "Ironi Tiberias", "code": "IRO", "country": "Israel", "founded": 2006, "national": false, "logo": null }, "venue": { "id": null, "name": null, "address": null, "city": "Tiberias", "capacity": null, "surface": null, "image": null } }
+  ]
+}

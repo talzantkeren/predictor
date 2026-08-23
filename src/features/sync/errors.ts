@@ -6,10 +6,10 @@ export type SyncErrorCode =
   | "UNAUTHORIZED";
 
 const safeSyncMessages: Record<SyncErrorCode, string> = {
-  FORBIDDEN: "זהות המערכת אינה מורשית לתעד ניסיון סנכרון.",
+  FORBIDDEN: "זהות המערכת אינה מורשית להפעיל סנכרון.",
   INVALID_REQUEST: "בקשת הסנכרון אינה תקינה.",
-  SYNC_NOT_CONFIGURED: "שירות הסנכרון הידני אינו מוגדר בסביבה זו.",
-  SYNC_UNAVAILABLE: "לא ניתן לתעד את ניסיון הסנכרון כרגע.",
+  SYNC_NOT_CONFIGURED: "שירות הסנכרון אינו מוגדר בסביבה זו.",
+  SYNC_UNAVAILABLE: "לא ניתן להפעיל את הסנכרון כרגע.",
   UNAUTHORIZED: "בקשת הסנכרון אינה מורשית.",
 };
 

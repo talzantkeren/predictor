@@ -8,6 +8,7 @@ import {
   parseCronEnv,
   parsePublicEnv,
   parseServerEnv,
+  parseSportsSyncEnv,
 } from "@/lib/env";
 
 const validInput = {
@@ -38,7 +39,7 @@ describe("Slice 0 environment validation", () => {
 
   it("requires a sports key only for an API provider", () => {
     expect(() =>
-      parseServerEnv({ ...validInput, SPORTS_API_PROVIDER: "api" }),
+      parseServerEnv({ ...validInput, SPORTS_API_PROVIDER: "api-football" }),
     ).toThrow("SPORTS_API_KEY is required");
   });
 
@@ -131,6 +132,7 @@ describe("Slice 0 environment validation", () => {
       CRON_SECRET: "local-cron-secret",
       SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
       SPORTS_API_PROVIDER: "manual",
+      SPORTS_API_KEY: undefined,
     });
   });
 
@@ -150,6 +152,7 @@ describe("Slice 0 environment validation", () => {
       CRON_SECRET: "local-cron-secret",
       SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
       SPORTS_API_PROVIDER: "manual",
+      SPORTS_API_KEY: undefined,
     });
   });
 
@@ -166,14 +169,37 @@ describe("Slice 0 environment validation", () => {
     ).toThrow();
   });
 
-  it("does not pretend the manual Slice 7 route supports an API provider", () => {
+  it("requires a key at the Cron boundary for API-Football", () => {
     expect(() =>
       parseCronEnv({
         ...validInput,
-        SPORTS_API_PROVIDER: "api",
+        SPORTS_API_PROVIDER: "api-football",
         CRON_SECRET: "local-cron-secret",
         SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
       }),
+    ).toThrow();
+
+    expect(
+      parseCronEnv({
+        ...validInput,
+        SPORTS_API_PROVIDER: "api-football",
+        SPORTS_API_KEY: "recorded-test-key",
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      }),
+    ).toMatchObject({
+      SPORTS_API_PROVIDER: "api-football",
+      SPORTS_API_KEY: "recorded-test-key",
+    });
+  });
+
+  it("validates the shared admin-trigger provider boundary", () => {
+    expect(parseSportsSyncEnv({ SPORTS_API_PROVIDER: "manual" })).toEqual({
+      SPORTS_API_PROVIDER: "manual",
+      SPORTS_API_KEY: undefined,
+    });
+    expect(() =>
+      parseSportsSyncEnv({ SPORTS_API_PROVIDER: "api-football" }),
     ).toThrow();
   });
 

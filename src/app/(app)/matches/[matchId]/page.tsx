@@ -76,11 +76,14 @@ export default async function MatchDetailPage({
   }
 
   const data = result.data;
-  const locked = isKickoffLocked(data.match.kickoffAt, data.databaseNow);
+  const locked =
+    data.match.predictionsLockedAt !== null ||
+    isKickoffLocked(data.match.kickoffAt, data.databaseNow);
   const writable = canWritePrediction({
     leagueStatus: data.league.status,
     status: data.match.status,
     kickoffAt: data.match.kickoffAt,
+    predictionsLockedAt: data.match.predictionsLockedAt,
     now: data.databaseNow,
     isActiveMember: true,
   });

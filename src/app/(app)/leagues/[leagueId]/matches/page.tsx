@@ -152,6 +152,7 @@ export default async function LeagueMatchesPage({
               leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
+              predictionsLockedAt: match.predictionsLockedAt,
               now: data.databaseNow,
               isActiveMember: data.viewerIsActiveMember,
               hasPrediction: Boolean(match.ownPrediction),
@@ -160,6 +161,7 @@ export default async function LeagueMatchesPage({
               leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
+              predictionsLockedAt: match.predictionsLockedAt,
               now: data.databaseNow,
               isActiveMember: data.viewerIsActiveMember,
             });

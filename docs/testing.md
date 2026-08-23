@@ -229,10 +229,9 @@ npm run test:e2e -- scoring.spec.ts
 
 ## Slice 7: Cron ו־observability במסלול ידני
 
-בדיקות Slice 7 משתמשות רק ב־Manual provider, ב־JSON fixture שנשמר במאגר
-וב־Supabase המקומי. אין credentials של Sports ואין קריאת רשת חיה בקוד,
-ב־Vitest, ב־pgTAP או ב־Playwright. ה־sync planner הוא specification executable
-למסלול ספק עתידי ואינו מיובא ל־Route או ל־gateway.
+סעיף זה מתעד את baseline הידני שנמסר לפני Slice 7b. בדיקות הרגרסיה שלו עדיין
+משתמשות רק ב־Manual provider וב־Supabase המקומי; המסלול החי וה־planner שנוסף
+לאחר מכן מתועדים בסעיף Slice 7b להלן.
 
 ### מטריצת כיסוי
 
@@ -262,3 +261,42 @@ npm run test -- src/app/api/cron/sync/route.test.ts src/features/sports/sync-pla
 npm exec -- supabase test db supabase/tests/sync.test.sql
 npm run test:e2e -- e2e/sync.spec.ts
 ```
+
+## Slice 7b: API-Football Sync חי עם fixtures מוקלטים
+
+בדיקות Slice 7b אינן מקבלות `SPORTS_API_KEY` ואינן פונות לרשת הספק. ה־client
+מקבל fake transport, וכל responses הן fixtures מסוננים תחת
+`src/features/sports/__fixtures__/api-football`. E2E רץ עם `manual`, ונתוני
+provider-owned שהוא מציג נזרעים ישירות במסד המקומי; אין fallback לקריאה חיה.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After`, retry/backoff/jitter חסומים, quota headers ו־redaction ללא key/URL |
+| Vitest adapter | league 383, כל 14 team IDs והמיפוי העברי, codes כפולים, unknown team fallback, 26 round labels, future-stage review, NS/FT, כל status מתועד, live score→null, `score.fulltime`, score חסר, AET/PEN review ו־UTC consistency |
+| Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion |
+| pgTAP | schema/RLS/grants; browser denial; actor validation; claim יחיד ומקביל; `NOT_DUE` ללא row; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; provider-ID upsert idempotent; Demo/name collision untouched; round label; override; safe transitions; irreversible lock; `AET` כ־review נעול ללא ניקוד; `FT`/correction/retry דרך `score_match` ואודיט source |
+| Route/Action | Cron auth/content type/env; manual/API-Football/not-due/concurrent/success/failure; קריאת orchestration יחידה; trigger של system admin בלבד; safe response ללא סוד/token/generation |
+| Playwright | ordinary user מול system admin, status page ו־manual trigger, success/skipped/concurrent/failure, provider fixture במחזור, suspension+reschedule שלא פותח prediction, Desktop/Pixel RTL וללא browser request/key |
+
+### הרצה
+
+```powershell
+npm ci
+npm exec -- supabase start
+npm exec -- supabase db reset --local
+npm run lint
+npm run typecheck
+npm run test
+npm run test:db
+npm exec -- supabase db lint --local --schema public,private --level warning --fail-on error
+npm run types:check
+npm run build
+npm run test:e2e
+```
+
+`SPORTS_API_PROVIDER=manual` נשאר ברירת המחדל ל־build רגיל. בדיקות env מאמתות
+ש־`api-football` ללא key נכשל סגור, אך fake transport tests מזריקות key דמה
+שאינו credential ואינו מגיע לדוח. live canary אינו חלק מ־CI ומבוצע רק לאחר
+merge, migration ו־Vercel provisioning מאושרים.

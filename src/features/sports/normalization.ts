@@ -64,10 +64,15 @@ export function normalizeMatch(input: RawSportsMatch): NormalizedMatch {
     competitionId: input.competitionId,
     seasonId: input.seasonId,
     round: input.round,
+    roundLabel: input.roundLabel ?? `Round ${input.round}`,
     homeTeam: { ...input.homeTeam },
     awayTeam: { ...input.awayTeam },
     kickoffAt: normalizeKickoffAt(input.kickoffAt),
     status,
+    providerStatus: input.status,
+    locksPredictions: status === "live" || status === "finished",
+    resultDisposition: hasOfficialResult ? "official" : "none",
+    reviewCode: null,
     homeScore: hasOfficialResult
       ? officialScore(input.homeScore, "home score")
       : null,

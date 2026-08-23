@@ -12,6 +12,7 @@ import {
   getSyncSkipReasonLabel,
   getSyncStatusLabel,
 } from "@/features/sync/display";
+import { SyncTriggerForm } from "@/features/sync/components/sync-trigger-form";
 import { getSystemSyncRuns } from "@/features/sync/queries";
 import type { SyncStatus } from "@/features/sync/types";
 
@@ -56,8 +57,8 @@ export default async function SystemSyncPage() {
             סטטוס סנכרון
           </h1>
           <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-            יומן ניסיונות הסנכרון המורשים האחרונים. המסלול הנוכחי ידני ולכן
-            אינו קורא לספק חיצוני ואינו משנה משחקים.
+            יומן הריצות המורשות האחרונות עבור המסלול הידני או API‑Football.
+            נתוני הספק נשמרים רק דרך תהליך שרת מגודר ואטומי.
           </p>
         </div>
         <nav aria-label="ניווט ניהול" className="flex flex-wrap gap-2">
@@ -75,6 +76,8 @@ export default async function SystemSyncPage() {
           </Link>
         </nav>
       </div>
+
+      <SyncTriggerForm />
 
       {result.runs.length === 0 ? (
         <p className="mt-6 rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
@@ -120,7 +123,41 @@ export default async function SystemSyncPage() {
                       <dt className="font-semibold text-slate-600">תוצאות שהשתנו</dt>
                       <dd className="mt-1 text-lg font-bold">{run.resultsChanged}</dd>
                     </div>
+                    <div>
+                      <dt className="font-semibold text-slate-600">שורות שנוספו</dt>
+                      <dd className="mt-1 text-lg font-bold">{run.rowsInserted}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-600">קבוצות שהשתנו</dt>
+                      <dd className="mt-1 text-lg font-bold">{run.teamsChanged}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-slate-600">עקיפות ידניות שנשמרו</dt>
+                      <dd className="mt-1 text-lg font-bold">{run.manualOverridesSkipped}</dd>
+                    </div>
                   </dl>
+
+                  <dl className="mt-4 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                    <div>
+                      <dt className="inline font-semibold">סוג עבודה: </dt>
+                      <dd className="inline">{run.syncKind}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline font-semibold">מכסה יומית שנותרה: </dt>
+                      <dd className="inline">{run.quotaRemaining ?? "לא דווח"}</dd>
+                    </div>
+                  </dl>
+
+                  {run.operatorNotes.length > 0 ? (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                      <p className="font-semibold">הערות מפעיל</p>
+                      <ul className="mt-1 list-inside list-disc" dir="ltr">
+                        {run.operatorNotes.map((note) => (
+                          <li key={note} className="break-all font-mono text-xs">{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
                   {run.status === "skipped" ? (
                     <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">

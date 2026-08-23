@@ -8,7 +8,11 @@ import {
 import {
   countSyncRunsInDisposableLocalDatabase,
   grantSystemAdminInDisposableLocalDatabase,
+  removeProviderPredictionLockFixtureFromDisposableLocalDatabase,
   removeSyncFixturesFromDisposableLocalDatabase,
+  seedProviderPredictionLockFixtureInDisposableLocalDatabase,
+  seedSyncObservabilityRunsInDisposableLocalDatabase,
+  type ProviderPredictionLockFixtureIds,
 } from "./support/local-database";
 import { registerConfirmedUser } from "./support/local-auth";
 
@@ -16,6 +20,8 @@ test.use({ screenshot: "off", trace: "off", video: "off" });
 
 const canonicalUuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const uuidSearchPattern =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
 
 type PasswordSessionResponse = {
   user?: { id?: unknown };
@@ -98,12 +104,19 @@ async function callSyncRoute(authorization?: string, method = "POST") {
   }
 }
 
-test.describe("manual Sync observability", () => {
+test.describe("Sports Sync observability and provider prediction lock", () => {
   let cleanup:
-    | { runId: string; systemAdminUserId: string }
+    | { runIds: string[]; systemAdminUserId: string }
     | undefined;
+  let providerCleanup: ProviderPredictionLockFixtureIds | undefined;
 
   test.afterEach(() => {
+    if (providerCleanup) {
+      removeProviderPredictionLockFixtureFromDisposableLocalDatabase(
+        providerCleanup,
+      );
+      providerCleanup = undefined;
+    }
     if (!cleanup) return;
     removeSyncFixturesFromDisposableLocalDatabase(cleanup);
     cleanup = undefined;
@@ -144,7 +157,26 @@ test.describe("manual Sync observability", () => {
       contextOptions,
     });
     const adminUserId = await getRegisteredUserId(adminEmail, password);
+    const ordinaryUserId = await getRegisteredUserId(ordinaryEmail, password);
     grantSystemAdminInDisposableLocalDatabase(adminUserId);
+    const observabilityRunIds = {
+      succeeded: crypto.randomUUID(),
+      failed: crypto.randomUUID(),
+      concurrent: crypto.randomUUID(),
+    };
+    seedSyncObservabilityRunsInDisposableLocalDatabase(observabilityRunIds);
+    providerCleanup = {
+      competitionId: crypto.randomUUID(),
+      seasonId: crypto.randomUUID(),
+      homeTeamId: crypto.randomUUID(),
+      awayTeamId: crypto.randomUUID(),
+      matchId: crypto.randomUUID(),
+      leagueId: crypto.randomUUID(),
+    };
+    seedProviderPredictionLockFixtureInDisposableLocalDatabase(
+      providerCleanup,
+      ordinaryUserId,
+    );
 
     const beforeUnauthorized = countSyncRunsInDisposableLocalDatabase();
     const wrongMethod = await callSyncRoute(`Bearer ${cronSecret}`, "GET");
@@ -173,7 +205,10 @@ test.describe("manual Sync observability", () => {
     if (typeof runId !== "string" || !canonicalUuidPattern.test(runId)) {
       throw new Error("The manual Sync attempt returned an invalid run ID.");
     }
-    cleanup = { runId, systemAdminUserId: adminUserId };
+    cleanup = {
+      runIds: [runId, ...Object.values(observabilityRunIds)],
+      systemAdminUserId: adminUserId,
+    };
     expect(countSyncRunsInDisposableLocalDatabase()).toBe(
       beforeUnauthorized + 1,
     );
@@ -190,6 +225,56 @@ test.describe("manual Sync observability", () => {
       runCard.getByText("המערכת מוגדרת למסלול ידני ללא ספק חי"),
     ).toBeVisible();
     await expect(runCard.getByText(/פרטי כשל:/)).toHaveCount(0);
+    await expect(
+      admin.page.locator("article").filter({ hasText: observabilityRunIds.succeeded }).getByText("הושלם", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      admin.page.locator("article").filter({ hasText: observabilityRunIds.failed }).getByText(/פרטי כשל:/),
+    ).toBeVisible();
+    await expect(
+      admin.page.locator("article").filter({ hasText: observabilityRunIds.concurrent }).getByText(/סיבת דילוג:/),
+    ).toBeVisible();
+
+    const providerBrowserRequests: string[] = [];
+    admin.page.on("request", (request) => {
+      if (request.url().includes("football.api-sports.io")) {
+        providerBrowserRequests.push(request.url());
+      }
+    });
+    await admin.page.getByRole("button", { name: "הפעלת סנכרון" }).click();
+    await expect(
+      admin.page.getByText("המערכת מוגדרת לספק ידני ולכן לא נשלחה קריאת רשת."),
+    ).toBeVisible();
+    const actionStatus = admin.page.getByRole("status");
+    const actionText = await actionStatus.textContent();
+    const actionRunId = actionText?.match(uuidSearchPattern)?.[0];
+    if (!actionRunId) {
+      throw new Error("The manual admin trigger did not return a safe run ID.");
+    }
+    cleanup.runIds.push(actionRunId);
+    expect(providerBrowserRequests).toEqual([]);
+    expect(await admin.page.content()).not.toContain("x-apisports-key");
+
+    await ordinary.page.goto(
+      `/leagues/${providerCleanup.leagueId}/matches?round=26`,
+    );
+    const providerMatchCard = ordinary.page
+      .locator("article")
+      .filter({ hasText: "קבוצת ספק בית" });
+    await expect(
+      providerMatchCard.getByText("מחזור 26", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      providerMatchCard.getByText("קבוצת ספק בית", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      providerMatchCard.getByText("נעול", { exact: true }).first(),
+    ).toBeVisible();
+    await ordinary.page.goto(
+      `/matches/${providerCleanup.matchId}?league=${providerCleanup.leagueId}`,
+    );
+    await expect(ordinary.page.getByText("הניחוש נעול", { exact: true })).toBeVisible();
+    await expect(ordinary.page.getByRole("button", { name: /שמירת ניחוש/ })).toHaveCount(0);
 
     const layout = await admin.page.evaluate(() => ({
       dir: document.documentElement.dir,

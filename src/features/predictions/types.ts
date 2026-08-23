@@ -28,6 +28,7 @@ export type LeagueMatchItem = {
   id: string;
   roundNumber: number;
   kickoffAt: string;
+  predictionsLockedAt: string | null;
   status: MatchStatus;
   homeScore: number | null;
   awayScore: number | null;

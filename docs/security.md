@@ -372,3 +372,50 @@
 | session lock דולף ל־pool | אין session-level advisory lock; Data API call יחיד | בדיקת הגדרת הפונקציה, `pg_locks` ותוצאה `MANUAL_PROVIDER` לאחר שחרור |
 | קוד דילוג מוצג או מנוטר ככשל | status הוא discriminator יחיד ו־DB comment מתעד את שם ה־legacy | Vitest ל־display/query ו־Playwright לטקסט ניטרלי ללא פרטי כשל |
 | מסך תפעולי נחשף למשתמש רגיל | session AuthZ + `is_system_admin()` + RLS | pgTAP לקריאת admin/רגיל ו־Playwright ל־not-found למשתמש רגיל |
+
+## API-Football Sync ו־fencing ב־Slice 7b
+
+- `SPORTS_API_KEY` הוא secret שרת בלבד. הוא אינו `NEXT_PUBLIC_*`, אינו נשמר
+  ב־Supabase/Vault/DB/fixtures/logs ואינו מוחזר ללקוח. URL הייצור קבוע במודול
+  `server-only`, ורק חמש צורות GET allowlisted קיימות; אין URL/league/season
+  שרירותיים מקלט משתמש ולכן אין SSRF boundary חדש.
+- ה־client קורא body כחסום עד 8 MiB לפני JSON parse, מאמת HTTP, envelope,
+  `errors`, paging ו־Zod nested schemas, ודוחה IDs כפולים. errors נשמרים כקודים
+  והודעות בטוחות; key, headers, URL מלא ו־payload אינם נכנסים ללוג או ל־DB.
+- 403 אינו retried. רק transport/timeout, 429, 499 ו־5xx של GET יכולים לקבל
+  עד שני retries נוספים בתוך תקציב wall-clock; `Retry-After` חסום ו־jitter
+  מונע herd. 429/`Retry-After` מפעיל backoff; quota headers נשמרים לתצפית בלי
+  להפעיל threshold שלא הוכח. Shared outbound
+  IP של Vercel נשאר סיכון זמינות מתועד, לא סיבה לחשוף key או להוסיף proxy.
+- זהות provider נשענת רק על external ID. codes/names/venues אינם משמשים merge.
+  התחרות, העונה, הקבוצות והמשחקים של API-Football נפרדים משורות Demo; payload
+  מנורמל וחסום בלבד מגיע ל־RPC ואין raw provider response ב־DB.
+- `sync_leases` מפעילה RLS ללא policy/grant ל־browser או service-role table
+  CRUD. claim/apply/finalize הן `SECURITY DEFINER`, `search_path=''`, שמות
+  schema מלאים ו־EXECUTE ל־service_role בלבד. כל אחת מאמתת actor פנימי מול
+  `system_admins`; manual trigger גוזר actor מה־session ואינו מקבל אותו בטופס.
+- claim מחזיק row lock רק לטרנזקציה קצרה. generation מונוטוני ו־token UUID
+  חדש מגדרים את העבודה אחרי HTTP. apply/finalize נועלים את אותה שורה ומאמתים
+  provider/run/generation/token/expiry בתחילה; apply בודקת expiry שוב בסוף כך
+  ש־commit אחרי expiry עושה rollback. reclaim מסיים run נטוש ומבטל token ישן.
+- apply מקבלת עד batch מתועד, מאמתת כל field שוב, מדלגת על manual override
+  וקוראת ל־`score_match` הקיימת בתוך אותה transaction רק עבור `FT` עם
+  `score.fulltime` תקין. אין כתיבת points ישירה, live score, AET/PEN scoring או
+  terminal regression אוטומטי.
+- `predictions_locked_at` הוא latch שאינו ניתן לאיפוס על ידי provider apply.
+  `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/terminal ואחריהם
+  reschedule עתידי נשארים נעולים.
+- `/admin/sync` ו־manual trigger דורשים session ו־system-admin resource AuthZ.
+  Server Action משתמשת בהגנת same-origin של Next.js, אינה שולחת secret
+  לדפדפן וקוראת לאותה orchestration/lease. משתמש רגיל ומנהל ליגה מקבלים
+  not-found/denial אטום.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| key ב־browser/log/fixture | server-only env, fixed client, redaction ו־bundle/diff scan | env/client/unit, Playwright HTML/network וחיפוש repository |
+| SSRF או endpoint אסור | URL constant ו־methods purpose-specific בלבד | client tests לכל endpoint ושבירת query/ID לא קנוני |
+| payload גדול/לא תקין | streaming cap + Zod + DB batch/field validation | size/JSON/schema/unit ו־apply rollback ב־pgTAP |
+| שתי ריצות או worker ישן | row claim + generation/token/expiry, start/end fencing | concurrent claim, reclaim, wrong/stale/expired token |
+| merge של Demo או קבוצה שגויה | provider IDs ו־unique indexes בלבד | name/code collision, Demo snapshot unchanged, codes כפולים |
+| פתיחת prediction אחרי live | DB latch בלתי־הפיך | live/SUSP/INT, kickoff עתידי ואז save/RLS denial |
+| ניקוד לא רשמי/כפול | FT+fulltime בלבד ו־`score_match` הקיימת | live/AET/PEN/score חסר, retry, correction ו־audit source |

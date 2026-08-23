@@ -3,8 +3,14 @@ import "server-only";
 import { z } from "zod";
 
 import { getDatabaseSyncError, SyncError } from "@/features/sync/errors";
-import type { RecordedSyncAttempt } from "@/features/sync/types";
+import type { ApiFootballApplyBatch } from "@/features/sports/sync-planner";
+import type {
+  ClaimedSportsSync,
+  RecordedSyncAttempt,
+  SportsSyncClaim,
+} from "@/features/sync/types";
 import { createSystemActorAdminClient } from "@/lib/supabase/admin";
+import type { Database, Json } from "@/types/database.generated";
 
 const recordedAttemptSchema = z
   .object({
@@ -41,5 +47,188 @@ export async function recordManualSyncAttempt(systemActorId: string) {
     throw new SyncError("SYNC_UNAVAILABLE", 503);
   }
 
+  return parsed.data;
+}
+
+const claimRowSchema = z.object({
+  result_outcome: z.enum(["CLAIMED", "NOT_DUE", "CONCURRENT_ATTEMPT"]),
+  result_run_id: z.string().uuid().nullable(),
+  result_provider: z.literal("api-football"),
+  result_sync_kind: z
+    .enum(["catalog", "targeted", "reconciliation"])
+    .nullable(),
+  result_generation: z.number().int().positive().nullable(),
+  result_token: z.string().uuid().nullable(),
+  result_locked_until: z.string().datetime({ offset: true }).nullable(),
+  result_fixture_ids: z.array(z.string().regex(/^[1-9]\d*$/)).max(20),
+  result_code: z
+    .enum(["NOT_DUE", "PROVIDER_BACKOFF", "CONCURRENT_ATTEMPT"])
+    .nullable(),
+});
+
+function parseClaimRow(value: unknown): SportsSyncClaim | null {
+  const parsed = claimRowSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const row = parsed.data;
+
+  if (
+    row.result_outcome === "CLAIMED" &&
+    row.result_run_id &&
+    row.result_sync_kind &&
+    row.result_generation &&
+    row.result_token &&
+    row.result_locked_until &&
+    row.result_code === null
+  ) {
+    const claim: ClaimedSportsSync = {
+      outcome: "CLAIMED",
+      runId: row.result_run_id,
+      provider: row.result_provider,
+      syncKind: row.result_sync_kind,
+      generation: row.result_generation,
+      token: row.result_token,
+      lockedUntil: row.result_locked_until,
+      fixtureIds: row.result_fixture_ids,
+    };
+    return claim;
+  }
+
+  if (
+    row.result_outcome === "NOT_DUE" &&
+    row.result_run_id === null &&
+    (row.result_code === "NOT_DUE" || row.result_code === "PROVIDER_BACKOFF")
+  ) {
+    return {
+      outcome: "NOT_DUE",
+      runId: null,
+      provider: row.result_provider,
+      reason: row.result_code,
+    };
+  }
+
+  if (
+    row.result_outcome === "CONCURRENT_ATTEMPT" &&
+    row.result_run_id &&
+    row.result_code === "CONCURRENT_ATTEMPT"
+  ) {
+    return {
+      outcome: "CONCURRENT_ATTEMPT",
+      runId: row.result_run_id,
+      provider: row.result_provider,
+      reason: row.result_code,
+    };
+  }
+  return null;
+}
+
+export async function claimApiFootballSync(
+  systemActorId: string,
+  force: boolean,
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const { data, error } = await admin.rpc("claim_sports_sync", {
+    p_provider: "api-football",
+    p_force: force,
+  });
+  if (error) throw getDatabaseSyncError(error);
+
+  const parsed = parseClaimRow(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed) throw new SyncError("SYNC_UNAVAILABLE", 503);
+  return parsed;
+}
+
+const applyResultSchema = z.object({
+  result_rows_inserted: z.number().int().nonnegative(),
+  result_teams_changed: z.number().int().nonnegative(),
+  result_matches_changed: z.number().int().nonnegative(),
+  result_results_changed: z.number().int().nonnegative(),
+  result_manual_overrides_skipped: z.number().int().nonnegative(),
+});
+
+export async function applyApiFootballSyncBatch(
+  systemActorId: string,
+  claim: ClaimedSportsSync,
+  payload: ApiFootballApplyBatch,
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const args: Database["public"]["Functions"]["apply_api_football_sync_batch"]["Args"] = {
+    p_run_id: claim.runId,
+    p_generation: claim.generation,
+    p_token: claim.token,
+    p_payload: JSON.parse(JSON.stringify(payload)) as Json,
+  };
+  const { data, error } = await admin.rpc(
+    "apply_api_football_sync_batch",
+    args,
+  );
+  if (error) throw getDatabaseSyncError(error);
+  const parsed = applyResultSchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed.success) throw new SyncError("SYNC_UNAVAILABLE", 503);
+  return parsed.data;
+}
+
+const finalizedRunSchema = z.object({
+  result_run_id: z.string().uuid(),
+  result_status: z.enum(["succeeded", "failed"]),
+  result_code: z.string().nullable(),
+  result_finished_at: z.string().datetime({ offset: true }),
+});
+
+export async function finalizeApiFootballSync(
+  systemActorId: string,
+  claim: ClaimedSportsSync,
+  result:
+    | {
+        status: "succeeded";
+        fixturesSeen: number;
+        operatorNotes: string[];
+        quotaRemaining: number | null;
+      }
+    | {
+        status: "failed";
+        errorCode: string;
+        errorMessageSafe: string;
+        retryAfterSeconds: number | null;
+        operatorNotes: string[];
+      },
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  // Supabase's generated function-argument types do not preserve PostgreSQL
+  // nullability. The RPC contract requires actual JSON nulls for terminal
+  // metadata that does not apply to the selected status.
+  const nullableText = (value: string | null) => value as string;
+  const nullableNumber = (value: number | null) => value as number;
+  const { data, error } = await admin.rpc("finalize_sports_sync", {
+    p_run_id: claim.runId,
+    p_generation: claim.generation,
+    p_token: claim.token,
+    p_status: result.status,
+    p_error_code: nullableText(
+      result.status === "failed" ? result.errorCode : null,
+    ),
+    p_error_message_safe: nullableText(
+      result.status === "failed" ? result.errorMessageSafe : null,
+    ),
+    p_fixtures_seen: result.status === "succeeded" ? result.fixturesSeen : 0,
+    p_operator_notes: result.operatorNotes,
+    p_quota_remaining: nullableNumber(
+      result.status === "succeeded" ? result.quotaRemaining : null,
+    ),
+    p_retry_after_seconds:
+      result.status === "failed"
+        ? (result.retryAfterSeconds ?? undefined)
+        : undefined,
+  });
+  if (error) throw getDatabaseSyncError(error);
+  const parsed = finalizedRunSchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed.success || parsed.data.result_run_id !== claim.runId) {
+    throw new SyncError("SYNC_UNAVAILABLE", 503);
+  }
   return parsed.data;
 }
