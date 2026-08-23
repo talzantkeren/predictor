@@ -3,6 +3,8 @@ import { z } from "zod";
 type EnvironmentInput = Record<string, string | undefined>;
 
 const optionalValue = (value: string | undefined) => value || undefined;
+const canonicalUuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const browserEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
@@ -20,9 +22,22 @@ const publicEnvSchema = browserEnvSchema.extend({
 const serverEnvSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(1).optional(),
+  SYNC_SYSTEM_ACTOR_ID: z
+    .string()
+    .regex(canonicalUuidPattern, "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID")
+    .optional(),
   SPORTS_API_KEY: z.string().min(1).optional(),
   AI_API_KEY: z.string().min(1).optional(),
   AI_MODEL: z.string().min(1).optional(),
+});
+
+const cronEnvSchema = z.object({
+  CRON_SECRET: z.string().min(1),
+  SYNC_SYSTEM_ACTOR_ID: z.string().regex(
+    canonicalUuidPattern,
+    "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID",
+  ),
+  SPORTS_API_PROVIDER: z.literal("manual").default("manual"),
 });
 
 const adminEnvSchema = z.object({
@@ -60,6 +75,7 @@ export function parseServerEnv(input: EnvironmentInput) {
   const serverEnv = serverEnvSchema.parse({
     SUPABASE_SECRET_KEY: optionalValue(input.SUPABASE_SECRET_KEY),
     CRON_SECRET: optionalValue(input.CRON_SECRET),
+    SYNC_SYSTEM_ACTOR_ID: optionalValue(input.SYNC_SYSTEM_ACTOR_ID),
     SPORTS_API_KEY: optionalValue(input.SPORTS_API_KEY),
     AI_API_KEY: optionalValue(input.AI_API_KEY),
     AI_MODEL: optionalValue(input.AI_MODEL),
@@ -76,6 +92,14 @@ export function parseAdminEnv(input: EnvironmentInput) {
   return adminEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_URL: input.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SECRET_KEY: input.SUPABASE_SECRET_KEY,
+  });
+}
+
+export function parseCronEnv(input: EnvironmentInput) {
+  return cronEnvSchema.parse({
+    CRON_SECRET: optionalValue(input.CRON_SECRET),
+    SYNC_SYSTEM_ACTOR_ID: optionalValue(input.SYNC_SYSTEM_ACTOR_ID),
+    SPORTS_API_PROVIDER: input.SPORTS_API_PROVIDER,
   });
 }
 
@@ -130,6 +154,7 @@ export function getServerEnv() {
     DEMO_MODE: process.env.DEMO_MODE,
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
+    SYNC_SYSTEM_ACTOR_ID: process.env.SYNC_SYSTEM_ACTOR_ID,
     SPORTS_API_KEY: process.env.SPORTS_API_KEY,
     AI_API_KEY: process.env.AI_API_KEY,
     AI_MODEL: process.env.AI_MODEL,
@@ -140,5 +165,13 @@ export function getAdminEnv() {
   return parseAdminEnv({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
+  });
+}
+
+export function getCronEnv() {
+  return parseCronEnv({
+    CRON_SECRET: process.env.CRON_SECRET,
+    SYNC_SYSTEM_ACTOR_ID: process.env.SYNC_SYSTEM_ACTOR_ID,
+    SPORTS_API_PROVIDER: process.env.SPORTS_API_PROVIDER,
   });
 }

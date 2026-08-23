@@ -226,3 +226,39 @@ npm run test -- src/features/scoring/scoring-rules.test.ts src/features/scoring/
 npm exec -- supabase test db supabase/tests/scoring.test.sql
 npm run test:e2e -- scoring.spec.ts
 ```
+
+## Slice 7: Cron ו־observability במסלול ידני
+
+בדיקות Slice 7 משתמשות רק ב־Manual provider, ב־JSON fixture שנשמר במאגר
+וב־Supabase המקומי. אין credentials של Sports ואין קריאת רשת חיה בקוד,
+ב־Vitest, ב־pgTAP או ב־Playwright. ה־sync planner הוא specification executable
+למסלול ספק עתידי ואינו מיובא ל־Route או ל־gateway.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | נרמול כל חמשת הסטטוסים, ניקוי score חי, דחיית status לא מוכר, תוצאה finished, cancel, תיקון ו־retry; החרגה מלאה וללא mutation של `is_manually_overridden`; זהויות provider כפולות; env חסר/malformed ו־manual בלבד; השוואת Route וסיווג שגיאות בטוח; `status` בלבד כמבחין כשל וקוד דילוג ניטרלי; מיפוי שורת query וגבול admin client `server-only` |
+| pgTAP | enum/table/columns/comments/checks/index; RLS/grants וקריאת admin לעומת משתמש רגיל; חתימת RPC, `SECURITY DEFINER`, `search_path` ו־EXECUTE service-only; actor חסר/malformed/שהוסר ללא כתיבת `sync_runs` או `audit_logs`; שורה סופית `MANUAL_PROVIDER` ללא שינוי matches/predictions; שתי sessions אמיתיות שמוכיחות `CONCURRENT_ATTEMPT`, אחריו `MANUAL_PROVIDER`, ושאין advisory lock דולף |
+| Route | method/content-type, secret חסר/שגוי, env חסר, actor שנדחה ושגיאת DB לא צפויה; אין קריאת gateway לפני הרשאה, קריאה אחת בלבד בהצלחה, HTTP 200 לדילוג ותגובות `private, no-store` ללא secret/actor/SQL |
+| Playwright | secret חסר ושגוי מחזירים 401 ומספר שורות DB אינו משתנה; secret נכון יוצר בדיוק שורה סופית אחת; מנהל רואה ב־`/admin/sync` את `MANUAL_PROVIDER` כסיבת דילוג, משתמש רגיל מקבל not-found; Desktop Chrome ו־Pixel 5, RTL וללא overflow |
+
+בדיקת המקביליות ב־`supabase/tests/sync.test.sql` פותחת חיבור control, חיבור
+שמחזיק `pg_advisory_xact_lock` וחיבור service-role שקורא ל־RPC. היא פועלת רק
+מול מכולת PostgreSQL החד־פעמית של Supabase CLI, מתקינה ומסירה principal
+סינתטי ושתי שורות run committed, ואינה מורשית מול `--linked` או hosted. קריאת
+RPC רגילה בתוך transaction הבדיקה מתבצעת רק אחרי תרחיש המקביליות כדי שה־xact
+lock של pgTAP עצמו לא ישבש את שתי ה־sessions.
+
+ה־E2E runner מייצר `CRON_SECRET` אקראי בזיכרון לכל הרצה ומעביר אותו רק
+לתהליכי build, server ו־Playwright. actor מקומי קבוע נוצר ב־seed; הסוד, actor
+header ו־admin key אינם נכתבים לדוח או ל־stdout. קריאת Cron נעשית ב־Node
+`fetch` עם שגיאה מסוננת, לא בצעד Playwright שמתעד headers.
+
+הרצה ממוקדת בזמן פיתוח:
+
+```powershell
+npm run test -- src/app/api/cron/sync/route.test.ts src/features/sports/sync-planner.test.ts src/features/sync/display.test.ts src/features/sync/errors.test.ts src/features/sync/queries.test.ts
+npm exec -- supabase test db supabase/tests/sync.test.sql
+npm run test:e2e -- e2e/sync.spec.ts
+```

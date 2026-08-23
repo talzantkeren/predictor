@@ -647,6 +647,45 @@ export type Database = {
           },
         ]
       }
+      sync_runs: {
+        Row: {
+          error_code: string | null
+          error_message_safe: string | null
+          finished_at: string | null
+          fixtures_seen: number
+          id: string
+          matches_changed: number
+          provider: string
+          results_changed: number
+          started_at: string
+          status: Database["public"]["Enums"]["sync_status"]
+        }
+        Insert: {
+          error_code?: string | null
+          error_message_safe?: string | null
+          finished_at?: string | null
+          fixtures_seen?: number
+          id?: string
+          matches_changed?: number
+          provider: string
+          results_changed?: number
+          started_at?: string
+          status: Database["public"]["Enums"]["sync_status"]
+        }
+        Update: {
+          error_code?: string | null
+          error_message_safe?: string | null
+          finished_at?: string | null
+          fixtures_seen?: number
+          id?: string
+          matches_changed?: number
+          provider?: string
+          results_changed?: number
+          started_at?: string
+          status?: Database["public"]["Enums"]["sync_status"]
+        }
+        Relationships: []
+      }
       system_admins: {
         Row: {
           granted_at: string
@@ -848,6 +887,17 @@ export type Database = {
       }
       get_prediction_database_time: { Args: never; Returns: string }
       is_system_admin: { Args: never; Returns: boolean }
+      record_sync_attempt: {
+        Args: never
+        Returns: {
+          result_code: string
+          result_finished_at: string
+          result_id: string
+          result_provider: string
+          result_started_at: string
+          result_status: Database["public"]["Enums"]["sync_status"]
+        }[]
+      }
       reject_join_request: {
         Args: { p_reason: string; p_request_id: string }
         Returns: {
@@ -941,6 +991,7 @@ export type Database = {
       match_status: "scheduled" | "live" | "finished" | "postponed" | "canceled"
       member_status: "active" | "removed"
       outcome: "HOME" | "DRAW" | "AWAY"
+      sync_status: "running" | "succeeded" | "failed" | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1082,6 +1133,7 @@ export const Constants = {
       match_status: ["scheduled", "live", "finished", "postponed", "canceled"],
       member_status: ["active", "removed"],
       outcome: ["HOME", "DRAW", "AWAY"],
+      sync_status: ["running", "succeeded", "failed", "skipped"],
     },
   },
 } as const

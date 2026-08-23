@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.1 |
-| תאריך עדכון | 17 באוגוסט 2026 |
-| סטטוס | Slice 6 review addressed; Slice 7 next |
+| גרסה | 3.2 |
+| תאריך עדכון | 22 באוגוסט 2026 |
+| סטטוס | Slice 7 manual-only observability delivered; Slice 8 next |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -205,11 +205,15 @@ DEMO_MODE=true
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`.
 - `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
-- `SYNC_SYSTEM_ACTOR_ID` נדרש החל מ־Slice 7 ומכיל UUID קנוני של principal
-  לא־אינטראקטיבי ייעודי ב־`auth.users` שקיים ב־`system_admins`. הוא נטען בשרת
-  בלבד, אינו מתקבל מה־Cron request ואינו credential להתחברות.
+- `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
+  מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
+  principal לא־אינטראקטיבי ייעודי ב־`auth.users` שקיים ב־`system_admins`, נטען
+  בשרת בלבד, אינו מתקבל מהבקשה ואינו credential להתחברות.
 - `SUPABASE_SECRET_KEY` נשמר עבור פעולות מערכת עתידיות, אך אינו נדרש ואינו מיובא ב־Slice 1. כל פעולת Auth/Profile רגילה משתמשת ב־publishable key וב־session המשתמש תחת RLS.
-- `env.ts` מאמת env בצד שרת עם Zod ונכשל בזמן startup כאשר ערך חובה חסר.
+- `env.ts` מאמת env בצד שרת עם Zod; גבול Cron ייעודי נכשל סגור בזמן הבקשה אם
+  `CRON_SECRET` או actor חסרים, או אם `SPORTS_API_PROVIDER=api` הוגדר במפורש.
+  provider שלא הוגדר מקבל את ברירת המחדל `manual`, בלי להפיל build שאינו
+  מפעיל את ה־Route.
 - `admin.ts` כולל `import 'server-only'` ונבדק בבדיקת import boundary.
 
 ## 5. תכנית migrations
@@ -225,7 +229,7 @@ DEMO_MODE=true
 | 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
 | 007 `predictions_and_scoring` | נמסר בשני שלבים: Slice 5 הוסיף `predictions`, RLS, `save_prediction` ונעילה; Slice 6 הוסיף `score_match`, metadata ניקוד ו־`league_leaderboard` | נעילה/חשיפה ומטריצת ניקוד מלאה, כולל retry, correction, cancel ושוויון |
-| 008 `operations_and_ai` | טבלת `system_admins` המינימלית הוקדמה ל־Slice 6 כדי לאכוף `applyManualResult` בצד השרת; אין לה CRUD למשתמש רגיל. `sync_runs` ו־analyses נשארים ל־Slices 7–8, ומרחיבים את טבלאות audit/rate-limit שכבר נדרשו ב־Slice 3 | Slice 6: זהות מנהל מערכת מצומצמת; Slices 7–8: הרשאות, observability ו־cleanup של Sync/AI |
+| 008 `operations_and_ai` | טבלת `system_admins` המינימלית הוקדמה ל־Slice 6 כדי לאכוף `applyManualResult` בצד השרת; אין לה CRUD למשתמש רגיל. Slice 7 מוסיף ב־migration חדשה את `sync_runs` ואת RPC התיעוד הידני; analyses נשארים ל־Slice 8, על בסיס טבלאות audit/rate-limit שנמסרו ב־Slice 3 | Slice 6: זהות מנהל מערכת מצומצמת; Slice 7: observability ידני והרשאות; Slice 8: AI ו־cleanup מתועד |
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
@@ -243,6 +247,9 @@ DEMO_MODE=true
 | `match_status` | `scheduled`, `live`, `finished`, `postponed`, `canceled` |
 | `outcome` | `HOME`, `DRAW`, `AWAY` |
 | `sync_status` | `running`, `succeeded`, `failed`, `skipped` |
+
+`running` נשמר בחוזה עבור מסלול ספק חי עתידי, אך אינו נכתב במסלול הידני של
+Slice 7. כל שורת Sync שנכתבת ב־Slice זה היא סופית.
 
 ### 6.2 זהות
 
@@ -410,6 +417,13 @@ DEMO_MODE=true
 
 - `id`, `provider`, `status`, `started_at`, `finished_at`.
 - `fixtures_seen`, `matches_changed`, `results_changed`, `error_code`, `error_message_safe`.
+- כל הספירות אינן שליליות; `finished_at` נדרש לכל status סופי ומותר להיות
+  `null` רק ב־`running` העתידי.
+- `error_code` הוא שם legacy של קוד תוצאה: הוא עשוי להכיל גם
+  `CONCURRENT_ATTEMPT` או `MANUAL_PROVIDER` כאשר `status = 'skipped'`.
+  `COMMENT ON COLUMN` מתעד זאת, ו־status הוא המבחין היחיד בין כשל לדילוג.
+- RLS מאפשרת קריאה למנהל מערכת בלבד. אין insert/update/delete ישיר ל־anon או
+  authenticated; append מתבצע רק דרך RPC המערכת המצומצם.
 
 #### `audit_logs`
 
@@ -481,6 +495,26 @@ DEMO_MODE=true
 8. commit אחד.
 
 `SECURITY DEFINER` functions משתמשות ב־`set search_path = ''`, שמות schema מלאים והרשאות EXECUTE מצומצמות.
+
+### 7.5 `record_sync_attempt()`
+
+הפונקציה היא גבול המוטציה היחיד של Slice 7 ונקראת פעם אחת בלבד מ־Cron דרך
+Data API:
+
+1. קוראת את `x-predictor-system-actor` מ־`request.headers`, מאמתת UUID קנוני
+   ובודקת שה־principal עדיין קיים ב־`system_admins`. אין actor בפרמטרים.
+2. מנסה `pg_try_advisory_xact_lock` עם מפתח קבוע. אין session-level advisory
+   lock ואין המתנה חוסמת.
+3. אם הנעילה תפוסה, מוסיפה שורת `skipped` סופית עם
+   `CONCURRENT_ATTEMPT`. זו כתיבת log append-only ללא אינווריאנט משותף.
+4. אם הנעילה הושגה, מוסיפה שורת `skipped` סופית עם `MANUAL_PROVIDER`.
+   אין due-window פעיל במסלול הידני; `OUTSIDE_DUE_WINDOW` שמור לספק עתידי.
+5. שני המסלולים מחזירים id, status, code וזמנים מתוך אותה טרנזקציה. אין שורת
+   `running`, קריאת adapter, upsert או קריאת `score_match`.
+
+הפונקציה היא `SECURITY DEFINER` עם `search_path = ''`, שמות schema מלאים,
+EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפונקציה. בקשה לא מורשית
+נכשלת לפני כתיבה ואינה מוסיפה גם `audit_logs`.
 
 ## 8. CRUD ופעולות אפליקטיביות
 
@@ -563,14 +597,16 @@ DEMO_MODE=true
 ### 10.4 `POST /api/cron/sync`
 
 1. secret, method ו־content-type צפויים; ה־job קורא את הסוד מ־Supabase Vault והוא תואם ל־`CRON_SECRET` ב־Vercel.
-2. טעינת `SYNC_SYSTEM_ACTOR_ID` server-only ואימות fail-closed דרך
-   `score_match` שה־principal הייעודי עדיין קיים ב־`system_admins`; אין actor
-   בפרמטרי הבקשה ואין fallback לזהות אנושית או ל־RPC ישיר.
-3. advisory lock.
-4. due-window check.
-5. adapter call עם timeout.
-6. upsert + `score_match` דרך gateway scoring + sync log.
-7. תשובה קצרה ללא נתונים רגישים.
+2. טעינת `SYNC_SYSTEM_ACTOR_ID` server-only; אין actor בפרמטרי הבקשה ואין
+   fallback לזהות אנושית. env חסר נכשל סגור לפני Data API.
+3. קריאת Data API יחידה ל־`record_sync_attempt` דרך client מערכת שמזריק את
+   actor השרת. ה־RPC מבצע אימות actor, xact lock קצר וכתיבת log סופית באותה
+   טרנזקציה.
+4. תוצאה `MANUAL_PROVIDER` או `CONCURRENT_ATTEMPT` מחזירה HTTP 200 ו־payload
+   קצר ללא secrets. בקשה לא מורשית אינה כותבת ל־`sync_runs` או `audit_logs`.
+5. ה־Handler אינו מחזיק lock, אינו מעריך due-window, אינו קורא adapter, אינו
+   מנהל `running`, אינו מבצע upsert ואינו נוגע ב־`score_match` או ב־gateway
+   של Slice 6.
 
 ### 10.5 `POST /api/matches/[matchId]/analysis`
 
@@ -644,6 +680,9 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 | `INTERNAL_ERROR` | 500 + request id | אירעה שגיאה; ללא פרטים טכניים |
 
 לוגים מסננים Email, tokens, secrets, signed URLs, proof paths ותוכן אסמכתאה.
+`CONCURRENT_ATTEMPT` ו־`MANUAL_PROVIDER` הם קודי תוצאת Sync, לא error codes
+אפליקטיביים: שניהם מלווים ב־`status = 'skipped'` וב־HTTP 200. מסכים והתראות
+מזהים כשל Sync רק לפי `status = 'failed'`.
 
 ## 14. אסטרטגיית בדיקות
 
@@ -660,6 +699,8 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
   מחיקת object שאולי כבר committed; מחלקות rollback ורשימת Storage הסגורה
   מפעילות פיצוי רק כאשר הכשל definitive.
 - adapter mapping מ־fixtures מוקלטים.
+- תכנון Sync טהור מול fixtures checked-in, כולל החרגת משחק עם
+  `is_manually_overridden`; המודול אינו מחובר ל־Cron או למסד.
 - cache freshness ו־AI fallback.
 
 Async Server Components אינם יעד ל־Vitest; בודקים את ה־Service/queries בנפרד ואת העמוד ב־Playwright.
@@ -684,6 +725,11 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - `score_match` דוחה `finished` לפני kickoff ואינו משנה את המשחק או הניחושים.
 - שתי ליגות עם חוקי ניקוד שונים מקבלות `points` שונים לאותו משחק.
 - leaderboard אינו סופר ניחוש עתידי גם לבעליו, ולכן האגרגט זהה בין צופים.
+- `sync_runs`: schema, checks, RLS/grants, קריאת מנהל מערכת בלבד ו־EXECUTE
+  מצומצם ל־`record_sync_attempt`.
+- actor חסר/שגוי/שהוסר נדחה ללא כתיבת `sync_runs` או `audit_logs`.
+- שתי sessions מוכיחות `CONCURRENT_ATTEMPT` בזמן xact lock מוחזק,
+  `MANUAL_PROVIDER` לאחר שחרורו, ושאין session lock דולף.
 
 ### 14.3 Playwright
 
@@ -702,10 +748,14 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 7. מנהל מערכת מזין תוצאה; דירוג ושוויון מתעדכנים.
 8. proof ID של בקשה אחרת אינו נגיש.
 9. AI provider mocked נופל והניחוש עדיין עובד.
+10. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; קריאה מורשית במצב manual
+    נרשמת כ־`skipped`/`MANUAL_PROVIDER`; מנהל מערכת רואה את מסך ה־Sync
+    ומשתמש רגיל נדחה.
 
 ### 14.4 Contract tests
 
-- Sports provider נבדק מול JSON fixtures שנשמרו לאחר ה־POC.
+- חוזה Sports וה־sync planner נבדקים מול JSON fixtures דטרמיניסטיים שנשמרו
+  במאגר. fixtures של ספק חי יתווספו רק לאחר POC מאושר.
 - CI אינה מבצעת קריאות live לספק Sports או AI.
 - שינוי mapping שמפר fixture נכשל לפני deploy.
 
@@ -849,13 +899,32 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 
 ### Slice 7 — Sports Sync אמיתי או adapter ידני סופי
 
-**תוצר:** sync logs, override, Cron ו־admin status.
+**תוצר:** תיעוד ניסיונות Sync ידניים, Cron מאומת ו־admin status, ללא צנרת ספק
+מדומה.
 
-- provider adapter לפי POC, contract fixtures ו־timeout.
-- Cron secret ב־Supabase Vault וב־Vercel, due-window ו־advisory lock.
-- Sync מכבד את דגל ה־manual override שנמסר ב־Slice 6 ואינו דורס אותו.
+- שער ה־POC נסגר ללא ספק חי; Manual provider והזנת תוצאות דרך Slice 6 נשארים
+  המסלול הקנוני ל־MVP.
+- `sync_runs` עם RLS ו־grants, ו־`record_sync_attempt` אטומי שמחזיק xact lock
+  רק בתוך ה־RPC הקצר.
+- כל ניסיון מורשה נרשם סופית: `MANUAL_PROVIDER`, או
+  `CONCURRENT_ATTEMPT` כאשר ה־lock תפוס. בקשה לא מורשית אינה נכתבת.
+- Cron route דק מבצע RPC יחיד ומחזיר 200 לדילוג; `/admin/sync` זמין רק למנהל
+  מערכת ומציג קוד תוצאה כסיבת דילוג.
+- מודול תכנון טהור מוכיח ש־manual override יוחרג בעתיד, אך אינו מחובר ל־route
+  או ל־DB. אין due-window חצי־מחווט.
+- upsert, lifecycle של `running`, adapter call ו־`p_source='sync'` נדחים יחד
+  עם ספק חי. המסלול העתידי מחייב claim/lease עמיד עם fencing token; advisory
+  xact lock רשאי להגן רק על יצירת ה־claim.
+- מסך הסטטוס קורא לכל היותר 100 שורות אחרונות. מדיניות retention וניקוי
+  `sync_runs`/`rate_limit_events` ישנים נשארת חוב מפורש ל־Slices 8–10.
 
-**Exit:** כפילות ריצה בטוחה; ספק שנופל אינו פוגע בנתונים הקיימים. אם POC נכשל, ה־slice נסגר עם Manual provider מתועד.
+**Exit:** כפילות בטוחה ומתועדת ללא נעילה דולפת; אין שורת run לא־סופית; שום
+מסלול Slice 7 אינו משנה משחקים, ניחושים או נקודות; Manual provider והחוב
+המדויק לחיבור ספק עתידי מתועדים.
+
+נמסר ב־22 באוגוסט 2026: migration forward-only עם RLS/grants ו־RPC יחיד,
+Route מאומת, מסך `/admin/sync`, planner טהור לא־מחובר, fixtures מוקלטים וכיסוי
+Vitest/pgTAP/Playwright ללא קריאות ספק חיות.
 
 ### Slice 8 — AI analysis
 
@@ -962,13 +1031,10 @@ Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6),
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-Slice 6 נמסר וממתין לקבלה/אישור PR. המשימה הבאה לאחר אישורו היא **Slice 7 —
-Sports Sync אמיתי או adapter ידני סופי**: להכריע לפי ה־POC המתועד, להוסיף
-`sync_runs`, Cron מאומת, advisory lock, contract fixtures ו־observability, ולהעביר
-כל תוצאה דרך `score_match` הקיים. ה־Sync חייב לכבד `is_manually_overridden`
-באמצעות `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי ב־
-`system_admins`, ולא לדרוס תיקון ידני. אם ה־POC אינו עובר, המסלול הידני שנמסר ב־Slice 6 נשאר
-המסלול הקנוני ואין להמציא תלות בספק.
+לאחר מסירת Slice 7 המשימה הבאה היא **Slice 8 — AI analysis**: ניתוח on-demand
+לחבר פעיל בלבד, input מנתוני DB שמורים, output מובנה שעובר Zod, cache לפי
+גרסת נתונים, rate limit ו־fallback שאינו חוסם ניחוש. CI משתמש ב־fake provider
+ואינו מבצע קריאת AI חיה.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

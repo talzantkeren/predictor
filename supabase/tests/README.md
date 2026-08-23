@@ -24,3 +24,6 @@ transaction and rolls back its fixtures.
   service-only execution, security-invoker standings, competition ranks,
   cross-league denial and real concurrent `score_match`/`save_prediction`
   sessions without a lock-order deadlock.
+- `sync.test.sql` covers Slice 7 manual-provider attempt logging, RLS and
+  grants, system-actor rejection without writes, terminal-row constraints,
+  and real cross-session transaction-lock contention and release.

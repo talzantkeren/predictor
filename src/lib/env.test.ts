@@ -5,6 +5,7 @@ import {
   getEnvironmentErrorVariables,
   parseAdminEnv,
   parseBrowserEnv,
+  parseCronEnv,
   parsePublicEnv,
   parseServerEnv,
 } from "@/lib/env";
@@ -30,6 +31,7 @@ describe("Slice 0 environment validation", () => {
     expect(parseServerEnv(validInput)).toMatchObject({
       SPORTS_API_KEY: undefined,
       CRON_SECRET: undefined,
+      SYNC_SYSTEM_ACTOR_ID: undefined,
       SUPABASE_SECRET_KEY: undefined,
     });
   });
@@ -116,6 +118,63 @@ describe("Slice 0 environment validation", () => {
 
   it("requires the secret key only when the admin client is requested", () => {
     expect(() => parseAdminEnv(validInput)).toThrow();
+  });
+
+  it("accepts only a fully configured manual Cron environment", () => {
+    expect(
+      parseCronEnv({
+        ...validInput,
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      }),
+    ).toEqual({
+      CRON_SECRET: "local-cron-secret",
+      SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      SPORTS_API_PROVIDER: "manual",
+    });
+  });
+
+  it("defaults an omitted Cron provider to the manual path", () => {
+    const inputWithoutProvider: Record<string, string | undefined> = {
+      ...validInput,
+    };
+    delete inputWithoutProvider.SPORTS_API_PROVIDER;
+
+    expect(
+      parseCronEnv({
+        ...inputWithoutProvider,
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      }),
+    ).toEqual({
+      CRON_SECRET: "local-cron-secret",
+      SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      SPORTS_API_PROVIDER: "manual",
+    });
+  });
+
+  it("fails the Cron boundary closed for missing or malformed system actors", () => {
+    expect(() =>
+      parseCronEnv({ ...validInput, CRON_SECRET: "local-cron-secret" }),
+    ).toThrow();
+    expect(() =>
+      parseCronEnv({
+        ...validInput,
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "not-a-uuid",
+      }),
+    ).toThrow();
+  });
+
+  it("does not pretend the manual Slice 7 route supports an API provider", () => {
+    expect(() =>
+      parseCronEnv({
+        ...validInput,
+        SPORTS_API_PROVIDER: "api",
+        CRON_SECRET: "local-cron-secret",
+        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
+      }),
+    ).toThrow();
   });
 
   it("attributes a production Demo-mode failure to DEMO_MODE", () => {

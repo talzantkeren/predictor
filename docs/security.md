@@ -288,7 +288,7 @@
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
   ומאמתת מחדש מול `system_admins` לפני lock או שינוי. כך ה־actor באודיט אינו
   נלקח מקלט דפדפן, ושינוי הרשאה בין בדיקת ה־Action ל־RPC נכשל סגור.
-- מסלול ה־Cron של Slice 7 ישתמש באותו header רק מתוך gateway server-only ועם
+- מסלול ה־Cron של Slice 7 משתמש באותו header רק מתוך gateway server-only ועם
   `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי. ה־principal מוקם
   באופן מאובטח לכל סביבה ב־`auth.users` וב־`system_admins`, אינו משמש ל־UI
   ואינו מגיע מהבקשה. env חסר, UUID שגוי או הסרת השורה מ־`system_admins`
@@ -324,3 +324,51 @@
 | deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד ואינה נועלת league/rules | pgTAP עם שני חיבורי `dblink` שמריצים `score_match` ו־`save_prediction` במקביל |
 | דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
 | שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |
+
+## Sync ידני ו־Cron ב־Slice 7
+
+- ה־Route `POST /api/cron/sync` דורש method ו־content type צפויים ומשווה את
+  Bearer מול `CRON_SECRET` בזמן קבוע על digests באורך זהה. הסוד וה־Authorization
+  header אינם נכתבים ללוג או לתשובה, וכל תגובה מסומנת `private, no-store`.
+- `CRON_SECRET` ו־`SYNC_SYSTEM_ACTOR_ID` נטענים רק בשרת. actor חסר או UUID לא
+  קנוני מכשילים את ה־Route לפני Data API. אין actor ב־URL, בגוף הבקשה או
+  fallback למשתמש האנושי שמפעיל מסך.
+- ה־principal מוקם בנפרד בכל סביבה דרך Supabase Auth Admin ומקבל שורה
+  ב־`system_admins`; credential להתחברות אינו מופץ או נשמר. ב־hosted נשמרים
+  ה־UUID ב־Vercel והסוד גם ב־Vercel וגם ב־Supabase Vault. migration ו־seed
+  הייצור אינם מכילים סוד; ה־seed המקומי בלבד יוצר actor בדיקה.
+- ה־gateway היחיד צורך את admin client המשותף, מזריק
+  `x-predictor-system-actor`, וקורא פעם אחת ל־`record_sync_attempt()`. הפונקציה
+  היא `SECURITY DEFINER`, עם `search_path = ''`, שמות schema מלאים ו־EXECUTE
+  ל־`service_role` בלבד; היא מאמתת מחדש את actor מול `system_admins` לפני
+  נעילה או כתיבה.
+- `sync_runs` מפעילה RLS באותה migration שבה נוצרה. `authenticated` מקבל
+  `SELECT` בלבד וה־policy חושפת שורות למנהל מערכת; `anon`, משתמש רגיל ו־Data
+  API service role אינם מקבלים CRUD ישיר. אין policy או grant ל־append ישיר;
+  רק ה־RPC יכול להוסיף שורה.
+- הטרנספורט הוא `supabase-js` דרך PostgREST, ללא connection שמוצמד ל־Route.
+  לכן אין `pg_try_advisory_lock` ברמת session. ה־RPC משתמש רק
+  ב־`pg_try_advisory_xact_lock`, והמעט שהוא מגן עליו — הכרעת outcome וכתיבת
+  השורה — נמצא באותה transaction ומשתחרר אוטומטית.
+- ניסיון מורשה שהפסיד בנעילה נכתב סופית כ־`CONCURRENT_ATTEMPT`; ניסיון שזכה
+  נכתב כ־`MANUAL_PROVIDER`. שניהם `status='skipped'`, עם `finished_at`, ללא
+  `error_message_safe`, ומוחזרים ב־HTTP 200. `error_code` הוא שם legacy לקוד
+  תוצאה; מסך, query או alert מסווגים כשל רק לפי `status='failed'`.
+- secret שגוי נעצר לפני ה־gateway; actor חסר, malformed או שהוסר נעצר בתוך
+  ה־RPC לפני insert. אף אחד מהמקרים אינו כותב `sync_runs` או `audit_logs`.
+  הקוד אינו מפיק לוג אפליקטיבי עם secret או actor; סטטוס בקשת ה־HTTP נשאר
+  ב־runtime logs של הפלטפורמה לצורכי תפעול ומניעת ניפוח טבלה.
+- המסלול הידני אינו קורא ספק, אינו מעריך due-window, אינו יוצר `running`, אינו
+  מבצע upsert ואינו נוגע ב־`score_match`, במשחקים או בניחושים. מודול התכנון
+  הטהור של ספק עתידי אינו מיובא ל־Route.
+
+### מטריצת איומים ובדיקות Slice 7
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| גילוי endpoint וניפוח לוג דרך secret שגוי | השוואה בזמן קבוע לפני gateway; אין כתיבת DB או לוג אפליקטיבי רגיש | Vitest ו־Playwright ל־secret חסר/שגוי ומספר שורות קבוע |
+| זיוף או ביטול actor | actor מ־env בלבד ואימות חוזר מול `system_admins` בתוך RPC | env tests ו־pgTAP ל־header חסר/malformed/actor שהוסר ללא `sync_runs` או `audit_logs` |
+| ריצה מקבילה מעבדת חלון פעמיים | xact lock לא־חוסם בתוך RPC יחיד; המפסיד רק מתעד `CONCURRENT_ATTEMPT` | שתי sessions אמיתיות ב־pgTAP, retry סדרתי ושחרור lock אחרי commit |
+| session lock דולף ל־pool | אין session-level advisory lock; Data API call יחיד | בדיקת הגדרת הפונקציה, `pg_locks` ותוצאה `MANUAL_PROVIDER` לאחר שחרור |
+| קוד דילוג מוצג או מנוטר ככשל | status הוא discriminator יחיד ו־DB comment מתעד את שם ה־legacy | Vitest ל־display/query ו־Playwright לטקסט ניטרלי ללא פרטי כשל |
+| מסך תפעולי נחשף למשתמש רגיל | session AuthZ + `is_system_admin()` + RLS | pgTAP לקריאת admin/רגיל ו־Playwright ל־not-found למשתמש רגיל |

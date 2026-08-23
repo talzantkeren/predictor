@@ -1,0 +1,152 @@
+{
+  "storedMatches": [
+    {
+      "id": "72000000-0000-4000-8000-000000000001",
+      "externalId": "contract-scheduled",
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "isManuallyOverridden": false
+    },
+    {
+      "id": "72000000-0000-4000-8000-000000000002",
+      "externalId": "contract-live",
+      "status": "live",
+      "homeScore": null,
+      "awayScore": null,
+      "isManuallyOverridden": false
+    },
+    {
+      "id": "72000000-0000-4000-8000-000000000003",
+      "externalId": "contract-finished",
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "isManuallyOverridden": false
+    },
+    {
+      "id": "72000000-0000-4000-8000-000000000004",
+      "externalId": "contract-postponed",
+      "status": "postponed",
+      "homeScore": null,
+      "awayScore": null,
+      "isManuallyOverridden": false
+    },
+    {
+      "id": "72000000-0000-4000-8000-000000000005",
+      "externalId": "contract-canceled",
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "isManuallyOverridden": false
+    },
+    {
+      "id": "72000000-0000-4000-8000-000000000006",
+      "externalId": "contract-override",
+      "status": "finished",
+      "homeScore": 4,
+      "awayScore": 0,
+      "isManuallyOverridden": true
+    }
+  ],
+  "initialSnapshot": [
+    {
+      "matchId": "contract-scheduled",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 1,
+      "homeTeam": { "teamId": "team-a", "name": "A", "shortName": "A" },
+      "awayTeam": { "teamId": "team-b", "name": "B", "shortName": "B" },
+      "kickoffAt": "2026-08-22T16:00:00.000Z",
+      "status": "scheduled"
+    },
+    {
+      "matchId": "contract-live",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 1,
+      "homeTeam": { "teamId": "team-c", "name": "C", "shortName": "C" },
+      "awayTeam": { "teamId": "team-d", "name": "D", "shortName": "D" },
+      "kickoffAt": "2026-08-22T18:00:00.000Z",
+      "status": "live",
+      "homeScore": 2,
+      "awayScore": 1
+    },
+    {
+      "matchId": "contract-finished",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 1,
+      "homeTeam": { "teamId": "team-e", "name": "E", "shortName": "E" },
+      "awayTeam": { "teamId": "team-f", "name": "F", "shortName": "F" },
+      "kickoffAt": "2026-08-21T16:00:00.000Z",
+      "status": "finished",
+      "homeScore": 1,
+      "awayScore": 1
+    },
+    {
+      "matchId": "contract-postponed",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 2,
+      "homeTeam": { "teamId": "team-g", "name": "G", "shortName": "G" },
+      "awayTeam": { "teamId": "team-h", "name": "H", "shortName": "H" },
+      "kickoffAt": "2026-08-29T16:00:00.000Z",
+      "status": "postponed"
+    },
+    {
+      "matchId": "contract-canceled",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 2,
+      "homeTeam": { "teamId": "team-i", "name": "I", "shortName": "I" },
+      "awayTeam": { "teamId": "team-j", "name": "J", "shortName": "J" },
+      "kickoffAt": "2026-08-29T18:00:00.000Z",
+      "status": "canceled"
+    },
+    {
+      "matchId": "contract-override",
+      "leagueId": "contract-league",
+      "competitionId": "contract-competition",
+      "seasonId": "2026-27",
+      "round": 2,
+      "homeTeam": { "teamId": "team-k", "name": "K", "shortName": "K" },
+      "awayTeam": { "teamId": "team-l", "name": "L", "shortName": "L" },
+      "kickoffAt": "2026-08-20T18:00:00.000Z",
+      "status": "finished",
+      "homeScore": 0,
+      "awayScore": 3
+    }
+  ],
+  "correctedSnapshot": {
+    "matchId": "contract-finished",
+    "leagueId": "contract-league",
+    "competitionId": "contract-competition",
+    "seasonId": "2026-27",
+    "round": 1,
+    "homeTeam": { "teamId": "team-e", "name": "E", "shortName": "E" },
+    "awayTeam": { "teamId": "team-f", "name": "F", "shortName": "F" },
+    "kickoffAt": "2026-08-21T16:00:00.000Z",
+    "status": "finished",
+    "homeScore": 2,
+    "awayScore": 1
+  },
+  "unknownStatusSnapshot": {
+    "matchId": "contract-finished",
+    "leagueId": "contract-league",
+    "competitionId": "contract-competition",
+    "seasonId": "2026-27",
+    "round": 1,
+    "homeTeam": { "teamId": "team-e", "name": "E", "shortName": "E" },
+    "awayTeam": { "teamId": "team-f", "name": "F", "shortName": "F" },
+    "kickoffAt": "2026-08-21T16:00:00.000Z",
+    "status": "halftime",
+    "homeScore": 1,
+    "awayScore": 1
+  }
+}

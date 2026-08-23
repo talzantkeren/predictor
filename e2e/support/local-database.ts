@@ -318,6 +318,78 @@ export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
   }
 }
 
+export function countSyncRunsInDisposableLocalDatabase() {
+  assertDisposableLocalDatabaseIsRunning();
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      "select count(*)::integer from public.sync_runs;",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const count = Number(result.stdout.trim());
+  if (
+    result.status !== 0 ||
+    !Number.isSafeInteger(count) ||
+    count < 0
+  ) {
+    throw new Error("Local sync-run count could not be read.");
+  }
+
+  return count;
+}
+
+export function removeSyncFixturesFromDisposableLocalDatabase({
+  runId,
+  systemAdminUserId,
+}: {
+  runId: string;
+  systemAdminUserId: string;
+}) {
+  assertCanonicalUuid(runId, "sync run");
+  assertCanonicalUuid(systemAdminUserId, "system administrator");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; delete from public.sync_runs where id = '${runId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = cleanup.stdout.trim().split(/\r?\n/);
+  if (
+    cleanup.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "DELETE 1" ||
+    output[2] !== "DELETE 1" ||
+    output[3] !== "COMMIT"
+  ) {
+    throw new Error("Local sync fixtures could not be removed safely.");
+  }
+}
+
 export function seedScoringMatchInDisposableLocalDatabase(
   ids: ScoringMatchFixtureIds,
 ) {

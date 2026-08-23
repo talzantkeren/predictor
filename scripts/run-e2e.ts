@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
@@ -130,6 +131,8 @@ function getLocalSupabaseEnvironment() {
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY,
     SUPABASE_SECRET_KEY: status.SECRET_KEY,
+    CRON_SECRET: randomBytes(32).toString("base64url"),
+    SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
     SPORTS_API_PROVIDER: "manual",
     DEMO_MODE: "true",
   };

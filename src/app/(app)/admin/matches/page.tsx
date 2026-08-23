@@ -39,12 +39,20 @@ export default async function SystemMatchesPage() {
             תוצאה נשמרת אטומית ומחשבת מחדש את הניקוד בכל הליגות של אותה עונה.
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="self-start rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-        >
-          חזרה לליגות
-        </Link>
+        <nav aria-label="ניווט ניהול" className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/sync"
+            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          >
+            סטטוס סנכרון
+          </Link>
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          >
+            חזרה לליגות
+          </Link>
+        </nav>
       </div>
 
       <aside className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
