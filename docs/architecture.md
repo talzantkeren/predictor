@@ -55,6 +55,7 @@ flowchart TD
 | Validation | Zod | schema אחד לכל גבול קלט שרת; אינו מחליף אילוצי DB |
 | Database | Supabase PostgreSQL | דרישת קורס, יחסים, transactions, constraints, RLS ופונקציות |
 | Authentication | Supabase Auth + `@supabase/ssr` | session מבוסס cookies ושילוב טבעי עם RLS |
+| Transactional Auth email | Custom SMTP דרך Supabase Auth ב־Hosted; Mailpit ב־Local/CI | מסירה אמינה, מכסה נשלטת והפרדת credentials מקוד האפליקציה |
 | Files | Supabase Storage private bucket | RLS, הפרדה מה־webroot ו־signed URLs |
 | Image hardening | `file-type` + `sharp` | בדיקת חתימה, פענוח וקידוד מחדש לקובץ תמונה בטוח יותר |
 | Scheduling | Supabase Cron + HTTP Route Handler | Vercel Hobby מוגבל ל־Cron יומי; Sync משחקים דורש תדירות גבוהה יותר |
@@ -108,7 +109,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 - `POST /api/join-requests/[requestId]/proofs` — multipart upload.
 - `GET /api/payment-proofs/[proofId]` — הרשאה והפניה ל־signed URL קצר־חיים.
 - `POST /api/cron/sync` — תיעוד ניסיון Sync מאומת דרך RPC אטומי יחיד.
-- `GET /auth/confirm` — החלפת PKCE code ב־session והפניה בטוחה ליעד פנימי.
+- `GET /auth/confirm` — אימות `token_hash` חד־פעמי או החלפת PKCE code בהתאם לחוזה התבנית הפעיל, יצירת session והפניה בטוחה ליעד פנימי.
 - `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
 ### 6.4 `proxy.ts`
@@ -125,13 +126,15 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 לא משתמשים בפרויקט חדש בשמות legacy `anon` ו־`service_role`. ה־secret client מוגדר בקובץ יחיד עם `import 'server-only'`, ואסור לייבא אותו מ־Client Component או מ־Service שאינו ברשימת הפעולות המורשות. ב־Slice 3 הצרכן היחיד שלו הוא שער Storage קבוע ל־bucket `payment-proofs`: ה־API המצומצם מקבל מזהי DB, גוזר נתיב פנימי ואינו חושף client כללי, bucket או path שרירותיים. הוא מקבל את טיפוס פלט ה־sanitizer ובודק מחדש WebP signature, גודל, ממדים ו־digest לפני upload; הוא רשאי למחוק object בפיצוי, לבדוק metadata פנימי וליצור signed URL רק לאחר הרשאת משאב.
 
-מפתחות Sports, AI ו־Cron הם משתני server-only ולעולם אינם מתחילים ב־`NEXT_PUBLIC_`.
+מפתחות Sports, AI ו־Cron הם משתני server-only ולעולם אינם מתחילים ב־`NEXT_PUBLIC_`. פרטי Custom SMTP מנוהלים רק בהגדרות Supabase Auth ואינם משתני סביבה של Next.js או Vercel.
 
 ### 7.2 Session
 
 Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`. אין לשמור access token ידנית ב־`localStorage`, אין להעביר Bearer token לשירות Backend נפרד ואין CORS פנימי, מפני שאין גבול origin נוסף.
 
-ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת token. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. המימוש הראשוני משתמש ב־PKCE ודורש את הדפדפן שיזם את הבקשה כדי להחליף code ב־session. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת invite secret. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+
+ב־Slice 10 תשתית ה־Hosted עוברת ל־Custom SMTP ולתבניות Auth מדויקות. חוזה היעד ל־SSR משתמש בקישור `token_hash` חד־פעמי אל `/auth/confirm`: אישור הרשמה מאומת בסוג `email`, ושחזור סיסמה בסוג `recovery`. ה־Handler מאמת באמצעות Supabase, יוצר cookies של session ומפנה מיד לנתיב פנימי ללא token; recovery תקף בלבד מוביל ל־`/update-password`, והעדכון מבוצע באמצעות `updateUser`. כך הזרימה אינה תלויה בדפדפן שיזם את הבקשה. מימוש זה חייב לשמר את cookie ה־return path של invite, לדחות type/next לא מורשים, להגדיר `private, no-store` ו־`Referrer-Policy: no-referrer`, ולטפל בקישור שפג או שכבר נצרך ללא גילוי מידע רגיש.
 
 גישת invite נפרדת מ־Auth session: הדפדפן קורא secret רק מ־URL Fragment,
 מחשב SHA-256 באמצעות Web Crypto ומחליף אותו דרך Route Handler same-origin. השרת
@@ -536,8 +539,9 @@ Services מחזירים error codes יציבים כגון:
 
 - Local: Supabase CLI + Next.js local; migrations ו־seed הם מקור האמת.
 - Test: מסד מקומי שנבנה מחדש לכל suite של DB/E2E.
-- Production: Vercel + Supabase hosted.
-- Preview: משתמש בפרויקט development נפרד אם קיים; אסור להריץ migrations של preview מול production.
+- Production: Vercel + Supabase hosted + Custom SMTP שמוגדר ב־Supabase Auth.
+- Preview: משתמש בפרויקט development נפרד אם קיים; אסור להריץ migrations של preview מול production. אם הוא שולח Auth email אמיתי, גם הוא משתמש ב־SMTP ייעודי ולא בשירות המובנה.
+- Local/CI: הודעות Auth נלכדות ב־Mailpit; בדיקות אוטומטיות אינן שולחות דוא״ל חיצוני.
 
 שינוי סכימה מבוצע רק ב־`supabase/migrations`. שינוי ידני ב־Dashboard חייב להימשך מיד ל־migration לפני המשך עבודה. אחרי כל שינוי סכימה מייצרים מחדש TypeScript types ומוודאים שאין diff.
 
@@ -565,6 +569,8 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Slice 7 עם ספק ידני | התקבל | ה־POC לא עבר; Data API אינו מחזיק session DB, ולכן ניסיון מורשה מתועד ב־RPC אטומי יחיד ומסלול ספק חי נדחה לחוזה lease/fencing |
 | advisory lock ברמת session דרך Data API | נדחה | connection אינו מוצמד ל־Route Handler והנעילה עלולה לדלוף ל־pool |
 | מסלול כסף אמיתי בגרסת הקורס | חסום | דורש שער ציות ומשתמשים בגיל מתאים; Demo בלבד |
+| שירות המייל המובנה ב־Hosted | נדחה ל־Production | מכסה נמוכה, כתובות מוגבלות ו־best-effort; Slice 10 מחייב Custom SMTP |
+| Auth email ב־Local/CI | Mailpit | דטרמיניזם וללא תלות או שליחה חיצונית |
 
 ## 22. התאמה לדרישות הקורס
 
@@ -579,6 +585,10 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 - [Next.js — Server Action body-size limit](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions)
 - [Supabase — API keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [Supabase — SSR client with cookies](https://supabase.com/docs/guides/auth/server-side/creating-a-client)
+- [Supabase — Custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
+- [Supabase — Password reset](https://supabase.com/docs/guides/auth/passwords)
+- [Supabase — Email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
+- [Supabase — Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
 - [Supabase — Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase — Database Functions](https://supabase.com/docs/guides/database/functions)
 - [Supabase — Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control)
