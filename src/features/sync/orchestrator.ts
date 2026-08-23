@@ -45,6 +45,7 @@ const safeFailureMessages: Record<string, string> = {
   PROVIDER_TIMEOUT: "The sports provider request timed out.",
   PROVIDER_UNAVAILABLE: "The sports provider is temporarily unavailable.",
   SYNC_APPLY_FAILED: "The validated provider batch could not be applied safely.",
+  SYNC_FINALIZE_FAILED: "The Sync run could not be finalized safely.",
 };
 
 function planFromClaim(claim: ClaimedSportsSync): SportsSyncPlan {
@@ -120,11 +121,19 @@ export async function runSportsSync(
     return { runId: claim.runId, status: "succeeded", reason: "SUCCEEDED" };
   } catch (error) {
     const failure = failureDetails(error);
-    await dependencies.finalize(input.systemActorId, claim, {
-      status: "failed",
-      ...failure,
-      operatorNotes,
-    });
+    try {
+      await dependencies.finalize(input.systemActorId, claim, {
+        status: "failed",
+        ...failure,
+        operatorNotes,
+      });
+    } catch {
+      return {
+        runId: claim.runId,
+        status: "failed",
+        reason: "SYNC_FINALIZE_FAILED",
+      };
+    }
     return {
       runId: claim.runId,
       status: "failed",

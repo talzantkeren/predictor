@@ -36,6 +36,10 @@ fixtures נצפים דורשים ארבעה fixture batches. retries הם GET-on
 threshold אוטומטי למכסה נמוכה יוגדר רק לאחר מדידה, במקום לנחש מדיניות שעלולה
 לעכב עדכון משחק חי.
 
+trigger ידני של מנהל יכול לעקוף due-window בלבד: `backoff_until` נאכף גם בו,
+ו־`last_forced_at` מגביל claim ידני אחד לדקה באופן עמיד. כך refresh או לחיצות
+חוזרות אינם מייצרים burst חדש מול הספק.
+
 ## Database ו־concurrency
 
 - `sync_leases` מחזיקה שורה אחת ל־provider. claim/finalize הם transactions

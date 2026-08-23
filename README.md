@@ -209,9 +209,13 @@ AI ו־finance נשארים Slices 8–9.
 - payload מנורמל בלבד עובר ב־batches ל־apply RPC. upsert נעשה לפי provider ID,
   `FT` בלבד עובר ל־`score_match` הקיימת, ו־manual override מדולג. apply/finalize
   דוחים token ישן או פג.
-- משחק שנצפה live/SUSP/INT/terminal מקבל latch מסדי שאינו נפתח מחדש לאחר
-  שינוי מועד. `AET/PEN` שומרים status/latch כ־review ללא ניקוד; stage לא מוכר
-  נשמר lossless בקטלוג ואינו ממופה בשקט למחזור UI.
+- משחק שנצפה live/SUSP/INT/FT/AET/PEN מקבל latch מסדי שאינו נפתח מחדש לאחר
+  שינוי מועד. קוד ביטול לבדו אינו קובע latch לפני kickoff; ביטול עתידי ללא
+  latch יכול לחזור בבטחה ל־scheduled/postponed ומאפס metadata של ניקוד למצב
+  unscored. `AET/PEN` נשמרים כ־review ללא ניקוד, מוחרגים מ־targeted ומוצגים
+  כ־"דורש בדיקה". fixture עם regression לא־בטוח מבודד ואינו מפיל את ה־batch.
+- ב־`/leagues/new` עונת Demo ועונת הספק מסומנות במקורן, גם כאשר שם התחרות
+  ושם העונה זהים.
 - `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ריצות, lifecycle, counters,
   quota והערות review בטוחות, ומאפשר trigger ידני באותה lease. רק
   `status='failed'` הוא כשל.
@@ -260,7 +264,9 @@ AI ו־finance נשארים Slices 8–9.
 12. לבצע canary: `NS` → live → prediction נשאר נעול → `FT` מתוך
     `score.fulltime` → scoring דטרמיניסטי → leaderboard.
 13. לבדוק retry זהה, correction `FT→FT` ו־manual override מול refresh.
-14. rollback תפעולי הוא `SPORTS_API_PROVIDER=manual` ו־redeploy. הוא אינו מוחק
+14. לבדוק ביטול עתידי ללא חשיפת ניחושים, reactivation ואיפוס scoring metadata,
+    וכן ש־AET/PEN מוצגים כ־"דורש בדיקה" ואינם תופסים targeted slot.
+15. rollback תפעולי הוא `SPORTS_API_PROVIDER=manual` ו־redeploy. הוא אינו מוחק
     provider data ואינו מחזיר migration לאחור.
 
 דוגמת Cron קיימת נשארת POST עם `Content-Type: application/json` ו־Bearer

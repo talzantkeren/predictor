@@ -709,6 +709,7 @@ export type Database = {
           fencing_token: string | null
           generation: number
           last_catalog_at: string | null
+          last_forced_at: string | null
           last_reconciliation_at: string | null
           last_targeted_at: string | null
           locked_until: string | null
@@ -721,6 +722,7 @@ export type Database = {
           fencing_token?: string | null
           generation?: number
           last_catalog_at?: string | null
+          last_forced_at?: string | null
           last_reconciliation_at?: string | null
           last_targeted_at?: string | null
           locked_until?: string | null
@@ -733,6 +735,7 @@ export type Database = {
           fencing_token?: string | null
           generation?: number
           last_catalog_at?: string | null
+          last_forced_at?: string | null
           last_reconciliation_at?: string | null
           last_targeted_at?: string | null
           locked_until?: string | null

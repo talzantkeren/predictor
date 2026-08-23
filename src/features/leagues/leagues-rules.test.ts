@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getSeasonSourceLabel } from "@/features/leagues/display";
 import { getSafeLeagueErrorMessage } from "@/features/leagues/errors";
 import {
   createLeagueSchema,
@@ -27,6 +28,11 @@ const validLeagueInput = {
 };
 
 describe("league fields", () => {
+  it("labels identical season names by their catalog provenance", () => {
+    expect(getSeasonSourceLabel("api-football")).toBe("API-Football");
+    expect(getSeasonSourceLabel(null)).toBe("Demo");
+  });
+
   it("trims a valid league name", () => {
     expect(leagueNameSchema.parse("  ליגת בדיקה  ")).toBe("ליגת בדיקה");
   });

@@ -85,7 +85,7 @@ describe("API-Football domain normalization", () => {
       ET: ["live", true], BT: ["live", true], P: ["live", true], LIVE: ["live", true],
       PST: ["postponed", false], SUSP: ["postponed", true], INT: ["postponed", true],
       FT: ["finished", true], AET: ["finished", true], PEN: ["finished", true],
-      CANC: ["canceled", true], ABD: ["canceled", true], AWD: ["canceled", true], WO: ["canceled", true],
+      CANC: ["canceled", false], ABD: ["canceled", false], AWD: ["canceled", false], WO: ["canceled", false],
     } as const;
 
     for (const [status, [normalizedStatus, locks]] of Object.entries(expected)) {

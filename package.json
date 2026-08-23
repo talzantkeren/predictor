@@ -18,6 +18,7 @@
     "test:e2e": "tsx scripts/run-e2e.ts",
     "test:e2e:preview": "tsx scripts/run-e2e.ts --external-smoke",
     "test:e2e:run": "tsx scripts/run-e2e.ts --skip-build",
+    "test:client-secrets": "tsx scripts/check-client-secret-absence.ts",
     "preview:local": "tsx scripts/run-e2e.ts --skip-build --serve-only",
     "types:db": "supabase gen types typescript --local > src/types/database.generated.ts",
     "types:check": "tsx scripts/check-database-types.ts",

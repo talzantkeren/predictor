@@ -398,13 +398,16 @@
   חדש מגדרים את העבודה אחרי HTTP. apply/finalize נועלים את אותה שורה ומאמתים
   provider/run/generation/token/expiry בתחילה; apply בודקת expiry שוב בסוף כך
   ש־commit אחרי expiry עושה rollback. reclaim מסיים run נטוש ומבטל token ישן.
-- apply מקבלת עד batch מתועד, מאמתת כל field שוב, מדלגת על manual override
-  וקוראת ל־`score_match` הקיימת בתוך אותה transaction רק עבור `FT` עם
-  `score.fulltime` תקין. אין כתיבת points ישירה, live score, AET/PEN scoring או
-  terminal regression אוטומטי.
+- apply מקבלת batch חסום, מאמתת כל field שוב, מדלגת על manual override
+  וקוראת ל־`score_match` בתוך אותה transaction עבור `FT` עם `score.fulltime`
+  תקין או עבור reactivation צר שמאפס scoring metadata. fixture עם regression
+  לא־בטוח מבודד, שומר provider status והערת מפעיל חסומה ואינו מבטל peers.
 - `predictions_locked_at` הוא latch שאינו ניתן לאיפוס על ידי provider apply.
-  `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/terminal ואחריהם
-  reschedule עתידי נשארים נעולים.
+  `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/FT/AET/PEN ואחריהם
+  reschedule עתידי נשארים נעולים. CANC/ABD/AWD/WO נועלים רק אם DB time הגיע
+  למועד קנוני או שהיה latch קודם, ולכן ביטול מוקדם אינו מפר את PRED-05.
+- force של מנהל עוקף due-window בלבד. backoff נאכף תמיד ו־`last_forced_at`
+  מגביל ניסיון ידני לניסיון אחד בדקה גם בין invocations/processes.
 - `/admin/sync` ו־manual trigger דורשים session ו־system-admin resource AuthZ.
   Server Action משתמשת בהגנת same-origin של Next.js, אינה שולחת secret
   לדפדפן וקוראת לאותה orchestration/lease. משתמש רגיל ומנהל ליגה מקבלים
@@ -412,10 +415,10 @@
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| key ב־browser/log/fixture | server-only env, fixed client, redaction ו־bundle/diff scan | env/client/unit, Playwright HTML/network וחיפוש repository |
+| key ב־browser/log/fixture | server-only env, fixed client, redaction ו־sentinel build scan | env/client/unit; build עם sentinel וסריקת HTML/client artifacts; חיפוש repository |
 | SSRF או endpoint אסור | URL constant ו־methods purpose-specific בלבד | client tests לכל endpoint ושבירת query/ID לא קנוני |
 | payload גדול/לא תקין | streaming cap + Zod + DB batch/field validation | size/JSON/schema/unit ו־apply rollback ב־pgTAP |
 | שתי ריצות או worker ישן | row claim + generation/token/expiry, start/end fencing | concurrent claim, reclaim, wrong/stale/expired token |
 | merge של Demo או קבוצה שגויה | provider IDs ו־unique indexes בלבד | name/code collision, Demo snapshot unchanged, codes כפולים |
-| פתיחת prediction אחרי live | DB latch בלתי־הפיך | live/SUSP/INT, kickoff עתידי ואז save/RLS denial |
+| חשיפה או פתיחה שגויה סביב ביטול | DB-time latch, PRED-05 RLS ו־reactivation צר | ביטול מוקדם בין שני משתמשים, איפוס scoring, leaderboard ו־save חוזר; live/SUSP/INT נשארים נעולים |
 | ניקוד לא רשמי/כפול | FT+fulltime בלבד ו־`score_match` הקיימת | live/AET/PEN/score חסר, retry, correction ו־audit source |

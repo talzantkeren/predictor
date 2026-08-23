@@ -322,6 +322,46 @@ describe("API-Football bounded apply planning", () => {
     });
   });
 
+  it("retains terminal review evidence when the round also requires review", () => {
+    const reviewFixture = {
+      ...normalizedFixture(4),
+      status: "finished" as const,
+      providerStatus: "AET",
+      locksPredictions: true,
+      resultDisposition: "review" as const,
+      reviewCode: "ROUND_REQUIRES_REVIEW",
+    };
+
+    expect(buildApiFootballApplyPlan(snapshot([reviewFixture]))).toMatchObject({
+      operatorNotes: [
+        "AET_REQUIRES_REVIEW:2000004",
+        "ROUND_REQUIRES_REVIEW:2000004",
+      ],
+      batches: [{ fixtures: [] }],
+    });
+  });
+
+  it("bounds operator notes with an explicit overflow marker", () => {
+    const fixtures = Array.from({ length: 110 }, (_, index) => ({
+      ...normalizedFixture(index),
+      reviewCode: "ROUND_REQUIRES_REVIEW",
+    }));
+    const plan = buildApiFootballApplyPlan(snapshot(fixtures));
+
+    expect(plan.operatorNotes).toHaveLength(100);
+    expect(plan.operatorNotes.at(-1)).toBe("OPERATOR_NOTES_TRUNCATED:11");
+  });
+
+  it("rejects snapshots that cannot fit the finalize fixtures-seen contract", () => {
+    expect(() =>
+      buildApiFootballApplyPlan(
+        snapshot(
+          Array.from({ length: 1_001 }, (_, index) => normalizedFixture(index)),
+        ),
+      ),
+    ).toThrow("at most 1000 fixtures");
+  });
+
   it("carries an unknown fixture team into targeted apply by provider ID", () => {
     const targeted = snapshot([normalizedFixture(3)]);
     targeted.plan = { kind: "targeted", fixtureIds: ["2000003"] };

@@ -12,6 +12,7 @@ import {
   formatDateTimeInTimeZone,
   getCountdownSeconds,
   getMatchStatusLabel,
+  getProviderReviewLabel,
   isKickoffLocked,
 } from "@/features/predictions/display";
 import { getMatchDetail } from "@/features/predictions/queries";
@@ -91,6 +92,9 @@ export default async function MatchDetailPage({
     data.match.status === "finished" &&
     data.match.homeScore !== null &&
     data.match.awayScore !== null;
+  const providerReviewLabel = getProviderReviewLabel(
+    data.match.providerStatus,
+  );
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -131,8 +135,14 @@ export default async function MatchDetailPage({
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" aria-labelledby="match-information-title">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="match-information-title" className="text-xl font-bold">פרטי המשחק</h2>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800">
-            {getMatchStatusLabel(data.match.status)}
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-semibold ${
+              providerReviewLabel
+                ? "bg-amber-100 text-amber-900"
+                : "bg-slate-100 text-slate-800"
+            }`}
+          >
+            {providerReviewLabel ?? getMatchStatusLabel(data.match.status)}
           </span>
         </div>
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 text-center">

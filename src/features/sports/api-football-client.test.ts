@@ -38,7 +38,7 @@ function clientWithTransport(
 }
 
 describe("API-Football client contract", () => {
-  it("uses the fixed origin, GET, and only the documented application header", async () => {
+  it("uses the fixed origin, GET, and only the documented application headers", async () => {
     const transport = vi.fn<ApiFootballTransport>(async (request) => {
       const headers = new Headers(request.init.headers);
       expect(request.url).toBe(
@@ -46,6 +46,7 @@ describe("API-Football client contract", () => {
       );
       expect(request.init.method).toBe("GET");
       expect([...headers.entries()]).toEqual([
+        ["accept", "application/json"],
         ["x-apisports-key", "recorded-test-key"],
       ]);
       return jsonResponse(leagueEnvelope);
@@ -229,6 +230,17 @@ describe("API-Football client contract", () => {
     expect(transport).toHaveBeenCalledTimes(1);
     expect(caught).toMatchObject({ code: "PROVIDER_AUTH_FAILED" });
     expect(String(caught)).not.toContain("recorded-test-key");
+  });
+
+  it("cancels an unconsumed non-retryable response body", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ cancel });
+
+    await expect(
+      clientWithTransport(async () => new Response(body, { status: 400 }))
+        .getLeague(),
+    ).rejects.toMatchObject({ code: "PROVIDER_BAD_RESPONSE" });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it.each([429, 499, 500, 503])(

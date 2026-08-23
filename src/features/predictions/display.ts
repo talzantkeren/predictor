@@ -32,6 +32,12 @@ export function getMatchStatusLabel(status: MatchStatus) {
   return matchStatusLabels[status];
 }
 
+export function getProviderReviewLabel(providerStatus: string | null) {
+  return providerStatus === "AET" || providerStatus === "PEN"
+    ? "דורש בדיקה"
+    : null;
+}
+
 export function getPredictionStateLabel(state: PredictionDisplayState) {
   return predictionStateLabels[state];
 }

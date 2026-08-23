@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.8 |
-| תאריך עדכון | 23 באוגוסט 2026 |
+| גרסה | 2.9 |
+| תאריך עדכון | 24 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
 
@@ -232,9 +232,14 @@ stateDiagram-v2
 
 ### 9.3 משחק
 
-`scheduled` ↔ `postponed` → `live` → `finished`, או `scheduled/postponed` → `canceled`.
+`scheduled` ↔ `postponed` → `live` → `finished`, או `scheduled/postponed` →
+`canceled`. ספק רשאי להחזיר משחק שבוטל ל־`scheduled`/`postponed` רק כאשר לא
+נרשמה התחלה: אין `predictions_locked_at`, המועד החדש בעתיד והמשחק אינו
+`manual override`. מעבר כזה הוא reactivation מפורש ולא regression רגיל.
 
-מועד הנעילה אינו נשמר בשדה נפרד: הוא נגזר מ־`matches.kickoff_at`, כדי ששינוי מועד לא ייצור סתירה.
+`kickoff_at` הוא גבול הזמן הראשי. `predictions_locked_at` הוא latch נוסף שנקבע
+רק לאחר שהמערכת כבר התירה חשיפה לפי המועד או צפתה במצב שמוכיח התחלה/הפסקה/
+סיום; לכן ביטול מוקדם לבדו אינו חושף ניחושים לפני הפתיחה.
 
 ## 10. ניקוד ודירוג
 
@@ -267,6 +272,12 @@ stateDiagram-v2
 הפונקציה **אינה** עושה `points = points + x`. לכן ריצה כפולה, retry או תיקון תוצאה אינם מכפילים ניקוד.
 
 תוצאה ידנית ותוצאה מספק עוברות באותו חוזה. `is_manually_overridden = true` מונע מ־Sync עתידי לדרוס תיקון עד שמנהל מערכת מסיר את הדגל.
+
+הרחבה צרה של אותו חוזה מטפלת ב־reactivation מצד `api-football`: רק משחק
+`canceled` ללא latch, עם מועד עתידי מאומת ויעד `scheduled`/`postponed`, רשאי
+לחזור למצב פתוח. באותה טרנזקציה `score_match` מעלה את `result_version` ומחזירה
+את כל הניחושים למצב הקנוני "טרם נוקד": `points=0` וכל metadata הניקוד `null`.
+אין כתיבת ניקוד מתוך apply ואין פונקציית ניקוד מתחרה. הפעולה נרשמת ב־audit.
 
 ### 10.3 דירוג
 
@@ -314,7 +325,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `join_requests` | המשתמש רואה את שלו; מנהל רואה בקשות של הליגה שלו |
 | `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
 | `league_members` | חברי אותה ליגה רואים חברות פעילה; שינוי דרך פעולות ניהול מוגנות |
-| `predictions` | חבר פעיל רואה את התחזית שלו לפני ואחרי `kickoff_at`; חברים פעילים אחרים באותה ליגה רואים אותה רק ב־`kickoff_at` או אחריו; חבר שהוסר מאבד גישה; הבעלים כותב רק כל עוד הוא חבר פעיל ולפני `kickoff_at` |
+| `predictions` | חבר פעיל רואה את התחזית שלו לפני ואחרי הנעילה; חברים פעילים אחרים באותה ליגה רואים אותה רק כאשר `now() >= kickoff_at` או לאחר latch שמוכיח שהחשיפה כבר החלה; חבר שהוסר מאבד גישה; הבעלים כותב רק כל עוד הוא חבר פעיל, לפני `kickoff_at` וללא latch |
 | `ai_match_analyses` | חבר פעיל בליגה הכוללת את המשחק |
 | `audit_logs` | מנהל רלוונטי או מנהל מערכת; append דרך שרת/פונקציות בלבד |
 | `sync_runs` | מנהל מערכת בלבד; append דרך RPC מערכת מצומצם בלבד |
@@ -411,7 +422,8 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
    קטלוג, reconciliation או targeted refresh הם due, ומונעת lease מקביל.
 3. claim מוצלח מגדיל `generation` מונוטוני, יוצר token UUID חדש שאינו ממוחזר,
    יוצר `sync_runs.status='running'` ומגדיר `locked_until`. manual trigger רשאי
-   לעקוף due-window אך לא lease פעיל.
+   לעקוף due-window אך לא lease פעיל, provider backoff או cooldown עמיד של דקה
+   בין ניסיונות force; כך לחיצות מנהל אינן יוצרות retry storm.
 4. אם lease קודם פג, ה־claim מסיים את הריצה הנטושה כ־`failed/LEASE_EXPIRED`
    לפני reclaim. אם lease עדיין פעיל, ניסיון מורשה נרשם סופית כ־
    `skipped/CONCURRENT_ATTEMPT`. `NOT_DUE` אינו נשמר.
@@ -420,7 +432,9 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
    אינו קורא לספק; PostgreSQL הוא מקור האמת לכל דף משתמש.
 6. apply RPC מקבלת רק payload פנימי מנורמל וחסום. היא נועלת את שורת ה־lease
    ומאמתת run, provider, generation, token ו־expiry לפני mutation ושוב בסוף
-   הטרנזקציה. בדיקת הסיום גורמת rollback מלא אם ה־lease פג בזמן batch.
+   הטרנזקציה. בדיקת הסיום גורמת rollback מלא אם ה־lease פג בזמן batch. fixture
+   עם regression לא־בטוח מוכנס ל־review ונעשה לו skip מקומי; הוא אינו מפיל
+   fixtures תקינים אחרים באותו batch.
 7. תוצאת `FT` רשמית עוברת ל־`score_match` הקיימת מתוך אותו wrapper ובאותה
    טרנזקציה. אין שכפול ניקוד ב־TypeScript או SQL. `is_manually_overridden=true`
    גורם skip מדיד ואינו נדרס.
@@ -446,6 +460,8 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
   ומחזורים נוספים.
 - משחקים חיים, משחקים שמועדיהם קרובים ומשחקים שעדיין אינם terminal אחרי
   kickoff מתרעננים בבקשת `ids` ממוקדת בערך פעם בדקה, עד 20 IDs לבקשה.
+- `provider_status` טרמינלי שאינו בר־ניקוד, ובפרט `AET`/`PEN`, הוא מקור review
+  עמיד ואינו נשאר ב־targeted polling. הוא ממשיך להתגלות ב־reconciliation.
 - 429/`Retry-After` מעדכן `backoff_until`; quota headers נשמרים כאיתות תפעולי.
   מדיניות threshold אוטומטית למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry
   storm ואין polling כל 15 שניות.
@@ -468,9 +484,19 @@ live אינם נשמרים כתוצאה. `AET` ו־`PEN` מזוהים ונשמר
 status לא מוכר מכשיל את ה־snapshot לפני mutation.
 
 `matches.predictions_locked_at` הוא latch מסדי בלתי־הפיך של נעילת ספק. הוא
-נקבע כאשר נצפה live, `SUSP`, `INT` או terminal, ואינו מתאפס בשינוי מועד או
-status מאוחר. `save_prediction`, RLS של חשיפה וה־UI בודקים אותו בנוסף ל־
-`kickoff_at`; לכן reschedule לאחר צפייה בחלק מהמשחק אינו פותח ניחושים מחדש.
+נקבע כאשר נצפה live, `SUSP`, `INT`, `FT`, `AET` או `PEN`. עבור כל משפחת
+הביטול `CANC`/`ABD`/`AWD`/`WO`, הקוד החיצוני לבדו אינו מוכיח התחלה: latch
+נקבע רק אם היה latch קודם או שזמן המסד כבר הגיע למועד הקנוני השמור או למועד
+החדש המאומת מהספק (וב־fixture חדש — למועד החדש בלבד). כך שינוי מועד יחד עם
+ביטול אינו יכול להחזיר חשיפה לאחור, וביטול מוקדם אינו מפר את PRED-05.
+
+`save_prediction`, RLS של החשיפה וה־UI בודקים latch בנוסף ל־`kickoff_at`.
+משחק `canceled` ללא latch יכול לעבור אוטומטית חזרה ל־`scheduled`/`postponed`
+רק עם kickoff עתידי; `score_match` מאפסת אטומית את metadata הניקוד למצב טרם
+נוקד. finished, live או canceled עם latch אינם נפתחים מחדש. regression כזה
+אינו מפיל batch: מצב המשחק הבטוח נשמר, `provider_status` האחרון נשמר כראיית
+review ונוספת הערת מפעיל חסומה. `AET`/`PEN` מוצגים כ־"דורש בדיקה" על סמך
+`provider_status`, אינם מוצגים כמשחק live ואינם תופסים slot של targeted.
 
 ## 15. ניתוח AI
 
@@ -596,6 +622,8 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Slice 7 manual-only | הוחלף | Slice 7b מוסיף API-Football provider-owned catalog ו־Sync מלא; המסלול הידני נשמר ללא mutation |
 | lease לספק חי | התקבל | Data API אינו מצמיד connection; row lease עמיד עם generation/token/expiry מגן על HTTP שחוצה transactions |
 | תוצאת AET/PEN אוטומטית | נדחה לעת עתה | מדיניות המוצר היא זמן חוקי, אך ה־POC לא הוכיח שדה 90 דקות מתאים; הרשומה נכנסת ל־review ללא scoring |
+| ביטול מוקדם ו־reactivation | התקבל | PRED-05 גובר על סיווג terminal כללי: ביטול לפני חשיפה אינו קובע latch; רק canceled ללא latch ומועד עתידי יכול להיפתח מחדש, עם איפוס ניקוד אטומי דרך `score_match` |
+| regression יחיד מפיל batch | נדחה | fixture לא־בטוח נשמר ל־review ומדולג מקומית כדי שקטלוג ו־reconciliation ימשיכו לעבד נתונים תקינים |
 | advisory lock ברמת session דרך Data API | נדחה | connection אינו מוצמד ל־Route Handler והנעילה עלולה לדלוף ל־pool |
 | מסלול כסף אמיתי בגרסת הקורס | חסום | דורש שער ציות ומשתמשים בגיל מתאים; Demo בלבד |
 

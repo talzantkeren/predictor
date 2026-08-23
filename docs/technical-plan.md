@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.3 |
-| תאריך עדכון | 23 באוגוסט 2026 |
-| סטטוס | Slice 7b implemented locally; hosted provisioning/canary follows approved merge, then Slice 8 |
+| גרסה | 3.4 |
+| תאריך עדכון | 24 באוגוסט 2026 |
+| סטטוס | Slice 7b review hardening; hosted provisioning/canary follows approved merge, then Slice 8 |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -237,6 +237,7 @@ DEMO_MODE=true
 | 008 `operations_and_ai` | טבלת `system_admins` הוקדמה ל־Slice 6. Slice 7 יצר `sync_runs` ו־RPC ידני; Slice 7b מוסיף forward-only את lease/fencing, lifecycle וקאונטרים לספק חי. analyses נשארים ל־Slice 8 | זהות מערכת מצומצמת, manual fallback, claim/apply/finalize מגודרים והרשאות browser חסומות |
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 | 010 `slice7b_api_football_sync` | external identity לעונה, round label, irreversible prediction lock, `sync_leases`, הרחבת `sync_runs` ו־RPCs claim/apply/finalize | upsert לפי provider ID בלבד, token ישן/פג נדחה, RLS/grants ופונקציות service-only נבדקים |
+| 011 `slice7b_review_hardening` | תיקון forward-only ל־cancellation latch/reactivation, quarantine של regression, cooldown ל־force והרחבה צרה של `score_match` לאיפוס מצב unscored | ביטול מוקדם אינו חושף; reactivation בטוח; fixture חריג אינו מפיל batch; אין retry storm |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -314,7 +315,8 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 - `provider_status text null` — קוד הסטטוס האחרון שאומת מהספק, כולל
   `AET`/`PEN` review-only שאינם תוצאה רשמית אוטומטית.
 - `predictions_locked_at timestamptz null` — latch בלתי־הפיך שנקבע עם
-  live/interrupted/terminal ומונע פתיחה מחדש לאחר reschedule.
+  live/interrupted/FT/AET/PEN. ביטול קובע אותו רק אחרי שה־kickoff הקנוני הגיע
+  או כאשר היה latch קודם; ביטול מוקדם לבדו אינו חושף ניחושים.
 - `external_provider`, `external_id`, timestamps.
 - checks: קבוצות שונות; score קיים רק ל־`finished`; canceled ללא score.
 
@@ -506,7 +508,8 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 פרמטרים מינימליים:
 
 - `p_match_id`.
-- `p_status` (`finished` או `canceled`).
+- `p_status` (`finished` או `canceled`; `scheduled`/`postponed` מותרים רק
+  ל־reactivation צר של API-Football).
 - `p_home_score`, `p_away_score` כאשר finished.
 - `p_is_manual_override boolean`.
 - `p_source text` לצורכי audit.
@@ -528,8 +531,11 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 4. עדכון result ו־version רק כאשר השתנו.
 5. set-based overwrite של כל prediction fields לפי חוקי כל ליגה.
 6. canceled מאפס נקודות ומסמן flags false בלי למחוק תחזיות.
-7. audit תוצאה ותיקון.
-8. commit אחד.
+7. reactivation מותר רק מ־`canceled`, ללא latch/manual override, עם source
+   `api-football` ומועד עתידי. הוא מחזיר `points=0` וכל metadata הניקוד ל־null
+   באותה transaction; אין כתיבה ישירה מ־apply.
+8. audit תוצאה, תיקון ו־reactivation.
+9. commit אחד.
 
 `SECURITY DEFINER` functions משתמשות ב־`set search_path = ''`, שמות schema מלאים והרשאות EXECUTE מצומצמות.
 
@@ -560,6 +566,8 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 - נועלת את שורת `sync_leases`, מסיימת run נטוש אחרי expiry ומגדילה generation.
 - בודקת due עבור catalog (12 שעות), reconciliation (6 שעות) ו־targeted
   (כדקה, עד 20 fixture IDs). quota/backoff יכולים לדחות עבודה משנית.
+- force של מנהל עוקף due-window בלבד; הוא אינו עוקף `backoff_until` ומוגבל
+  באמצעות `last_forced_at` עמיד לניסיון אחד בדקה.
 - `NOT_DUE` אינו יוצר run. lease פעיל יוצר skip סופי `CONCURRENT_ATTEMPT`.
 - claim מוצלח יוצר `running`, token UUID חדש ו־`locked_until` של 120 שניות
   ומחזיר plan typed. אין קריאת ספק או mutation לקטלוג ב־RPC הזה.
@@ -575,8 +583,11 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 - upsert נעשה רק לפי `(external_provider, external_id)`; Demo rows עם IDs
   ריקים אינם מועמדים לעדכון. season, round label, teams ו־matches נשמרים
   provider-owned.
-- manual override מדולג ונמדד. transitions מסוכנים נדחים. `AET/PEN` שומרים
-  provider status ו־latch עם operator note, אך אינם מחילים result או scoring.
+- manual override מדולג ונמדד. reactivation בטוח מאפס scoring דרך
+  `score_match`; regression אחר שומר את מצב המשחק, מעדכן `provider_status`,
+  מוסיף note חסום ומדלג רק על ה־fixture במקום להפיל batch. `AET/PEN` שומרים
+  provider status ו־latch עם operator note, אך אינם מחילים result או scoring
+  ואינם נשארים ב־targeted polling.
 - `FT` תקין קורא ל־`score_match(..., false, 'api-football')` באותה transaction.
   אין כתיבת points אחרת ואין לוגיקת ניקוד משוכפלת.
 
@@ -584,6 +595,9 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 
 - מאמתת את אותו fencing ואת ה־lease שלא פג, כותבת counters וקוד/הודעה בטוחים,
   מעבירה את run ל־`succeeded` או `failed` ומשחררת את ה־lease באותה transaction.
+- ה־planner מגביל operator notes ל־100 עם marker מפורש של truncation ומאמת את
+  `fixtures_seen` לפני apply, כך ש־validation של finalize אינו נכשל אחרי commit
+  של batches. כשל finalize במסלול recovery ממופה לתוצאה typed ואינו דולף.
 - הצלחה מעדכנת את זמן ה־catalog/targeted/reconciliation המתאים. 429 מגדיר
   `backoff_until` חסום; quota remaining נשמר כאיתות תפעולי בטוח.
 - token ישן, provider/run שגויים או finalize כפול נדחים ללא mutation.
@@ -810,12 +824,12 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - actor חסר/שגוי/שהוסר נדחה ללא כתיבת `sync_runs` או `audit_logs`.
 - שתי sessions מוכיחות `CONCURRENT_ATTEMPT` בזמן xact lock מוחזק,
   `MANUAL_PROVIDER` לאחר שחרורו, ושאין session lock דולף.
-- `sync_leases` ו־RPCs החיים: `NOT_DUE` ללא run, claim יחיד, concurrent,
+- `sync_leases` ו־RPCs החיים: `NOT_DUE` ללא run, claim יחיד בשתי sessions אמיתיות, concurrent,
   reclaim שמסיים abandoned run, generation/token ישן או פג, apply/finalize
   atomicity והרשאות service-only.
 - upsert provider-owned idempotent, Demo/name collision לא מתמזגים, round label
-  נשמר, override מדולג, transitions מסוכנים נדחים ו־live/reschedule אינו פותח
-  predictions.
+  נשמר, override מדולג, regression יחיד מבודד, cancellation מוקדם אינו חושף,
+  reactivation מאפס scoring metadata ו־live/reschedule אינו פותח predictions.
 - `FT`, correction ו־retry מפעילים את `score_match` הקיים; כשל batch אינו
   משנה points ו־audit source הוא `api-football`.
 
@@ -837,10 +851,13 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 8. proof ID של בקשה אחרת אינו נגיש.
 9. AI provider mocked נופל והניחוש עדיין עובד.
 10. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; manual נרשם כ־
-    `skipped/MANUAL_PROVIDER`; fake API-Football מכסה success/not-due/
-    concurrent/failure, מנהל רואה status ו־trigger ומשתמש רגיל נדחה.
-11. provider-owned fixture מוצג במחזור הנכון, suspension/reschedule אינו פותח
-    ניחוש, ואין browser request או key של API-Football ב־HTML/network/bundle.
+    `skipped/MANUAL_PROVIDER`; מנהל רואה lifecycle seeded ו־trigger ומשתמש רגיל
+    נדחה. success/not-due/concurrent/failure של ספק נבדקים בשילוב Vitest+pgTAP,
+    לא באמצעות מתג provider מזויף בתהליך Production.
+11. provider-owned fixture seeded מוצג במחזור הנכון, `AET/PEN` מוצג כ־review
+    ולא כ־live ואינו פותח ניחוש, ו־build עם key sentinel מוכיח שאין key
+    ב־HTML/client bundle.
+    transport tests מוכיחים בנפרד שאין browser/provider fallback חי.
 
 ### 14.4 Contract tests
 
@@ -1010,16 +1027,19 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 - full provider round label נשמר. רק `Regular Season - N` נכנס אוטומטית ל־
   `round_number`; stage עתידי לא מוכר נכנס ל־review בלי collision.
 - status map מפורש לכל הקודים המתועדים. live scores אינם official; `FT` משתמש
-  רק ב־`score.fulltime`; AET/PEN שומרים status/latch כ־review ללא scoring עד
-  החלטת מוצר.
-- `predictions_locked_at` מונע re-open אחרי live/SUSP/INT/terminal גם אם
-  kickoff/status משתנים מאוחר יותר.
+  רק ב־`score.fulltime`; AET/PEN שומרים provider status/latch כ־review ללא
+  scoring, מוצגים כ־"דורש בדיקה" ואינם נשארים ב־targeted עד החלטת מוצר.
+- `predictions_locked_at` מונע re-open אחרי live/SUSP/INT/FT/AET/PEN. משפחת
+  הביטול נועלת רק אם המועד הקנוני כבר הגיע או שהיה latch; ביטול מוקדם אינו
+  חושף, ו־reactivation ללא latch מאפס scoring metadata ומאפשר ניחוש עד המועד
+  החדש.
 - row lease עם generation מונוטוני, token UUID ו־120s expiry; HTTP מחוץ ל־DB,
   fencing בתחילת וסוף apply/finalize, reclaim ל־abandoned run ו־`NOT_DUE` ללא
   שורת run.
-- apply חסום ואידמפוטנטי, אינו נוגע ב־Demo או override, ו־FT קורא לניקוד Slice
-  6 באותה transaction. batches יכולים להשאיר catalog חלקי אך עקבי וניתן ל־retry;
-  תוצאה וניקוד אינם חלקיים.
+- apply חסום ואידמפוטנטי, אינו נוגע ב־Demo או override, ו־FT/reactivation
+  קוראים לחוזה הניקוד של Slice 6 באותה transaction. regression חריג מבודד ולא
+  מפיל batch; batches יכולים להשאיר catalog חלקי אך עקבי וניתן ל־retry, ותוצאה
+  וניקוד של משחק יחיד אינם חלקיים.
 - `/admin/sync` מוסיף trigger מאומת באותה orchestration ומציג lifecycle,
   counters, quota ו־operator notes בטוחים. הרשימה נשארת מוגבלת ל־100.
 

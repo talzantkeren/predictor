@@ -235,12 +235,6 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       admin.page.locator("article").filter({ hasText: observabilityRunIds.concurrent }).getByText(/סיבת דילוג:/),
     ).toBeVisible();
 
-    const providerBrowserRequests: string[] = [];
-    admin.page.on("request", (request) => {
-      if (request.url().includes("football.api-sports.io")) {
-        providerBrowserRequests.push(request.url());
-      }
-    });
     await admin.page.getByRole("button", { name: "הפעלת סנכרון" }).click();
     await expect(
       admin.page.getByText("המערכת מוגדרת לספק ידני ולכן לא נשלחה קריאת רשת."),
@@ -252,8 +246,11 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       throw new Error("The manual admin trigger did not return a safe run ID.");
     }
     cleanup.runIds.push(actionRunId);
-    expect(providerBrowserRequests).toEqual([]);
-    expect(await admin.page.content()).not.toContain("x-apisports-key");
+
+    await ordinary.page.goto("/leagues/new");
+    const seasonOptions = ordinary.page.locator("#league-season option");
+    await expect(seasonOptions.filter({ hasText: "(API-Football)" })).toHaveCount(1);
+    await expect(seasonOptions.filter({ hasText: "(Demo)" })).toHaveCount(1);
 
     await ordinary.page.goto(
       `/leagues/${providerCleanup.leagueId}/matches?round=26`,
@@ -268,11 +265,17 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       providerMatchCard.getByText("קבוצת ספק בית", { exact: true }),
     ).toBeVisible();
     await expect(
+      providerMatchCard.getByText("דורש בדיקה", { exact: true }),
+    ).toBeVisible();
+    await expect(
       providerMatchCard.getByText("נעול", { exact: true }).first(),
     ).toBeVisible();
     await ordinary.page.goto(
       `/matches/${providerCleanup.matchId}?league=${providerCleanup.leagueId}`,
     );
+    await expect(
+      ordinary.page.getByText("דורש בדיקה", { exact: true }),
+    ).toBeVisible();
     await expect(ordinary.page.getByText("הניחוש נעול", { exact: true })).toBeVisible();
     await expect(ordinary.page.getByRole("button", { name: /שמירת ניחוש/ })).toHaveCount(0);
 

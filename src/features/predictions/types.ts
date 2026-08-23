@@ -30,6 +30,7 @@ export type LeagueMatchItem = {
   kickoffAt: string;
   predictionsLockedAt: string | null;
   status: MatchStatus;
+  providerStatus: string | null;
   homeScore: number | null;
   awayScore: number | null;
   homeTeam: TeamSummary;

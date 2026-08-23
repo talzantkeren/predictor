@@ -8,6 +8,8 @@ import type {
 export const API_FOOTBALL_TARGET_BATCH_SIZE = 20;
 export const API_FOOTBALL_APPLY_TEAM_BATCH_SIZE = 20;
 export const API_FOOTBALL_APPLY_BATCH_SIZE = 50;
+export const API_FOOTBALL_MAX_FIXTURES_SEEN = 1_000;
+export const API_FOOTBALL_MAX_OPERATOR_NOTES = 100;
 
 export interface ApiFootballApplyTeam {
   externalId: string;
@@ -69,6 +71,15 @@ function chunk<T>(items: readonly T[], size: number) {
   return chunks;
 }
 
+function boundedOperatorNotes(notes: ReadonlySet<string>) {
+  const sorted = [...notes].sort();
+  if (sorted.length <= API_FOOTBALL_MAX_OPERATOR_NOTES) return sorted;
+
+  const retained = sorted.slice(0, API_FOOTBALL_MAX_OPERATOR_NOTES - 1);
+  retained.push(`OPERATOR_NOTES_TRUNCATED:${sorted.length - retained.length}`);
+  return retained;
+}
+
 export function batchTargetFixtureIds(fixtureIds: readonly string[]) {
   if (
     fixtureIds.some((id) => !/^[1-9]\d*$/.test(id)) ||
@@ -84,6 +95,9 @@ export function buildApiFootballApplyPlan(
 ): PlannedApiFootballApply {
   if (snapshot.provider !== "api-football") {
     throw new Error("API-Football apply planning requires its provider snapshot");
+  }
+  if (snapshot.fixtures.length > API_FOOTBALL_MAX_FIXTURES_SEEN) {
+    throw new Error("API-Football snapshots may contain at most 1000 fixtures");
   }
 
   const operatorNotes = new Set<string>();
@@ -123,6 +137,9 @@ export function buildApiFootballApplyPlan(
     fixtureIds.add(fixture.matchId);
     addTeam(fixture.homeTeam);
     addTeam(fixture.awayTeam);
+    if (fixture.providerStatus === "AET" || fixture.providerStatus === "PEN") {
+      operatorNotes.add(`${fixture.providerStatus}_REQUIRES_REVIEW:${fixture.matchId}`);
+    }
     if (fixture.reviewCode) {
       operatorNotes.add(`${fixture.reviewCode}:${fixture.matchId}`);
       if (fixture.reviewCode === "ROUND_REQUIRES_REVIEW") continue;
@@ -204,7 +221,7 @@ export function buildApiFootballApplyPlan(
     return {
       batches: [...metadataBatches, ...fixtureBatches],
       fixturesSeen: snapshot.fixtures.length,
-      operatorNotes: [...operatorNotes].sort(),
+      operatorNotes: boundedOperatorNotes(operatorNotes),
     };
   }
 
@@ -243,7 +260,7 @@ export function buildApiFootballApplyPlan(
   return {
     batches,
     fixturesSeen: snapshot.fixtures.length,
-    operatorNotes: [...operatorNotes].sort(),
+    operatorNotes: boundedOperatorNotes(operatorNotes),
   };
 }
 

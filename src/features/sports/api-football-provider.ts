@@ -63,10 +63,10 @@ const statusRules: Readonly<Record<string, StatusRule>> = {
   FT: { status: "finished", locksPredictions: true, resultDisposition: "official", reviewCode: null },
   AET: { status: "finished", locksPredictions: true, resultDisposition: "review", reviewCode: "AET_REQUIRES_REVIEW" },
   PEN: { status: "finished", locksPredictions: true, resultDisposition: "review", reviewCode: "PEN_REQUIRES_REVIEW" },
-  CANC: { status: "canceled", locksPredictions: true, resultDisposition: "none", reviewCode: null },
-  ABD: { status: "canceled", locksPredictions: true, resultDisposition: "none", reviewCode: null },
-  AWD: { status: "canceled", locksPredictions: true, resultDisposition: "none", reviewCode: null },
-  WO: { status: "canceled", locksPredictions: true, resultDisposition: "none", reviewCode: null },
+  CANC: { status: "canceled", locksPredictions: false, resultDisposition: "none", reviewCode: null },
+  ABD: { status: "canceled", locksPredictions: false, resultDisposition: "none", reviewCode: null },
+  AWD: { status: "canceled", locksPredictions: false, resultDisposition: "none", reviewCode: null },
+  WO: { status: "canceled", locksPredictions: false, resultDisposition: "none", reviewCode: null },
 };
 
 export class ApiFootballNormalizationError extends Error {

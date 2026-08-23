@@ -273,12 +273,12 @@ provider-owned שהוא מציג נזרעים ישירות במסד המקומי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After`, retry/backoff/jitter חסומים, quota headers ו־redaction ללא key/URL |
+| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After`, retry/backoff/jitter חסומים, `Accept`, ביטול body שלא נצרך, quota headers ו־redaction ללא key/URL |
 | Vitest adapter | league 383, כל 14 team IDs והמיפוי העברי, codes כפולים, unknown team fallback, 26 round labels, future-stage review, NS/FT, כל status מתועד, live score→null, `score.fulltime`, score חסר, AET/PEN review ו־UTC consistency |
-| Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion |
-| pgTAP | schema/RLS/grants; browser denial; actor validation; claim יחיד ומקביל; `NOT_DUE` ללא row; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; provider-ID upsert idempotent; Demo/name collision untouched; round label; override; safe transitions; irreversible lock; `AET` כ־review נעול ללא ניקוד; `FT`/correction/retry דרך `score_match` ואודיט source |
+| Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, fixturesSeen עד 1,000, operator notes עד 100 עם overflow marker, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion |
+| pgTAP | schema/RLS/grants; browser denial; actor validation; claim מקביל בשתי sessions אמיתיות; `NOT_DUE` ללא row; force cooldown/backoff; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; בידוד regression בתוך batch; ביטול מוקדם ללא חשיפת ניחוש; reactivation עם איפוס metadata/leaderboard; provider-ID upsert idempotent; Demo isolation; AET review והחרגה מ־targeted; FT/correction/retry דרך `score_match` ואודיט source |
 | Route/Action | Cron auth/content type/env; manual/API-Football/not-due/concurrent/success/failure; קריאת orchestration יחידה; trigger של system admin בלבד; safe response ללא סוד/token/generation |
-| Playwright | ordinary user מול system admin, status page ו־manual trigger, success/skipped/concurrent/failure, provider fixture במחזור, suspension+reschedule שלא פותח prediction, Desktop/Pixel RTL וללא browser request/key |
+| Playwright | ordinary user מול system admin, status page ו־manual trigger, שורות observability שנזרעו ישירות, provider AET fixture שנזרע ומוצג כ־"דורש בדיקה" בלי לפתוח prediction, ו־Desktop/Pixel RTL. אין כאן fake live-provider flow; הפרדת key נבדקת non-vacuously ב־build API-Football עם sentinel וסריקת HTML/client artifacts לפני הפעלת השרת ב־manual. |
 
 ### הרצה
 

@@ -1,4 +1,7 @@
-import type { LeagueRole } from "@/features/leagues/types";
+import type {
+  LeagueRole,
+  SeasonOption,
+} from "@/features/leagues/types";
 import type { Database } from "@/types/database.generated";
 
 type LeagueStatus = Database["public"]["Enums"]["league_status"];
@@ -37,4 +40,10 @@ export function formatPrizePercentage(basisPoints: number) {
     minimumFractionDigits: basisPoints % 100 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(basisPoints / 100);
+}
+
+export function getSeasonSourceLabel(
+  externalProvider: string | null,
+): SeasonOption["sourceLabel"] {
+  return externalProvider === "api-football" ? "API-Football" : "Demo";
 }

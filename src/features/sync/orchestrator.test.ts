@@ -140,6 +140,28 @@ describe("shared sports sync orchestration", () => {
     );
   });
 
+  it("returns a typed failure when failure finalization also fails", async () => {
+    const deps = dependencies();
+    deps.finalize.mockRejectedValueOnce(new Error("stale lease"));
+
+    await expect(
+      runSportsSync(
+        {
+          systemActorId: actorId,
+          provider: "api-football",
+          apiKey: "recorded-test-key",
+          force: true,
+          transport: recordedTransport(true),
+        },
+        deps,
+      ),
+    ).resolves.toEqual({
+      runId,
+      status: "failed",
+      reason: "SYNC_FINALIZE_FAILED",
+    });
+  });
+
   it("retains safe review notes when a later apply batch fails", async () => {
     const deps = dependencies();
     deps.apply.mockRejectedValueOnce(new SyncError("SYNC_UNAVAILABLE", 503));

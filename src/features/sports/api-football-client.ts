@@ -336,7 +336,10 @@ export class ApiFootballClient {
             url: url.toString(),
             init: {
               method: "GET",
-              headers: { "x-apisports-key": this.apiKey },
+              headers: {
+                Accept: "application/json",
+                "x-apisports-key": this.apiKey,
+              },
               signal: controller.signal,
             },
           }),
@@ -370,11 +373,11 @@ export class ApiFootballClient {
         response.status >= 500;
 
       if (!response.ok) {
+        await response.body?.cancel();
         if (response.status === 403) {
           throw new ApiFootballClientError("PROVIDER_AUTH_FAILED");
         }
         if (retryableStatus && attempt < this.maxAttempts) {
-          await response.body?.cancel();
           await this.waitBeforeRetry(attempt, lastRetryAfter, startedAt);
           continue;
         }
