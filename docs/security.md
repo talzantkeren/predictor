@@ -43,6 +43,15 @@
 - CI משתמש רק ב־Supabase ו־Mailpit מקומיים ואינו מדפיס את פלט המפתחות של
   `supabase start`.
 
+## Auth email ושחזור סיסמה ב־Slice 10
+
+- Hosted משתמש ב־Custom SMTP שמוגדר בתוך Supabase Auth. SMTP host, username ו־password אינם משתני Next.js/Vercel ואינם נשמרים ב־Git, ב־client bundle או בלוגים.
+- דומיין ה־From מאומת עם SPF, DKIM ו־DMARC. הודעות Auth נפרדות ממייל שיווקי; rate limit ו־cooldown נשארים שמרניים ומוגנים ב־CAPTCHA/abuse controls.
+- תבניות confirmation ו־recovery יוצרות קישור `token_hash` חד־פעמי ל־`/auth/confirm` עם type allowlisted בלבד. ה־Handler מאמת בשרת, יוצר session ומפנה מיד ל־URL נקי עם `private, no-store` ו־`Referrer-Policy: no-referrer`.
+- recovery תקף בלבד רשאי להגיע ל־`/update-password`. השרת אינו מסתמך על query/cookie גולמי כמקור הרשאה, אינו מקבל user id מהלקוח ואינו מעדכן סיסמה דרך admin client.
+- קישור משומש, פג או פגום מחזיר הודעה בטוחה שאינה חושפת אם החשבון קיים. לאחר הצלחה הסיסמה החדשה נבדקת, הישנה נדחית, וה־recovery marker נמחק.
+- בדיקות Hosted וראיות תפעוליות אינן שומרות כתובת מלאה, token, query string, session cookie, סיסמה או SMTP credential.
+
 ## ליגות והרשאות ב־Slice 2
 
 - `competitions`, `seasons`, `teams` ו־`matches` הם catalog גלובלי לקריאה בלבד
@@ -372,3 +381,13 @@
 | session lock דולף ל־pool | אין session-level advisory lock; Data API call יחיד | בדיקת הגדרת הפונקציה, `pg_locks` ותוצאה `MANUAL_PROVIDER` לאחר שחרור |
 | קוד דילוג מוצג או מנוטר ככשל | status הוא discriminator יחיד ו־DB comment מתעד את שם ה־legacy | Vitest ל־display/query ו־Playwright לטקסט ניטרלי ללא פרטי כשל |
 | מסך תפעולי נחשף למשתמש רגיל | session AuthZ + `is_system_admin()` + RLS | pgTAP לקריאת admin/רגיל ו־Playwright ל־not-found למשתמש רגיל |
+
+### מטריצת איומים ובדיקות Auth email של Slice 10
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| SMTP credential דולף | credential רק ב־Supabase Auth; secret scanning ובדיקת client bundle/logs | חיפוש repository/build וסקירת הגדרות Hosted |
+| open redirect או type מזויף | allowlist מדויקת ל־origin, path ו־EmailOtpType | Vitest + Playwright לקלט חיצוני, query/fragment ו־type לא מוכר |
+| שימוש חוזר או גניבת recovery link | token חד־פעמי, אימות שרת, URL נקי ו־no-referrer | E2E לקישור חוזר/פג/פגום ובדיקה שאין token בלוג |
+| שינוי סיסמה ללא recovery תקף | session מאומת + חוזה recovery; ללא admin bypass | Playwright לקריאה ישירה וחסימת משתמש רגיל |
+| enumeration או email flooding | תשובה אחידה, rate limit, cooldown ו־CAPTCHA | contract/E2E לכתובת קיימת ולא קיימת ולחריגה מהמכסה |
