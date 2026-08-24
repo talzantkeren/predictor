@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.5 |
+| גרסה | 3.6 |
 | תאריך עדכון | 24 באוגוסט 2026 |
-| סטטוס | Slice 7b review hardening; hosted provisioning/canary follows approved merge, then Slice 8 Demo reports |
+| סטטוס | Slice 7b נמסר והופעל ב־Hosted; המשימה הבאה היא Slice 8 — דוחות Demo |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -1019,9 +1019,19 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 - `/admin/sync` מוסיף trigger מאומת באותה orchestration ומציג lifecycle,
   counters, quota ו־operator notes בטוחים. הרשימה נשארת מוגבלת ל־100.
 
-**Exit:** כל דרישות provider/lease/fencing/upsert/scoring/lock/observability
-מכוסות ב־Vitest, pgTAP ו־Playwright ללא רשת חיה; lint/typecheck/build/types drift
-ירוקים; נותרות רק פעולות hosted ידניות ו־live canary לאחר merge מאושר.
+**Exit:** הושלם ב־24 באוגוסט 2026. כל דרישות
+provider/lease/fencing/upsert/scoring/lock/observability מכוסות ב־Vitest,
+pgTAP ו־Playwright ללא רשת חיה; lint/typecheck/build/types drift ירוקים וה־CI
+של ה־merge עבר. שתי migrations ה־forward-only הוחלו על Hosted, ו־Production
+נפרס מ־`main` ב־commit `b7c58a5` עם `api-football`.
+
+Canary מורשה קלט 14 קבוצות, 26 מחזורים ו־182 משחקים; retry זהה ראה את כל 182
+המשחקים ושינה אפס שורות ואפס תוצאות. קטלוג ה־Demo נשאר מבודד עם שש קבוצות
+וחמישה משחקים ללא מזהי ספק. קיימת משימת Cron פעילה אחת בלבד, בתדירות דקה;
+טיקים לאחר ההפעלה החזירו HTTP 200 ו־`NOT_DUE` ללא ריצת Sync מיותרת. צפייה
+תפעולית רציפה במעבר משחק אמיתי `NS → live → FT` אינה שער סיום ל־Slice: אין
+לייצר מעבר ספק מלאכותי ב־Hosted, והחוזה מכוסה בבדיקות הדטרמיניסטיות וייבדק
+אופורטוניסטית כאשר יתרחש משחק מתאים.
 
 ### Slice 8 — דוחות Demo
 
@@ -1116,10 +1126,10 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-לאחר מסירת Slice 7b והשלמת hosted canary המשימה הבאה היא **Slice 8 — דוחות
-Demo**: finance summary ודוח חלוקת פרסים פשוטים, queries מוגבלות, נוסחאות
-approved/pending, דוגמאות למקום משותף וסימון Demo קבוע. אין אינטגרציה עם ספק
-מודלים בהיקף הקורס.
+Slice 7b נמסר וה־Hosted canary התפעולי הושלם. המשימה הבאה היא
+**Slice 8 — דוחות Demo**: finance summary ודוח חלוקת פרסים פשוטים, queries
+מוגבלות, נוסחאות approved/pending, דוגמאות למקום משותף וסימון Demo קבוע. אין
+אינטגרציה עם ספק מודלים בהיקף הקורס.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 
