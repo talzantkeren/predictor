@@ -35,7 +35,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           maxLength={50}
           aria-invalid={Boolean(fieldErrors.displayName)}
           aria-describedby={fieldErrors.displayName ? "display-name-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="display-name-error" messages={fieldErrors.displayName} />
       </div>
@@ -53,7 +53,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>
@@ -71,7 +71,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           minLength={8}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="password-error" messages={fieldErrors.password} />
       </div>
@@ -91,7 +91,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           aria-describedby={
             fieldErrors.passwordConfirmation ? "password-confirmation-error" : undefined
           }
-          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError
           id="password-confirmation-error"
@@ -102,7 +102,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-blue-700 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60"
+        className="min-h-11 w-full rounded-lg bg-action px-4 py-2.5 font-extrabold text-white transition hover:bg-action-hover disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "נרשמים..." : "יצירת חשבון"}
       </button>

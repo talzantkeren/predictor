@@ -194,6 +194,20 @@ test.describe("authentication and profile", () => {
     const replacementPassword = `Bb2!${crypto.randomUUID()}`;
 
     await page.goto("/register");
+    expect(
+      await page.getByRole("button", { name: "יצירת חשבון" }).evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      ),
+    ).toBe("rgb(4, 120, 87)");
+    expect(
+      await page.getByLabel("שם תצוגה").evaluate((element) => ({
+        backgroundColor: getComputedStyle(element).backgroundColor,
+        borderTopColor: getComputedStyle(element).borderTopColor,
+      })),
+    ).toEqual({
+      backgroundColor: "rgb(255, 255, 255)",
+      borderTopColor: "rgb(127, 144, 164)",
+    });
     await page.getByLabel("שם תצוגה").fill("משתמש בדיקה");
     await page.getByLabel("כתובת אימייל").fill(email);
     await fillPasswordWithoutReportValue(page, "סיסמה", password);

@@ -24,7 +24,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
   const statusInputId = `result-status-${match.id}`;
 
   return (
-    <form action={formAction} className="mt-5 border-t border-slate-200 pt-5">
+    <form action={formAction} className="mt-5 border-t border-line pt-5">
       <input type="hidden" name="matchId" value={match.id} />
 
       <div className="grid gap-4 sm:grid-cols-3 sm:items-end">
@@ -65,10 +65,10 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             aria-describedby={
               state.fieldErrors?.homeScore ? `${homeInputId}-error` : undefined
             }
-            className="mt-1 block w-full rounded-lg border border-control-border px-3 py-2.5 disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
+            className="mt-1 block w-full rounded-lg border border-control-border bg-white px-3 py-2.5 text-ink disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           />
           {state.fieldErrors?.homeScore?.[0] ? (
-            <p id={`${homeInputId}-error`} className="mt-1 text-sm text-red-700">
+            <p id={`${homeInputId}-error`} className="mt-1 text-sm text-error-900">
               {state.fieldErrors.homeScore[0]}
             </p>
           ) : null}
@@ -93,10 +93,10 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             aria-describedby={
               state.fieldErrors?.awayScore ? `${awayInputId}-error` : undefined
             }
-            className="mt-1 block w-full rounded-lg border border-control-border px-3 py-2.5 disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
+            className="mt-1 block w-full rounded-lg border border-control-border bg-white px-3 py-2.5 text-ink disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           />
           {state.fieldErrors?.awayScore?.[0] ? (
-            <p id={`${awayInputId}-error`} className="mt-1 text-sm text-red-700">
+            <p id={`${awayInputId}-error`} className="mt-1 text-sm text-error-900">
               {state.fieldErrors.awayScore[0]}
             </p>
           ) : null}
@@ -107,7 +107,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          className="min-h-11 rounded-lg bg-action px-4 py-2.5 text-sm font-extrabold text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending
             ? "שומר תוצאה..."
@@ -120,8 +120,8 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             role={state.status === "error" ? "alert" : "status"}
             className={
               state.status === "error"
-                ? "text-sm font-medium text-red-700"
-                : "text-sm font-medium text-emerald-700"
+                ? "text-sm font-bold text-error-900"
+                : "text-sm font-bold text-success-900"
             }
           >
             {state.message}
