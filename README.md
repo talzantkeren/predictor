@@ -41,7 +41,7 @@ npm run dev
 אין להדפיס או לשמור ב־Git את ערכו, JWTs או סיסמת מסד הנתונים. `.env.local`
 חסום ב־Git.
 
-המשתנים הפעילים ב־Slices 3–7:
+המשתנים הפעילים ב־Slices 3–7b:
 
 | משתנה | שימוש |
 | --- | --- |
@@ -51,14 +51,15 @@ npm run dev
 | `SUPABASE_SECRET_KEY` | server-only; gateways מצומצמים ל־`payment-proofs`, scoring ו־Sync בלבד |
 | `CRON_SECRET` | server-only; סוד Bearer נפרד ל־`POST /api/cron/sync` |
 | `SYNC_SYSTEM_ACTOR_ID` | UUID server-only של principal לא־אינטראקטיבי ב־`system_admins` |
-| `SPORTS_API_PROVIDER=manual` | fallback ידני ללא ספק חי |
+| `SPORTS_API_PROVIDER=manual` | `manual` או `api-football`; ברירת המחדל וה־rollback הם manual |
+| `SPORTS_API_KEY` | server-only; נדרש רק ל־`api-football`, נשמר ב־Vercel ולא ב־Supabase Vault |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
 `SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
 כתיבת ניקוד privileged עוברת רק דרך `score_match`, שמאמת actor מול
-`system_admins`. מסלול ה־Sync משתמש ב־principal נפרד, ב־RPC יחיד ובאותו גבול
-admin client מצומצם. מפתח Sports ומפתחות AI שמורים למסלולים עתידיים ואינם
-נדרשים ל־Slice 7 הידני.
+`system_admins`. מסלול ה־Sync משתמש ב־principal נפרד וב־gateway מצומצם.
+`SPORTS_API_KEY` לעולם אינו נשלח לדפדפן, ל־Supabase או ללוג; בדיקות ו־CI
+משתמשים ב־recorded fixtures וב־fake transport ללא credential.
 
 ## זרימת Auth ופרופיל
 
@@ -161,13 +162,15 @@ Slice 3 מסתיים בבקשת `pending_approval` ובהוכחת Demo פרטי�
 
 ה־seed של Slice 5 הוא **Demo ידני וסינתטי**: שש קבוצות וחמישה משחקים עתידיים
 בשני מחזורים, עם שמות קבוצות אמיתיים לצורכי תצוגה אך ללא טענה שהמועדים הם לוח
-2026/27 מאומת. `external_provider` ו־`external_id` נשארים `NULL`. לא נבחר ספק
-Sports ולא מתבצעת קריאה חיצונית מהדפדפן. המועדים העתידיים מונעים מה־seed לנעול
+2026/27 מאומת. `external_provider` ו־`external_id` נשארים `NULL`; בחירת
+API-Football המאוחרת אינה משנה את השורות האלה, ולא מתבצעת קריאה חיצונית
+מהדפדפן. המועדים העתידיים מונעים מה־seed לנעול
 מיד את חוקי הניקוד של כל ליגות 2026/27; כשהמועד הראשון יעבור, trigger הנעילה
 הקיים יפעל לפי זמן המסד כרגיל.
 
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
-Slice 7 מוסיף observability ו־Cron ידני בלבד ואינו משנה את קטלוג ה־Demo;
+Slice 7 הוסיף observability ו־Cron ידני. Slice 7b מוסיף קטלוג API-Football
+provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo;
 AI ו־finance נשארים Slices 8–9.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
@@ -191,22 +194,31 @@ AI ו־finance נשארים Slices 8–9.
 חלוקת פרסי Demo למקומות משותפים מחושבת במודול טהור ב־basis points. המערכת אינה
 מחלקת כסף, אינה מציגה פרסים כספיים אמיתיים ואינה פותחת את שער הציות.
 
-## זרימת Slice 7: Cron וסטטוס Sync ידני
+## זרימת Slice 7/7b: Sports Sync
 
-- `POST /api/cron/sync` מקבל רק בקשת JSON עם `Authorization: Bearer ...`,
-  מאמת את הסוד בזמן קבוע וקורא פעם אחת ל־`record_sync_attempt` דרך Supabase
-  Data API. ה־Route אינו מחזיק חיבור PostgreSQL, אינו קורא adapter ואינו כותב
-  משחקים.
-- כל ניסיון מורשה נכתב מיד כשורה סופית ב־`sync_runs`: `MANUAL_PROVIDER` כאשר
-  ה־transaction lock הקצר הושג, או `CONCURRENT_ATTEMPT` כאשר ניסיון אחר מחזיק
-  אותו. שני הדילוגים מחזירים HTTP 200. בקשה עם secret או actor לא מורשים אינה
-  נכתבת ל־`sync_runs` או ל־`audit_logs`.
-- `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ניסיונות אחרונים, זמנים
-  מקומיים ו־UTC, ספירות וסיבת דילוג ניטרלית. כשל מזוהה רק לפי
-  `status='failed'`, לא לפי קיום ערך ב־`error_code`.
-- `src/features/sports/sync-planner.ts` הוא חוזה טהור ולא־מחובר למסלול ספק
-  עתידי. ה־fixtures הבדיקתיים מוכיחים שתוצאה ידנית לעולם לא תידרס, אך Slice 7
-  אינו מפעיל את המודול ואינו מבצע קריאת רשת חיה.
+- `POST /api/cron/sync` מקבל JSON עם `Authorization: Bearer ...`, משווה את
+  `CRON_SECRET` בזמן קבוע ומפעיל orchestration משותפת. ה־Route דק ואינו מכיל
+  mapping, SQL או ניקוד.
+- `manual` שומר את התנהגות Slice 7: שורה סופית `MANUAL_PROVIDER` או
+  `CONCURRENT_ATTEMPT`, ללא ספק וללא שינוי משחקים.
+- `api-football` מבצע claim due-aware ב־Data API. `NOT_DUE` אינו קורא לספק
+  ואינו יוצר שורת run. claim מוצלח יוצר lease עמיד עם generation/token/expiry;
+  provider HTTP מתבצע אחר כך ומחוץ לטרנזקציה.
+- ה־client server-only קורא רק league 383/season 2026 דרך endpoints allowlisted,
+  עם GET, timeout, body cap, Zod, paging, retries חסומים ו־quota headers.
+- payload מנורמל בלבד עובר ב־batches ל־apply RPC. upsert נעשה לפי provider ID,
+  `FT` בלבד עובר ל־`score_match` הקיימת, ו־manual override מדולג. apply/finalize
+  דוחים token ישן או פג.
+- משחק שנצפה live/SUSP/INT/FT/AET/PEN מקבל latch מסדי שאינו נפתח מחדש לאחר
+  שינוי מועד. קוד ביטול לבדו אינו קובע latch לפני kickoff; ביטול עתידי ללא
+  latch יכול לחזור בבטחה ל־scheduled/postponed ומאפס metadata של ניקוד למצב
+  unscored. `AET/PEN` נשמרים כ־review ללא ניקוד, מוחרגים מ־targeted ומוצגים
+  כ־"דורש בדיקה". fixture עם regression לא־בטוח מבודד ואינו מפיל את ה־batch.
+- ב־`/leagues/new` עונת Demo ועונת הספק מסומנות במקורן, גם כאשר שם התחרות
+  ושם העונה זהים.
+- `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ריצות, lifecycle, counters,
+  quota והערות review בטוחות, ומאפשר trigger ידני באותה lease. רק
+  `status='failed'` הוא כשל.
 
 ### הקמת principal ו־Cron
 
@@ -227,11 +239,39 @@ AI ו־finance נשארים Slices 8–9.
 4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
    ב־SQL, ב־Git או בלוגים.
-5. לאחר deploy מפעילים ניסיון אחד ומוודאים במסך `/admin/sync` שנרשמה שורה
-   סופית `MANUAL_PROVIDER`. אין לפרש אותה כסנכרון לוח ממשי.
+5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד ומוודאים במסך
+   `/admin/sync` שורת `MANUAL_PROVIDER`. אין לפרש אותה כסנכרון לוח ממשי.
 
-חיבור ספק חי בעתיד דורש POC מאושר ומימוש claim/lease עמיד עם fencing token;
-ה־transaction lock הקצר של Slice 7 אינו מורחב סביב HTTP ואינו תחליף ל־lease.
+### Checklist להפעלת API-Football ב־Hosted — לא להריץ לפני merge מאושר
+
+1. לאשר את Draft PR ולמזג רק לאחר review ו־CI ירוק.
+2. להחיל את ה־migration forward-only על Hosted Supabase; אין לערוך migration
+   קודמת ואין להריץ `supabase db reset --linked`.
+3. להגדיר ב־Vercel Sensitive Environment Variable את `SPORTS_API_KEY`, ולהגדיר
+   `SPORTS_API_PROVIDER=api-football`. אין להדפיס את המפתח ואין לשמור אותו ב־Vault.
+4. להשאיר `CRON_SECRET` ו־`SYNC_SYSTEM_ACTOR_ID` הקיימים. `CRON_SECRET` נשאר
+   גם ב־Supabase Vault; ה־Sports key אינו נכנס ל־Cron SQL.
+5. לבצע deploy ולאמת שאין Sports key ב־HTML, client bundle או runtime response.
+6. להפעיל manual Sync מורשה מתוך `/admin/sync`.
+7. לאמת competition provider-owned, 14 teams, 26 rows ב־
+   `sports_provider_rounds` ו־182 fixtures כפי שנצפו ב־POC, תוך קבלה של
+   rounds/fixtures חדשים אם פורסמו; stage לא מוכר צריך `requires_review=true`.
+8. לאמת ששש קבוצות וחמשת משחקי ה־Demo נשארו ללא external IDs וללא שינוי.
+9. לאמת ש־Cron ללא secret/עם secret שגוי מחזיר 401 ואינו מוסיף run/audit.
+10. לאמת lifecycle/counters/operator notes ב־`/admin/sync`.
+11. לעדכן את job ה־Supabase Cron הקיים לפי שמו; אין ליצור job כפול. לשנות tick
+    לכדקה רק לאחר שה־deployment בריא.
+12. לבצע canary: `NS` → live → prediction נשאר נעול → `FT` מתוך
+    `score.fulltime` → scoring דטרמיניסטי → leaderboard.
+13. לבדוק retry זהה, correction `FT→FT` ו־manual override מול refresh.
+14. לבדוק ביטול עתידי ללא חשיפת ניחושים, reactivation ואיפוס scoring metadata,
+    וכן ש־AET/PEN מוצגים כ־"דורש בדיקה" ואינם תופסים targeted slot.
+15. rollback תפעולי הוא `SPORTS_API_PROVIDER=manual` ו־redeploy. הוא אינו מוחק
+    provider data ואינו מחזיר migration לאחור.
+
+דוגמת Cron קיימת נשארת POST עם `Content-Type: application/json` ו־Bearer
+שנקרא מ־Vault. יש לערוך את ה־schedule של ה־job הקיים ל־`* * * * *` דרך כלי
+הניהול המאושר בלבד; אין להעתיק secret ל־SQL או ליצור job נוסף.
 
 ### Mailpit
 

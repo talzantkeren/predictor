@@ -75,7 +75,7 @@ export async function getLeagueMatchList(
   let matchesQuery = supabase
     .from("matches")
     .select(
-      "id, round_number, kickoff_at, status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
+      "id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
     )
     .eq("season_id", league.season_id)
     .order("kickoff_at", { ascending: true })
@@ -156,7 +156,9 @@ export async function getLeagueMatchList(
     id: match.id,
     roundNumber: match.round_number,
     kickoffAt: match.kickoff_at,
+    predictionsLockedAt: match.predictions_locked_at,
     status: match.status,
+    providerStatus: match.provider_status,
     homeScore: match.home_score,
     awayScore: match.away_score,
     homeTeam: {
@@ -261,7 +263,7 @@ export async function getMatchDetail(
     supabase
       .from("matches")
       .select(
-        "id, season_id, round_number, kickoff_at, status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
+        "id, season_id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
       )
       .eq("id", matchId)
       .maybeSingle(),
@@ -310,7 +312,9 @@ export async function getMatchDetail(
     id: match.id,
     roundNumber: match.round_number,
     kickoffAt: match.kickoff_at,
+    predictionsLockedAt: match.predictions_locked_at,
     status: match.status,
+    providerStatus: match.provider_status,
     homeScore: match.home_score,
     awayScore: match.away_score,
     homeTeam: {

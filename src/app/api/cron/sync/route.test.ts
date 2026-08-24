@@ -6,15 +6,15 @@ const cronSecret = "local-test-cron-secret";
 
 const mocks = vi.hoisted(() => ({
   getCronEnv: vi.fn(),
-  recordManualSyncAttempt: vi.fn(),
+  runSportsSync: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
   getCronEnv: mocks.getCronEnv,
 }));
 
-vi.mock("@/features/sync/private-sync-gateway", () => ({
-  recordManualSyncAttempt: mocks.recordManualSyncAttempt,
+vi.mock("@/features/sync/orchestrator", () => ({
+  runSportsSync: mocks.runSportsSync,
 }));
 
 import { POST } from "@/app/api/cron/sync/route";
@@ -24,6 +24,7 @@ function syncRequest(
   options: {
     authorization?: string;
     contentType?: string | null;
+    body?: string;
   } = {},
 ) {
   const headers = new Headers();
@@ -37,6 +38,7 @@ function syncRequest(
   return new Request("http://localhost:3000/api/cron/sync", {
     method: "POST",
     headers,
+    body: options.body,
   });
 }
 
@@ -52,13 +54,11 @@ describe("POST /api/cron/sync", () => {
       CRON_SECRET: cronSecret,
       SYNC_SYSTEM_ACTOR_ID: actorId,
       SPORTS_API_PROVIDER: "manual",
+      SPORTS_API_KEY: undefined,
     });
-    mocks.recordManualSyncAttempt.mockResolvedValue({
-      id: runId,
-      provider: "manual",
+    mocks.runSportsSync.mockResolvedValue({
+      runId,
       status: "skipped",
-      startedAt: "2026-08-22T10:00:00.000Z",
-      finishedAt: "2026-08-22T10:00:00.000Z",
       reason: "MANUAL_PROVIDER",
     });
   });
@@ -71,7 +71,7 @@ describe("POST /api/cron/sync", () => {
       expect(response.status).toBe(401);
       expect(await responseErrorCode(response)).toBe("UNAUTHORIZED");
       expect(response.headers.get("cache-control")).toContain("no-store");
-      expect(mocks.recordManualSyncAttempt).not.toHaveBeenCalled();
+      expect(mocks.runSportsSync).not.toHaveBeenCalled();
     },
   );
 
@@ -84,7 +84,7 @@ describe("POST /api/cron/sync", () => {
     );
 
     expect(wrongMedia.status).toBe(415);
-    expect(mocks.recordManualSyncAttempt).not.toHaveBeenCalled();
+    expect(mocks.runSportsSync).not.toHaveBeenCalled();
   });
 
   it("fails closed when the manual Cron environment is incomplete", async () => {
@@ -100,7 +100,7 @@ describe("POST /api/cron/sync", () => {
     expect(response.status).toBe(503);
     expect(body).toContain("SYNC_NOT_CONFIGURED");
     expect(body).not.toContain(actorId);
-    expect(mocks.recordManualSyncAttempt).not.toHaveBeenCalled();
+    expect(mocks.runSportsSync).not.toHaveBeenCalled();
   });
 
   it("records exactly one manual attempt and returns a neutral skipped result", async () => {
@@ -119,12 +119,65 @@ describe("POST /api/cron/sync", () => {
         reason: "MANUAL_PROVIDER",
       },
     });
-    expect(mocks.recordManualSyncAttempt).toHaveBeenCalledTimes(1);
-    expect(mocks.recordManualSyncAttempt).toHaveBeenCalledWith(actorId);
+    expect(mocks.runSportsSync).toHaveBeenCalledTimes(1);
+    expect(mocks.runSportsSync).toHaveBeenCalledWith({
+      systemActorId: actorId,
+      provider: "manual",
+      apiKey: undefined,
+      force: false,
+    });
+  });
+
+  it("rejects a nonempty or oversized JSON body", async () => {
+    const response = await POST(
+      syncRequest({
+        authorization: `Bearer ${cronSecret}`,
+        body: JSON.stringify({ force: true }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(await responseErrorCode(response)).toBe("INVALID_REQUEST");
+    expect(mocks.runSportsSync).not.toHaveBeenCalled();
+  });
+
+  it("returns API-Football NOT_DUE without exposing provider credentials", async () => {
+    mocks.getCronEnv.mockReturnValue({
+      CRON_SECRET: cronSecret,
+      SYNC_SYSTEM_ACTOR_ID: actorId,
+      SPORTS_API_PROVIDER: "api-football",
+      SPORTS_API_KEY: "never-return-this-key",
+    });
+    mocks.runSportsSync.mockResolvedValue({
+      runId: null,
+      status: "skipped",
+      reason: "NOT_DUE",
+    });
+    const response = await POST(
+      syncRequest({ authorization: `Bearer ${cronSecret}` }),
+    );
+    const body = await response.text();
+    expect(response.status).toBe(200);
+    expect(body).toContain("NOT_DUE");
+    expect(body).not.toContain("never-return-this-key");
+  });
+
+  it("returns a recorded provider failure with a safe 503 result", async () => {
+    mocks.runSportsSync.mockResolvedValue({
+      runId,
+      status: "failed",
+      reason: "PROVIDER_TIMEOUT",
+    });
+    const response = await POST(
+      syncRequest({ authorization: `Bearer ${cronSecret}` }),
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      data: { runId, status: "failed", reason: "PROVIDER_TIMEOUT" },
+    });
   });
 
   it("maps an actor rejected by the RPC to a safe response", async () => {
-    mocks.recordManualSyncAttempt.mockRejectedValue(
+    mocks.runSportsSync.mockRejectedValue(
       new SyncError("FORBIDDEN", 403, {
         cause: new Error(`Rejected actor ${actorId}`),
       }),
@@ -142,7 +195,7 @@ describe("POST /api/cron/sync", () => {
   });
 
   it("does not expose unexpected database details", async () => {
-    mocks.recordManualSyncAttempt.mockRejectedValue(
+    mocks.runSportsSync.mockRejectedValue(
       new Error("password=database-secret"),
     );
 

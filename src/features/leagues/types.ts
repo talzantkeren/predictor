@@ -2,6 +2,7 @@ export type SeasonOption = {
   id: string;
   name: string;
   competitionName: string;
+  sourceLabel: "Demo" | "API-Football";
 };
 
 export type LeagueRole = "manager" | "member";

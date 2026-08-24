@@ -32,6 +32,12 @@ export function getMatchStatusLabel(status: MatchStatus) {
   return matchStatusLabels[status];
 }
 
+export function getProviderReviewLabel(providerStatus: string | null) {
+  return providerStatus === "AET" || providerStatus === "PEN"
+    ? "דורש בדיקה"
+    : null;
+}
+
 export function getPredictionStateLabel(state: PredictionDisplayState) {
   return predictionStateLabels[state];
 }
@@ -54,12 +60,14 @@ export function canWritePrediction({
   leagueStatus,
   status,
   kickoffAt,
+  predictionsLockedAt = null,
   now,
   isActiveMember,
 }: {
   leagueStatus: LeagueStatus;
   status: MatchStatus;
   kickoffAt: string;
+  predictionsLockedAt?: string | null;
   now: string | Date;
   isActiveMember: boolean;
 }) {
@@ -68,6 +76,7 @@ export function canWritePrediction({
     leagueStatus !== "completed" &&
     leagueStatus !== "archived" &&
     (status === "scheduled" || status === "postponed") &&
+    predictionsLockedAt === null &&
     !isKickoffLocked(kickoffAt, now)
   );
 }
@@ -76,6 +85,7 @@ export function derivePredictionDisplayState({
   leagueStatus,
   status,
   kickoffAt,
+  predictionsLockedAt = null,
   now,
   isActiveMember,
   hasPrediction,
@@ -83,6 +93,7 @@ export function derivePredictionDisplayState({
   leagueStatus: LeagueStatus;
   status: MatchStatus;
   kickoffAt: string;
+  predictionsLockedAt?: string | null;
   now: string | Date;
   isActiveMember: boolean;
   hasPrediction: boolean;
@@ -92,6 +103,7 @@ export function derivePredictionDisplayState({
       leagueStatus,
       status,
       kickoffAt,
+      predictionsLockedAt,
       now,
       isActiveMember,
     })
@@ -99,7 +111,7 @@ export function derivePredictionDisplayState({
     return hasPrediction ? "editable" : "open";
   }
 
-  if (isKickoffLocked(kickoffAt, now)) {
+  if (predictionsLockedAt !== null || isKickoffLocked(kickoffAt, now)) {
     return "locked";
   }
 

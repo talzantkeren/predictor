@@ -98,7 +98,7 @@ export function LeagueForm({ seasons }: { seasons: SeasonOption[] }) {
           >
             {seasons.map((season) => (
               <option key={season.id} value={season.id}>
-                {season.competitionName} — {season.name}
+                {season.competitionName} — {season.name} ({season.sourceLabel})
               </option>
             ))}
           </select>

@@ -1,0 +1,42 @@
+{
+  "get": "leagues",
+  "parameters": { "id": "383", "season": "2026" },
+  "errors": [],
+  "results": 1,
+  "paging": { "current": 1, "total": 1 },
+  "response": [
+    {
+      "league": {
+        "id": 383,
+        "name": "Ligat Ha'al",
+        "type": "League",
+        "logo": "https://media.api-sports.io/football/leagues/383.png"
+      },
+      "country": { "name": "Israel", "code": "IL", "flag": null },
+      "seasons": [
+        {
+          "year": 2026,
+          "start": "2026-08-22",
+          "end": "2027-03-06",
+          "current": true,
+          "coverage": {
+            "fixtures": {
+              "events": true,
+              "lineups": false,
+              "statistics_fixtures": false,
+              "statistics_players": false
+            },
+            "standings": true,
+            "players": false,
+            "top_scorers": false,
+            "top_assists": false,
+            "top_cards": false,
+            "injuries": false,
+            "predictions": true,
+            "odds": true
+          }
+        }
+      ]
+    }
+  ]
+}

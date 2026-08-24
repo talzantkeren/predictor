@@ -5,6 +5,7 @@ import type {
   RawSportsMatch,
   SportsCompetition,
   SportsProvider,
+  SportsSyncPlan,
   SportsTeam,
 } from "@/features/sports/types";
 
@@ -20,6 +21,7 @@ function matchesQuery(match: NormalizedMatch, query: FixtureQuery) {
 }
 
 export class ManualSportsProvider implements SportsProvider {
+  readonly providerId = "manual" as const;
   private readonly competition: SportsCompetition;
   private readonly rawFixtures: readonly RawSportsMatch[];
 
@@ -46,6 +48,23 @@ export class ManualSportsProvider implements SportsProvider {
     return [...teams.values()];
   }
 
+  async getRounds(seasonId: string) {
+    const fixtures = this.rawFixtures.filter(
+      (fixture) => fixture.seasonId === seasonId,
+    );
+    const rounds = new Map<number, string>();
+    for (const fixture of fixtures) {
+      rounds.set(fixture.round, fixture.roundLabel ?? `Round ${fixture.round}`);
+    }
+    return [...rounds.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([roundNumber, label]) => ({
+        label,
+        roundNumber,
+        requiresReview: false,
+      }));
+  }
+
   async getFixtures(query?: FixtureQuery): Promise<NormalizedMatch[]> {
     return this.rawFixtures
       .map(normalizeMatch)
@@ -56,5 +75,30 @@ export class ManualSportsProvider implements SportsProvider {
     return (await this.getFixtures(query)).filter(
       (match) => match.status === "finished",
     );
+  }
+  async getSyncSnapshot(plan: SportsSyncPlan) {
+    const fixtures =
+      plan.kind === "targeted"
+        ? (await this.getFixtures()).filter((fixture) =>
+            plan.fixtureIds.includes(fixture.matchId),
+          )
+        : await this.getFixtures();
+    const seasonId = fixtures[0]?.seasonId ?? "2026-27";
+
+    return {
+      provider: this.providerId,
+      plan,
+      competition: await this.getCompetition(),
+      season: null,
+      teams: await this.getTeams(seasonId),
+      rounds: await this.getRounds(seasonId),
+      fixtures,
+      quota: {
+        dailyLimit: null,
+        dailyRemaining: null,
+        minuteLimit: null,
+        minuteRemaining: null,
+      },
+    };
   }
 }

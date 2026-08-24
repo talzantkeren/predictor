@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { getSyncError, SyncError } from "@/features/sync/errors";
-import { recordManualSyncAttempt } from "@/features/sync/private-sync-gateway";
+import { runSportsSync } from "@/features/sync/orchestrator";
 import { getCronEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -57,6 +57,29 @@ function hasValidBearerSecret(request: Request, expectedSecret: string) {
   return timingSafeEqual(suppliedDigest, expectedDigest);
 }
 
+async function hasValidEmptyJsonBody(request: Request) {
+  const declaredLength = request.headers.get("content-length");
+  if (
+    declaredLength &&
+    (!/^\d+$/.test(declaredLength) || Number(declaredLength) > 1_024)
+  ) {
+    return false;
+  }
+  const body = await request.text();
+  if (new TextEncoder().encode(body).byteLength > 1_024) return false;
+  try {
+    const parsed: unknown = body.length === 0 ? {} : JSON.parse(body);
+    return (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed) &&
+      Object.keys(parsed).length === 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   if (!isExpectedContentType(request)) {
     return errorResponse(new SyncError("INVALID_REQUEST", 415));
@@ -75,20 +98,27 @@ export async function POST(request: Request) {
     return errorResponse(new SyncError("UNAUTHORIZED", 401));
   }
 
+  if (!(await hasValidEmptyJsonBody(request))) {
+    return errorResponse(new SyncError("INVALID_REQUEST", 400));
+  }
+
   try {
-    const attempt = await recordManualSyncAttempt(
-      cronEnv.SYNC_SYSTEM_ACTOR_ID,
-    );
+    const attempt = await runSportsSync({
+      systemActorId: cronEnv.SYNC_SYSTEM_ACTOR_ID,
+      provider: cronEnv.SPORTS_API_PROVIDER,
+      apiKey: cronEnv.SPORTS_API_KEY,
+      force: false,
+    });
 
     return privateJson(
       {
         data: {
-          runId: attempt.id,
+          runId: attempt.runId,
           status: attempt.status,
           reason: attempt.reason,
         },
       },
-      200,
+      attempt.status === "failed" ? 503 : 200,
     );
   } catch (error) {
     return errorResponse(getSyncError(error));

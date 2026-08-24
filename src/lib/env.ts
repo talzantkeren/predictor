@@ -13,7 +13,9 @@ const browserEnvSchema = z.object({
 });
 
 const publicEnvSchema = browserEnvSchema.extend({
-  SPORTS_API_PROVIDER: z.enum(["manual", "api"]).default("manual"),
+  SPORTS_API_PROVIDER: z
+    .enum(["manual", "api-football"])
+    .default("manual"),
   DEMO_MODE: z
     .enum(["true", "false"])
     .transform((value) => value === "true"),
@@ -31,14 +33,34 @@ const serverEnvSchema = z.object({
   AI_MODEL: z.string().min(1).optional(),
 });
 
+const sportsSyncEnvSchema = z
+  .object({
+    SPORTS_API_PROVIDER: z
+      .enum(["manual", "api-football"])
+      .default("manual"),
+    SPORTS_API_KEY: z.string().min(1).optional(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.SPORTS_API_PROVIDER === "api-football" &&
+      !value.SPORTS_API_KEY
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["SPORTS_API_KEY"],
+        message:
+          "SPORTS_API_KEY is required when SPORTS_API_PROVIDER=api-football",
+      });
+    }
+  });
+
 const cronEnvSchema = z.object({
   CRON_SECRET: z.string().min(1),
   SYNC_SYSTEM_ACTOR_ID: z.string().regex(
     canonicalUuidPattern,
     "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID",
   ),
-  SPORTS_API_PROVIDER: z.literal("manual").default("manual"),
-});
+}).and(sportsSyncEnvSchema);
 
 const adminEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -81,8 +103,13 @@ export function parseServerEnv(input: EnvironmentInput) {
     AI_MODEL: optionalValue(input.AI_MODEL),
   });
 
-  if (publicEnv.SPORTS_API_PROVIDER === "api" && !serverEnv.SPORTS_API_KEY) {
-    throw new Error("SPORTS_API_KEY is required when SPORTS_API_PROVIDER=api");
+  if (
+    publicEnv.SPORTS_API_PROVIDER === "api-football" &&
+    !serverEnv.SPORTS_API_KEY
+  ) {
+    throw new Error(
+      "SPORTS_API_KEY is required when SPORTS_API_PROVIDER=api-football",
+    );
   }
 
   return { ...publicEnv, ...serverEnv };
@@ -100,6 +127,14 @@ export function parseCronEnv(input: EnvironmentInput) {
     CRON_SECRET: optionalValue(input.CRON_SECRET),
     SYNC_SYSTEM_ACTOR_ID: optionalValue(input.SYNC_SYSTEM_ACTOR_ID),
     SPORTS_API_PROVIDER: input.SPORTS_API_PROVIDER,
+    SPORTS_API_KEY: optionalValue(input.SPORTS_API_KEY),
+  });
+}
+
+export function parseSportsSyncEnv(input: EnvironmentInput) {
+  return sportsSyncEnvSchema.parse({
+    SPORTS_API_PROVIDER: input.SPORTS_API_PROVIDER,
+    SPORTS_API_KEY: optionalValue(input.SPORTS_API_KEY),
   });
 }
 
@@ -173,5 +208,13 @@ export function getCronEnv() {
     CRON_SECRET: process.env.CRON_SECRET,
     SYNC_SYSTEM_ACTOR_ID: process.env.SYNC_SYSTEM_ACTOR_ID,
     SPORTS_API_PROVIDER: process.env.SPORTS_API_PROVIDER,
+    SPORTS_API_KEY: process.env.SPORTS_API_KEY,
+  });
+}
+
+export function getSportsSyncEnv() {
+  return parseSportsSyncEnv({
+    SPORTS_API_PROVIDER: process.env.SPORTS_API_PROVIDER,
+    SPORTS_API_KEY: process.env.SPORTS_API_KEY,
   });
 }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getSeasonSourceLabel } from "@/features/leagues/display";
 import type {
   LeagueDashboardItem,
   LeagueSummary,
@@ -19,7 +20,7 @@ export async function getSeasonOptions(
 ): Promise<QueryResult<SeasonOption[]>> {
   const { data, error } = await supabase
     .from("seasons")
-    .select("id, name, competition:competitions!inner(name)")
+    .select("id, name, external_provider, competition:competitions!inner(name)")
     .eq("is_current", true)
     .order("starts_on", { ascending: false })
     .limit(20);
@@ -34,6 +35,7 @@ export async function getSeasonOptions(
       id: season.id,
       name: season.name,
       competitionName: season.competition.name,
+      sourceLabel: getSeasonSourceLabel(season.external_provider),
     })),
   };
 }

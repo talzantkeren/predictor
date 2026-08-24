@@ -12,6 +12,7 @@ import {
   formatDateTimeInTimeZone,
   getCountdownSeconds,
   getMatchStatusLabel,
+  getProviderReviewLabel,
   getPredictionStateLabel,
 } from "@/features/predictions/display";
 import { getLeagueMatchList } from "@/features/predictions/queries";
@@ -148,10 +149,14 @@ export default async function LeagueMatchesPage({
       ) : (
         <ol className="mt-6 grid gap-5 lg:grid-cols-2">
           {data.matches.map((match) => {
+            const providerReviewLabel = getProviderReviewLabel(
+              match.providerStatus,
+            );
             const displayState = derivePredictionDisplayState({
               leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
+              predictionsLockedAt: match.predictionsLockedAt,
               now: data.databaseNow,
               isActiveMember: data.viewerIsActiveMember,
               hasPrediction: Boolean(match.ownPrediction),
@@ -160,6 +165,7 @@ export default async function LeagueMatchesPage({
               leagueStatus: data.league.status,
               status: match.status,
               kickoffAt: match.kickoffAt,
+              predictionsLockedAt: match.predictionsLockedAt,
               now: data.databaseNow,
               isActiveMember: data.viewerIsActiveMember,
             });
@@ -173,8 +179,14 @@ export default async function LeagueMatchesPage({
                 <article className="h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span className="font-semibold text-blue-800">מחזור {match.roundNumber}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-800">
-                      {getMatchStatusLabel(match.status)}
+                    <span
+                      className={`rounded-full px-3 py-1 font-semibold ${
+                        providerReviewLabel
+                          ? "bg-amber-100 text-amber-900"
+                          : "bg-slate-100 text-slate-800"
+                      }`}
+                    >
+                      {providerReviewLabel ?? getMatchStatusLabel(match.status)}
                     </span>
                   </div>
 

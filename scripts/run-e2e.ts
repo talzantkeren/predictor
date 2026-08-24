@@ -143,7 +143,15 @@ const environment = externalBaseUrl
   : getLocalSupabaseEnvironment();
 
 if (!skipBuild && !externalBaseUrl) {
-  run(["run", "build"], environment);
+  const clientSecretSentinel = `sports-client-sentinel-${randomBytes(24).toString("hex")}`;
+  const sentinelBuildEnvironment = {
+    ...environment,
+    SPORTS_API_PROVIDER: "api-football",
+    SPORTS_API_KEY: clientSecretSentinel,
+    CLIENT_SECRET_SENTINEL: clientSecretSentinel,
+  };
+  run(["run", "build"], sentinelBuildEnvironment);
+  run(["run", "test:client-secrets"], sentinelBuildEnvironment);
 }
 
 if (serveOnly && !externalBaseUrl) {

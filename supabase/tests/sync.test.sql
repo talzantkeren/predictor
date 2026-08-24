@@ -17,7 +17,7 @@ select is(
     from information_schema.columns
     where table_schema = 'public' and table_name = 'sync_runs'
   ),
-  'id,provider,status,started_at,finished_at,fixtures_seen,matches_changed,results_changed,error_code,error_message_safe',
+  'id,provider,status,started_at,finished_at,fixtures_seen,matches_changed,results_changed,error_code,error_message_safe,sync_kind,lease_generation,locked_until,rows_inserted,teams_changed,manual_overrides_skipped,quota_remaining,operator_notes',
   'sync_runs exposes the documented operational columns only'
 );
 select is(
@@ -26,8 +26,8 @@ select is(
   'sync_status retains future lifecycle values while supporting terminal skips'
 );
 select ok(
-  obj_description('public.sync_status'::regtype, 'pg_type') like '%future live-provider lease%',
-  'the enum comment marks running as future-only'
+  obj_description('public.sync_status'::regtype, 'pg_type') like '%durable live-provider lease%',
+  'the enum comment documents the durable live-provider lifecycle'
 );
 select ok(
   col_description(

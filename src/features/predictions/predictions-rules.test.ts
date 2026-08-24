@@ -8,6 +8,7 @@ import {
   formatRemainingDuration,
   getCountdownSeconds,
   getMatchStatusLabel,
+  getProviderReviewLabel,
   getPredictionStateLabel,
   getUtcDateRange,
   isKickoffLocked,
@@ -178,6 +179,13 @@ describe("match and timestamp presentation", () => {
     ]).toEqual(["מתוכנן", "בשידור חי", "הסתיים", "נדחה", "בוטל"]);
     expect(getPredictionStateLabel("saved")).toBe("הניחוש נשמר");
     expect(getPredictionStateLabel("editable")).toContain("פתוח לעריכה");
+  });
+
+  it("shows a durable review label only for AET and PEN", () => {
+    expect(getProviderReviewLabel("AET")).toBe("דורש בדיקה");
+    expect(getProviderReviewLabel("PEN")).toBe("דורש בדיקה");
+    expect(getProviderReviewLabel("FT")).toBeNull();
+    expect(getProviderReviewLabel(null)).toBeNull();
   });
 
   it("formats one UTC instant deterministically in two timezones", () => {

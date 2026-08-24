@@ -352,14 +352,129 @@ export function countSyncRunsInDisposableLocalDatabase() {
 }
 
 export function removeSyncFixturesFromDisposableLocalDatabase({
-  runId,
+  runIds,
   systemAdminUserId,
 }: {
-  runId: string;
+  runIds: string[];
   systemAdminUserId: string;
 }) {
-  assertCanonicalUuid(runId, "sync run");
+  if (runIds.length < 1 || runIds.length > 10) {
+    throw new Error("Local sync cleanup requires one to ten run IDs.");
+  }
+  for (const runId of runIds) assertCanonicalUuid(runId, "sync run");
   assertCanonicalUuid(systemAdminUserId, "system administrator");
+  assertDisposableLocalDatabaseIsRunning();
+  const sqlRunIds = runIds.map((runId) => `'${runId}'::uuid`).join(",");
+
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; delete from public.sync_runs where id in (${sqlRunIds}); delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = cleanup.stdout.trim().split(/\r?\n/);
+  if (
+    cleanup.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== `DELETE ${runIds.length}` ||
+    output[2] !== "DELETE 1" ||
+    output[3] !== "COMMIT"
+  ) {
+    throw new Error("Local sync fixtures could not be removed safely.");
+  }
+}
+
+export function seedSyncObservabilityRunsInDisposableLocalDatabase(
+  runIds: { succeeded: string; failed: string; concurrent: string },
+) {
+  for (const [label, value] of Object.entries(runIds)) {
+    assertCanonicalUuid(value, `sync ${label} run`);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `insert into public.sync_runs (id, provider, status, sync_kind, started_at, finished_at, fixtures_seen, rows_inserted, teams_changed, matches_changed, results_changed, manual_overrides_skipped, quota_remaining, operator_notes, error_code, error_message_safe) values ('${runIds.succeeded}'::uuid, 'api-football', 'succeeded', 'catalog', statement_timestamp(), statement_timestamp(), 182, 198, 14, 182, 1, 0, 7421, array[]::text[], null, null), ('${runIds.failed}'::uuid, 'api-football', 'failed', 'targeted', statement_timestamp(), statement_timestamp(), 0, 0, 0, 0, 0, 0, null, array[]::text[], 'PROVIDER_TIMEOUT', 'The sports provider request timed out.'), ('${runIds.concurrent}'::uuid, 'api-football', 'skipped', 'targeted', statement_timestamp(), statement_timestamp(), 0, 0, 0, 0, 0, 0, null, array[]::text[], 'CONCURRENT_ATTEMPT', null);`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (fixture.status !== 0 || fixture.stdout.trim() !== "INSERT 0 3") {
+    throw new Error("Local Sync observability fixtures could not be created.");
+  }
+}
+
+export type ProviderPredictionLockFixtureIds = {
+  competitionId: string;
+  seasonId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  matchId: string;
+  leagueId: string;
+};
+
+export function seedProviderPredictionLockFixtureInDisposableLocalDatabase(
+  ids: ProviderPredictionLockFixtureIds,
+  memberUserId: string,
+) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `provider fixture ${label}`);
+  }
+  assertCanonicalUuid(memberUserId, "provider fixture member");
+  assertDisposableLocalDatabaseIsRunning();
+  const externalSuffix = ids.matchId.replaceAll("-", "");
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; insert into public.competitions (id, name, slug, country_code, external_provider, external_id) values ('${ids.competitionId}'::uuid, 'ליגת ספק E2E', 'api-football-e2e-${ids.competitionId}', 'IL', 'api-football', '${externalSuffix}1'); insert into public.seasons (id, competition_id, name, starts_on, ends_on, is_current, external_provider, external_id) values ('${ids.seasonId}'::uuid, '${ids.competitionId}'::uuid, '2026/27 E2E', '2026-08-22', '2027-05-31', true, 'api-football', '${externalSuffix}2'); insert into public.teams (id, name, short_name, external_provider, external_id) values ('${ids.homeTeamId}'::uuid, 'קבוצת ספק בית', 'ספק בית', 'api-football', '${externalSuffix}3'), ('${ids.awayTeamId}'::uuid, 'קבוצת ספק חוץ', 'ספק חוץ', 'api-football', '${externalSuffix}4'); insert into public.matches (id, season_id, round_number, provider_round_label, provider_status, home_team_id, away_team_id, kickoff_at, status, predictions_locked_at, external_provider, external_id) values ('${ids.matchId}'::uuid, '${ids.seasonId}'::uuid, 26, 'Regular Season - 26', 'AET', '${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid, clock_timestamp() + interval '2 days', 'postponed', clock_timestamp(), 'api-football', '${externalSuffix}5'); insert into public.leagues (id, manager_id, season_id, name, status) values ('${ids.leagueId}'::uuid, '${memberUserId}'::uuid, '${ids.seasonId}'::uuid, 'ליגת בדיקת ספק', 'active'); insert into public.league_scoring_rules (league_id) values ('${ids.leagueId}'::uuid); insert into public.league_members (league_id, user_id, approved_by) values ('${ids.leagueId}'::uuid, '${memberUserId}'::uuid, '${memberUserId}'::uuid); commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output.at(-1) !== "COMMIT"
+  ) {
+    throw new Error("Local provider prediction-lock fixture could not be created.");
+  }
+}
+
+export function removeProviderPredictionLockFixtureFromDisposableLocalDatabase(
+  ids: ProviderPredictionLockFixtureIds,
+) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `provider cleanup ${label}`);
+  }
   assertDisposableLocalDatabaseIsRunning();
 
   const cleanup = spawnSync(
@@ -373,7 +488,7 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
       "--username=postgres",
       "--dbname=postgres",
       "--command",
-      `begin; delete from public.sync_runs where id = '${runId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
+      `begin; delete from public.leagues where id = '${ids.leagueId}'::uuid; delete from public.matches where id = '${ids.matchId}'::uuid; delete from public.seasons where id = '${ids.seasonId}'::uuid; delete from public.competitions where id = '${ids.competitionId}'::uuid; delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
     ],
     { encoding: "utf8", windowsHide: true },
   );
@@ -384,9 +499,12 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
     output[0] !== "BEGIN" ||
     output[1] !== "DELETE 1" ||
     output[2] !== "DELETE 1" ||
-    output[3] !== "COMMIT"
+    output[3] !== "DELETE 1" ||
+    output[4] !== "DELETE 1" ||
+    output[5] !== "DELETE 2" ||
+    output[6] !== "COMMIT"
   ) {
-    throw new Error("Local sync fixtures could not be removed safely.");
+    throw new Error("Local provider prediction-lock fixture could not be removed.");
   }
 }
 
