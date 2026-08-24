@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.0 |
+| גרסה | 3.1 |
 | תאריך עדכון | 24 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
@@ -63,6 +63,24 @@ flowchart TD
 | Hosting | Vercel | דרישת קורס ואינטגרציה טבעית עם Next.js |
 
 אין להוסיף Redux, ORM, queue, microservice או cache חיצוני לפני שקיים צורך מדיד. PostgreSQL ו־Next.js מספיקים לסקייל של עשרות עד מאות משתמשים.
+
+### 4.1 UI foundation של Slice 7c
+
+Slice 7c הוא שינוי הצגה בתוך אותה ארכיטקטורה, לא subsystem חדש. השפה החזותית
+מיושמת באמצעות Tailwind CSS הקיים, tokens מרכזיים ב־`globals.css` ורכיבים
+משותפים מצומצמים תחת `src/components`. Server Components נשארים ברירת המחדל,
+ו־Client Components מתווספים רק לאינטראקציה שכבר קיימת במוצר.
+
+- כלי אבטיפוס חיצוני הוא כלי פיתוח בלבד. אין לו SDK, מפתח, Route, webhook או
+  קריאת runtime מן האפליקציה, ואין להעביר אליו secrets, PII או אסמכתאות.
+- אין להוסיף ספריית UI, אייקונים או אנימציה כתלות ייצור בלי החלטה מתועדת
+  שמסבירה מדוע Tailwind, CSS ו־SVG מקומיים אינם מספיקים.
+- Slice 7c אינו משנה נתיבים, חוזי Actions/Handlers, schema, RLS, הרשאות, נעילת
+  ניחושים או חישובי ניקוד. שינוי כזה חוזר ל־slice פונקציונלי נפרד.
+- רכיב כהה משמש סמנטית כלוח תוצאות או משחק מרכזי בלבד; אין theme כהה מקביל
+  ואין state גלובלי לבחירת theme.
+- אסמכתאה פרטית אינה נטענת מראש לצורך thumbnail מטושטש. הרשימה מציגה metadata
+  בטוח ופעולת צפייה מפורשת ממשיכה דרך Route ההרשאה וה־signed URL הקיים.
 
 ## 5. גבולות אחריות
 
@@ -609,6 +627,7 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Supabase Cron | התקבל | Vercel Hobby Cron יומי בלבד; נדרש polling תכוף יותר |
 | ספק Sports קבוע מראש | הוחלף | API-Football נבחר ב־23.8.2026 לאחר POC חי לליגה 383/עונה 2026; Manual נשאר fallback |
 | Slice 7 manual-only | הוחלף | Slice 7b מוסיף API-Football provider-owned catalog ו־Sync מלא; המסלול הידני נשמר ללא mutation |
+| Slice 7c — Design System ורענון UI | התקבל | Tailwind והגבולות הקיימים מספיקים; השינוי ממקד RTL, mobile, נגישות ועקביות בלי schema, route או dependency חדשים |
 | lease לספק חי | התקבל | Data API אינו מצמיד connection; row lease עמיד עם generation/token/expiry מגן על HTTP שחוצה transactions |
 | תוצאת AET/PEN אוטומטית | נדחה לעת עתה | מדיניות המוצר היא זמן חוקי, אך ה־POC לא הוכיח שדה 90 דקות מתאים; הרשומה נכנסת ל־review ללא scoring |
 | ביטול מוקדם ו־reactivation | התקבל | PRED-05 גובר על סיווג terminal כללי: ביטול לפני חשיפה אינו קובע latch; רק canceled ללא latch ומועד עתידי יכול להיפתח מחדש, עם איפוס ניקוד אטומי דרך `score_match` |

@@ -22,7 +22,7 @@ export function UpdatePasswordForm() {
       {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>
-        <label htmlFor="password" className="block text-sm font-semibold text-slate-800">
+        <label htmlFor="password" className="block text-sm font-bold text-ink">
           סיסמה חדשה
         </label>
         <input
@@ -34,13 +34,13 @@ export function UpdatePasswordForm() {
           minLength={8}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-left outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="password-error" messages={fieldErrors.password} />
       </div>
 
       <div>
-        <label htmlFor="passwordConfirmation" className="block text-sm font-semibold text-slate-800">
+        <label htmlFor="passwordConfirmation" className="block text-sm font-bold text-ink">
           אימות סיסמה חדשה
         </label>
         <input
@@ -54,7 +54,7 @@ export function UpdatePasswordForm() {
           aria-describedby={
             fieldErrors.passwordConfirmation ? "password-confirmation-error" : undefined
           }
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-left outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError
           id="password-confirmation-error"

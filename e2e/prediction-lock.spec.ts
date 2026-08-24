@@ -226,7 +226,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
       seedPredictionMatchesInDisposableLocalDatabase(fixtureIds);
 
     await manager.page.goto(`/leagues/${leagueId}`);
-    await manager.page.getByRole("link", { name: "משחקים וניחושים" }).click();
+    await manager.page
+      .getByRole("navigation", { name: "ניווט בליגה" })
+      .getByRole("link", { name: "משחקים וניחושים" })
+      .click();
     await expect(manager.page).toHaveURL(new RegExp(`/leagues/${leagueId}/matches$`));
     await expect(manager.page.getByRole("heading", { name: "משחקים וניחושים" })).toBeVisible();
     await expect(manager.page.getByText(fixtureNames.homeTeamName).first()).toBeVisible();
@@ -236,10 +239,38 @@ test.describe("matches, predictions, lock, and reveal", () => {
     await expect(manager.page.getByText("בשידור חי").first()).toBeVisible();
     await expect(manager.page.getByText("הסתיים").first()).toBeVisible();
     await expect(manager.page.getByText("2–1").first()).toBeVisible();
+    const officialScore = manager.page.getByRole("img", {
+      name: /תוצאה רשמית:/,
+    }).first();
+    await expect(officialScore.locator('[data-score-side="home"]')).toHaveText(
+      "2",
+    );
+    await expect(officialScore.locator('[data-score-side="away"]')).toHaveText(
+      "1",
+    );
+    const scorePositions = await officialScore.evaluate((element) => ({
+      home: element
+        .querySelector<HTMLElement>('[data-score-side="home"]')
+        ?.getBoundingClientRect().x,
+      away: element
+        .querySelector<HTMLElement>('[data-score-side="away"]')
+        ?.getBoundingClientRect().x,
+    }));
+    expect(scorePositions.home).toBeGreaterThan(scorePositions.away ?? 0);
     await expect(
       manager.page.getByText(contextOptions.timezoneId ?? "UTC").first(),
     ).toBeVisible();
     await expect(manager.page.getByText(/נותרו/).first()).toBeVisible();
+
+    const openMatchRow = manager.page.locator(
+      `[data-match-id="${fixtureIds.openMatchId}"]`,
+    );
+    await expect(openMatchRow.locator("h3 bdi").nth(0)).toHaveText(
+      fixtureNames.homeTeamName,
+    );
+    await expect(openMatchRow.locator("h3 bdi").nth(1)).toHaveText(
+      fixtureNames.awayTeamName,
+    );
 
     const listLayout = await manager.page.evaluate(() => ({
       dir: document.documentElement.dir,
@@ -258,6 +289,22 @@ test.describe("matches, predictions, lock, and reveal", () => {
     const managerAwayInput = manager.page.getByLabel(
       `שערים — ${fixtureNames.awayTeamName}`,
       { exact: true },
+    );
+    const controlBorders = await Promise.all(
+      [managerHomeInput, managerAwayInput].map((input) =>
+        input.evaluate((element) => getComputedStyle(element).borderTopColor),
+      ),
+    );
+    expect(controlBorders).toEqual([
+      "rgb(127, 144, 164)",
+      "rgb(127, 144, 164)",
+    ]);
+    const detailHeading = manager.page.getByRole("heading", { level: 1 });
+    await expect(detailHeading.locator("bdi").nth(0)).toHaveText(
+      fixtureNames.homeTeamName,
+    );
+    await expect(detailHeading.locator("bdi").nth(1)).toHaveText(
+      fixtureNames.awayTeamName,
     );
     await managerHomeInput.fill("2");
     await managerAwayInput.fill("1");

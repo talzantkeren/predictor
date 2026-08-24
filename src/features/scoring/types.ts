@@ -31,5 +31,6 @@ export type LeagueStanding = {
 
 export type LeagueStandings = {
   league: { id: string; name: string };
+  viewerIsManager: boolean;
   standings: LeagueStanding[];
 };

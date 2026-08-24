@@ -7,6 +7,7 @@ import {
   formatDateTimeInTimeZone,
   formatRemainingDuration,
   getCountdownSeconds,
+  getLockCountdownAnnouncement,
   getMatchStatusLabel,
   getProviderReviewLabel,
   getPredictionStateLabel,
@@ -216,6 +217,27 @@ describe("match and timestamp presentation", () => {
     expect(formatRemainingDuration(60)).toBe("נותרה דקה אחת");
     expect(formatRemainingDuration(1)).toBe("נותרה שנייה אחת");
     expect(formatRemainingDuration(0)).toBe("הניחוש נעול");
+  });
+
+  it("keeps screen-reader countdown announcements bounded", () => {
+    expect(getLockCountdownAnnouncement(0)).toBe("הניחוש נעול");
+    expect(getLockCountdownAnnouncement(30)).toBe(
+      "נותרה פחות מדקה עד לנעילת הניחוש",
+    );
+    expect(getLockCountdownAnnouncement(120)).toBe(
+      "נותרו 2 דקות עד לנעילת הניחוש",
+    );
+
+    const distantAnnouncement = getLockCountdownAnnouncement(
+      172_800,
+      "2026-08-26T16:00:00.000Z",
+      "UTC",
+    );
+    expect(distantAnnouncement).toContain("הניחוש פתוח עד");
+    expect(distantAnnouncement).not.toContain("2880 דקות");
+    expect(getLockCountdownAnnouncement(172_800)).toBe(
+      "הניחוש פתוח. נותרו 2 ימים",
+    );
   });
 });
 

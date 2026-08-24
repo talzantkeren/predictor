@@ -6,9 +6,9 @@ export function FormMessage({
   children: React.ReactNode;
 }) {
   const colors = {
-    success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    error: "border-red-200 bg-red-50 text-red-900",
-    info: "border-blue-200 bg-blue-50 text-blue-900",
+    success: "border-success-200 bg-success-50 text-success-900",
+    error: "border-error-200 bg-error-50 text-error-900",
+    info: "border-navy-200 bg-navy-100 text-navy-900",
   }[kind];
 
   return (
@@ -40,7 +40,7 @@ export function FieldError({
     <p
       id={id}
       role={alert ? "alert" : undefined}
-      className="mt-1 text-sm text-red-700"
+      className="mt-1 text-sm text-error-900"
     >
       {messages[0]}
     </p>

@@ -47,6 +47,7 @@ export type LeagueMatchList = {
     competitionName: string;
   };
   viewerIsActiveMember: boolean;
+  viewerIsManager: boolean;
   databaseNow: string;
   roundOptions: number[];
   matches: LeagueMatchItem[];

@@ -10,6 +10,12 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
+מצב נוכחי: מימוש Slice 7c — Design System ורענון UI — הושלם מקומית לאחר
+סגירת Slice 7b וה־Hosted canary של API-Football; פריסת Preview ואישור חזותי
+עדיין נדרשים לפני Production. לאחר האישור השלב הבא הוא Slice 8 של דוחות Demo. ראיות
+ה־Canary המסוננות נמצאות ב־
+[`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
+
 זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
 הקשר ההזמנה לאחר אישור ורענון. השלמת החלטת המנהל נדרשת להיבדק ידנית שוב לאחר כל
 שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slices 3–4.
@@ -169,9 +175,10 @@ API-Football המאוחרת אינה משנה את השורות האלה, ולא
 הקיים יפעל לפי זמן המסד כרגיל.
 
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
-Slice 7 הוסיף observability ו־Cron ידני. Slice 7b מוסיף קטלוג API-Football
-provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo;
-דוחות Demo הם Slice 8; הקשחה, מסמכים והצגה הם Slice 9.
+Slice 7 הוסיף observability ו־Cron ידני. Slice 7b הוסיף קטלוג API-Football
+provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c מוסיף
+שפה חזותית אחידה ומיישם אותה בדשבורד, בתקציר הליגה, במשחקים ובדירוג בלי לשנות
+נתיבים או התנהגות עסקית; דוחות Demo הם Slice 8 והקשחה, מסמכים והצגה הם Slice 9.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 
@@ -272,6 +279,26 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 דוגמת Cron קיימת נשארת POST עם `Content-Type: application/json` ו־Bearer
 שנקרא מ־Vault. יש לערוך את ה־schedule של ה־job הקיים ל־`* * * * *` דרך כלי
 הניהול המאושר בלבד; אין להעתיק secret ל־SQL או ליצור job נוסף.
+
+## Slice 7c: Design System ורענון UI
+
+הכיוון שיושם הוא Sports Command Center בהיר עם טיפוגרפיה עברית חזקה,
+היררכיית מידע ברורה, `RoundCard` כרכיב חתימה ומשטח כהה מוגבל סמנטית לתוצאה.
+אין theme כהה, שפה חזותית של הימורים, אווטרים, פיד חברתי או feature חדש.
+
+הקלט המלא לכלי העיצוב נמצא ב־[`docs/design-brief.md`](./docs/design-brief.md).
+כלי העיצוב הוא כלי פיתוח בלבד: אין להעביר אליו `.env`, מפתחות, cookies,
+אסמכתאות או PII, ואין להוסיף SDK או קריאת runtime לאפליקציה. לאחר אישור
+האבטיפוס יושמו tokens, גופן Heebo, מעטפת, מצבי רכיבים וארבעת מסכי העוגן.
+המימוש נבדק ב־390px, ב־768px וב־1440px, והזרימות הקיימות נשארו דרך אותם
+נתיבים, Actions, הרשאות וחוקי מוצר. חומר ה־handoff והכרעות הביקורת נמצאים תחת
+[`docs/design/slice-7c/`](./docs/design/slice-7c/README.md). ביקורת ההמשך
+הוסיפה מסגרת נגישה לבקרי טופס, יישרה את מסכי החברים וההגדרות לשפה החזותית
+וסגרה כפילויות לקוראי מסך. הערות הליטוש האחרונות נסגרו באמצעות רקע לבן לשדות
+readonly, accent סמנטי לקישור הזמנה ומצבי focus/disabled המבוססים על tokens —
+ללא שינוי בנתונים, בהרשאות או בהתנהגות העסקית.
+Slice 8 הוא השלב
+הבא לאחר Preview ואישור חזותי.
 
 ### Mailpit
 

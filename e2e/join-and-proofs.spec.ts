@@ -359,7 +359,25 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       await manager.page
         .getByRole("button", { name: "יצירת קישור חדש" })
         .click();
-      const invite = await manager.page.getByLabel("הקישור החדש").inputValue();
+      const newInviteField = manager.page.getByLabel("הקישור החדש");
+      const inviteSection = manager.page.getByRole("region", {
+        name: "קישור חד־פעמי להצגה",
+      });
+      expect(
+        await newInviteField.evaluate((element) => ({
+          backgroundColor: getComputedStyle(element).backgroundColor,
+          borderTopColor: getComputedStyle(element).borderTopColor,
+        })),
+      ).toEqual({
+        backgroundColor: "rgb(255, 255, 255)",
+        borderTopColor: "rgb(127, 144, 164)",
+      });
+      expect(
+        await inviteSection.evaluate(
+          (element) => getComputedStyle(element).backgroundColor,
+        ),
+      ).toBe("rgb(255, 255, 255)");
+      const invite = await newInviteField.inputValue();
       const inviteUrl = new URL(invite);
       const publicId = inviteUrl.pathname.split("/").at(-1);
       expect(publicId).toMatch(/^[0-9a-f-]{36}$/);

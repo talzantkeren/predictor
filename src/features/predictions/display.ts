@@ -158,6 +158,25 @@ export function formatRemainingDuration(seconds: number) {
     : `נותרו ${secondsText}`;
 }
 
+export function getLockCountdownAnnouncement(
+  seconds: number,
+  lockAt?: string,
+  timeZone = DEFAULT_MATCH_TIME_ZONE,
+) {
+  if (seconds <= 0) return "הניחוש נעול";
+
+  if (seconds > 86_400) {
+    return lockAt
+      ? `הניחוש פתוח עד ${formatDateTimeInTimeZone(lockAt, timeZone)}`
+      : `הניחוש פתוח. ${formatRemainingDuration(seconds)}`;
+  }
+
+  const announcedMinutes = Math.ceil(seconds / 60);
+  return announcedMinutes <= 1
+    ? "נותרה פחות מדקה עד לנעילת הניחוש"
+    : `נותרו ${announcedMinutes} דקות עד לנעילת הניחוש`;
+}
+
 export function formatDateTimeInTimeZone(
   instant: string,
   timeZone: string,

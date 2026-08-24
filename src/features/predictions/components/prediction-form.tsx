@@ -41,8 +41,8 @@ export function PredictionForm({
       <input type="hidden" name="matchId" value={matchId} />
 
       <fieldset>
-        <legend className="text-lg font-bold text-slate-950">ניחוש תוצאה מדויקת</legend>
-        <p className="mt-1 text-sm leading-6 text-slate-600">
+        <legend className="text-lg font-black text-ink">ניחוש תוצאה מדויקת</legend>
+        <p className="mt-1 text-sm leading-6 text-ink-secondary">
           אפשר לשמור שוב כדי להחליף את הניחוש כל עוד מסד הנתונים טרם נעל את המשחק.
         </p>
 
@@ -50,7 +50,7 @@ export function PredictionForm({
           <div className="min-w-0">
             <label
               htmlFor={`prediction-home-${matchId}`}
-              className="block break-words text-sm font-semibold text-slate-800"
+              className="block break-words text-sm font-bold text-ink"
             >
               שערים — {homeTeamName}
             </label>
@@ -70,7 +70,7 @@ export function PredictionForm({
                   ? `prediction-home-${matchId}-error`
                   : undefined
               }
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-3 text-center text-xl font-bold outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-200"
+              className="tabular-nums mt-2 min-h-14 w-full rounded-lg border border-control-border bg-white px-3 py-3 text-center text-xl font-black text-ink outline-none focus:border-focus"
             />
             <FieldError
               id={`prediction-home-${matchId}-error`}
@@ -78,14 +78,14 @@ export function PredictionForm({
             />
           </div>
 
-          <span aria-hidden="true" className="mt-10 text-xl font-bold text-slate-400">
+          <span aria-hidden="true" className="mt-11 text-xl font-black text-ink-muted">
             –
           </span>
 
           <div className="min-w-0">
             <label
               htmlFor={`prediction-away-${matchId}`}
-              className="block break-words text-sm font-semibold text-slate-800"
+              className="block break-words text-sm font-bold text-ink"
             >
               שערים — {awayTeamName}
             </label>
@@ -105,7 +105,7 @@ export function PredictionForm({
                   ? `prediction-away-${matchId}-error`
                   : undefined
               }
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-3 text-center text-xl font-bold outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-200"
+              className="tabular-nums mt-2 min-h-14 w-full rounded-lg border border-control-border bg-white px-3 py-3 text-center text-xl font-black text-ink outline-none focus:border-focus"
             />
             <FieldError
               id={`prediction-away-${matchId}-error`}
@@ -124,7 +124,7 @@ export function PredictionForm({
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+        className="min-h-11 w-full rounded-lg bg-action px-5 py-3 font-extrabold text-white transition hover:bg-action-hover disabled:cursor-wait disabled:opacity-60 sm:w-auto"
       >
         {pending
           ? "שומרים..."

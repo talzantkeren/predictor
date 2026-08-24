@@ -29,7 +29,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
 
       <div className="grid gap-4 sm:grid-cols-3 sm:items-end">
         <div>
-          <label htmlFor={statusInputId} className="text-sm font-semibold text-slate-800">
+          <label htmlFor={statusInputId} className="text-sm font-bold text-ink">
             מצב תוצאה
           </label>
           <select
@@ -39,7 +39,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             onChange={(event) =>
               setSelectedStatus(event.target.value as "finished" | "canceled")
             }
-            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 block w-full rounded-lg border border-control-border bg-white px-3 py-2.5 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           >
             <option value="finished">הסתיים</option>
             <option value="canceled">בוטל</option>
@@ -47,7 +47,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
         </div>
 
         <div>
-          <label htmlFor={homeInputId} className="text-sm font-semibold text-slate-800">
+          <label htmlFor={homeInputId} className="text-sm font-bold text-ink">
             שערי {match.homeTeamName}
           </label>
           <input
@@ -65,7 +65,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             aria-describedby={
               state.fieldErrors?.homeScore ? `${homeInputId}-error` : undefined
             }
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2.5 disabled:bg-slate-100 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 block w-full rounded-lg border border-control-border px-3 py-2.5 disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           />
           {state.fieldErrors?.homeScore?.[0] ? (
             <p id={`${homeInputId}-error`} className="mt-1 text-sm text-red-700">
@@ -75,7 +75,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
         </div>
 
         <div>
-          <label htmlFor={awayInputId} className="text-sm font-semibold text-slate-800">
+          <label htmlFor={awayInputId} className="text-sm font-bold text-ink">
             שערי {match.awayTeamName}
           </label>
           <input
@@ -93,7 +93,7 @@ export function ManualResultForm({ match }: { match: SystemMatchItem }) {
             aria-describedby={
               state.fieldErrors?.awayScore ? `${awayInputId}-error` : undefined
             }
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2.5 disabled:bg-slate-100 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="mt-1 block w-full rounded-lg border border-control-border px-3 py-2.5 disabled:bg-locked-50 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           />
           {state.fieldErrors?.awayScore?.[0] ? (
             <p id={`${awayInputId}-error`} className="mt-1 text-sm text-red-700">

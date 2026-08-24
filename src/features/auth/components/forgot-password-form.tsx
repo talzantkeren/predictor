@@ -27,7 +27,7 @@ export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }
       ) : null}
 
       <div>
-        <label htmlFor="email" className="block text-sm font-semibold text-slate-800">
+        <label htmlFor="email" className="block text-sm font-bold text-ink">
           כתובת אימייל
         </label>
         <input
@@ -39,7 +39,7 @@ export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-left outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+          className="mt-2 w-full rounded-lg border border-control-border px-3 py-2 text-left outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>

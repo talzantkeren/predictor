@@ -24,10 +24,10 @@ export function LocalDateTime({
       : formatDateTimeInTimeZone(instant, timeZone);
 
   return (
-    <span>
+    <span className="inline-flex flex-wrap items-baseline gap-x-1">
       <time dateTime={instant}>{text}</time>
       <span className="sr-only"> אזור זמן </span>
-      <span className="whitespace-nowrap text-xs text-slate-500">
+      <span dir="ltr" className="whitespace-nowrap text-xs text-ink-muted">
         {timeZone}
       </span>
     </span>

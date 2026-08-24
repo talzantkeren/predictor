@@ -6,9 +6,11 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
+    <div className="min-h-screen bg-background text-ink">
       <AppHeader />
-      {children}
+      <div id="main-content" tabIndex={-1} className="outline-none">
+        {children}
+      </div>
     </div>
   );
 }

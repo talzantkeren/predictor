@@ -25,6 +25,27 @@ test.describe("league creation and isolation", () => {
 
     await expect(first.page.getByRole("heading", { name: "הליגות שלי" })).toBeVisible();
     await expect(first.page.getByRole("heading", { name: "עדיין אין לך ליגות" })).toBeVisible();
+    await expect(
+      first.page.getByRole("navigation", { name: "ניווט משתמש" }),
+    ).toBeVisible();
+    const skipLink = first.page.getByRole("link", {
+      name: "דילוג לתוכן הראשי",
+    });
+    await skipLink.focus();
+    await expect(skipLink).toBeFocused();
+    await first.page.keyboard.press("Enter");
+    await expect(first.page.locator("#main-content")).toBeFocused();
+
+    const dashboardDimensions = await first.page.evaluate(() => ({
+      dir: document.documentElement.dir,
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dashboardDimensions.dir).toBe("rtl");
+    expect(dashboardDimensions.scrollWidth).toBeLessThanOrEqual(
+      dashboardDimensions.clientWidth,
+    );
+
     await first.page.getByRole("link", { name: "יצירת הליגה הראשונה" }).click();
     await expect(first.page).toHaveURL(/\/leagues\/new$/);
     await expect(first.page.getByRole("heading", { name: "יצירת ליגה" })).toBeVisible();
@@ -67,6 +88,19 @@ test.describe("league creation and isolation", () => {
     await first.page.getByRole("button", { name: "הוספת מיקום פרס" }).click();
     await expect(first.page.getByLabel("מיקום", { exact: true })).toHaveCount(3);
     await expect(first.page.getByLabel("מיקום", { exact: true }).nth(2)).toHaveValue("3");
+    const readonlyPrizePosition = first.page
+      .getByLabel("מיקום", { exact: true })
+      .first();
+    await expect(readonlyPrizePosition).toHaveAttribute("readonly", "");
+    expect(
+      await readonlyPrizePosition.evaluate((element) => ({
+        backgroundColor: getComputedStyle(element).backgroundColor,
+        borderTopColor: getComputedStyle(element).borderTopColor,
+      })),
+    ).toEqual({
+      backgroundColor: "rgb(255, 255, 255)",
+      borderTopColor: "rgb(127, 144, 164)",
+    });
     await first.page.getByRole("button", { name: "הסרת מיקום פרס 2", exact: true }).click();
     await expect(first.page.getByLabel("מיקום", { exact: true })).toHaveCount(2);
     await expect(first.page.getByLabel("מיקום", { exact: true }).nth(0)).toHaveValue("1");
@@ -81,6 +115,9 @@ test.describe("league creation and isolation", () => {
     const leagueId = leagueUrl.pathname.split("/").at(-1);
     expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
     await expect(first.page.getByRole("heading", { name: leagueName })).toBeVisible();
+    await expect(
+      first.page.getByRole("navigation", { name: "ניווט בליגה" }),
+    ).toBeVisible();
     await expect(first.page.getByText("Demo בלבד — ללא כסף אמיתי")).toBeVisible();
     await expect(first.page.getByText(/25\.00/)).toBeVisible();
     await expect(first.page.getByText("מנהל/ת וחבר/ה פעיל/ה")).toBeVisible();

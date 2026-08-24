@@ -3,9 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { formatRemainingDuration } from "@/features/predictions/display";
+import {
+  formatRemainingDuration,
+  getLockCountdownAnnouncement,
+} from "@/features/predictions/display";
 
-export function LockCountdown({ initialSeconds }: { initialSeconds: number }) {
+export function LockCountdown({
+  initialSeconds,
+  lockAt,
+}: {
+  initialSeconds: number;
+  lockAt?: string;
+}) {
   const router = useRouter();
   const [seconds, setSeconds] = useState(initialSeconds);
   const refreshed = useRef(false);
@@ -26,9 +35,14 @@ export function LockCountdown({ initialSeconds }: { initialSeconds: number }) {
     return () => window.clearInterval(timer);
   }, [router, seconds]);
 
+  const announcement = getLockCountdownAnnouncement(seconds, lockAt);
+
   return (
-    <span role="status" aria-live="polite" className="font-semibold text-slate-700">
-      {formatRemainingDuration(seconds)}
+    <span className="font-bold text-ink-secondary">
+      <span aria-hidden="true">{formatRemainingDuration(seconds)}</span>
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </span>
     </span>
   );
 }

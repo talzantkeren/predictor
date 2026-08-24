@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+<script src="image-slot.js"></script>
+<style>
+body{margin:0;background:#E9EDF2;font-family:'Heebo',system-ui,sans-serif}
+a{color:#143A66}a:hover{color:#0A2240}
+.dv-turn{direction:rtl;padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#0A2240;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:800 15px/1.2 'Heebo',sans-serif;color:#0C1D33}
+.dv-rowcap{font:700 11px ui-monospace,Menlo,monospace;color:#8593A5;margin:30px 0 12px;letter-spacing:.06em}
+.dv-opts{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:8px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(10,34,64,.1);color:#0C1D33;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:600 12px/1.3 'Heebo',sans-serif;color:#4A5D73}
+.dv-route{font:500 10.5px ui-monospace,Menlo,monospace;color:#8593A5;direction:ltr}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(10,34,64,.1);border-radius:10px;box-shadow:0 1px 3px rgba(10,34,64,.07);overflow:hidden}
+.dv-opt:target .dv-oid{background:#047857;color:#fff}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">QA סופי — הכיוון מוקפא ל־handoff</span></div>
+<p style="margin:0;font-size:13px;color:#4A5D73;max-width:860px;line-height:1.6">אושר: כיוון "לוח המחזור" עם pattern קווי המגרש (<a href="#2a">2a</a>). חלופת הצילום (<a href="#2b">2b</a>) נדחתה וסומנה. לא נוספו routes, תוכן עסקי או פונקציונליות; לא נכתב קוד ייצור.</p>
+<div class="dv-opts" style="margin-top:16px">
+
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>תוצאות QA</div>
+<div class="dv-card" style="width:560px;padding:16px 20px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;font-size:12.5px">
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>8 מסכים: 4×390px + 4×1440px</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55"><a href="#1c">1c</a>–<a href="#1f">1f</a> מובייל · <a href="#1g">1g</a>–<a href="#1j">1j</a> דסקטופ, לכל ארבעת הנתיבים הקיימים.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>ה־pattern רק ב"משחק הקרוב"</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">שלושה שימושים בלבד: <a href="#1d">1d</a>, <a href="#1h">1h</a> וההדגמה ב־<a href="#2a">2a</a>. אין רקע מאחורי RoundCard, ScoreInput, טבלאות או טפסים; קופסת התוצאה הרשמית נשארת נייבי אחיד.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>ללא horizontal overflow ב־390px</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">כל ה־chips ותוויות הזמן ב־nowrap בתוך flex עם gap; tabs גולשים עם fade במקום לדחוף את הרוחב; שמות ארוכים ellipsis/break בתוך min-width:0.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>שם ארוך בדירוג נשבר נכון</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">"אלכסנדרה קונסטנטינופולסקי־ברקוביץ׳" — overflow-wrap:break-word בשתי הרזולוציות, בלי לחתוך את עמודת הנקודות.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>סדר בית–חוץ עקבי</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">בית תמיד ראשון מימין וקלט השערים הראשון שלו — בלוח הכהה, ב־MatchRow, בתוצאות שנוקדו ובהדגמות. תווית aria לכל קלט.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>שוויון מוצג 1, 1, 3</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">בשתי טבלאות הדירוג: שני מקום 1 (עם tag "שוויון" + chip "את/ה"), הבא 3. כלל שובר השוויון כתוב מעל הטבלה.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>Component states מרוכזים</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55"><a href="#1k">1k</a>: Loading (skeleton) · Empty · Error · Success · Disabled · Locked · Focus · Hover. reduced-motion מכובד.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>RTL ובידוד bidi</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">אחוזים, עונת 2026/27, WebP, נתיבים ו־tokens עטופים dir="ltr"; תאריכים ושעות בפורמט עברי אחיד "שבת 17.10 · 19:00" ללא GMT; מספרי ניקוד tabular.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>ללא routes/תוכן/פונקציונליות חדשים</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">ארבעת הנתיבים הקיימים בלבד; "הפעולה הבאה" נגזרת מנתונים קיימים.</div></div></div>
+<div style="display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid #EFF2F6"><span style="color:#047857;font-weight:800">✓</span><div><strong>ללא קוד ייצור</strong><div style="color:#4A5D73;font-size:12px;line-height:1.55">המסמך הוא mockups + spec בלבד; תוכנית ה־implementation נשארת הצעה ב־<a href="#1n">1n</a>.</div></div></div>
+<div style="margin-top:12px;background:#E7F5EF;border:1px solid #B5E0CD;color:#04533C;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700">✓ הכיוון מוקפא ל־handoff. מקורות האמת: <a href="#1l">1l</a> tokens · <a href="#1m">1m</a> רכיבים ומיפוי · <a href="#1k">1k</a> states · <a href="#1n">1n</a> סדר עבודה וסיכונים.</div>
+</div>
+</div></div>
+
+</div>
+</section>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Refinement — רקע ספורטיבי עדין ב"משחק הקרוב" + ליטוש פרטים</span></div>
+<p style="margin:0;font-size:13px;color:#4A5D73;max-width:860px;line-height:1.6">הרקע נוסף רק ללוח הכהה של "המשחק הקרוב" (<a href="#1d">1d</a>, <a href="#1h">1h</a>) — לא מאחורי RoundCard, שדות ניחוש, טבלאות או טפסים. כותרת הליגה נשארת לבנה ונקייה. שאר המסכים, הנתיבים והתוכן — ללא שינוי.</p>
+<div class="dv-opts" style="margin-top:16px">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>לפני / אחרי — pattern קווי מגרש (מיושם)</div>
+<div class="dv-card" style="width:430px;padding:16px 18px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;display:grid;gap:14px">
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">לפני — נייבי אחיד</div>
+<div style="background:#0A2240;border-radius:14px;padding:16px;color:#fff">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11.5px;font-weight:700;color:#8FBCEE;letter-spacing:.03em">המשחק הקרוב · מחזור 1</span><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">שבת 17.10 · 19:00</span></div>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center">
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">הפועל<br>תל אביב</div>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+</div>
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">מכבי<br>תל אביב</div>
+</div>
+<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">● פתוח לניחוש</span><button style="min-height:44px;padding:0 18px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">לניחוש</button></div></div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">אחרי — קווי מגרש (עיגול מרכז, רחבה) בלבן ‎7%, מוסטים לקצה</div>
+<div style="background:#0A2240 url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 600 360%22%3E%3Cg fill=%22none%22 stroke=%22%23FFFFFF%22 stroke-opacity=%22.07%22 stroke-width=%222%22%3E%3Ccircle cx=%22300%22 cy=%22180%22 r=%2270%22/%3E%3Cpath d=%22M300 0v360%22/%3E%3Crect x=%220%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%220%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M110 132a60 60 0 0 1 0 96%22/%3E%3Crect x=%22490%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%22556%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M490 228a60 60 0 0 0 0-96%22/%3E%3C/g%3E%3C/svg%3E') no-repeat left -70px center/380px auto;border-radius:14px;padding:16px;color:#fff">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11.5px;font-weight:700;color:#8FBCEE;letter-spacing:.03em">המשחק הקרוב · מחזור 1</span><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">שבת 17.10 · 19:00</span></div>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center">
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">הפועל<br>תל אביב</div>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+</div>
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">מכבי<br>תל אביב</div>
+</div>
+<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">● פתוח לניחוש</span><button style="min-height:44px;padding:0 18px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">לניחוש</button></div></div>
+</div>
+<div style="font-size:12px;color:#4A5D73;line-height:1.6">SVG inline יחיד (‎&lt;1KB), ללא בקשת רשת. הקווים ב־7% לבן — הטקסט הלבן נשאר הרבה מעל AA. במובייל ה־pattern מוסט לקצה כך שאינו נפגש עם קופסאות התוצאה.</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="2b" style="opacity:.5"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>חלופה — צילום אצטדיון <span style="color:#8F2317;font-weight:800">· ✕ נדחה — לא לשימוש</span></div>
+<div class="dv-card" style="width:430px;padding:16px 18px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;display:grid;gap:10px">
+<div style="position:relative;border-radius:14px;overflow:hidden;background:#0A2240;color:#fff">
+<image-slot id="hero-stadium-photo" style="position:absolute;inset:0;width:100%;height:100%" placeholder="צילום אצטדיון רגוע"></image-slot>
+<div style="position:absolute;inset:0;background:linear-gradient(105deg,rgba(10,34,64,.95) 35%,rgba(10,34,64,.8));pointer-events:none"></div>
+<div style="position:relative;padding:16px;pointer-events:none">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11.5px;font-weight:700;color:#8FBCEE;letter-spacing:.03em">המשחק הקרוב · מחזור 1</span><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">שבת 17.10 · 19:00</span></div>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center">
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">הפועל<br>תל אביב</div>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+<div style="width:38px;height:44px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:20px;font-weight:900;color:#B9C8DA">–</div>
+</div>
+<div style="font-size:14.5px;font-weight:800;line-height:1.3">מכבי<br>תל אביב</div>
+</div>
+<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:12px;color:#B9C8DA;white-space:nowrap">● פתוח לניחוש</span><button style="min-height:44px;padding:0 18px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">לניחוש</button></div></div>
+</div>
+<div style="font-size:12px;color:#4A5D73;line-height:1.6">הדמיה חיה: אפשר לגרור לכאן צילום אצטדיון רגוע (יציעים ריקים, תאורת יום). ה־overlay הנייבי ב־80–95% שומר ניגודיות AA בכל תמונה. בלי ניאון, בלי זהב, בלי רגעי שיא דרמטיים.</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>המלצה + מה לוטש</div>
+<div class="dv-card" style="width:430px;padding:18px 20px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;font-size:12.5px;line-height:1.7">
+<div style="font-size:12px;font-weight:700;color:#047857;margin-bottom:6px">✓ אושר: ה־pattern (<a href="#2a">2a</a>) — והוא שמיושם ב־<a href="#1d">1d</a>/<a href="#1h">1h</a></div>
+<ul style="margin:0;padding:0 18px 0 0;color:#33475C">
+<li><strong>ביצועים:</strong> ‎0 בייטים ברשת, אין CLS ואין מצב טעינה; חד בכל רזולוציה ו־DPR.</li>
+<li><strong>מוצר:</strong> שקט וגיאומטרי — רחוק ממראה אתר הימורים; צילום מושך את המסך לכיוון "אווירה" על חשבון המספרים.</li>
+<li><strong>תפעול:</strong> אין רישוי, אין ניהול נכסים וגרסאות רוחב, אין תלות באיכות התמונה שתסופק.</li>
+<li><strong>צילום (<a href="#2b">2b</a>) נשמר</strong> לעמודי שיווק/כניסה — שם אווירה היא המטרה.</li>
+</ul>
+<div style="font-size:12px;font-weight:700;color:#143A66;margin:12px 0 6px">ליטוש שבוצע במסמך (ללא שינוי routes/תוכן)</div>
+<ul style="margin:0;padding:0 18px 0 0;color:#33475C">
+<li>Tabs במובייל (<a href="#1d">1d</a>–<a href="#1f">1f</a>): fade גלילה בקצה השמאלי במקום חיתוך קשה.</li>
+<li>מצבי Hover נוספו למצבי הקצה (<a href="#1k">1k</a>): כרטיס — גבול navy-700 + shadow-md; כפתור ראשי — ‎#065F46.</li>
+<li>ערכים קנוניים: צל מנוחה ‎0 1px 2px 6%, צל hover ‎0 4px 14px 10%; radius — ‎8 controls · ‎12 cards · ‎14–16 containers; ריווח בסיס 4.</li>
+<li>chips ותוויות זמן/התקדמות: ‎nowrap (סבב קודם) — אין שבירות שורה ב־390px.</li>
+<li>אייקונים: נשארת מערכת הגליפים המאופקת ● ✓ ▪ ◆ ! ✕ בלבד — ללא ספריית אייקונים.</li>
+</ul>
+</div>
+</div></div>
+
+</div>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Predictor1 · Slice 7c — ביקורת, כיוון מומלץ, tokens ושמונה frames</span></div>
+<p style="margin:0;font-size:13px;color:#4A5D73;max-width:860px;line-height:1.6">מבוסס על הקוד הקיים ב־<span dir="ltr" style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px">talzantkeren/predictor</span>, צילומי המסך וה־design brief. אין פונקציונליות חדשה, אין נתיבים חדשים, אין Dark Mode. כל הנתונים במסכים הם Demo. הפונט (Heebo) וה־tokens אינם סופיים עד אישור חזותי — זה שלב האישור.</p>
+
+<div class="dv-rowcap">— 1. ביקורת + כיוון —</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>ביקורת על העיצוב הקיים</div>
+<div class="dv-card" style="width:470px;padding:22px 24px;color:#0C1D33">
+<div style="font-size:12px;font-weight:700;color:#047857;margin-bottom:6px">מה עובד</div>
+<ul style="margin:0;padding:0 18px 0 0;font-size:13px;line-height:1.65;color:#33475C">
+<li>שפת כרטיסים אחת עקבית, RTL בסיסי נכון, ללא overflow ב־390px.</li>
+<li>DemoNotice קיים ומנוסח היטב; המידע נאמן לנתונים האמיתיים.</li>
+<li>מבנה הדפים כבר תואם את הנתיבים — הבעיה היא הצגה, לא מבנה.</li>
+</ul>
+<div style="font-size:12px;font-weight:700;color:#8F2317;margin:16px 0 6px">מה יוצר בלבול</div>
+<ul style="margin:0;padding:0 18px 0 0;font-size:13px;line-height:1.65;color:#33475C">
+<li><strong>אין היררכיה:</strong> ברכת "שלום" תופסת רבע מסך בעוד הפעולה האמיתית (ניחושים פתוחים, בקשות ממתינות) לא מוצגת כלל. "יצירת ליגה" מופיע פעמיים באותו מסך.</li>
+<li><strong>המשחק הבודד הוא היחידה:</strong> כל משחק — כרטיס ענק עם CTA כחול ראשי. שישה כפתורים ראשיים במסך אחד = אף אחד אינו ראשי. אין תחושת "כמה נשאר לי במחזור".</li>
+<li><strong>שקילות חזותית:</strong> "GMT+3 Asia/Jerusalem" באותו משקל כמו שמות הקבוצות; המפריד "–" מרחף בלי תוצאה.</li>
+<li><strong>bidi שבור:</strong> שורות זמן מערבבות עברית/לטינית/מספרים וקופצות; שמות ליגה לטיניים מיושרים לא עקבית.</li>
+<li><strong>דירוג:</strong> הטבלה צפה בדף ריק, שוויון 1,1 מוצג בלי הסבר, אין הדגשת המשתמש הנוכחי, ואין עמודה ממוינת מסומנת.</li>
+<li><strong>נגישות:</strong> סטטוסים נבדלים בצבע רקע בלבד; אין ניווט פנימי (tabs) בתוך ליגה — כל מעבר הוא "חזרה" וכניסה מחדש.</li>
+<li><strong>צפיפות:</strong> מובייל מציג כרטיס וחצי למסך; padding כפול (כרטיס בתוך כרטיס) מבזבז רוחב יקר ב־390px.</li>
+</ul>
+</div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>הכיוון המומלץ — "לוח המחזור"</div>
+<div class="dv-card" style="width:470px;padding:22px 24px;color:#0C1D33">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+<div style="width:34px;height:34px;border-radius:9px;background:#0A2240;color:#fff;display:grid;place-items:center;font-weight:900;font-size:14px">P1</div>
+<div><div style="font-weight:800;font-size:15px">Sports Command Center בהיר · יחידת הארגון היא המחזור</div><div style="font-size:11.5px;color:#6B7C90">כיוון יחיד. וריאציות רק בפרטים, לא בשפות מתחרות.</div></div>
+</div>
+<p style="margin:0 0 10px;font-size:13px;line-height:1.65;color:#33475C"><strong>למה זה הכיוון הנכון:</strong> המוצר חי במקצב שבועי — מחזור נפתח, ננעל, מנוקד. הבלבול הנוכחי נובע מכך שה־UI מסודר סביב משחקים בודדים וכרטיסים שקולים. ארגון סביב המחזור נותן למשתמש תשובה אחת ברורה בכל כניסה: <em>מה נשאר לי לנחש ומתי זה ננעל</em> — בלי להמציא נתון אחד חדש.</p>
+<p style="margin:0 0 10px;font-size:13px;line-height:1.65;color:#33475C"><strong>Moodboard מילולי:</strong> דף מערכת של שבת אחר הצהריים · טופס ניחושים נקי על נייר לבן · לוח תוצאות עירוני כהה אחד בלב המסך · עט ירוק שמסמן "בוצע".</p>
+<div style="font-size:12px;font-weight:700;color:#143A66;margin:12px 0 6px">עקרונות חזותיים</div>
+<ol style="margin:0;padding:0 18px 0 0;font-size:13px;line-height:1.65;color:#33475C">
+<li>נייבי = זהות, מסגרת וניווט. אמרלד = פעולה, שמירה והתקדמות — <em>ורק</em> הם.</li>
+<li>משטח כהה יחיד וסמנטי: "לוח המשחק המרכזי" (scoreboard). כל השאר בהיר.</li>
+<li>מספרי תוצאה גדולים, ממוסגרים, ברוחב אחיד — תוצאה תמיד בית–חוץ, בית תמיד ראשון מימין.</li>
+<li>סטטוס = צורה + מילה + צבע (● פתוח, ✓ נשמר, ▪ נעול, ◆ הסתיים, ! נדחה, ✕ בוטל).</li>
+<li>צפיפות עיתונאית: שורת משחק במקום כרטיס משחק. RoundCard אחד = מחזור שלם.</li>
+</ol>
+<div style="font-size:12px;font-weight:700;color:#143A66;margin:12px 0 6px">מה מבדיל את זה מ־Dashboard גנרי</div>
+<p style="margin:0;font-size:13px;line-height:1.65;color:#33475C">רכיב חתימה <span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px">RoundCard</span> שנראה כמו טופס מחזור ולא כמו רשימת כרטיסים; לוח כהה אחד שמרגיש "אצטדיון" בלי תמונות; מונוגרמת ליגה טיפוגרפית במקום אווטרים; ושפת ניקוד 3/1/0 קבועה שחוזרת בכל מסך. טיפוגרפיה: <strong>Heebo</strong> — עברית־ראשונה, משקלים כבדים למספרים (כפוף לבדיקת עברית/לטינית/ספרות באבטיפוס זה).</p>
+</div></div>
+
+</div>
+
+<div class="dv-rowcap">— 2. ארבעת מסכי העוגן · מובייל 390px —</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>לוח אישי · 390 <span class="dv-route">/dashboard</span></div>
+<div class="dv-card" style="width:390px">
+<div dir="rtl" lang="he" data-screen-label="Dashboard 390" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;align-items:center;gap:14px;font-size:13.5px;font-weight:600"><span style="color:#143A66">פרופיל</span><span style="color:#6B7C90">התנתקות</span></div>
+</div>
+<div style="padding:16px;display:grid;gap:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<div><h1 style="margin:0;font-size:22px;font-weight:800;line-height:1.3">שלום, טל</h1><div style="font-size:12.5px;color:#6B7C90">המשחק הקרוב: <span style="white-space:nowrap">שבת 17.10 · 19:00</span></div></div>
+<button style="min-height:44px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#143A66">יצירת ליגה</button>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px;display:grid;gap:12px">
+<div style="font-size:11.5px;font-weight:700;color:#143A66;letter-spacing:.02em">הפעולה הבאה</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">נותרו 2 ניחושים פתוחים במחזור 1</div><div style="font-size:12.5px;color:#4A5D73">ליגת המשפחה · נעילה: <span style="white-space:nowrap">שבת 17.10 · 19:00</span></div></div>
+<button style="min-height:44px;padding:0 16px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff;flex:none">להשלמה</button>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">2 בקשות הצטרפות ממתינות לאישורך</div><div style="font-size:12.5px;color:#4A5D73">ליגת המשפחה · בתפקידך כמנהלת</div></div>
+<button style="min-height:44px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#143A66;flex:none">לניהול</button>
+</div>
+</div>
+<div>
+<h2 style="margin:0 0 8px;font-size:16px;font-weight:800">הליגות שלי</h2>
+<div style="display:grid;gap:10px">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="font-size:15.5px;font-weight:800;min-width:0">ליגת המשפחה</div>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E7F5EF;color:#04533C;flex:none"><span style="width:7px;height:7px;border-radius:50%;background:#047857"></span>פתוחה להצטרפות</span>
+</div>
+<div style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#4A5D73">
+<span>ליגת העל · עונת <span dir="ltr">2026/27</span></span><span style="color:#C9D4E0">·</span>
+<span style="padding:1px 8px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-weight:700;color:#143A66">מנהלת</span>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="font-size:15.5px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">חבורת הכדורגל של העבודה — קומה 3</div>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E6EDF5;color:#143A66;flex:none"><span style="width:7px;height:7px;border-radius:50%;background:#143A66"></span>פעילה</span>
+</div>
+<div style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#4A5D73">
+<span>ליגת העל · עונת <span dir="ltr">2026/27</span></span><span style="color:#C9D4E0">·</span>
+<span style="padding:1px 8px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-weight:700;color:#143A66">חברה פעילה</span>
+</div>
+</div>
+</div>
+</div>
+<div>
+<h2 style="margin:0 0 8px;font-size:16px;font-weight:800">בקשות ההצטרפות שלי</h2>
+<div style="background:#FDF4E3;border:1px solid #EED9A8;color:#7A4E10;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.5">◆ Demo בלבד — אין להעביר כסף ואין להעלות מסמך פיננסי אמיתי.</div>
+<div style="margin-top:10px;background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="font-size:15px;font-weight:800">ליגת השכונה של גיא</div>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#FDF4E3;color:#7A4E10;flex:none">! ממתינה לאישור</span>
+</div>
+<div style="margin-top:8px;font-size:12.5px;color:#4A5D73;line-height:1.6">אסמכתת Demo 1 מתוך 5 · <span dir="ltr">WebP</span> · הועלתה 20.08.2026<br>האסמכתא אינה נטענת אוטומטית ואינה מוצגת כתמונה מקדימה.</div>
+<button style="margin-top:10px;min-height:44px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#143A66">צפייה באסמכתא שלי</button>
+</div>
+</div>
+<div style="height:6px"></div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>סקירת ליגה · 390 <span class="dv-route">/leagues/[id]</span></div>
+<div class="dv-card" style="width:390px">
+<div dir="rtl" lang="he" data-screen-label="League overview 390" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;align-items:center;gap:14px;font-size:13.5px;font-weight:600"><span style="color:#143A66">פרופיל</span><span style="color:#6B7C90">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0;padding:14px 16px 0">
+<div style="font-size:12px;color:#6B7C90;font-weight:600">‹ הליגות שלי</div>
+<div style="margin-top:8px;display:flex;align-items:center;gap:12px">
+<div style="width:44px;height:44px;border-radius:11px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:17px;flex:none">המ</div>
+<div style="min-width:0">
+<h1 style="margin:0;font-size:20px;font-weight:800;line-height:1.25;overflow-wrap:break-word">ליגת המשפחה</h1>
+<div style="font-size:12.5px;color:#4A5D73">ליגת העל הישראלית · עונת <span dir="ltr">2026/27</span></div>
+</div>
+</div>
+<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E7F5EF;color:#04533C"><span style="width:7px;height:7px;border-radius:50%;background:#047857"></span>פתוחה להצטרפות</span>
+<span style="padding:2px 10px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;color:#143A66">התפקיד שלי: מנהלת</span>
+</div>
+<div style="margin-top:12px;position:relative"><div style="display:flex;gap:2px;overflow:hidden">
+<span style="padding:12px 12px;font-size:13.5px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">סקירה</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">משחקים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">דירוג</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div><span style="position:absolute;left:0;top:0;bottom:0;width:26px;background:linear-gradient(90deg,#fff 20%,rgba(255,255,255,0));pointer-events:none"></span>
+</div>
+</div>
+<div style="padding:16px;display:grid;gap:14px">
+<div style="background:#0A2240 url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 600 360%22%3E%3Cg fill=%22none%22 stroke=%22%23FFFFFF%22 stroke-opacity=%22.07%22 stroke-width=%222%22%3E%3Ccircle cx=%22300%22 cy=%22180%22 r=%2270%22/%3E%3Cpath d=%22M300 0v360%22/%3E%3Crect x=%220%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%220%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M110 132a60 60 0 0 1 0 96%22/%3E%3Crect x=%22490%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%22556%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M490 228a60 60 0 0 0 0-96%22/%3E%3C/g%3E%3C/svg%3E') no-repeat left -70px center/380px auto;border-radius:14px;padding:18px 16px;color:#fff">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:11.5px;font-weight:700;color:#8FBCEE;letter-spacing:.03em">המשחק הקרוב · מחזור 1</span>
+<span style="font-size:12px;color:#B9C8DA">שבת 17.10 · 19:00</span>
+</div>
+<div style="margin-top:14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center">
+<div style="font-size:15px;font-weight:800;line-height:1.3">הפועל<br>תל אביב</div>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:40px;height:46px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:21px;font-weight:900;color:#B9C8DA">–</div>
+<div style="width:40px;height:46px;border-radius:8px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:21px;font-weight:900;color:#B9C8DA">–</div>
+</div>
+<div style="font-size:15px;font-weight:800;line-height:1.3">מכבי<br>תל אביב</div>
+</div>
+<div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span style="font-size:12.5px;color:#B9C8DA">● פתוח לניחוש · נעילה בעוד 54 ימים</span>
+<button style="min-height:44px;padding:0 18px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">לניחוש</button>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div><div style="font-size:14px;font-weight:800;white-space:nowrap">מחזור 1 · נוחשו 2 מתוך 4</div>
+<div style="margin-top:7px;display:flex;gap:3px;width:150px"><span style="height:6px;flex:1;border-radius:3px;background:#047857"></span><span style="height:6px;flex:1;border-radius:3px;background:#047857"></span><span style="height:6px;flex:1;border-radius:3px;background:#DCE4EC"></span><span style="height:6px;flex:1;border-radius:3px;background:#DCE4EC"></span></div></div>
+<span style="font-size:13.5px;font-weight:700;color:#143A66">לכל המשחקים ‹</span>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<h2 style="margin:0;font-size:15px;font-weight:800">חוקי ניקוד <span style="font-size:11.5px;font-weight:600;color:#6B7C90">· גרסה 1 · ▪ נעולה</span></h2>
+<div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+<div style="background:#E7F5EF;border-radius:10px;padding:10px 6px"><div style="font-size:12px;font-weight:700;color:#04533C">תוצאה מדויקת</div><div style="font-size:24px;font-weight:900;color:#04533C">3</div></div>
+<div style="background:#E6EDF5;border-radius:10px;padding:10px 6px"><div style="font-size:12px;font-weight:700;color:#143A66">כיוון נכון</div><div style="font-size:24px;font-weight:900;color:#143A66">1</div></div>
+<div style="background:#EBEFF3;border-radius:10px;padding:10px 6px"><div style="font-size:12px;font-weight:700;color:#42566B">כיוון שגוי</div><div style="font-size:24px;font-weight:900;color:#42566B">0</div></div>
+</div>
+<div style="margin-top:8px;font-size:11.5px;color:#6B7C90">שובר שוויון: מספר כיוונים נכונים. תוצאות מדויקות — מידע בלבד.</div>
+</div>
+<div style="background:#FDF4E3;border:1px solid #EED9A8;color:#7A4E10;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.5">◆ Demo בלבד — הסכומים והפרסים הם סימולציה. Predictor1 אינה גובה, מחזיקה או מעבירה כסף.</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<h2 style="margin:0 0 10px;font-size:15px;font-weight:800">הגדרות Demo והצטרפות</h2>
+<div style="display:grid;gap:8px;font-size:13px">
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">סכום הדגמה</span><strong>50 ₪ (Demo)</strong></div>
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">הצטרפות מאוחרת</span><strong>מותרת, ללא ניקוד רטרואקטיבי</strong></div>
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">חלוקת פרסי Demo</span><strong><span dir="ltr">50% / 30% / 20%</span> למקומות 1–3</strong></div>
+</div>
+</div>
+<div style="background:#fff;border:1.5px solid #C9D4E0;border-radius:12px;padding:14px 16px">
+<h2 style="margin:0;font-size:13px;font-weight:800;color:#143A66">כלים למנהלת הליגה</h2>
+<div style="margin-top:10px;display:grid;gap:8px">
+<button style="min-height:44px;background:#143A66;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">בקשות הצטרפות (2 ממתינות)</button>
+<button style="min-height:44px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#143A66">ניהול קישור ההזמנה</button>
+</div>
+<div style="margin-top:8px;font-size:11.5px;color:#6B7C90">מוצג רק בתפקיד ניהול — מסומן במסגרת ובכותרת, לא בצבע בלבד.</div>
+</div>
+<div style="height:6px"></div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>משחקים וניחושים · 390 <span class="dv-route">/leagues/[id]/matches</span></div>
+<div class="dv-card" style="width:390px">
+<div dir="rtl" lang="he" data-screen-label="Matches 390" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;align-items:center;gap:14px;font-size:13.5px;font-weight:600"><span style="color:#143A66">פרופיל</span><span style="color:#6B7C90">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0;padding:12px 16px 0">
+<div style="display:flex;align-items:center;gap:10px;min-width:0">
+<div style="width:32px;height:32px;border-radius:8px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:13px;flex:none">המ</div>
+<div style="min-width:0"><div style="font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">ליגת המשפחה</div><div style="font-size:11.5px;color:#6B7C90">משחקים וניחושים</div></div>
+</div>
+<div style="margin-top:10px;position:relative"><div style="display:flex;gap:2px;overflow:hidden">
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">סקירה</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">משחקים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">דירוג</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div><span style="position:absolute;left:0;top:0;bottom:0;width:26px;background:linear-gradient(90deg,#fff 20%,rgba(255,255,255,0));pointer-events:none"></span>
+</div>
+</div>
+<div style="padding:14px 16px;display:grid;gap:14px">
+<div style="display:flex;gap:8px;align-items:center">
+<div style="flex:1;display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-size:13.5px;font-weight:700;color:#0C1D33">מחזור 1 <span style="color:#6B7C90">▾</span></div>
+<div style="flex:1;display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-size:13.5px;font-weight:600;color:#6B7C90">לפי תאריך <span>▾</span></div>
+<span style="font-size:13px;font-weight:700;color:#143A66;flex:none">ניקוי</span>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:14px;box-shadow:0 1px 2px rgba(12,29,51,.06);overflow:hidden">
+<div style="padding:14px 16px 12px;border-bottom:1px solid #EFF2F6">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+<div style="font-size:18px;font-weight:900">מחזור 1</div>
+<div style="font-size:12px;font-weight:600;color:#4A5D73">נעילה ראשונה: שבת 17.10 · 19:00</div>
+</div>
+<div style="margin-top:10px;display:flex;align-items:center;gap:10px">
+<div style="display:flex;gap:3px;flex:1"><span style="height:6px;flex:1;border-radius:3px;background:#047857"></span><span style="height:6px;flex:1;border-radius:3px;background:#047857"></span><span style="height:6px;flex:1;border-radius:3px;background:#DCE4EC"></span><span style="height:6px;flex:1;border-radius:3px;background:#DCE4EC"></span></div>
+<span style="font-size:12.5px;font-weight:700;color:#04533C;flex:none;white-space:nowrap">נוחשו 2 מתוך 4</span>
+</div>
+</div>
+<div style="padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#E7F5EF;color:#04533C">✓ נשמר</span><span style="font-size:11.5px;color:#6B7C90">שבת 17.10 · 19:00</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0;overflow-wrap:break-word">הפועל תל אביב</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:44px;height:44px;border:1.5px solid #047857;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:19px;font-weight:800">2</div>
+<span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:44px;height:44px;border:1.5px solid #047857;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:19px;font-weight:800">1</div>
+</div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left;overflow-wrap:break-word">מכבי תל אביב</span>
+</div>
+<div style="font-size:11.5px;color:#6B7C90">נשמר לאחרונה 20.08 · אפשר לערוך עד הנעילה</div>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#E6EDF5;color:#143A66">● פתוח</span><span style="font-size:11.5px;color:#6B7C90">שבת 17.10 · 21:30</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0;overflow-wrap:break-word">בית"ר ירושלים</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:44px;height:44px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+<span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:44px;height:44px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+</div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left;overflow-wrap:break-word">הפועל חיפה</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:11.5px;color:#6B7C90">טרם נשמר ניחוש</span>
+<button style="min-height:36px;padding:0 14px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#fff">שמירת ניחוש</button>
+</div>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#E7F5EF;color:#04533C">✓ נשמר</span><span style="font-size:11.5px;color:#6B7C90">יום א׳ 18.10 · 20:00</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0;overflow-wrap:break-word">מ.ס. אשדוד</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:44px;height:44px;border:1.5px solid #047857;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:19px;font-weight:800">1</div>
+<span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:44px;height:44px;border:1.5px solid #047857;border-radius:8px;background:#fff;display:grid;place-items:center;font-size:19px;font-weight:800">1</div>
+</div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left;overflow-wrap:break-word">הפועל באר שבע</span>
+</div>
+<div style="font-size:11.5px;color:#6B7C90">נשמר לאחרונה 19.08</div>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#FDF4E3;color:#7A4E10">! נדחה</span><span style="font-size:11.5px;color:#6B7C90">מועד חדש יעודכן</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0;overflow-wrap:break-word">בני סכנין</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:44px;height:44px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+<span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:44px;height:44px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+</div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left;overflow-wrap:break-word">מכבי נתניה</span>
+</div>
+<div style="font-size:11.5px;color:#6B7C90">הניחוש נשאר פתוח עד המועד החדש</div>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:14px;box-shadow:0 1px 2px rgba(12,29,51,.06);overflow:hidden">
+<div style="padding:14px 16px 12px;border-bottom:1px solid #EFF2F6">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+<div style="font-size:18px;font-weight:900">מחזור 2 <span style="font-size:11.5px;font-weight:700;color:#42566B;background:#EBEFF3;border-radius:999px;white-space:nowrap;padding:1px 9px;vertical-align:3px">◆ הסתיים</span></div>
+<div style="font-size:12px;font-weight:600;color:#4A5D73">נוקד · גרסת תוצאה 1</div>
+</div>
+</div>
+<div style="padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#EBEFF3;color:#42566B">◆ הסתיים</span><span style="display:inline-flex;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:800;background:#E7F5EF;color:#04533C">כיוון נכון +1</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0">מכבי חיפה</span>
+<div style="display:flex;align-items:center;gap:6px;background:#0A2240;border-radius:8px;padding:5px 10px;color:#fff;font-size:19px;font-weight:900"><span>3</span><span style="color:#8FBCEE;font-weight:700">–</span><span>1</span></div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left">הפועל ירושלים</span>
+</div>
+<div style="font-size:11.5px;color:#6B7C90">הניחוש שלי: <strong style="color:#0C1D33">2–1</strong> · כיוון נכון</div>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#EBEFF3;color:#42566B">▪ נעול</span><span style="font-size:11.5px;color:#6B7C90">המשחק החל</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0">הפועל תל אביב</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:44px;height:44px;border:1.5px solid #DCE4EC;border-radius:8px;background:#EBEFF3;display:grid;place-items:center;font-size:19px;font-weight:800;color:#42566B">1</div>
+<span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:44px;height:44px;border:1.5px solid #DCE4EC;border-radius:8px;background:#EBEFF3;display:grid;place-items:center;font-size:19px;font-weight:800;color:#42566B">1</div>
+</div>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left">בני סכנין</span>
+</div>
+<div style="font-size:11.5px;color:#6B7C90">▪ הניחוש ננעל · ניחושי חברי הליגה גלויים בדף המשחק</div>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding:12px 16px;display:grid;gap:9px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#FCEBE9;color:#8F2317">✕ בוטל</span><span style="font-size:11.5px;color:#6B7C90">0 נקודות · לא נספר בדירוג</span></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+<span style="font-size:14px;font-weight:700;min-width:0;color:#6B7C90">מכבי נתניה</span>
+<span style="font-size:13px;font-weight:700;color:#8593A5">—</span>
+<span style="font-size:14px;font-weight:700;min-width:0;text-align:left;color:#6B7C90">הפועל באר שבע</span>
+</div>
+</div>
+</div>
+<div style="height:6px"></div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>טבלת דירוג · 390 <span class="dv-route">/leagues/[id]/standings</span></div>
+<div class="dv-card" style="width:390px">
+<div dir="rtl" lang="he" data-screen-label="Standings 390" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;align-items:center;gap:14px;font-size:13.5px;font-weight:600"><span style="color:#143A66">פרופיל</span><span style="color:#6B7C90">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0;padding:12px 16px 0">
+<div style="display:flex;align-items:center;gap:10px;min-width:0">
+<div style="width:32px;height:32px;border-radius:8px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:13px;flex:none">המ</div>
+<div style="min-width:0"><div style="font-size:15px;font-weight:800">ליגת המשפחה</div><div style="font-size:11.5px;color:#6B7C90">טבלת דירוג</div></div>
+</div>
+<div style="margin-top:10px;position:relative"><div style="display:flex;gap:2px;overflow:hidden">
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">סקירה</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">משחקים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">דירוג</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 12px;font-size:13.5px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div><span style="position:absolute;left:0;top:0;bottom:0;width:26px;background:linear-gradient(90deg,#fff 20%,rgba(255,255,255,0));pointer-events:none"></span>
+</div>
+</div>
+<div style="padding:14px 16px;display:grid;gap:10px">
+<div style="font-size:12px;color:#6B7C90;line-height:1.55">ממוין לפי נקודות, ואז לפי כיוונים נכונים. תוצאות מדויקות — מידע בלבד. שוויון מלא = מקום משותף (1, 1, 3).</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:14px;box-shadow:0 1px 2px rgba(12,29,51,.06);overflow:hidden">
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:9px 14px;background:#F8FAFC;border-bottom:1px solid #EFF2F6;font-size:11px;font-weight:700;color:#6B7C90">
+<span>מקום</span><span>משתתף/ת</span><span style="text-align:left">נק׳ ▼</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:900">1</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">דנה לוי <span style="font-size:10.5px;font-weight:700;color:#42566B;background:#EBEFF3;border-radius:999px;white-space:nowrap;padding:1px 7px">שוויון</span></div><div style="font-size:11px;color:#6B7C90">כיוונים 11 · מדויקות 5 · ניחושים 12</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">21</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6;background:#E7F5EF;box-shadow:inset 3px 0 0 #047857">
+<span style="width:30px;height:30px;border-radius:8px;background:#0A2240;color:#fff;display:grid;place-items:center;font-size:14px;font-weight:900">1</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:800">טל זאנטקרן <span style="font-size:10.5px;font-weight:800;color:#fff;background:#047857;border-radius:999px;white-space:nowrap;padding:1px 7px">את/ה</span></div><div style="font-size:11px;color:#04533C">כיוונים 11 · מדויקות 5 · ניחושים 11</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">21</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#E6EDF5;color:#143A66;display:grid;place-items:center;font-size:14px;font-weight:900">3</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">רון אברמוביץ׳</div><div style="font-size:11px;color:#6B7C90">כיוונים 11 · מדויקות 4 · ניחושים 12</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">19</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:14px;font-weight:900">4</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">אביב כהן</div><div style="font-size:11px;color:#6B7C90">כיוונים 10 · מדויקות 3 · ניחושים 10</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">16</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:14px;font-weight:900">5</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700;overflow-wrap:break-word;line-height:1.35">אלכסנדרה קונסטנטינופולסקי־ברקוביץ׳</div><div style="font-size:11px;color:#6B7C90">כיוונים 10 · מדויקות 2 · ניחושים 9</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">14</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:14px;font-weight:900">6</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">יוסי מ.</div><div style="font-size:11px;color:#6B7C90">כיוונים 7 · מדויקות 2 · ניחושים 8</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">11</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid #EFF2F6">
+<span style="width:30px;height:30px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:14px;font-weight:900">7</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">נועה בר</div><div style="font-size:11px;color:#6B7C90">כיוונים 6 · מדויקות 1 · ניחושים 9</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">8</span>
+</div>
+<div style="display:grid;grid-template-columns:40px 1fr 52px;gap:8px;align-items:center;padding:11px 14px">
+<span style="width:30px;height:30px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:14px;font-weight:900">8</span>
+<div style="min-width:0"><div style="font-size:14px;font-weight:700">עידו שגב</div><div style="font-size:11px;color:#6B7C90">כיוונים 3 · מדויקות 0 · ניחושים 5</div></div>
+<span style="text-align:left;font-size:19px;font-weight:900">3</span>
+</div>
+</div>
+<div style="height:6px"></div>
+</div>
+</div>
+</div></div>
+
+</div>
+
+<div class="dv-rowcap">— 3. ארבעת מסכי העוגן · דסקטופ 1440px —</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>לוח אישי · 1440 <span class="dv-route">/dashboard</span></div>
+<div class="dv-card" style="width:1440px">
+<div dir="rtl" lang="he" data-screen-label="Dashboard 1440" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif;min-height:760px">
+<div style="height:60px;background:#fff;border-bottom:1px solid #E4E9F0;display:flex;align-items:center;justify-content:space-between;padding:0 40px">
+<div style="display:flex;align-items:center;gap:26px">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16.5px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;gap:4px;font-size:14px">
+<span style="padding:8px 12px;border-radius:8px;background:#E6EDF5;font-weight:700;color:#0A2240;white-space:nowrap">הליגות שלי</span>
+<span style="padding:8px 12px;border-radius:8px;font-weight:600;color:#4A5D73;white-space:nowrap">פרופיל</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:16px;font-size:13.5px"><span style="font-weight:700">טל זאנטקרן</span><span style="color:#6B7C90;font-weight:600">התנתקות</span></div>
+</div>
+<div style="max-width:1160px;margin:0 auto;padding:28px 40px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px">
+<div><h1 style="margin:0;font-size:26px;font-weight:800">שלום, טל</h1><div style="font-size:13px;color:#6B7C90;margin-top:2px">המשחק הקרוב: שבת 17.10 · 19:00 · ליגת המשפחה</div></div>
+<button style="min-height:44px;padding:0 20px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;color:#fff">יצירת ליגה</button>
+</div>
+<div style="margin-top:22px;display:grid;grid-template-columns:1fr 360px;gap:22px;align-items:start">
+<div style="display:grid;gap:22px">
+<div>
+<h2 style="margin:0 0 10px;font-size:17px;font-weight:800">הליגות שלי</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:18px 20px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="font-size:17px;font-weight:800">ליגת המשפחה</div>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E7F5EF;color:#04533C;flex:none"><span style="width:7px;height:7px;border-radius:50%;background:#047857"></span>פתוחה להצטרפות</span>
+</div>
+<div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:13px;color:#4A5D73">
+<span>ליגת העל · עונת <span dir="ltr">2026/27</span></span><span style="color:#C9D4E0">·</span>
+<span style="padding:1px 9px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-weight:700;color:#143A66">מנהלת</span>
+</div>
+<div style="margin-top:14px;padding-top:12px;border-top:1px solid #EFF2F6;display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12.5px;color:#4A5D73">מחזור 1 · נוחשו 2 מתוך 4</span>
+<span style="font-size:13px;font-weight:700;color:#143A66">כניסה לליגה ‹</span>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:18px 20px">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<div style="font-size:17px;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">חבורת הכדורגל של העבודה — קומה 3</div>
+<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E6EDF5;color:#143A66;flex:none"><span style="width:7px;height:7px;border-radius:50%;background:#143A66"></span>פעילה</span>
+</div>
+<div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:13px;color:#4A5D73">
+<span>ליגת העל · עונת <span dir="ltr">2026/27</span></span><span style="color:#C9D4E0">·</span>
+<span style="padding:1px 9px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-weight:700;color:#143A66">חברה פעילה</span>
+</div>
+<div style="margin-top:14px;padding-top:12px;border-top:1px solid #EFF2F6;display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12.5px;color:#4A5D73">מחזור 1 · נוחשו 4 מתוך 4 ✓</span>
+<span style="font-size:13px;font-weight:700;color:#143A66">כניסה לליגה ‹</span>
+</div>
+</div>
+</div>
+</div>
+<div>
+<h2 style="margin:0 0 10px;font-size:17px;font-weight:800">בקשות ההצטרפות שלי</h2>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<div style="min-width:0">
+<div style="display:flex;align-items:center;gap:10px"><span style="font-size:15px;font-weight:800">ליגת השכונה של גיא</span><span style="display:inline-flex;align-items:center;gap:6px;padding:1px 9px;border-radius:999px;white-space:nowrap;font-size:11.5px;font-weight:700;background:#FDF4E3;color:#7A4E10">! ממתינה לאישור</span></div>
+<div style="margin-top:5px;font-size:12.5px;color:#4A5D73">אסמכתת Demo 1 מתוך 5 · <span dir="ltr">WebP</span> · הועלתה 20.08.2026 · אינה נטענת אוטומטית</div>
+</div>
+<button style="min-height:44px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#143A66;flex:none">צפייה באסמכתא שלי</button>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:14px">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:16px 18px">
+<div style="font-size:11.5px;font-weight:700;color:#143A66;margin-bottom:10px">הפעולה הבאה</div>
+<div style="display:grid;gap:12px">
+<div>
+<div style="font-size:14px;font-weight:700;line-height:1.4">נותרו 2 ניחושים פתוחים במחזור 1</div>
+<div style="font-size:12.5px;color:#4A5D73">ליגת המשפחה · נעילה: <span style="white-space:nowrap">שבת 17.10 · 19:00</span></div>
+<button style="margin-top:8px;min-height:40px;padding:0 16px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#fff">להשלמת הניחושים</button>
+</div>
+<div style="border-top:1px solid #EFF2F6;padding-top:12px">
+<div style="font-size:14px;font-weight:700;line-height:1.4">2 בקשות הצטרפות ממתינות לאישורך</div>
+<div style="font-size:12.5px;color:#4A5D73">ליגת המשפחה · בתפקידך כמנהלת</div>
+<button style="margin-top:8px;min-height:40px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#143A66">לניהול הבקשות</button>
+</div>
+</div>
+</div>
+<div style="background:#FDF4E3;border:1px solid #EED9A8;color:#7A4E10;border-radius:10px;padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.55">◆ Demo בלבד — אין להעביר כסף ואין להעלות מסמך פיננסי אמיתי. הסכומים אינם יתרה בנקאית.</div>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>סקירת ליגה · 1440 <span class="dv-route">/leagues/[id]</span></div>
+<div class="dv-card" style="width:1440px">
+<div dir="rtl" lang="he" data-screen-label="League overview 1440" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif;min-height:760px">
+<div style="height:60px;background:#fff;border-bottom:1px solid #E4E9F0;display:flex;align-items:center;justify-content:space-between;padding:0 40px">
+<div style="display:flex;align-items:center;gap:26px">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16.5px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;gap:4px;font-size:14px">
+<span style="padding:8px 12px;border-radius:8px;background:#E6EDF5;font-weight:700;color:#0A2240;white-space:nowrap">הליגות שלי</span>
+<span style="padding:8px 12px;border-radius:8px;font-weight:600;color:#4A5D73;white-space:nowrap">פרופיל</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:16px;font-size:13.5px"><span style="font-weight:700">טל זאנטקרן</span><span style="color:#6B7C90;font-weight:600">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="max-width:1160px;margin:0 auto;padding:20px 40px 0">
+<div style="font-size:12.5px;color:#6B7C90;font-weight:600">‹ הליגות שלי</div>
+<div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+<div style="display:flex;align-items:center;gap:14px;min-width:0">
+<div style="width:52px;height:52px;border-radius:13px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:20px;flex:none">המ</div>
+<div style="min-width:0">
+<h1 style="margin:0;font-size:24px;font-weight:800">ליגת המשפחה</h1>
+<div style="font-size:13px;color:#4A5D73">ליגת העל הישראלית · עונת <span dir="ltr">2026/27</span> · תחרות ידידותית בין 8 חברים</div>
+</div>
+</div>
+<div style="display:flex;gap:8px;flex:none">
+<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;white-space:nowrap;font-size:12.5px;font-weight:700;background:#E7F5EF;color:#04533C"><span style="width:7px;height:7px;border-radius:50%;background:#047857"></span>פתוחה להצטרפות</span>
+<span style="display:inline-flex;align-items:center;padding:4px 12px;border:1px solid #C9D4E0;border-radius:999px;white-space:nowrap;font-size:12.5px;font-weight:700;color:#143A66">התפקיד שלי: מנהלת</span>
+</div>
+</div>
+<div style="margin-top:14px;display:flex;gap:4px">
+<span style="padding:12px 16px;font-size:14px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">סקירה</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">משחקים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">דירוג</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div>
+</div>
+</div>
+<div style="max-width:1160px;margin:0 auto;padding:24px 40px;display:grid;grid-template-columns:1fr 360px;gap:22px;align-items:start">
+<div style="display:grid;gap:18px">
+<div style="background:#0A2240 url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 600 360%22%3E%3Cg fill=%22none%22 stroke=%22%23FFFFFF%22 stroke-opacity=%22.07%22 stroke-width=%222%22%3E%3Ccircle cx=%22300%22 cy=%22180%22 r=%2270%22/%3E%3Cpath d=%22M300 0v360%22/%3E%3Crect x=%220%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%220%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M110 132a60 60 0 0 1 0 96%22/%3E%3Crect x=%22490%22 y=%2260%22 width=%22110%22 height=%22240%22/%3E%3Crect x=%22556%22 y=%22120%22 width=%2244%22 height=%22120%22/%3E%3Cpath d=%22M490 228a60 60 0 0 0 0-96%22/%3E%3C/g%3E%3C/svg%3E') no-repeat left -90px center/560px auto;border-radius:16px;padding:24px 28px;color:#fff">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span style="font-size:12px;font-weight:700;color:#8FBCEE;letter-spacing:.03em">המשחק הקרוב · מחזור 1</span>
+<span style="font-size:13px;color:#B9C8DA">שבת 17.10 · 19:00 · שעון ישראל</span>
+</div>
+<div style="margin-top:18px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;text-align:center">
+<div style="font-size:20px;font-weight:800">הפועל תל אביב</div>
+<div style="display:flex;align-items:center;gap:9px">
+<div style="width:54px;height:62px;border-radius:10px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:28px;font-weight:900;color:#B9C8DA">–</div>
+<div style="width:54px;height:62px;border-radius:10px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:28px;font-weight:900;color:#B9C8DA">–</div>
+</div>
+<div style="font-size:20px;font-weight:800">מכבי תל אביב</div>
+</div>
+<div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span style="font-size:13px;color:#B9C8DA">● פתוח לניחוש · נעילה אוטומטית לפי זמן השרת, בעוד 54 ימים</span>
+<button style="min-height:44px;padding:0 22px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;color:#fff">לניחוש המשחק</button>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:18px 20px">
+<h2 style="margin:0;font-size:16px;font-weight:800">חוקי ניקוד <span style="font-size:12px;font-weight:600;color:#6B7C90">· גרסה 1 · ▪ נעולה</span></h2>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+<div style="background:#E7F5EF;border-radius:10px;padding:12px 6px"><div style="font-size:12.5px;font-weight:700;color:#04533C">תוצאה מדויקת</div><div style="font-size:28px;font-weight:900;color:#04533C">3</div></div>
+<div style="background:#E6EDF5;border-radius:10px;padding:12px 6px"><div style="font-size:12.5px;font-weight:700;color:#143A66">כיוון נכון</div><div style="font-size:28px;font-weight:900;color:#143A66">1</div></div>
+<div style="background:#EBEFF3;border-radius:10px;padding:12px 6px"><div style="font-size:12.5px;font-weight:700;color:#42566B">כיוון שגוי</div><div style="font-size:28px;font-weight:900;color:#42566B">0</div></div>
+</div>
+<div style="margin-top:10px;font-size:12px;color:#6B7C90">שובר שוויון: כיוונים נכונים · מקום משותף בשוויון מלא</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:18px 20px">
+<h2 style="margin:0 0 12px;font-size:16px;font-weight:800">מצב המחזור הנוכחי</h2>
+<div style="font-size:14px;font-weight:700;white-space:nowrap">מחזור 1 · נוחשו 2 מתוך 4</div>
+<div style="margin-top:9px;display:flex;gap:4px"><span style="height:7px;flex:1;border-radius:4px;background:#047857"></span><span style="height:7px;flex:1;border-radius:4px;background:#047857"></span><span style="height:7px;flex:1;border-radius:4px;background:#DCE4EC"></span><span style="height:7px;flex:1;border-radius:4px;background:#DCE4EC"></span></div>
+<div style="margin-top:10px;font-size:12.5px;color:#4A5D73">נעילה ראשונה: שבת 17.10 · 19:00</div>
+<button style="margin-top:12px;min-height:40px;padding:0 16px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#143A66">לכל משחקי המחזור</button>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:18px 20px">
+<h2 style="margin:0 0 12px;font-size:16px;font-weight:800">חלוקת פרסי Demo</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+<div style="display:flex;align-items:center;justify-content:space-between;background:#F8FAFC;border-radius:10px;padding:12px 14px"><span style="font-size:13px;font-weight:700">מקום 1</span><span style="font-size:19px;font-weight:900;color:#143A66" dir="ltr">50%</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;background:#F8FAFC;border-radius:10px;padding:12px 14px"><span style="font-size:13px;font-weight:700">מקום 2</span><span style="font-size:19px;font-weight:900;color:#143A66" dir="ltr">30%</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;background:#F8FAFC;border-radius:10px;padding:12px 14px"><span style="font-size:13px;font-weight:700">מקום 3</span><span style="font-size:19px;font-weight:900;color:#143A66" dir="ltr">20%</span></div>
+</div>
+</div>
+</div>
+<div style="display:grid;gap:14px">
+<div style="background:#FDF4E3;border:1px solid #EED9A8;color:#7A4E10;border-radius:10px;padding:12px 14px;font-size:12.5px;font-weight:600;line-height:1.55">◆ Demo בלבד — הסכום, ההוראות והפרסים הם סימולציה. Predictor1 אינה גובה, מחזיקה, מעבירה או מאמתת כסף.</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:16px 18px">
+<h2 style="margin:0 0 10px;font-size:15px;font-weight:800">הגדרות Demo והצטרפות</h2>
+<div style="display:grid;gap:9px;font-size:13px">
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">סכום הדגמה</span><strong>50 ₪ (Demo)</strong></div>
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">הצטרפות מאוחרת</span><strong>מותרת, ללא ניקוד רטרואקטיבי</strong></div>
+<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#4A5D73">הוראות Demo</span><strong>העברת דוגמה בלבד</strong></div>
+</div>
+</div>
+<div style="background:#fff;border:1.5px solid #C9D4E0;border-radius:12px;padding:16px 18px">
+<h2 style="margin:0;font-size:13px;font-weight:800;color:#143A66">כלים למנהלת הליגה</h2>
+<div style="margin-top:10px;display:grid;gap:8px">
+<button style="min-height:44px;background:#143A66;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">בקשות הצטרפות (2 ממתינות)</button>
+<button style="min-height:44px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#143A66">ניהול קישור ההזמנה</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>משחקים וניחושים · 1440 <span class="dv-route">/leagues/[id]/matches</span></div>
+<div class="dv-card" style="width:1440px">
+<div dir="rtl" lang="he" data-screen-label="Matches 1440" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif;min-height:760px">
+<div style="height:60px;background:#fff;border-bottom:1px solid #E4E9F0;display:flex;align-items:center;justify-content:space-between;padding:0 40px">
+<div style="display:flex;align-items:center;gap:26px">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16.5px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;gap:4px;font-size:14px">
+<span style="padding:8px 12px;border-radius:8px;background:#E6EDF5;font-weight:700;color:#0A2240;white-space:nowrap">הליגות שלי</span>
+<span style="padding:8px 12px;border-radius:8px;font-weight:600;color:#4A5D73;white-space:nowrap">פרופיל</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:16px;font-size:13.5px"><span style="font-weight:700">טל זאנטקרן</span><span style="color:#6B7C90;font-weight:600">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="max-width:1160px;margin:0 auto;padding:16px 40px 0">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+<div style="display:flex;align-items:center;gap:12px;min-width:0">
+<div style="width:40px;height:40px;border-radius:10px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:15px;flex:none">המ</div>
+<div><h1 style="margin:0;font-size:20px;font-weight:800">משחקים וניחושים</h1><div style="font-size:12.5px;color:#6B7C90">ליגת המשפחה · ליגת העל · עונת <span dir="ltr">2026/27</span></div></div>
+</div>
+<div style="display:flex;gap:10px;align-items:center">
+<div style="display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-size:13.5px;font-weight:700">מחזור 1 <span style="color:#6B7C90">▾</span></div>
+<div style="display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-size:13.5px;font-weight:600;color:#6B7C90">לפי תאריך ▾</div>
+<span style="font-size:13px;font-weight:700;color:#143A66">ניקוי מסנן</span>
+</div>
+</div>
+<div style="margin-top:12px;display:flex;gap:4px">
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">סקירה</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">משחקים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">דירוג</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div>
+</div>
+</div>
+<div style="max-width:1160px;margin:0 auto;padding:24px 40px;display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:14px;box-shadow:0 1px 2px rgba(12,29,51,.06);overflow:hidden">
+<div style="padding:18px 24px 14px;border-bottom:1px solid #EFF2F6;display:flex;align-items:center;justify-content:space-between;gap:16px">
+<div style="display:flex;align-items:baseline;gap:14px">
+<span style="font-size:22px;font-weight:900">מחזור 1</span>
+<span style="font-size:13px;font-weight:600;color:#4A5D73">נעילה ראשונה: שבת 17.10 · 19:00 · שעון ישראל</span>
+</div>
+<div style="display:flex;align-items:center;gap:12px">
+<div style="display:flex;gap:3px;width:140px"><span style="height:7px;flex:1;border-radius:4px;background:#047857"></span><span style="height:7px;flex:1;border-radius:4px;background:#047857"></span><span style="height:7px;flex:1;border-radius:4px;background:#DCE4EC"></span><span style="height:7px;flex:1;border-radius:4px;background:#DCE4EC"></span></div>
+<span style="font-size:13px;font-weight:800;color:#04533C">נוחשו 2 מתוך 4</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 300px 170px;gap:16px;align-items:center;padding:14px 24px;border-bottom:1px solid #EFF2F6">
+<div><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E7F5EF;color:#04533C">✓ נשמר</span><div style="margin-top:5px;font-size:11.5px;color:#6B7C90">שבת 17.10 · 19:00</div></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
+<span style="font-size:15px;font-weight:700">הפועל תל אביב</span>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:46px;height:46px;border:1.5px solid #047857;border-radius:8px;display:grid;place-items:center;font-size:20px;font-weight:800">2</div><span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:46px;height:46px;border:1.5px solid #047857;border-radius:8px;display:grid;place-items:center;font-size:20px;font-weight:800">1</div>
+</div>
+<span style="font-size:15px;font-weight:700;text-align:left">מכבי תל אביב</span>
+</div>
+<div style="font-size:12px;color:#6B7C90">נשמר לאחרונה 20.08 · אפשר לערוך עד הנעילה</div>
+<button style="min-height:40px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#143A66">עדכון הניחוש</button>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 300px 170px;gap:16px;align-items:center;padding:14px 24px;border-bottom:1px solid #EFF2F6">
+<div><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E6EDF5;color:#143A66">● פתוח</span><div style="margin-top:5px;font-size:11.5px;color:#6B7C90">שבת 17.10 · 21:30</div></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
+<span style="font-size:15px;font-weight:700">בית"ר ירושלים</span>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:46px;height:46px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div><span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:46px;height:46px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+</div>
+<span style="font-size:15px;font-weight:700;text-align:left">הפועל חיפה</span>
+</div>
+<div style="font-size:12px;color:#6B7C90">טרם נשמר ניחוש · נעילה בעוד 54 ימים ו־4 שעות</div>
+<button style="min-height:40px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#fff">שמירת ניחוש</button>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 300px 170px;gap:16px;align-items:center;padding:14px 24px;border-bottom:1px solid #EFF2F6">
+<div><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#E7F5EF;color:#04533C">✓ נשמר</span><div style="margin-top:5px;font-size:11.5px;color:#6B7C90">יום א׳ 18.10 · 20:00</div></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
+<span style="font-size:15px;font-weight:700">מ.ס. אשדוד</span>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:46px;height:46px;border:1.5px solid #047857;border-radius:8px;display:grid;place-items:center;font-size:20px;font-weight:800">1</div><span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:46px;height:46px;border:1.5px solid #047857;border-radius:8px;display:grid;place-items:center;font-size:20px;font-weight:800">1</div>
+</div>
+<span style="font-size:15px;font-weight:700;text-align:left">הפועל באר שבע</span>
+</div>
+<div style="font-size:12px;color:#6B7C90">נשמר לאחרונה 19.08</div>
+<button style="min-height:40px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#143A66">עדכון הניחוש</button>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 300px 170px;gap:16px;align-items:center;padding:14px 24px">
+<div><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-size:12px;font-weight:700;background:#FDF4E3;color:#7A4E10">! נדחה</span><div style="margin-top:5px;font-size:11.5px;color:#6B7C90">מועד חדש יעודכן</div></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
+<span style="font-size:15px;font-weight:700">בני סכנין</span>
+<div style="display:flex;align-items:center;gap:7px">
+<div style="width:46px;height:46px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div><span style="color:#8593A5;font-weight:700">–</span>
+<div style="width:46px;height:46px;border:1.5px solid #C9D4E0;border-radius:8px;background:#fff"></div>
+</div>
+<span style="font-size:15px;font-weight:700;text-align:left">מכבי נתניה</span>
+</div>
+<div style="font-size:12px;color:#6B7C90">הניחוש נשאר פתוח עד המועד החדש</div>
+<button style="min-height:40px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#fff">שמירת ניחוש</button>
+</div>
+</div>
+<div style="display:grid;gap:14px">
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<div style="font-size:11.5px;font-weight:700;color:#143A66;margin-bottom:10px">מחזורים</div>
+<div style="display:grid;gap:4px;font-size:13px">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:8px;background:#E6EDF5;font-weight:700;color:#0A2240"><span>מחזור 1</span><span style="font-size:12px;color:#04533C">2/4 · ● פתוח</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:8px;font-weight:600;color:#4A5D73"><span>מחזור 2</span><span style="font-size:12px">◆ הסתיים · נוקד</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:8px;font-weight:600;color:#4A5D73"><span>מחזור 3</span><span style="font-size:12px">0/4 · טרם נפתח</span></div>
+</div>
+</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:12px;box-shadow:0 1px 2px rgba(12,29,51,.06);padding:14px 16px">
+<div style="font-size:11.5px;font-weight:700;color:#143A66;margin-bottom:8px">הנעילה הקרובה</div>
+<div style="font-size:14px;font-weight:800">שבת 17.10 · 19:00</div>
+<div style="margin-top:4px;font-size:12px;color:#6B7C90;line-height:1.5">הנעילה לפי זמן מסד הנתונים. הספירה במסך היא עזר בלבד.</div>
+</div>
+<div style="background:#EBEFF3;border-radius:10px;padding:11px 13px;font-size:12px;color:#42566B;font-weight:600;line-height:1.55">▪ ניחושים של חברים אחרים נסתרים עד שריקת הפתיחה של כל משחק.</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>טבלת דירוג · 1440 <span class="dv-route">/leagues/[id]/standings</span></div>
+<div class="dv-card" style="width:1440px">
+<div dir="rtl" lang="he" data-screen-label="Standings 1440" style="background:#F4F6F9;color:#0C1D33;font-family:'Heebo',system-ui,sans-serif;min-height:760px">
+<div style="height:60px;background:#fff;border-bottom:1px solid #E4E9F0;display:flex;align-items:center;justify-content:space-between;padding:0 40px">
+<div style="display:flex;align-items:center;gap:26px">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;font-weight:900;font-size:13px;display:grid;place-items:center">P1</div><strong style="font-size:16.5px;font-weight:800">Predictor1</strong></div>
+<div style="display:flex;gap:4px;font-size:14px">
+<span style="padding:8px 12px;border-radius:8px;background:#E6EDF5;font-weight:700;color:#0A2240;white-space:nowrap">הליגות שלי</span>
+<span style="padding:8px 12px;border-radius:8px;font-weight:600;color:#4A5D73;white-space:nowrap">פרופיל</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:16px;font-size:13.5px"><span style="font-weight:700">טל זאנטקרן</span><span style="color:#6B7C90;font-weight:600">התנתקות</span></div>
+</div>
+<div style="background:#fff;border-bottom:1px solid #E4E9F0">
+<div style="max-width:1160px;margin:0 auto;padding:16px 40px 0">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="width:40px;height:40px;border-radius:10px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:15px;flex:none">המ</div>
+<div><h1 style="margin:0;font-size:20px;font-weight:800">טבלת דירוג</h1><div style="font-size:12.5px;color:#6B7C90">ליגת המשפחה · אחרי מחזור 2 · 8 משתתפים</div></div>
+</div>
+<div style="margin-top:12px;display:flex;gap:4px">
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">סקירה</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">משחקים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:700;color:#0A2240;box-shadow:inset 0 -2px 0 #143A66">דירוג</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">חברים</span>
+<span style="padding:12px 16px;font-size:14px;font-weight:600;color:#4A5D73">הגדרות</span>
+</div>
+</div>
+</div>
+<div style="max-width:1160px;margin:0 auto;padding:24px 40px">
+<div style="font-size:13px;color:#6B7C90;margin-bottom:12px">ממוין לפי נקודות, ואז לפי מספר כיוונים נכונים. תוצאות מדויקות מוצגות כמידע בלבד ואינן שובר שוויון נוסף. שוויון מלא = מקום משותף.</div>
+<div style="background:#fff;border:1px solid #E4E9F0;border-radius:14px;box-shadow:0 1px 2px rgba(12,29,51,.06);overflow:hidden">
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:12px 24px;background:#F8FAFC;border-bottom:1px solid #EFF2F6;font-size:12px;font-weight:700;color:#4A5D73">
+<span>מקום</span><span>משתתף/ת</span><span style="text-align:left;color:#0A2240">נקודות ▼</span><span style="text-align:left">כיוונים נכונים</span><span style="text-align:left">תוצאות מדויקות</span><span style="text-align:left">ניחושים</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900">1</span>
+<span style="font-size:14.5px;font-weight:700">דנה לוי <span style="font-size:10.5px;font-weight:700;color:#42566B;background:#EBEFF3;border-radius:999px;white-space:nowrap;padding:1px 8px">שוויון</span></span>
+<span style="text-align:left;font-size:19px;font-weight:900">21</span><span style="text-align:left;font-size:14px;font-weight:600">11</span><span style="text-align:left;font-size:14px;color:#4A5D73">5</span><span style="text-align:left;font-size:14px;color:#4A5D73">12</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6;background:#E7F5EF;box-shadow:inset 3px 0 0 #047857">
+<span style="width:32px;height:32px;border-radius:8px;background:#0A2240;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:900">1</span>
+<span style="font-size:14.5px;font-weight:800">טל זאנטקרן <span style="font-size:10.5px;font-weight:800;color:#fff;background:#047857;border-radius:999px;white-space:nowrap;padding:1px 8px">את/ה</span></span>
+<span style="text-align:left;font-size:19px;font-weight:900">21</span><span style="text-align:left;font-size:14px;font-weight:600">11</span><span style="text-align:left;font-size:14px;color:#04533C">5</span><span style="text-align:left;font-size:14px;color:#04533C">11</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#E6EDF5;color:#143A66;display:grid;place-items:center;font-size:15px;font-weight:900">3</span>
+<span style="font-size:14.5px;font-weight:700">רון אברמוביץ׳</span>
+<span style="text-align:left;font-size:19px;font-weight:900">19</span><span style="text-align:left;font-size:14px;font-weight:600">11</span><span style="text-align:left;font-size:14px;color:#4A5D73">4</span><span style="text-align:left;font-size:14px;color:#4A5D73">12</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:15px;font-weight:900">4</span>
+<span style="font-size:14.5px;font-weight:700">אביב כהן</span>
+<span style="text-align:left;font-size:19px;font-weight:900">16</span><span style="text-align:left;font-size:14px;font-weight:600">10</span><span style="text-align:left;font-size:14px;color:#4A5D73">3</span><span style="text-align:left;font-size:14px;color:#4A5D73">10</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:15px;font-weight:900">5</span>
+<span style="font-size:14.5px;font-weight:700">אלכסנדרה קונסטנטינופולסקי־ברקוביץ׳</span>
+<span style="text-align:left;font-size:19px;font-weight:900">14</span><span style="text-align:left;font-size:14px;font-weight:600">10</span><span style="text-align:left;font-size:14px;color:#4A5D73">2</span><span style="text-align:left;font-size:14px;color:#4A5D73">9</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:15px;font-weight:900">6</span>
+<span style="font-size:14.5px;font-weight:700">יוסי מ.</span>
+<span style="text-align:left;font-size:19px;font-weight:900">11</span><span style="text-align:left;font-size:14px;font-weight:600">7</span><span style="text-align:left;font-size:14px;color:#4A5D73">2</span><span style="text-align:left;font-size:14px;color:#4A5D73">8</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px;border-bottom:1px solid #EFF2F6">
+<span style="width:32px;height:32px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:15px;font-weight:900">7</span>
+<span style="font-size:14.5px;font-weight:700">נועה בר</span>
+<span style="text-align:left;font-size:19px;font-weight:900">8</span><span style="text-align:left;font-size:14px;font-weight:600">6</span><span style="text-align:left;font-size:14px;color:#4A5D73">1</span><span style="text-align:left;font-size:14px;color:#4A5D73">9</span>
+</div>
+<div style="display:grid;grid-template-columns:80px 1fr 130px 150px 160px 110px;gap:12px;align-items:center;padding:13px 24px">
+<span style="width:32px;height:32px;border-radius:8px;background:#F1F4F8;color:#4A5D73;display:grid;place-items:center;font-size:15px;font-weight:900">8</span>
+<span style="font-size:14.5px;font-weight:700">עידו שגב</span>
+<span style="text-align:left;font-size:19px;font-weight:900">3</span><span style="text-align:left;font-size:14px;font-weight:600">3</span><span style="text-align:left;font-size:14px;color:#4A5D73">0</span><span style="text-align:left;font-size:14px;color:#4A5D73">5</span>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+
+</div>
+
+<div class="dv-rowcap">— 4. מצבי קצה · tokens · רכיבים · החלטות —</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>מצבים: Loading / Empty / Error / Success / Disabled / Focus</div>
+<div class="dv-card" style="width:470px;padding:18px 20px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;display:grid;gap:14px">
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">Loading — Skeleton של RoundCard (ללא shimmer ב־reduced-motion)</div>
+<div style="border:1px solid #E4E9F0;border-radius:12px;padding:14px 16px;display:grid;gap:10px">
+<div style="display:flex;justify-content:space-between"><span style="width:90px;height:14px;border-radius:4px;background:#E4E9F0"></span><span style="width:150px;height:12px;border-radius:4px;background:#EFF2F6"></span></div>
+<span style="width:100%;height:6px;border-radius:3px;background:#EFF2F6"></span>
+<span style="width:100%;height:40px;border-radius:8px;background:#F4F6F9"></span>
+<span style="width:100%;height:40px;border-radius:8px;background:#F4F6F9"></span>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">Empty — משתמש ללא ליגות</div>
+<div style="border:1.5px dashed #C9D4E0;border-radius:12px;padding:20px;text-align:center">
+<div style="width:40px;height:40px;border-radius:10px;background:#E6EDF5;color:#0A2240;display:grid;place-items:center;font-weight:900;font-size:16px;margin:0 auto">P1</div>
+<div style="margin-top:10px;font-size:15px;font-weight:800">עדיין אין לך ליגות</div>
+<div style="margin-top:4px;font-size:12.5px;color:#4A5D73">אפשר ליצור ליגה פרטית ראשונה עם חוקי ניקוד ופרסי Demo.</div>
+<button style="margin-top:12px;min-height:44px;padding:0 18px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13.5px;font-weight:700;color:#fff">יצירת הליגה הראשונה</button>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">Error + Success</div>
+<div style="display:grid;gap:8px">
+<div style="background:#FCEBE9;border:1px solid #F2C7C2;color:#8F2317;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600">✕ לא ניתן לטעון את המשחקים כרגע. <span style="text-decoration:underline">ניסיון חוזר</span></div>
+<div style="background:#E7F5EF;border:1px solid #B5E0CD;color:#04533C;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:700">✓ הניחוש נשמר · 2–1 · אפשר לערוך עד הנעילה</div>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">Disabled / Locked / Focus ring</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<button style="min-height:44px;padding:0 16px;background:#DCE4EC;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#8593A5">שמירה (Disabled)</button>
+<div style="width:44px;height:44px;border:1.5px solid #DCE4EC;border-radius:8px;background:#EBEFF3;display:grid;place-items:center;font-size:18px;font-weight:800;color:#42566B">1</div>
+<button style="min-height:44px;padding:0 16px;background:#047857;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#fff;outline:2px solid #1C4E82;outline-offset:2px">Focus נראה</button>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">Hover — כרטיס, כפתור ראשי, כפתור משני</div>
+<div style="display:grid;gap:8px">
+<div style="border:1px solid #143A66;border-radius:12px;padding:10px 14px;background:#fff;box-shadow:0 4px 14px rgba(12,29,51,.1);font-size:12.5px;font-weight:700;display:flex;justify-content:space-between;align-items:center"><span>LeagueCard hover</span><span style="font-size:11.5px;color:#4A5D73;font-weight:600">גבול navy-700 + shadow-md</span></div>
+<div style="display:flex;gap:10px">
+<button style="min-height:44px;padding:0 16px;background:#065F46;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#fff">שמירה (hover ‎#065F46)</button>
+<button style="min-height:44px;padding:0 16px;background:#F1F4F8;border:1px solid #143A66;border-radius:8px;font-family:inherit;font-size:13px;font-weight:700;color:#143A66">משני (hover)</button>
+</div>
+</div>
+</div>
+<div style="background:#F8FAFC;border-radius:10px;padding:10px 12px;font-size:12px;color:#4A5D73;line-height:1.6"><strong>768px:</strong> שלד הדסקטופ נשמר אך ה־rail הצדדי יורד מתחת לתוכן; שורת MatchRow הדסקטופית מקופלת לפריסת המובייל (סטטוס למעלה, קבוצות+תוצאה, פעולה למטה). הטבלה בדירוג נשארת טבלה ב־768px ועוברת לכרטיסים רק מתחת ל־640px.</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Design tokens מוצעים</div>
+<div class="dv-card" style="width:470px;padding:18px 20px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;display:grid;gap:14px">
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">צבע</div>
+<div style="display:grid;gap:5px;font-size:12px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#0A2240;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">navy-900 #0A2240</span><span>לוח כהה סמנטי, מונוגרמה, מקום 1</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#143A66;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">navy-700 #143A66</span><span>מותג, קישורים, tab פעיל, ניווט</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#E6EDF5;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">navy-100 #E6EDF5</span><span>רקעי chip, מצב "פתוח"</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#047857;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">action #047857</span><span>פעולה ראשית, שמירה, התקדמות (hover ‎#065F46)</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#E7F5EF;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">success-50 #E7F5EF</span><span>נשמר / הצלחה (טקסט ‎#04533C)</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#FDF4E3;border:1px solid #EED9A8;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">warn-50 #FDF4E3</span><span>אזהרה, Demo, נדחה (טקסט ‎#7A4E10)</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#FCEBE9;border:1px solid #F2C7C2;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">error-50 #FCEBE9</span><span>שגיאה, בוטל (טקסט ‎#8F2317)</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#EBEFF3;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">locked-50 #EBEFF3</span><span>נעול / הסתיים / disabled (טקסט ‎#42566B)</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#F4F6F9;border:1px solid #E4E9F0;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">bg #F4F6F9</span><span>רקע כללי · משטח ‎#FFFFFF · גבול ‎#E4E9F0</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#0C1D33;flex:none"></span><span dir="ltr" style="font-family:ui-monospace,monospace;width:120px;color:#4A5D73">ink #0C1D33</span><span>טקסט ראשי · משני ‎#4A5D73 · עמום ‎#6B7C90</span></div>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">טיפוגרפיה — Heebo (כפוף לבדיקה חזותית)</div>
+<div style="display:grid;gap:4px">
+<div style="font-size:26px;font-weight:800;line-height:1.3">כותרת מסך 26/34 · 800</div>
+<div style="font-size:20px;font-weight:800;line-height:1.4">כותרת אזור 20/28 · 800</div>
+<div style="font-size:15px;font-weight:700;line-height:1.5">כותרת רכיב 15/22 · 700</div>
+<div style="font-size:15px;line-height:1.55">גוף 15/23 · 400 — טקסט רץ, הסברים ותיאורים</div>
+<div style="font-size:13px;color:#4A5D73;line-height:1.5">משני 13/19 · 400–600 · תוויות 12/16 · 700</div>
+<div style="font-size:30px;font-weight:900;font-variant-numeric:tabular-nums">2–1 · מספרי תוצאה 30/34 · 900 · tabular-nums</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">Spacing (בסיס 4)</div>
+<div style="display:flex;align-items:flex-end;gap:6px">
+<span style="width:4px;height:4px;background:#143A66"></span><span style="width:8px;height:8px;background:#143A66"></span><span style="width:12px;height:12px;background:#143A66"></span><span style="width:16px;height:16px;background:#143A66"></span><span style="width:24px;height:24px;background:#143A66"></span><span style="width:32px;height:32px;background:#143A66"></span>
+</div>
+<div style="margin-top:4px;font-size:11px;color:#6B7C90" dir="ltr">4 · 8 · 12 · 16 · 24 · 32 · 48</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">Radius</div>
+<div style="display:flex;align-items:center;gap:8px">
+<span style="width:30px;height:30px;border:1.5px solid #143A66;border-radius:6px"></span>
+<span style="width:30px;height:30px;border:1.5px solid #143A66;border-radius:8px"></span>
+<span style="width:30px;height:30px;border:1.5px solid #143A66;border-radius:12px"></span>
+<span style="width:30px;height:30px;border:1.5px solid #143A66;border-radius:999px"></span>
+</div>
+<div style="margin-top:4px;font-size:11px;color:#6B7C90" dir="ltr">6 badge · 8 control · 12–16 card · pill chip</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">Borders + Shadows</div>
+<div style="display:grid;gap:8px">
+<div style="border:1px solid #E4E9F0;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#4A5D73">border-1 ‎#E4E9F0</div>
+<div style="border-radius:8px;padding:7px 10px;font-size:11.5px;color:#4A5D73;box-shadow:0 1px 2px rgba(12,29,51,.06);background:#fff;border:1px solid #E4E9F0">shadow-sm</div>
+<div style="border-radius:8px;padding:7px 10px;font-size:11.5px;color:#4A5D73;box-shadow:0 4px 14px rgba(12,29,51,.1);background:#fff">shadow-md (hover בלבד)</div>
+</div>
+</div>
+<div>
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:8px">Focus + Motion</div>
+<button style="min-height:40px;padding:0 14px;background:#fff;border:1px solid #C9D4E0;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:700;color:#143A66;outline:2px solid #1C4E82;outline-offset:2px">outline 2px ‎#1C4E82</button>
+<div style="margin-top:8px;font-size:11.5px;color:#4A5D73;line-height:1.6">על משטח כהה: ‎#8FBCEE.<br>Motion: 120–160ms ease-out, מעברי opacity/transform בלבד; ב־prefers-reduced-motion — ללא תנועה, כולל shimmer וספירה מהבהבת.</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>רכיבים חוזרים + מיפוי למסכים</div>
+<div class="dv-card" style="width:560px;padding:18px 22px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;font-size:12.5px;line-height:1.65">
+<div style="display:grid;gap:11px">
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">AppShell</strong> — topbar לבן 56/60px: מונוגרמה+שם מימין, ניווט ראשי, פרופיל/התנתקות בקצה. אין sidebar. מובייל: ללא bottom-nav (אין נתיבים גלובליים מספיקים). RTL: הלוגו תמיד בקצה הימני. a11y: skip-link, ‎nav עם aria-label.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">Navigation (LeagueTabs)</strong> — tabs בתוך ליגה: סקירה/משחקים/דירוג + חברים/הגדרות למנהל בלבד. פעיל = משקל 700 + קו תחתון נייבי (לא צבע בלבד). מובייל: גלילה אופקית עם fade, יעד מגע 44px. מקלדת: חצים בין tabs.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">PageHeader</strong> — מונוגרמה, כותרת, שורת הקשר (תחרות · עונה), chips סטטוס+תפקיד, פירור "‹ הליגות שלי". שם ארוך: ‎break-words, לעולם לא חותך מידע קריטי.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">LeagueCard</strong> — שם, עונה, StatusBadge, chip תפקיד, שורת מצב מחזור. variants: רגיל / ריק / שגיאה. hover: גבול נייבי + shadow-md. הכרטיס כולו קישור אחד.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">RoundCard ★ רכיב חתימה</strong> — כותרת מחזור, נעילה ראשונה, פס התקדמות מקטעי (מחושב רק ממשחקי המחזור המוצגים) + "נוחשו X מתוך Y", ורשימת MatchRow. variants: פתוח / נעול חלקית / הסתיים / מעורב. הפס = ‎role="img" עם aria-label טקסטואלי.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">MatchRow</strong> — שורה אחת למשחק: StatusBadge+מועד, בית–חוץ (בית תמיד ראשון מימין), ScoreInput או תוצאה, מטא ופעולה. states: פתוח / נשמר / נעול / הסתיים+נקודות / נדחה / בוטל. דסקטופ: grid 4 עמודות; מובייל: נערם. תוצאה רשמית — קופסה כהה (הלוח הסמנטי בזעיר).</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">ScoreInput</strong> — ‎44×44, ‎inputmode="numeric", ערך 0–99, בית ואז חוץ. states: ריק / מלא (גבול אמרלד) / disabled / locked / שגיאה. תווית aria: "שערים — הפועל תל אביב". הספירה לאחור עזר בלבד — הנעילה בשרת.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">StatusBadge</strong> — צורה+מילה+צבע: ● פתוח / ✓ נשמר / ▪ נעול / ◆ הסתיים / ! נדחה·ממתין / ✕ בוטל·נדחתה. לעולם לא צבע בלבד; קריא גם בגווני אפור.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">StandingsTable / StandingsCard</strong> — טבלה מ־768px ומעלה, שורות־כרטיס מתחת. ריבוע מקום (נייבי מלא ל־1), tag "שוויון", chip "את/ה" + רקע וסימן קצה לשורת המשתמש. עמודת מיון מסומנת ▼. מספרים tabular-nums.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">EmptyState / ErrorState</strong> — מסגרת מקווקוות + כותרת + פעולה אחת; שגיאה: ✕, ניסוח מה קרה + "ניסיון חוזר", ‎role="alert".</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">DemoNotice</strong> — פס ענברי קבוע עם ◆ בכל אזור כספי; לא נסגר ולא נעלם. אסמכתא: metadata + כפתור צפייה מפורש, ללא thumbnail.</div>
+<div><strong dir="ltr" style="font-family:ui-monospace,monospace;font-size:11.5px;color:#143A66">Skeletons</strong> — צורות בגודל הרכיב האמיתי (RoundCard, טבלה, כרטיסים); ללא shimmer ב־reduced-motion; ‎aria-busy על האזור.</div>
+</div>
+<div style="margin-top:14px;border-top:1px solid #EFF2F6;padding-top:10px">
+<div style="font-size:11.5px;font-weight:700;color:#6B7C90;margin-bottom:6px">מיפוי רכיב ← מסך</div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:12px">
+<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px;color:#143A66">/dashboard</span><span>AppShell · PageHeader · LeagueCard · DemoNotice · EmptyState · Skeletons</span>
+<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px;color:#143A66">/leagues/[id]</span><span>AppShell · LeagueTabs · PageHeader · לוח כהה · StatusBadge · DemoNotice</span>
+<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px;color:#143A66">…/matches</span><span>RoundCard ★ · MatchRow · ScoreInput · StatusBadge · ErrorState · Skeletons</span>
+<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px;color:#143A66">…/standings</span><span>StandingsTable/Card · StatusBadge · EmptyState</span>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>החלטות · סיכונים · תוכנית implementation</div>
+<div class="dv-card" style="width:560px;padding:18px 22px">
+<div dir="rtl" lang="he" style="font-family:'Heebo',system-ui,sans-serif;color:#0C1D33;font-size:12.5px;line-height:1.7">
+<div style="font-size:12px;font-weight:700;color:#143A66;margin-bottom:6px">ההחלטות החשובות</div>
+<ol style="margin:0;padding:0 18px 0 0">
+<li><strong>המחזור הוא יחידת הארגון</strong> — RoundCard מחליף את רשת כרטיסי המשחק; ההתקדמות מחושבת רק ממשחקי המחזור שמוצגים.</li>
+<li><strong>אמרלד = פעולה בלבד</strong> — כפתור ראשי אחד לכל אזור. נייבי = זהות וניווט. זה מה שמחזיר היררכיה.</li>
+<li><strong>משטח כהה אחד סמנטי</strong> — לוח "המשחק הקרוב" ותוצאה רשמית בלבד. אין Dark Mode.</li>
+<li><strong>סטטוס = צורה+מילה+צבע</strong> — מערכת אחת לכל המוצר (משחק, בקשה, ליגה).</li>
+<li><strong>tabs בתוך ליגה</strong> — במקום "חזרה לליגה"; נתיבים קיימים בלבד, חברים/הגדרות למנהל.</li>
+</ol>
+<div style="font-size:12px;font-weight:700;color:#8F2317;margin:12px 0 6px">סיכונים ונקודות להחלטה</div>
+<ul style="margin:0;padding:0 18px 0 0">
+<li>ל־Heebo אין ספרות tabular אמיתיות בכל המשקלים — מספרי תוצאה יושבים בקופסאות ברוחב קבוע; לאשר אחרי בדיקת ספרות מול עברית.</li>
+<li>5 tabs ב־390px גלישים אופקית — לאשר את דפוס הגלילה־עם־fade או לקצר תוויות.</li>
+<li>ניסוח הספירה ("בעוד 54 ימים ו־4 שעות") ארוך בעברית — הוחלף ב"נעילה: [מועד]" + ספירה רק ביממה האחרונה. דורש אישור.</li>
+<li>ה"פעולה הבאה" בלוח האישי נגזרת מנתונים קיימים (ניחושים חסרים, בקשות ממתינות) — אין נתון חדש, אבל דורשת query מצרפי קטן ב־dashboard. לאשר.</li>
+</ul>
+<div style="font-size:12px;font-weight:700;color:#143A66;margin:12px 0 6px">תוכנית implementation (Next.js 16 · Tailwind · RSC)</div>
+<ol style="margin:0;padding:0 18px 0 0">
+<li><strong>Tokens:</strong> הרחבת <span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">globals.css</span> ב־<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">@theme</span> (צבעים, radius, shadow, font Heebo דרך <span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">next/font</span>) — בלי ספריית UI.</li>
+<li><strong>שלד:</strong> AppShell + LeagueTabs + PageHeader כ־Server Components תחת <span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">src/components/</span>; החלפת ה־header הקיים ב־<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">(app)/layout.tsx</span>.</li>
+<li><strong>מסכים לפי סדר:</strong> matches (RoundCard, MatchRow, ScoreInput — הרכיב היחיד עם client state) ← dashboard ← league ← standings. אותם queries, אותם routes, אותן הרשאות.</li>
+<li><strong>מצבים:</strong> Skeletons ב־<span dir="ltr" style="font-family:ui-monospace,monospace;font-size:11px">loading.tsx</span> הקיימים, EmptyState/ErrorState משותפים.</li>
+<li><strong>QA:</strong> בדיקת 390/768/1440, מקלדת, ניגודיות AA, reduced-motion, וה־e2e הקיימים ללא שינוי selectors התנהגותיים.</li>
+</ol>
+</div>
+</div></div>
+
+</div>
+<p style="margin:24px 0 0;font-size:12px;color:#6B7C90">המשך אפשרי: "לאשר את הכיוון — אפשר לעבור ל־implementation" · "לרכך את הלוח הכהה ב־<a class="dv-oid" href="#1d">1d</a>" · "להראות את RoundCard גם במצב טבלה צפופה יותר"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

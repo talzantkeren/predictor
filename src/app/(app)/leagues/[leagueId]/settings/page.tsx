@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { DemoNotice } from "@/components/ui/demo-notice";
+import { ErrorState } from "@/components/ui/error-state";
 import { requireAuthenticatedUser } from "@/features/auth/session";
+import { LeagueTabs } from "@/features/leagues/components/league-tabs";
 import { InviteControls } from "@/features/membership/components/invite-controls";
 import { getLeagueInviteSettings } from "@/features/membership/queries";
 import { getPublicEnv } from "@/lib/env";
@@ -32,9 +34,9 @@ export default async function LeagueSettingsPage({
   if (result.status === "error") {
     return (
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+        <ErrorState>
           לא ניתן לטעון את הגדרות ההזמנה כרגע. יש לרענן ולנסות שוב.
-        </p>
+        </ErrorState>
       </main>
     );
   }
@@ -42,31 +44,57 @@ export default async function LeagueSettingsPage({
   const leagueClosed =
     result.league.status === "completed" || result.league.status === "archived";
   const applicationOrigin = new URL(getPublicEnv().NEXT_PUBLIC_APP_URL).origin;
+  const monogram = result.league.name.trim().slice(0, 2) || "P1";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <header className="rounded-2xl border border-line bg-white p-5 shadow-card sm:p-7">
+        <div className="flex min-w-0 items-start gap-4">
+          <span
+            aria-hidden="true"
+            className="grid size-14 shrink-0 place-items-center rounded-2xl bg-navy-100 text-xl font-black text-navy-900"
+          >
+            {monogram}
+          </span>
+          <div className="min-w-0">
+            <p className="break-words text-sm font-bold text-ink-muted">
+              {result.league.name}
+            </p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-4xl">
+              הגדרות הזמנה
+            </h1>
+            <p className="mt-2 max-w-3xl leading-7 text-ink-secondary">
+              יצירה, החלפה וביטול של קישור ההזמנה הפרטי לליגה.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <div className="mt-5 overflow-hidden rounded-2xl border border-line shadow-card">
+        <LeagueTabs leagueId={leagueId} active="settings" isManager />
+      </div>
+
       <section
         aria-labelledby="league-settings-title"
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8"
+        className="mt-6 rounded-2xl border border-line bg-white p-5 shadow-card sm:p-8"
       >
-        <p className="text-sm font-semibold text-blue-700">ניהול ליגה פרטית</p>
-        <h1 id="league-settings-title" className="mt-2 break-words text-3xl font-bold tracking-tight">
-          הגדרות הזמנה — {result.league.name}
-        </h1>
-        <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+        <h2 id="league-settings-title" className="text-2xl font-black text-ink">
+          קישור ההזמנה
+        </h2>
+        <p className="mt-2 max-w-2xl leading-7 text-ink-secondary">
           הקישור הגולמי מוצג פעם אחת בלבד. החלפת קישור מבטלת מיד את הקישור הקודם.
         </p>
 
-        <aside
-          aria-label="הודעת מצב Demo"
-          className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950"
-        >
+        <DemoNotice className="mt-5">
           זהו דמו בלבד — אין להעביר כסף ואין להעלות מסמך פיננסי אמיתי.
-        </aside>
+        </DemoNotice>
 
         <div className="mt-7">
           {leagueClosed ? (
-            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">
+            <p
+              role="status"
+              className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-warning-900"
+            >
               ליגה שהסתיימה או הועברה לארכיון אינה יכולה לקבל הזמנות חדשות.
             </p>
           ) : (
@@ -76,15 +104,6 @@ export default async function LeagueSettingsPage({
               applicationOrigin={applicationOrigin}
             />
           )}
-        </div>
-
-        <div className="mt-8 border-t border-slate-200 pt-5">
-          <Link
-            href={`/leagues/${result.league.id}`}
-            className="font-semibold text-blue-700 underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-          >
-            חזרה לסיכום הליגה
-          </Link>
         </div>
       </section>
     </main>
