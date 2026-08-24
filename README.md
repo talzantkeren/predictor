@@ -171,7 +171,7 @@ API-Football המאוחרת אינה משנה את השורות האלה, ולא
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
 Slice 7 הוסיף observability ו־Cron ידני. Slice 7b מוסיף קטלוג API-Football
 provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo;
-AI ו־finance נשארים Slices 8–9.
+דוחות Demo הם Slice 8; הקשחה, מסמכים והצגה הם Slice 9.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 

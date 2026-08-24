@@ -51,7 +51,7 @@ npm run test:e2e:preview
 ## Slice 2: יצירת ליגה, ניקוד ופרסי Demo
 
 Slice 2 ממשיך להשתמש רק ב־Supabase וב־Mailpit המקומיים. אין קריאה ל־Sports,
-AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת reference בלבד;
+תשלום או Email hosted. ה־catalog מכיל competition ועונת reference בלבד;
 אין teams, fixtures, provider IDs או תוצאות מומצאות.
 
 ### מטריצת כיסוי

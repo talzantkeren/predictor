@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.4 |
+| גרסה | 3.5 |
 | תאריך עדכון | 24 באוגוסט 2026 |
-| סטטוס | Slice 7b review hardening; hosted provisioning/canary follows approved merge, then Slice 8 |
+| סטטוס | Slice 7b review hardening; hosted provisioning/canary follows approved merge, then Slice 8 Demo reports |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -115,7 +115,6 @@ npx playwright install
 │   │   ├── api/
 │   │   │   ├── cron/sync/route.ts
 │   │   │   ├── join-requests/[requestId]/proofs/route.ts
-│   │   │   ├── matches/[matchId]/analysis/route.ts
 │   │   │   └── payment-proofs/[proofId]/route.ts
 │   │   ├── auth/confirm/route.ts
 │   │   ├── error.tsx
@@ -134,7 +133,6 @@ npx playwright install
 │   │   ├── predictions/
 │   │   ├── scoring/
 │   │   ├── sports/
-│   │   ├── ai/
 │   │   ├── files/
 │   │   └── reports/
 │   ├── lib/
@@ -195,8 +193,6 @@ CRON_SECRET=
 SYNC_SYSTEM_ACTOR_ID=
 SPORTS_API_PROVIDER=manual
 SPORTS_API_KEY=
-AI_API_KEY=
-AI_MODEL=
 DEMO_MODE=true
 ```
 
@@ -207,7 +203,6 @@ DEMO_MODE=true
   והעמום `api` אינו תקין.
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`, ונדרש בזמן ריצה כאשר
   provider הוא `api-football`.
-- `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
 - `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
   מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
@@ -234,7 +229,7 @@ DEMO_MODE=true
 | 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
 | 007 `predictions_and_scoring` | נמסר בשני שלבים: Slice 5 הוסיף `predictions`, RLS, `save_prediction` ונעילה; Slice 6 הוסיף `score_match`, metadata ניקוד ו־`league_leaderboard` | נעילה/חשיפה ומטריצת ניקוד מלאה, כולל retry, correction, cancel ושוויון |
-| 008 `operations_and_ai` | טבלת `system_admins` הוקדמה ל־Slice 6. Slice 7 יצר `sync_runs` ו־RPC ידני; Slice 7b מוסיף forward-only את lease/fencing, lifecycle וקאונטרים לספק חי. analyses נשארים ל־Slice 8 | זהות מערכת מצומצמת, manual fallback, claim/apply/finalize מגודרים והרשאות browser חסומות |
+| 008 `operations` | טבלת `system_admins` הוקדמה ל־Slice 6. Slice 7 יצר `sync_runs` ו־RPC ידני; Slice 7b מוסיף forward-only את lease/fencing, lifecycle וקאונטרים לספק חי | זהות מערכת מצומצמת, manual fallback, claim/apply/finalize מגודרים והרשאות browser חסומות |
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 | 010 `slice7b_api_football_sync` | external identity לעונה, round label, irreversible prediction lock, `sync_leases`, הרחבת `sync_runs` ו־RPCs claim/apply/finalize | upsert לפי provider ID בלבד, token ישן/פג נדחה, RLS/grants ופונקציות service-only נבדקים |
 | 011 `slice7b_review_hardening` | תיקון forward-only ל־cancellation latch/reactivation, quarantine של regression, cooldown ל־force והרחבה צרה של `score_match` לאיפוס מצב unscored | ביטול מוקדם אינו חושף; reactivation בטוח; fixture חריג אינו מפיל batch; אין retry storm |
@@ -431,13 +426,7 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 הוא נשען על RLS של החברות והניחושים ואינו עוקף אותה. שאילתת השרת מאמתת חברות
 בליגה המבוקשת לפני הקריאה. אין `SECURITY DEFINER VIEW` חשופה.
 
-### 6.7 תפעול ו־AI
-
-#### `ai_match_analyses`
-
-- `match_id primary key`, `content jsonb`, `provider`, `model`.
-- `data_as_of`, `generated_at`, `source_result_version`.
-- content נכתב רק אחרי Zod validation.
+### 6.7 תפעול
 
 #### `sync_runs`
 
@@ -472,7 +461,7 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 #### `rate_limit_events`
 
 - `id`, `user_id`, `join_request_id`, `action`, `created_at`.
-- משמש למכסות AI/upload ב־MVP; cleanup יומי לאירועים ישנים.
+- משמש למכסות upload ב־MVP; cleanup יומי לאירועים ישנים.
 
 ## 7. פונקציות ופעולות אטומיות
 
@@ -616,7 +605,6 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | Membership | approval RPC | same league/manager | activate/remove | status `removed` |
 | Match | provider/admin | authenticated scoped | provider/admin override | cancel, לא hard delete |
 | Prediction | upsert לפני lock | policy תלוי זמן | upsert לפני lock | אין delete ב־MVP |
-| AI analysis | on-demand Handler | authorized member | regenerate only when stale | admin maintenance |
 
 ## 9. Server Actions
 
@@ -698,15 +686,6 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 7. ה־Handler נשאר `auth → env → orchestration → typed private response`. הוא
    אינו מכיל mapping ספק, upsert או ניקוד, ואינו חושף key/token/generation.
 
-### 10.5 `POST /api/matches/[matchId]/analysis`
-
-1. session וחברות פעילה בליגה הכוללת את המשחק.
-2. cache lookup ו־freshness.
-3. rate limit.
-4. DB input בלבד → provider adapter → Zod output.
-5. upsert cache והחזרה.
-6. כשל מחזיר cache ישן עם timestamp או error לא־חוסם.
-
 ## 11. Validation
 
 | קלט | כלל |
@@ -750,7 +729,6 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 - countdown מציג גם שעה מוחלטת, timezone וסטטוס נעילה.
 - ניחוש שנשמר מציג timestamp מהשרת.
 - מסכי Demo מסומנים באופן קבוע ואינם כוללים קישור תשלום אמיתי.
-- AI מציג מקור נתונים/מועד וגילוי נאות; אינו מקבל עיצוב סמכותי יותר מנתוני המשחק.
 
 ## 13. טיפול בשגיאות
 
@@ -795,7 +773,6 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 - adapter mapping מ־fixtures provider-specific: 14 teams, 26 rounds, status
   map מלא, `FT` מ־`score.fulltime`, AET/PEN review, round collision ושם fallback.
 - due/request planning טהור, batches של 20 IDs והחרגת manual override.
-- cache freshness ו־AI fallback.
 
 Async Server Components אינם יעד ל־Vitest; בודקים את ה־Service/queries בנפרד ואת העמוד ב־Playwright.
 
@@ -849,8 +826,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 6. שמירה לפני/אחרי נעילה.
 7. מנהל מערכת מזין תוצאה; דירוג ושוויון מתעדכנים.
 8. proof ID של בקשה אחרת אינו נגיש.
-9. AI provider mocked נופל והניחוש עדיין עובד.
-10. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; manual נרשם כ־
+9. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; manual נרשם כ־
     `skipped/MANUAL_PROVIDER`; מנהל רואה lifecycle seeded ו־trigger ומשתמש רגיל
     נדחה. success/not-due/concurrent/failure של ספק נבדקים בשילוב Vitest+pgTAP,
     לא באמצעות מתג provider מזויף בתהליך Production.
@@ -863,7 +839,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 - חוזה Sports, API-Football client/adapter וה־sync planner נבדקים מול JSON
   fixtures מסוננים ודטרמיניסטיים שנשמרו במאגר לאחר ה־POC.
-- CI אינה מבצעת קריאות live לספק Sports או AI.
+- CI אינה מבצעת קריאות live לספק Sports.
 - שינוי mapping שמפר fixture נכשל לפני deploy.
 
 ### 14.5 CI gates
@@ -986,7 +962,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 שורות לפני הפתיחה ונחשפים רק לחברים פעילים אחרי הפתיחה.
 
 Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6), Sports Sync/Cron
-או override (Slice 7), AI (Slice 8) או finance (Slice 9).
+או override (Slice 7) או finance (Slice 8).
 
 ### Slice 6 — תוצאות, ניקוד ודירוג
 
@@ -1047,17 +1023,7 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 מכוסות ב־Vitest, pgTAP ו־Playwright ללא רשת חיה; lint/typecheck/build/types drift
 ירוקים; נותרות רק פעולות hosted ידניות ו־live canary לאחר merge מאושר.
 
-### Slice 8 — AI analysis
-
-**תוצר:** authorized on-demand analysis עם cache, schema, rate limit ו־fallback.
-
-- DB input builder.
-- provider adapter ו־fake provider.
-- Route Handler, cache ו־UI disclosure.
-
-**Exit:** אין עובדות שלא הגיעו מה־DB; משתמש לא מאושר נדחה; provider failure אינו חוסם ניחוש.
-
-### Slice 9 — דוחות Demo
+### Slice 8 — דוחות Demo
 
 **תוצר:** finance summary ודוח prize allocation פשוטים.
 
@@ -1068,7 +1034,7 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 **Exit:** נתונים שנדחו אינם בקופה; חישוב פרסים תואם unit tests.
 
-### Slice 10 — Hardening, מסמכים והצגה
+### Slice 9 — Hardening, מסמכים והצגה
 
 **תוצר:** מוצר שניתן להגיש ולהסביר.
 
@@ -1092,9 +1058,8 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 | 22–24 באוגוסט | Slice 5 |
 | 25–26 באוגוסט | Slice 6 |
 | 27–28 באוגוסט | Slice 7 |
-| 29 באוגוסט | Slice 8 |
-| 30 באוגוסט | Slice 9 |
-| 31 באוגוסט–3 בספטמבר | Slice 10 ומסמכי הגשה |
+| 29–30 באוגוסט | Slice 8 — דוחות Demo |
+| 31 באוגוסט–3 בספטמבר | Slice 9 — Hardening ומסמכי הגשה |
 | 4–5 בספטמבר | תיקוני blocker, rehearsal ו־submission checklist |
 | 6 בספטמבר | הגשה |
 
@@ -1104,10 +1069,9 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 אם הלו"ז מחליק, חותכים לפי הסדר:
 
-1. עיצוב AI עשיר; נשאר כרטיס נתונים ו־fallback.
-2. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
-3. finance UI מתקדם; נשארת טבלה/מספרים נכונים.
-4. ליטושי animation ועיצוב.
+1. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
+2. finance UI מתקדם; נשארת טבלה/מספרים נכונים.
+3. ליטושי animation ועיצוב.
 
 לא חותכים:
 
@@ -1152,10 +1116,10 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-לאחר מסירת Slice 7b והשלמת hosted canary המשימה הבאה היא **Slice 8 — AI analysis**: ניתוח on-demand
-לחבר פעיל בלבד, input מנתוני DB שמורים, output מובנה שעובר Zod, cache לפי
-גרסת נתונים, rate limit ו־fallback שאינו חוסם ניחוש. CI משתמש ב־fake provider
-ואינו מבצע קריאת AI חיה.
+לאחר מסירת Slice 7b והשלמת hosted canary המשימה הבאה היא **Slice 8 — דוחות
+Demo**: finance summary ודוח חלוקת פרסים פשוטים, queries מוגבלות, נוסחאות
+approved/pending, דוגמאות למקום משותף וסימון Demo קבוע. אין אינטגרציה עם ספק
+מודלים בהיקף הקורס.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 
