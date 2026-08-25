@@ -11,9 +11,9 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
-מצב נוכחי: Slice 7c — Design System ורענון UI — הושלם, נפרס ל־Preview ואושר
-חזותית ב־25 באוגוסט 2026. השלב הבא הוא Slice 8 של דוחות Demo. ראיות
-ה־Canary המסוננות נמצאות ב־
+מצב נוכחי: Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. השלב הבא
+הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה. ראיות ה־Canary
+המסוננות נמצאות ב־
 [`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
 
 זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
@@ -178,7 +178,8 @@ Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסר
 Slice 7 הוסיף observability ו־Cron ידני. Slice 7b הוסיף קטלוג API-Football
 provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c מוסיף
 שפה חזותית אחידה ומיישם אותה בדשבורד, בתקציר הליגה, במשחקים ובדירוג בלי לשנות
-נתיבים או התנהגות עסקית; דוחות Demo הם Slice 8 והקשחה, מסמכים והצגה הם Slice 9.
+נתיבים או התנהגות עסקית; דוח מנהל לא־כספי הוא Slice 8 והקשחה, מסמכים והצגה
+הם Slice 9.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 
@@ -300,7 +301,30 @@ readonly, accent סמנטי לקישור הזמנה ומצבי focus/disabled ה
 שינוי בנתונים, בהרשאות או בהתנהגות העסקית. `viewerIsManager` הוא ערך תצוגה
 שנגזר בשרת לצורך tabs בלבד ואינו מחליף הרשאה על המשאב.
 ה־Preview של Slice 7c עבר בדיקות רספונסיביות ואישור חזותי ב־25 באוגוסט 2026.
-Slice 8 הוא השלב הבא.
+Slice 8 — דוח מנהל לא־כספי — הושלם; Slice 9 סוגר את lifecycle וממשיך
+ל־Hardening ולמסמכי ההגשה.
+
+## Slice 8: דוח מנהל לא־כספי
+
+הנתיב `/leagues/[leagueId]/reports` מיועד רק למנהל/ת של הליגה המדויקת. הוא
+מציג את שם הליגה וסטטוסה, מספר חברים פעילים, ספירות נפרדות של בקשות הממתינות
+לבדיקת מנהל/ת הליגה, בקשות הממתינות לתמונת Demo ובקשות שנדחו, ואת אותו דירוג
+שכבר מוצג במסך הדירוג. מקום משותף נשמר בשיטת `1, 1, 3`; תוצאה מדויקת מוצגת
+כמידע ואינה שובר שוויון נוסף.
+
+כל עוד הליגה אינה `completed` הכותרת היא "דירוג נוכחי". רק ליגה בסטטוס
+`completed` מקבלת "דירוג סופי". חבר רגיל, משתמש זר או מנהל של ליגה אחרת
+מקבלים not-found אטום גם אם הם מנחשים את ה־URL. tab "דוחות" מוצג למנהל בלבד,
+אך האכיפה נעשית מחדש בשרת ותחת RLS.
+
+Slice 8 קורא את סטטוס הליגה ואינו משנה אותו. זרימות המוצר שמקדמות ליגה
+מ־`open` ל־`active` ומ־`active` ל־`completed` מתוכננות ל־Slice 9; בדיקת המצב
+הסופי ב־Slice 8 היא fixture מקומי לבדיקת rendering ולא תחליף ל־Action הזה.
+
+הדוח הוא מידע בלבד. אין בו AI, דמי השתתפות, קופה, תשלום או עיבוד תשלום, פרס
+כספי, אחוזי פרס, payout מדומה, currency symbol או payment link. הוא query-only,
+משתמש ב־Supabase user client וב־`getLeagueStandings` הקיים, ואינו מוסיף
+migration, RPC, Action, dependency או שימוש ב־admin client.
 
 ### Mailpit
 

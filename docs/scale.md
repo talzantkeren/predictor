@@ -58,6 +58,8 @@ trigger ידני של מנהל יכול לעקוף due-window בלבד: `backoff
 - response של API-Football מוגבל ל־8 MiB לפני parse. חריגה מסמנת contract
   failure; אין להגדיל בלי evidence מגודל fixture אמיתי.
 - query המשחקים מוגבל ל־500 לעונה, מעל 182 שנצפו אך לא יעד לאלפי fixtures.
+- ספירות דוח המנהל משתמשות ב־`head: true` ולכן אינן מעבירות שורות ומקבלות
+  count שלם ובטוח גם מעל 500; רשימת הדירוג עדיין מוגבלת ל־500 שורות.
 - `sync_runs` מוצג עד 100 שורות. cleanup/retention יתווסף רק לאחר מדידת גודל;
   אין subsystem חדש ב־Slice 7b.
 - אם ריצה תקינה מתקרבת ל־120 שניות, מוסיפים renew RPC צר או worker נפרד לאחר

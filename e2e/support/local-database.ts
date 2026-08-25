@@ -158,6 +158,80 @@ export function addPendingJoinRequestInDisposableLocalDatabase({
   }
 }
 
+export function seedManagerReportStatusesInDisposableLocalDatabase({
+  leagueId,
+  managerId,
+  removedPendingUserId,
+  approvalUserId,
+}: {
+  leagueId: string;
+  managerId: string;
+  removedPendingUserId: string;
+  approvalUserId: string;
+}) {
+  assertCanonicalUuid(leagueId, "report league");
+  assertCanonicalUuid(managerId, "report manager");
+  assertCanonicalUuid(removedPendingUserId, "removed report member");
+  assertCanonicalUuid(approvalUserId, "report requester");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; insert into public.league_members (league_id, user_id, status, approved_by, approved_at, removed_by, removed_at) values ('${leagueId}'::uuid, '${removedPendingUserId}'::uuid, 'removed', '${managerId}'::uuid, clock_timestamp() - interval '2 days', '${managerId}'::uuid, clock_timestamp() - interval '1 day') on conflict (league_id, user_id) do update set status = 'removed', removed_by = excluded.removed_by, removed_at = excluded.removed_at; insert into public.join_requests (league_id, user_id, status) values ('${leagueId}'::uuid, '${removedPendingUserId}'::uuid, 'pending_proof'); insert into public.join_requests (league_id, user_id, status, rejection_reason, decided_by, decided_at, created_at, updated_at) values ('${leagueId}'::uuid, '${approvalUserId}'::uuid, 'rejected', 'בקשה קודמת נדחתה', '${managerId}'::uuid, clock_timestamp() - interval '1 day', clock_timestamp() - interval '2 days', clock_timestamp() - interval '1 day'), ('${leagueId}'::uuid, '${approvalUserId}'::uuid, 'pending_approval', null, null, null, clock_timestamp(), clock_timestamp()); commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "INSERT 0 1" ||
+    output[2] !== "INSERT 0 1" ||
+    output[3] !== "INSERT 0 2" ||
+    output[4] !== "COMMIT"
+  ) {
+    throw new Error("Local manager-report fixtures could not be created.");
+  }
+}
+
+export function setLeagueStatusInDisposableLocalDatabase(
+  leagueId: string,
+  status: "active" | "completed",
+) {
+  assertCanonicalUuid(leagueId, "report league");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `update public.leagues set status = '${status}'::public.league_status where id = '${leagueId}'::uuid;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (fixture.status !== 0 || fixture.stdout.trim() !== "UPDATE 1") {
+    throw new Error("Local report league status could not be updated.");
+  }
+}
+
 export type PredictionMatchFixtureIds = {
   homeTeamId: string;
   awayTeamId: string;

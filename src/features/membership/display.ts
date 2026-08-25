@@ -10,8 +10,19 @@ const statusLabels: Record<JoinRequestStatus, string> = {
   rejected: "נדחתה",
 };
 
+const statusCountLabels: Record<JoinRequestStatus, string> = {
+  pending_proof: "ממתינות לתמונת Demo",
+  pending_approval: "ממתינות לבדיקת מנהל/ת הליגה",
+  approved: "בקשות שאושרו",
+  rejected: "בקשות שנדחו",
+};
+
 export function getJoinRequestStatusLabel(status: JoinRequestStatus) {
   return statusLabels[status];
+}
+
+export function getJoinRequestStatusCountLabel(status: JoinRequestStatus) {
+  return statusCountLabels[status];
 }
 
 export function getInviteEffectiveStatus(
