@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-type LeagueSection = "overview" | "matches" | "standings" | "members" | "settings";
+type LeagueSection =
+  | "overview"
+  | "matches"
+  | "standings"
+  | "members"
+  | "reports"
+  | "settings";
 
 const commonItems: { key: LeagueSection; label: string; suffix: string }[] = [
   { key: "overview", label: "סקירה", suffix: "" },
@@ -10,6 +16,7 @@ const commonItems: { key: LeagueSection; label: string; suffix: string }[] = [
 
 const managerItems: { key: LeagueSection; label: string; suffix: string }[] = [
   { key: "members", label: "חברים", suffix: "/members" },
+  { key: "reports", label: "דוחות", suffix: "/reports" },
   { key: "settings", label: "הגדרות", suffix: "/settings" },
 ];
 

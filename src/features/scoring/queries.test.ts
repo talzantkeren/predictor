@@ -23,5 +23,11 @@ describe("league standing mapping", () => {
 
   it("still rejects malformed aggregate rows", () => {
     expect(mapStanding({ ...validRow, total_points: null })).toBeNull();
+    expect(
+      mapStanding({
+        ...validRow,
+        total_points: Number.MAX_SAFE_INTEGER + 1,
+      }),
+    ).toBeNull();
   });
 });

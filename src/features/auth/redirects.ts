@@ -19,6 +19,8 @@ const LEAGUE_MATCHES_PATH_PATTERN =
   /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/matches$/;
 const LEAGUE_STANDINGS_PATH_PATTERN =
   /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/standings$/;
+const LEAGUE_REPORTS_PATH_PATTERN =
+  /^\/leagues\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\/reports$/;
 const MATCH_DETAIL_PATH_PATTERN =
   /^\/matches\/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
 const INVITE_PATH_PATTERN = new RegExp(
@@ -44,6 +46,7 @@ export function getSafeAuthRedirect(
     LEAGUE_SETTINGS_PATH_PATTERN.test(candidate) ||
     LEAGUE_MATCHES_PATH_PATTERN.test(candidate) ||
     LEAGUE_STANDINGS_PATH_PATTERN.test(candidate) ||
+    LEAGUE_REPORTS_PATH_PATTERN.test(candidate) ||
     MATCH_DETAIL_PATH_PATTERN.test(candidate) ||
     INVITE_PATH_PATTERN.test(candidate)
   ) {
