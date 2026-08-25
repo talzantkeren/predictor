@@ -7,12 +7,12 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
 - Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
 - Slice 5 Preview: [https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app)
+- Slice 7c approved Preview: [https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app](https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
-מצב נוכחי: מימוש Slice 7c — Design System ורענון UI — הושלם מקומית לאחר
-סגירת Slice 7b וה־Hosted canary של API-Football; פריסת Preview ואישור חזותי
-עדיין נדרשים לפני Production. לאחר האישור השלב הבא הוא Slice 8 של דוחות Demo. ראיות
+מצב נוכחי: Slice 7c — Design System ורענון UI — הושלם, נפרס ל־Preview ואושר
+חזותית ב־25 באוגוסט 2026. השלב הבא הוא Slice 8 של דוחות Demo. ראיות
 ה־Canary המסוננות נמצאות ב־
 [`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
 
@@ -299,8 +299,8 @@ readonly, accent סמנטי לקישור הזמנה ומצבי focus/disabled ה
 וכן יישרה את מעטפת ההתחברות, כפתורי הפעולה והודעות השגיאה לשפה המשותפת — ללא
 שינוי בנתונים, בהרשאות או בהתנהגות העסקית. `viewerIsManager` הוא ערך תצוגה
 שנגזר בשרת לצורך tabs בלבד ואינו מחליף הרשאה על המשאב.
-Slice 8 הוא השלב
-הבא לאחר Preview ואישור חזותי.
+ה־Preview של Slice 7c עבר בדיקות רספונסיביות ואישור חזותי ב־25 באוגוסט 2026.
+Slice 8 הוא השלב הבא.
 
 ### Mailpit
 
