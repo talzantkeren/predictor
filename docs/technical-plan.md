@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.4 |
-| תאריך עדכון | 24 באוגוסט 2026 |
-| סטטוס | Slice 7b review hardening; hosted provisioning/canary follows approved merge, then Slice 8 |
+| גרסה | 3.13 |
+| תאריך עדכון | 25 באוגוסט 2026 |
+| סטטוס | Slice 7c הושלם, עבר Preview ואושר חזותית; השלב הבא הוא Slice 8 — דוחות Demo |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -77,6 +77,7 @@ npx playwright install
 │   ├── product.md
 │   ├── architecture.md
 │   ├── technical-plan.md
+│   ├── design-brief.md         # קלט עיצובי מאושר ל־Slice 7c
 │   ├── testing.md              # ייכתב תוך כדי ה־slices
 │   ├── security.md             # ייכתב תוך כדי ה־slices
 │   └── scale.md                # ייכתב לפני ההגשה
@@ -115,7 +116,6 @@ npx playwright install
 │   │   ├── api/
 │   │   │   ├── cron/sync/route.ts
 │   │   │   ├── join-requests/[requestId]/proofs/route.ts
-│   │   │   ├── matches/[matchId]/analysis/route.ts
 │   │   │   └── payment-proofs/[proofId]/route.ts
 │   │   ├── auth/confirm/route.ts
 │   │   ├── error.tsx
@@ -134,7 +134,6 @@ npx playwright install
 │   │   ├── predictions/
 │   │   ├── scoring/
 │   │   ├── sports/
-│   │   ├── ai/
 │   │   ├── files/
 │   │   └── reports/
 │   ├── lib/
@@ -195,8 +194,6 @@ CRON_SECRET=
 SYNC_SYSTEM_ACTOR_ID=
 SPORTS_API_PROVIDER=manual
 SPORTS_API_KEY=
-AI_API_KEY=
-AI_MODEL=
 DEMO_MODE=true
 ```
 
@@ -207,7 +204,6 @@ DEMO_MODE=true
   והעמום `api` אינו תקין.
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`, ונדרש בזמן ריצה כאשר
   provider הוא `api-football`.
-- `AI_API_KEY` אינו נדרש לבדיקות; משתמשים ב־fake adapter.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
 - `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
   מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
@@ -234,7 +230,7 @@ DEMO_MODE=true
 | 005 `secure_join_and_proofs` | invite links, join requests, proofs, bucket פרטי ללא גישת client ישירה, audit מצומצם ו־rate-limit durable | invite rotation אטומי, בקשה אידמפוטנטית, upload פרטי ו־IDOR חסום |
 | 006 `manager_join_decisions` | תור בקשות למנהל, צפייה מורשית, approve/reject, יצירת חברות ו־audit אטומי | החלטה אטומית ואידמפוטנטית; מנהל זר נדחה; חברות יחידה נוצרת רק באישור |
 | 007 `predictions_and_scoring` | נמסר בשני שלבים: Slice 5 הוסיף `predictions`, RLS, `save_prediction` ונעילה; Slice 6 הוסיף `score_match`, metadata ניקוד ו־`league_leaderboard` | נעילה/חשיפה ומטריצת ניקוד מלאה, כולל retry, correction, cancel ושוויון |
-| 008 `operations_and_ai` | טבלת `system_admins` הוקדמה ל־Slice 6. Slice 7 יצר `sync_runs` ו־RPC ידני; Slice 7b מוסיף forward-only את lease/fencing, lifecycle וקאונטרים לספק חי. analyses נשארים ל־Slice 8 | זהות מערכת מצומצמת, manual fallback, claim/apply/finalize מגודרים והרשאות browser חסומות |
+| 008 `operations` | טבלת `system_admins` הוקדמה ל־Slice 6. Slice 7 יצר `sync_runs` ו־RPC ידני; Slice 7b מוסיף forward-only את lease/fencing, lifecycle וקאונטרים לספק חי | זהות מערכת מצומצמת, manual fallback, claim/apply/finalize מגודרים והרשאות browser חסומות |
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 | 010 `slice7b_api_football_sync` | external identity לעונה, round label, irreversible prediction lock, `sync_leases`, הרחבת `sync_runs` ו־RPCs claim/apply/finalize | upsert לפי provider ID בלבד, token ישן/פג נדחה, RLS/grants ופונקציות service-only נבדקים |
 | 011 `slice7b_review_hardening` | תיקון forward-only ל־cancellation latch/reactivation, quarantine של regression, cooldown ל־force והרחבה צרה של `score_match` לאיפוס מצב unscored | ביטול מוקדם אינו חושף; reactivation בטוח; fixture חריג אינו מפיל batch; אין retry storm |
@@ -431,13 +427,7 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 הוא נשען על RLS של החברות והניחושים ואינו עוקף אותה. שאילתת השרת מאמתת חברות
 בליגה המבוקשת לפני הקריאה. אין `SECURITY DEFINER VIEW` חשופה.
 
-### 6.7 תפעול ו־AI
-
-#### `ai_match_analyses`
-
-- `match_id primary key`, `content jsonb`, `provider`, `model`.
-- `data_as_of`, `generated_at`, `source_result_version`.
-- content נכתב רק אחרי Zod validation.
+### 6.7 תפעול
 
 #### `sync_runs`
 
@@ -472,7 +462,7 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 #### `rate_limit_events`
 
 - `id`, `user_id`, `join_request_id`, `action`, `created_at`.
-- משמש למכסות AI/upload ב־MVP; cleanup יומי לאירועים ישנים.
+- משמש למכסות upload ב־MVP; cleanup יומי לאירועים ישנים.
 
 ## 7. פונקציות ופעולות אטומיות
 
@@ -616,7 +606,6 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | Membership | approval RPC | same league/manager | activate/remove | status `removed` |
 | Match | provider/admin | authenticated scoped | provider/admin override | cancel, לא hard delete |
 | Prediction | upsert לפני lock | policy תלוי זמן | upsert לפני lock | אין delete ב־MVP |
-| AI analysis | on-demand Handler | authorized member | regenerate only when stale | admin maintenance |
 
 ## 9. Server Actions
 
@@ -698,15 +687,6 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 7. ה־Handler נשאר `auth → env → orchestration → typed private response`. הוא
    אינו מכיל mapping ספק, upsert או ניקוד, ואינו חושף key/token/generation.
 
-### 10.5 `POST /api/matches/[matchId]/analysis`
-
-1. session וחברות פעילה בליגה הכוללת את המשחק.
-2. cache lookup ו־freshness.
-3. rate limit.
-4. DB input בלבד → provider adapter → Zod output.
-5. upsert cache והחזרה.
-6. כשל מחזיר cache ישן עם timestamp או error לא־חוסם.
-
 ## 11. Validation
 
 | קלט | כלל |
@@ -750,7 +730,6 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 - countdown מציג גם שעה מוחלטת, timezone וסטטוס נעילה.
 - ניחוש שנשמר מציג timestamp מהשרת.
 - מסכי Demo מסומנים באופן קבוע ואינם כוללים קישור תשלום אמיתי.
-- AI מציג מקור נתונים/מועד וגילוי נאות; אינו מקבל עיצוב סמכותי יותר מנתוני המשחק.
 
 ## 13. טיפול בשגיאות
 
@@ -795,7 +774,6 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 - adapter mapping מ־fixtures provider-specific: 14 teams, 26 rounds, status
   map מלא, `FT` מ־`score.fulltime`, AET/PEN review, round collision ושם fallback.
 - due/request planning טהור, batches של 20 IDs והחרגת manual override.
-- cache freshness ו־AI fallback.
 
 Async Server Components אינם יעד ל־Vitest; בודקים את ה־Service/queries בנפרד ואת העמוד ב־Playwright.
 
@@ -849,8 +827,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 6. שמירה לפני/אחרי נעילה.
 7. מנהל מערכת מזין תוצאה; דירוג ושוויון מתעדכנים.
 8. proof ID של בקשה אחרת אינו נגיש.
-9. AI provider mocked נופל והניחוש עדיין עובד.
-10. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; manual נרשם כ־
+9. Cron ללא secret/עם secret שגוי נדחה ללא כתיבה; manual נרשם כ־
     `skipped/MANUAL_PROVIDER`; מנהל רואה lifecycle seeded ו־trigger ומשתמש רגיל
     נדחה. success/not-due/concurrent/failure של ספק נבדקים בשילוב Vitest+pgTAP,
     לא באמצעות מתג provider מזויף בתהליך Production.
@@ -863,7 +840,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 
 - חוזה Sports, API-Football client/adapter וה־sync planner נבדקים מול JSON
   fixtures מסוננים ודטרמיניסטיים שנשמרו במאגר לאחר ה־POC.
-- CI אינה מבצעת קריאות live לספק Sports או AI.
+- CI אינה מבצעת קריאות live לספק Sports.
 - שינוי mapping שמפר fixture נכשל לפני deploy.
 
 ### 14.5 CI gates
@@ -986,7 +963,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 שורות לפני הפתיחה ונחשפים רק לחברים פעילים אחרי הפתיחה.
 
 Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6), Sports Sync/Cron
-או override (Slice 7), AI (Slice 8) או finance (Slice 9).
+או override (Slice 7) או finance (Slice 8).
 
 ### Slice 6 — תוצאות, ניקוד ודירוג
 
@@ -1043,21 +1020,118 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 - `/admin/sync` מוסיף trigger מאומת באותה orchestration ומציג lifecycle,
   counters, quota ו־operator notes בטוחים. הרשימה נשארת מוגבלת ל־100.
 
-**Exit:** כל דרישות provider/lease/fencing/upsert/scoring/lock/observability
-מכוסות ב־Vitest, pgTAP ו־Playwright ללא רשת חיה; lint/typecheck/build/types drift
-ירוקים; נותרות רק פעולות hosted ידניות ו־live canary לאחר merge מאושר.
+**Exit:** הושלם ב־24 באוגוסט 2026. כל דרישות
+provider/lease/fencing/upsert/scoring/lock/observability מכוסות ב־Vitest,
+pgTAP ו־Playwright ללא רשת חיה; lint/typecheck/build/types drift ירוקים וה־CI
+של ה־merge עבר. שתי migrations ה־forward-only הוחלו על Hosted, ו־Production
+נפרס מ־`main` ב־commit `b7c58a5` עם `api-football`.
 
-### Slice 8 — AI analysis
+Canary מורשה קלט 14 קבוצות, 26 מחזורים ו־182 משחקים; retry זהה ראה את כל 182
+המשחקים ושינה אפס שורות ואפס תוצאות. קטלוג ה־Demo נשאר מבודד עם שש קבוצות
+וחמישה משחקים ללא מזהי ספק. קיימת משימת Cron פעילה אחת בלבד, בתדירות דקה;
+טיקים לאחר ההפעלה החזירו HTTP 200 ו־`NOT_DUE` ללא ריצת Sync מיותרת. צפייה
+תפעולית רציפה במעבר משחק אמיתי `NS → live → FT` אינה שער סיום ל־Slice: אין
+לייצר מעבר ספק מלאכותי ב־Hosted, והחוזה מכוסה בבדיקות הדטרמיניסטיות וייבדק
+אופורטוניסטית כאשר יתרחש משחק מתאים.
 
-**תוצר:** authorized on-demand analysis עם cache, schema, rate limit ו־fallback.
+ראיות ה־POC וה־Canary המסוננות נשמרות תחת `docs/evidence/`; הן אינן כוללות
+מפתחות, headers, signed URLs, PII או payload מלא של הספק.
 
-- DB input builder.
-- provider adapter ו־fake provider.
-- Route Handler, cache ו־UI disclosure.
+### Slice 7c — Design System ורענון UI
 
-**Exit:** אין עובדות שלא הגיעו מה־DB; משתמש לא מאושר נדחה; provider failure אינו חוסם ניחוש.
+**סטטוס: הושלם, נפרס ל־Preview ואושר חזותית ב־25 באוגוסט 2026.** ה־tokens, מעטפת האפליקציה, גופן Heebo,
+מצבי הרכיבים וארבעת מסכי העוגן יושמו בלי dependency, route, schema או שינוי
+הרשאות. המימוש נבדק ב־390px, ב־768px וב־1440px; כל 460 בדיקות היחידה, 646
+בדיקות מסד הנתונים ו־20 תרחישי Playwright בדסקטופ וב־Pixel 5 עברו.
 
-### Slice 9 — דוחות Demo
+**תוצר:** שפה חזותית עברית ו־RTL אחידה שמיושמת במעטפת האפליקציה ובארבעה
+מסכי עוגן — `/dashboard`, `/leagues/[leagueId]`,
+`/leagues/[leagueId]/matches` ו־`/leagues/[leagueId]/standings` — בלי שינוי
+התנהגות עסקית, schema, הרשאות או נתיבים.
+
+#### שער עיצוב לפני קוד
+
+- [`design-brief.md`](./design-brief.md) הוא קלט העיצוב המאושר. אפשר להשתמש
+  ב־Claude Design/Fable או בכלי אבטיפוס אחר ככלי פיתוח בלבד, עם צילומי מסך
+  מסוננים והמסמכים הקנוניים; אין להעביר `.env`, API keys, cookies, PII,
+  אסמכתאות או נתוני משתמש אמיתיים.
+- האבטיפוס נדרש להציג כל מסך ב־390px וב־1440px, את מעטפת הניווט ואת המצבים
+  loading, empty, error, success, disabled ו־locked הרלוונטיים. אין להתחיל
+  implementation לפני אישור כיוון אחד; תוצר כלי העיצוב אינו מקור אמת חלופי.
+- כיוון הבסיס הוא Sports Command Center בהיר: טיפוגרפיה עברית חזקה,
+  היררכיית נתונים ברורה, נייבי/אמרלד ומשטח כהה סמנטי ומוגבל ללוח תוצאות.
+  אין גרדיאנטים זוהרים, מטבעות, odds, jackpot, אווטרים, פיד חברתי או theme
+  כהה גלובלי.
+
+#### מימוש
+
+- tokens מרכזיים לצבע, טיפוגרפיה, spacing, radius, focus ו־motion מוגבלים
+  ב־`globals.css`; רכיבים חוזרים מצומצמים תחת `src/components`. Tailwind v4
+  נשאר כלי ה־UI, ולא מתווספת ספריית UI/אייקונים/אנימציה ללא החלטת ארכיטקטורה.
+- המחזור הוא יחידת הארגון הראשית במסך המשחקים. `RoundCard` מציג מספר מחזור,
+  התקדמות ניחושים, זמן נעילה ורשימת משחקים, תוך שמירה על ה־queries, search
+  params, זמן DB וחוזי הניחוש הקיימים.
+- עריכת ניחוש נשארת ב־`/matches/[matchId]` דרך ה־Action והטופס הקיימים;
+  `MatchRow` מציג מצב, ניחוש קיים ו־CTA ואינו מוסיף form inline. שעה מוחלטת
+  ו־timezone נשארים גלויים דרך `LocalDateTime` גם כאשר מוצג פורמט זמן מקוצר.
+- אין להציג chip ניקוד או `result_version` שלא נקראו מן השרת, ואין לגזור
+  מחדש exact/outcome/points ב־UI. נתוני mockup שאינם ב־queries הקיימים — משחק
+  קרוב או aggregation ב־Dashboard, משחק/מספר חברים/מצב מחזור בתקציר, מצב
+  מחזור ב־LeagueCard ו־"אחרי מחזור" בדירוג — מושמטים.
+- progress של מחזור מוצג רק לחבר פעיל. בסינון תאריך הוא מסומן כמתייחס
+  למשחקים המוצגים, כדי לא לטעון שזו תמונת המחזור המלאה.
+- payloads קיימים של תקציר הליגה והדירוג מוסיפים `viewerIsManager` כערך תצוגה
+  שנגזר בשרת מ־`manager_id` ומהמשתמש המאומת. הוא משמש רק להצגת tabs למנהל;
+  הוא אינו מתקבל מהלקוח ואינו שכבת הרשאה. כל מסך ופעולה ממשיכים לאמת את
+  המשאב והתפקיד בשרת ולהסתמך על RLS כהגנה נוספת.
+- דשבורד מגדיר את ה־app shell ואת נקודת הכניסה; תקציר ליגה בודק זהות ליגה
+  ומשטח תוצאה; מסך המשחקים בודק את לולאת הניחוש; הדירוג בודק צפיפות מספרית,
+  שוויון ו־responsive. יתר המסכים נשארים פונקציונליים ומקבלים את tokens
+  והרכיבים המשותפים בלי הרחבת scope.
+- home/away נשארים עקביים בכל המסכים; טקסט מעורב עברית/לטינית מבודד באופן
+  סמנטי; labels, focus, touch targets וניגודיות AA נשמרים. motion קצר בלבד
+  ומכבד `prefers-reduced-motion`.
+- ביקורת ה־handoff חיזקה את ניגודיות הטקסט המשני, העבירה את העלאת ה־Demo ואת
+  שלדי המשחקים ל־tokens, קודדה זוגות תוצאה מפורשים ל־RTL והגבילה הכרזות
+  countdown ארוכות לקוראי מסך. אין לכך השפעה על נתונים או חוקים עסקיים.
+- ביקורת ההמשך הוסיפה `control-border` ייעודי לבקרי טופס גלויים ביחס ניגודיות
+  של לפחות 3:1, בלי להכהות את מסגרות הכרטיסים; מסכי החברים וההגדרות ורכיבי
+  הניהול שלהם הועברו לאותה מעטפת, tabs ו־tokens. כפילויות בהכרזות ניחוש
+  והתקדמות הוסרו, כותרת המשחק מבודדת שמות קבוצות באמצעות `bdi`, ומצבי loading
+  והפרדת תוצאה לא גמורה קיבלו סמנטיקה עקבית. אין שינוי ב־queries, Actions,
+  AuthZ, schema או חוקים עסקיים.
+- סגירת הערות ה־S3 שומרת רקע לבן משני צדי `control-border` בשדות readonly,
+  משתמשת ב־accent סמנטי במקום משטח ירוק סביב קישור חד־פעמי, ומשלימה את מעבר
+  מצבי ה־focus, התוויות ומצבי disabled בקובצי Auth והתוצאה הידנית ל־tokens.
+  בדיקות E2E מקבעות את צבע הרקע והמסגרת בשני שדות ה־readonly. זהו ליטוש חזותי
+  בלבד, ללא שינוי בחוזה הטופס, בנתונים או בהרשאות.
+- ביקורת ה־Preview האחרונה השלימה את מעטפת `AuthCard`, כפתורי הפעולה, הודעות
+  השגיאה ומצבי focus של `summary` באותם tokens. assertions נוספים מקבעים את
+  accent ההזמנה, מעטפת Auth ושדה Auth לבן; אין שינוי בזרימות ההרשמה, ההזמנה
+  או התוצאה הידנית.
+- proof פרטי אינו נטען כ־thumbnail מטושטש. נשמרים metadata בטוחים וכפתור
+  צפייה מפורש שממשיך דרך `/api/payment-proofs/[proofId]` לאחר AuthZ.
+- אין הוספת `/leagues` כללי, תמונת פרופיל, היסטוריית דירוג, התראות או פעולה
+  שלא קיימת ב־MVP. אין migration או generated-types change ב־Slice 7c.
+
+#### בדיקות ויציאה
+
+- Playwright קיים מכסה Desktop Chrome ו־Pixel 5; נוספות assertions ממוקדות
+  לארבעת מסכי העוגן, app shell, RTL, סדר home/away, focus והיעדר overflow.
+  בדיקת 390px ו־1440px וניגודיות/keyboard נעשית גם ידנית ומתועדת.
+- selectors קיימים שתלויים ב־`article`, בטקסט "מקום N" או במיקום עמודות
+  מותאמים למבנה הסמנטי החדש באותו שינוי. assertions של נעילה, status, timezone,
+  cross-user AuthZ והסתרת ניחושים אינם נחלשים.
+- בדיקות פונקציונליות קיימות לניחוש, חשיפה, דירוג, AuthZ ו־proof נשארות ירוקות;
+  שינוי עיצוב אינו מרכך negative tests או RLS.
+
+**Exit:** כיוון אחד אושר; tokens, מעטפת וארבעת מסכי העוגן יושמו ונבדקו
+ב־390px וב־1440px; loading/empty/error/locked/focus תקינים; אין overflow,
+פיצ'ר חדש, secret בדפדפן או regression פונקציונלי; lint, typecheck, unit,
+build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענף עבר QA רספונסיבי ואישור
+חזותי לפני מיזוג ל־Production.
+
+### Slice 8 — דוחות Demo
 
 **תוצר:** finance summary ודוח prize allocation פשוטים.
 
@@ -1068,7 +1142,7 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 **Exit:** נתונים שנדחו אינם בקופה; חישוב פרסים תואם unit tests.
 
-### Slice 10 — Hardening, מסמכים והצגה
+### Slice 9 — Hardening, מסמכים והצגה
 
 **תוצר:** מוצר שניתן להגיש ולהסביר.
 
@@ -1084,17 +1158,10 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 | תאריכים | יעד |
 | --- | --- |
-| 11–12 באוגוסט | Slice 0 |
-| 13–14 באוגוסט | Slice 1 |
-| 15–17 באוגוסט | Slice 2 |
-| 18–20 באוגוסט | Slice 3 |
-| 21 באוגוסט | Slice 4 |
-| 22–24 באוגוסט | Slice 5 |
-| 25–26 באוגוסט | Slice 6 |
-| 27–28 באוגוסט | Slice 7 |
-| 29 באוגוסט | Slice 8 |
-| 30 באוגוסט | Slice 9 |
-| 31 באוגוסט–3 בספטמבר | Slice 10 ומסמכי הגשה |
+| עד 24 באוגוסט | Slices 0–7b, Hosted canary ומימוש מקומי של Slice 7c — הושלמו |
+| 25 באוגוסט | Preview ואישור חזותי של Slice 7c |
+| 25–29 באוגוסט | Slice 8 — דוחות Demo |
+| 30 באוגוסט–3 בספטמבר | Slice 9 — Hardening ומסמכי הגשה |
 | 4–5 בספטמבר | תיקוני blocker, rehearsal ו־submission checklist |
 | 6 בספטמבר | הגשה |
 
@@ -1104,10 +1171,9 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 אם הלו"ז מחליק, חותכים לפי הסדר:
 
-1. עיצוב AI עשיר; נשאר כרטיס נתונים ו־fallback.
-2. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
-3. finance UI מתקדם; נשארת טבלה/מספרים נכונים.
-4. ליטושי animation ועיצוב.
+1. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
+2. finance UI מתקדם; נשארת טבלה/מספרים נכונים.
+3. אנימציות, וריאציות ויזואליות ואיורים שאינם נדרשים לבהירות.
 
 לא חותכים:
 
@@ -1116,6 +1182,7 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 - ניחוש, נעילה והסתרה.
 - `points`, ניקוד אידמפוטנטי ודירוג.
 - בדיקות לזרימות המרכזיות.
+- שפה חזותית עקבית, RTL, מובייל, focus ונגישות במסכי הליבה.
 - מסמכי הקורס, deploy ויכולת להסביר את הקוד.
 - חסימת כסף אמיתי בגרסת הקורס.
 
@@ -1152,10 +1219,9 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-לאחר מסירת Slice 7b והשלמת hosted canary המשימה הבאה היא **Slice 8 — AI analysis**: ניתוח on-demand
-לחבר פעיל בלבד, input מנתוני DB שמורים, output מובנה שעובר Zod, cache לפי
-גרסת נתונים, rate limit ו־fallback שאינו חוסם ניחוש. CI משתמש ב־fake provider
-ואינו מבצע קריאת AI חיה.
+Slice 7c הושלם, נפרס ל־Preview ואושר חזותית ב־25 באוגוסט 2026. המשימה הבאה היא
+**Slice 8 — דוחות Demo**, בלי יכולת כסף אמיתי ובלי להרחיב
+את גבולות ה־MVP.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

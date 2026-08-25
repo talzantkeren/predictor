@@ -1,19 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #171717;
+  --background: #f4f6f9;
+  --foreground: #0c1d33;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-navy-900: #0a2240;
+  --color-navy-700: #143a66;
+  --color-navy-200: #c9d8e8;
+  --color-navy-100: #e6edf5;
+  --color-action: #047857;
+  --color-action-hover: #065f46;
+  --color-success-50: #e7f5ef;
+  --color-success-200: #b8dfcf;
+  --color-success-900: #04533c;
+  --color-warning-50: #fdf4e3;
+  --color-warning-200: #eed9a8;
+  --color-warning-900: #7a4e10;
+  --color-error-50: #fcebe9;
+  --color-error-200: #f2c7c2;
+  --color-error-900: #8f2317;
+  --color-locked-50: #ebeff3;
+  --color-locked-900: #42566b;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f7f9fb;
+  --color-line: #e4e9f0;
+  --color-control-border: #7f90a4;
+  --color-ink: #0c1d33;
+  --color-ink-secondary: #4a5d73;
+  --color-ink-muted: #55657a;
+  --color-focus: #1c4e82;
+  --font-sans: var(--font-heebo);
+  --shadow-card: 0 1px 3px rgb(10 34 64 / 0.07), 0 10px 30px rgb(10 34 64 / 0.04);
+  --shadow-card-hover: 0 12px 30px rgb(10 34 64 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-heebo), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #cfe7dc;
+  color: #0a2240;
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #1c4e82;
+  outline-offset: 2px;
+  transition-duration: 0s;
+}
+
+.pitch-pattern {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.pitch-pattern::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  opacity: 0.14;
+  background-image:
+    linear-gradient(90deg, transparent 49.75%, #8fbcee 49.75% 50.25%, transparent 50.25%),
+    radial-gradient(circle at 50% 50%, transparent 0 17%, #8fbcee 17.3% 17.8%, transparent 18.1%),
+    linear-gradient(#8fbcee, #8fbcee),
+    linear-gradient(#8fbcee, #8fbcee);
+  background-position: center, center, 0 center, 100% center;
+  background-size: 100% 100%, 100% 100%, 18% 48%, 18% 48%;
+  background-repeat: no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

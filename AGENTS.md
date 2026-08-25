@@ -24,7 +24,7 @@ When an approved decision changes, update the applicable canonical document in t
 - Use one modular Next.js 16 App Router application deployed to Vercel. Do not create a separate backend service or repository.
 - Use TypeScript with strict checks, Supabase PostgreSQL/Auth/Storage/Cron, and database migrations committed to Git.
 - Use `src/proxy.ts`, not `middleware.ts`, for the Next.js 16 proxy convention. Proxy refreshes sessions; it is not the authorization layer.
-- Use Server Components for reads, Server Actions for UI mutations, Route Handlers for uploads/Cron/AI/external HTTP, and shared feature services for business logic.
+- Use Server Components for reads, Server Actions for UI mutations, Route Handlers for uploads/Cron/external HTTP, and shared feature services for business logic.
 - Enable RLS and least-privilege grants in the same migration that creates every exposed table.
 - Use the new Supabase publishable/secret keys. A secret key is server-only and bypasses RLS; confine it to `src/lib/supabase/admin.ts` with `server-only`.
 - The only Slice 3 exception that may consume the admin client is a server-only,
@@ -39,7 +39,7 @@ When an approved decision changes, update the applicable canonical document in t
 - Scoring must overwrite deterministically from the current match result and rule version; never increment points.
 - Keep `join_requests`, `league_members`, and 1:N `payment_proofs` separate. Never overwrite proof history or call a proof a verified receipt.
 - The public course deployment is Demo-only. Do not add a real payment link, money transfer, cash prize operation, or real financial document. Real-money operation is blocked by the compliance gate in `docs/product.md`.
-- AI may summarize stored match data and uncertainty; it must not invent facts, recommend gambling, or block prediction flows.
+- Generative model integrations are outside the course MVP and must not be introduced before submission without an approved scope change.
 - A Sports provider is not selected until the documented POC passes. The manual adapter and seed path must always work.
 
 ## Working method
@@ -55,7 +55,7 @@ When an approved decision changes, update the applicable canonical document in t
 
 ## Database and security rules
 
-- Treat all browser, URL, form, file, provider and AI data as untrusted.
+- Treat all browser, URL, form, file and provider data as untrusted.
 - Validate at each server boundary with Zod and enforce invariants again with PostgreSQL constraints/RLS.
 - Derive the actor from the server session. Never trust a client-provided `user_id`, role, manager flag, points value, lock status or price total.
 - Authorize against the actual resource on every Server Action and Route Handler, then rely on RLS as defense in depth.
@@ -67,7 +67,7 @@ When an approved decision changes, update the applicable canonical document in t
   signature, decode and re-encode checks.
 - Proof uploads accept one JPEG/PNG/WebP image up to the documented limit, verify magic bytes, decode and re-encode with `sharp`, discard the original, generate the storage name on the server and rate-limit the route.
 - Never log secrets, tokens, cookies, signed URLs, proof paths/content, passwords or full provider payloads containing personal data.
-- Do not use `dangerouslySetInnerHTML` for AI or user content.
+- Do not use `dangerouslySetInnerHTML` for user or provider content.
 - Never run destructive commands against a linked or production Supabase project. `supabase db reset --linked` is forbidden.
 
 ## Code conventions
@@ -102,7 +102,7 @@ Required coverage for consequential changes:
 - Vitest for pure rules, validators, adapters and prize calculations.
 - pgTAP/Supabase tests for constraints, RLS, function privileges, atomicity and scoring.
 - Playwright for user-visible flows and cross-user authorization.
-- Recorded fixtures/fakes for Sports and AI; CI must not depend on live providers.
+- Recorded fixtures/fakes for Sports; CI must not depend on live providers.
 
 Every authorization change needs a negative test with another user or league. Every scoring change needs exact, home, away, draw, wrong, retry and corrected-result cases.
 

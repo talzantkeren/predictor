@@ -359,7 +359,35 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       await manager.page
         .getByRole("button", { name: "יצירת קישור חדש" })
         .click();
-      const invite = await manager.page.getByLabel("הקישור החדש").inputValue();
+      const newInviteField = manager.page.getByLabel("הקישור החדש");
+      const inviteSection = manager.page.getByRole("region", {
+        name: "קישור חד־פעמי להצגה",
+      });
+      expect(
+        await newInviteField.evaluate((element) => ({
+          backgroundColor: getComputedStyle(element).backgroundColor,
+          borderTopColor: getComputedStyle(element).borderTopColor,
+        })),
+      ).toEqual({
+        backgroundColor: "rgb(255, 255, 255)",
+        borderTopColor: "rgb(127, 144, 164)",
+      });
+      expect(
+        await inviteSection.evaluate(
+          (element) => ({
+            backgroundColor: getComputedStyle(element).backgroundColor,
+            borderInlineStartColor:
+              getComputedStyle(element).borderInlineStartColor,
+            borderInlineStartWidth:
+              getComputedStyle(element).borderInlineStartWidth,
+          }),
+        ),
+      ).toEqual({
+        backgroundColor: "rgb(255, 255, 255)",
+        borderInlineStartColor: "rgb(4, 120, 87)",
+        borderInlineStartWidth: "4px",
+      });
+      const invite = await newInviteField.inputValue();
       const inviteUrl = new URL(invite);
       const publicId = inviteUrl.pathname.split("/").at(-1);
       expect(publicId).toMatch(/^[0-9a-f-]{36}$/);
@@ -513,6 +541,16 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       .locator("summary")
       .filter({ hasText: "החלפת הקישור הפעיל" });
     await assertVisible(rotateDisclosure);
+    await rotateDisclosure.focus();
+    expect(
+      await rotateDisclosure.evaluate((element) => ({
+        outlineColor: getComputedStyle(element).outlineColor,
+        outlineWidth: getComputedStyle(element).outlineWidth,
+      })),
+    ).toEqual({
+      outlineColor: "rgb(28, 78, 130)",
+      outlineWidth: "2px",
+    });
 
     // Exercise the database lock with genuinely simultaneous rotations. Both
     // calls succeed, while only the final token remains usable.

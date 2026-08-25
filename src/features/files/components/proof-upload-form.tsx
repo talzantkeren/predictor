@@ -201,7 +201,7 @@ export function ProofUploadForm({
     return (
       <p
         role="status"
-        className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+        className="rounded-lg border border-warning-200 bg-warning-50 p-3 text-sm text-warning-900"
       >
         נשמרו חמש תמונות Demo לבקשה זו, ולכן לא ניתן להעלות תמונה נוספת.
       </p>
@@ -213,7 +213,7 @@ export function ProofUploadForm({
       <div
         id={`proof-demo-notice-${requestId}`}
         role="note"
-        className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950"
+        className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-warning-900"
       >
         זהו דמו בלבד — אין להעביר כסף ואין להעלות מסמך פיננסי אמיתי.
       </div>
@@ -223,7 +223,7 @@ export function ProofUploadForm({
           ref={errorRef}
           tabIndex={-1}
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900 outline-none focus:ring-2 focus:ring-red-300"
+          className="rounded-lg border border-error-200 bg-error-50 p-3 text-sm text-error-900 outline-none focus:ring-2 focus:ring-error-200"
         >
           {error}
         </div>
@@ -231,7 +231,7 @@ export function ProofUploadForm({
 
       <div aria-live="polite" aria-atomic="true">
         {message ? (
-          <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          <p className="rounded-lg border border-navy-200 bg-navy-100 p-3 text-sm text-navy-900">
             {message}
           </p>
         ) : null}
@@ -240,7 +240,7 @@ export function ProofUploadForm({
       <div>
         <label
           htmlFor={`proof-file-${requestId}`}
-          className="block text-sm font-semibold text-slate-800"
+          className="block text-sm font-semibold text-ink"
         >
           תמונת Demo מסוג JPEG, PNG או WebP
         </label>
@@ -254,15 +254,15 @@ export function ProofUploadForm({
           disabled={pending}
           aria-invalid={Boolean(error)}
           aria-describedby={`proof-help-${requestId} proof-demo-notice-${requestId}`}
-          className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:me-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-800 hover:file:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60"
+          className="mt-2 block w-full rounded-lg border border-control-border bg-white px-3 py-2 text-sm text-ink file:me-3 file:rounded-md file:border-0 file:bg-navy-100 file:px-3 file:py-2 file:font-semibold file:text-navy-900 hover:file:bg-navy-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-60"
         />
-        <p id={`proof-help-${requestId}`} className="mt-2 text-sm leading-6 text-slate-500">
+        <p id={`proof-help-${requestId}`} className="mt-2 text-sm leading-6 text-ink-muted">
           עד 4 MB. הבדיקה בדפדפן היא עזר בלבד; השרת בודק ומקודד את התמונה מחדש.
         </p>
       </div>
 
       {file && previewUrl ? (
-        <figure className="max-w-sm rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <figure className="max-w-sm rounded-xl border border-line bg-surface-subtle p-3">
           <div className="relative aspect-video overflow-hidden rounded-lg bg-white">
             <Image
               src={previewUrl}
@@ -272,7 +272,7 @@ export function ProofUploadForm({
               className="object-contain"
             />
           </div>
-          <figcaption className="mt-2 break-all text-sm text-slate-600" dir="ltr">
+          <figcaption className="mt-2 break-all text-sm text-ink-secondary" dir="ltr">
             {file.name}
           </figcaption>
         </figure>
@@ -281,7 +281,7 @@ export function ProofUploadForm({
       <button
         type="submit"
         disabled={pending || !file}
-        className="rounded-lg bg-blue-700 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60"
+        className="min-h-11 rounded-lg bg-action px-4 py-2.5 font-semibold text-white transition hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? "מעלים..." : proofCount > 0 ? "העלאת תמונת Demo חלופית" : "העלאת תמונת Demo"}
       </button>

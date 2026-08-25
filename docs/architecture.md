@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.9 |
+| גרסה | 3.1 |
 | תאריך עדכון | 24 באוגוסט 2026 |
 | סטטוס | החלטה מחייבת למימוש |
 | סגנון | Modular Monolith ב־Next.js App Router |
@@ -26,7 +26,7 @@ Predictor1 תיבנה כאפליקציית **Next.js 16 + TypeScript במונו�
 
 - React ו־Server Components להצגה ולקריאות.
 - Server Actions למוטציות משתמש מתוך ה־UI.
-- Route Handlers ל־HTTP חיצוני, upload, Cron ו־AI.
+- Route Handlers ל־HTTP חיצוני, upload ו־Cron.
 - Services כמודולי TypeScript של לוגיקה עסקית.
 - PostgreSQL, אילוצים, RLS ופונקציות למסלולים שחייבים אטומיות ואכיפה.
 
@@ -39,11 +39,10 @@ flowchart TD
     B["Browser — React RTL"] -->|"HTTPS + secure cookies"| N["Next.js 16 on Vercel"]
     N -->|"User session + publishable key"| S["Supabase: Auth, Postgres/RLS, Storage, Cron"]
     N -->|"Server-only key"| P["Sports provider"]
-    N -->|"Server-only key"| A["AI provider"]
     S -->|"Scheduled HTTPS + secret"| N
 ```
 
-הדפדפן אינו פונה לספקי Sports או AI ואינו מקבל מפתחות שלהם. נתוני ספורט נשמרים במסד לפני שהמוצר צורך אותם.
+הדפדפן אינו פונה לספק Sports ואינו מקבל את המפתח שלו. נתוני ספורט נשמרים במסד לפני שהמוצר צורך אותם.
 
 ## 4. מחסנית טכנולוגית
 
@@ -65,6 +64,24 @@ flowchart TD
 
 אין להוסיף Redux, ORM, queue, microservice או cache חיצוני לפני שקיים צורך מדיד. PostgreSQL ו־Next.js מספיקים לסקייל של עשרות עד מאות משתמשים.
 
+### 4.1 UI foundation של Slice 7c
+
+Slice 7c הוא שינוי הצגה בתוך אותה ארכיטקטורה, לא subsystem חדש. השפה החזותית
+מיושמת באמצעות Tailwind CSS הקיים, tokens מרכזיים ב־`globals.css` ורכיבים
+משותפים מצומצמים תחת `src/components`. Server Components נשארים ברירת המחדל,
+ו־Client Components מתווספים רק לאינטראקציה שכבר קיימת במוצר.
+
+- כלי אבטיפוס חיצוני הוא כלי פיתוח בלבד. אין לו SDK, מפתח, Route, webhook או
+  קריאת runtime מן האפליקציה, ואין להעביר אליו secrets, PII או אסמכתאות.
+- אין להוסיף ספריית UI, אייקונים או אנימציה כתלות ייצור בלי החלטה מתועדת
+  שמסבירה מדוע Tailwind, CSS ו־SVG מקומיים אינם מספיקים.
+- Slice 7c אינו משנה נתיבים, חוזי Actions/Handlers, schema, RLS, הרשאות, נעילת
+  ניחושים או חישובי ניקוד. שינוי כזה חוזר ל־slice פונקציונלי נפרד.
+- רכיב כהה משמש סמנטית כלוח תוצאות או משחק מרכזי בלבד; אין theme כהה מקביל
+  ואין state גלובלי לבחירת theme.
+- אסמכתאה פרטית אינה נטענת מראש לצורך thumbnail מטושטש. הרשימה מציגה metadata
+  בטוח ופעולת צפייה מפורשת ממשיכה דרך Route ההרשאה וה־signed URL הקיים.
+
 ## 5. גבולות אחריות
 
 | רכיב | אחראי על | אסור לו |
@@ -73,7 +90,7 @@ flowchart TD
 | Server Components | קריאה והרכבת עמודים עם session משתמש | לבצע מוטציה בזמן render או לטעון secret key |
 | `proxy.ts` | רענון cookies/session וניתוב בסיסי | להיות שכבת Authorization יחידה |
 | Server Actions | AuthN, Zod, AuthZ, קריאה ל־Service, מיפוי תוצאה | להכיל לוגיקה עסקית משוכפלת או לסמוך על ה־UI |
-| Route Handlers | Cron, AI, upload, signed-file access וכניסות HTTP | לעקוף Services או RLS ללא הצדקה מתועדת |
+| Route Handlers | Cron, upload, signed-file access וכניסות HTTP | לעקוף Services או RLS ללא הצדקה מתועדת |
 | Services | חוקים עסקיים, orchestration, adapters וחישובים | לגשת ישירות ל־Request/Response או להחזיק state בזיכרון |
 | Supabase user client | פעולות בשם המשתמש עם JWT ו־RLS | לבצע פעולות מערכת |
 | Supabase admin client | Sync, scoring, תמיכת מערכת ושער Storage פרטי ומצומצם | להיכנס ל־Actions רגילים, ל־Client bundle או לשמש לעקיפת כתיבות עסקיות |
@@ -110,7 +127,6 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 - `POST /api/cron/sync` — Route דק ל־manual או API-Football דרך orchestration
   שרתית, claim/apply/finalize מגודרים ו־HTTP ספק מחוץ לטרנזקציה.
 - `GET /auth/confirm` — החלפת PKCE code ב־session והפניה בטוחה ליעד פנימי.
-- `POST /api/matches/[matchId]/analysis` — ניתוח AI לפי דרישה.
 
 ### 6.4 `proxy.ts`
 
@@ -126,7 +142,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 לא משתמשים בפרויקט חדש בשמות legacy `anon` ו־`service_role`. ה־secret client מוגדר בקובץ יחיד עם `import 'server-only'`, ואסור לייבא אותו מ־Client Component או מ־Service שאינו ברשימת הפעולות המורשות. ב־Slice 3 הצרכן היחיד שלו הוא שער Storage קבוע ל־bucket `payment-proofs`: ה־API המצומצם מקבל מזהי DB, גוזר נתיב פנימי ואינו חושף client כללי, bucket או path שרירותיים. הוא מקבל את טיפוס פלט ה־sanitizer ובודק מחדש WebP signature, גודל, ממדים ו־digest לפני upload; הוא רשאי למחוק object בפיצוי, לבדוק metadata פנימי וליצור signed URL רק לאחר הרשאת משאב.
 
-מפתחות Sports, AI ו־Cron הם משתני server-only ולעולם אינם מתחילים ב־`NEXT_PUBLIC_`.
+מפתחות Sports ו־Cron הם משתני server-only ולעולם אינם מתחילים ב־`NEXT_PUBLIC_`.
 
 ### 7.2 Session
 
@@ -160,7 +176,7 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
 | ספורט | `competitions`, `seasons`, `teams`, `matches` | תחרות → עונות → משחקים; משחק כולל שתי קבוצות |
 | ליגות | `leagues`, `league_scoring_rules`, `prize_rules`, `invite_links` | ליגה שייכת לעונה ולמנהל; חוקים ופרסים שייכים לליגה |
 | הצטרפות | `join_requests`, `payment_proofs`, `league_members` | בקשה מחזיקה היסטוריית הוכחות; אישור יוצר חברות |
-| משחק | `predictions`, `ai_match_analyses` | תחזית ייחודית למשתמש־ליגה־משחק; ניתוח cache פר משחק |
+| משחק | `predictions` | תחזית ייחודית למשתמש־ליגה־משחק |
 | תפעול | `sync_runs`, `audit_logs`, `rate_limit_events` | תיעוד ריצות, פעולות רגישות ומכסות |
 
 ### 8.2 עקרונות סכימה
@@ -188,7 +204,6 @@ Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`
   `p_public_id` ו־`p_token_hash`; ה־DB מאמת digest בן 64 תווי hex ואת ההתאמה
   לאותה רשומת הזמנה לפני lookup.
 - `join_requests` — partial unique על `(league_id, user_id)` כאשר הסטטוס פעיל/מאושר, כדי לאפשר בקשה חדשה רק אחרי דחייה.
-- `ai_match_analyses (match_id)` — unique ב־MVP; `data_as_of` ו־`result_version` קובעים טריות.
 
 ### 8.4 אינדקסים ראשונים
 
@@ -326,7 +341,6 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
 | `league_members` | חברי אותה ליגה רואים חברות פעילה; שינוי דרך פעולות ניהול מוגנות |
 | `predictions` | חבר פעיל רואה את התחזית שלו לפני ואחרי הנעילה; חברים פעילים אחרים באותה ליגה רואים אותה רק כאשר `now() >= kickoff_at` או לאחר latch שמוכיח שהחשיפה כבר החלה; חבר שהוסר מאבד גישה; הבעלים כותב רק כל עוד הוא חבר פעיל, לפני `kickoff_at` וללא latch |
-| `ai_match_analyses` | חבר פעיל בליגה הכוללת את המשחק |
 | `audit_logs` | מנהל רלוונטי או מנהל מערכת; append דרך שרת/פונקציות בלבד |
 | `sync_runs` | מנהל מערכת בלבד; append דרך RPC מערכת מצומצם בלבד |
 
@@ -388,7 +402,6 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 3. סטטוסים ותוצאות מתעדכנים בקצב מתאים.
 4. המכסה והתמחור מספיקים לתכנית הסנכרון.
 5. מזהי קבוצות ומשחקים יציבים.
-6. נתונים סטטיסטיים מספיקים ל־AI, או שה־AI מצטמצם לכרטיס נתונים.
 
 אם השער נכשל, `ManualSportsProvider` ו־seed files הם מקור הנתונים ל־MVP. אין לעכב ניחושים, ניקוד ודירוג בגלל ספק.
 
@@ -498,16 +511,11 @@ status לא מוכר מכשיל את ה־snapshot לפני mutation.
 review ונוספת הערת מפעיל חסומה. `AET`/`PEN` מוצגים כ־"דורש בדיקה" על סמך
 `provider_status`, אינם מוצגים כמשחק live ואינם תופסים slot של targeted.
 
-## 15. ניתוח AI
+## 15. גבול היקף: נתונים שמורים בלבד
 
-- יצירה מתבצעת רק בלחיצה ולא מראש לכל משחק.
-- cache גלובלי פר משחק משרת את כל הליגות כי נתוני הקלט אינם תלויי ליגה.
-- הרשאת קריאה/יצירה עדיין דורשת חברות פעילה בליגה הכוללת את המשחק.
-- ה־Service מרכיב input מובנה מנתוני DB בלבד ומבקש JSON לפי schema סגור.
-- הפלט עובר Zod; טקסט לא מאומת אינו נכנס ל־HTML ואסור `dangerouslySetInnerHTML`.
-- `data_as_of`, `result_version`, provider/model ו־`generated_at` נשמרים.
-- rate limit לפי משתמש/יום, timeout ו־retry מוגבל מגנים על עלות וזמינות.
-- cache ישן יכול להופיע עם מועדו; אם אין cache והספק נפל, מוחזרת אי־זמינות לא־חוסמת.
+טקסט מחולל וספקי מודלים אינם חלק מארכיטקטורת ה־MVP של הקורס. אין עבורם
+Route, טבלה, secret, adapter, cache או תלות ייעודיים. מסך המשחק מציג רק נתונים
+שמורים ומאומתים מן המערכת. שינוי הגבול בעתיד יחייב החלטת מוצר וארכיטקטורה חדשה.
 
 ## 16. State באפליקציה ו־cache
 
@@ -564,7 +572,6 @@ Services מחזירים error codes יציבים כגון:
 | Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins`; manual משתמש ב־RPC הקצר הקיים ו־API-Football ב־row lease עם generation/token/expiry | secret/actor שגוי, claim מקביל, reclaim, token ישן ו־expiry בזמן apply |
 | שינוי מועד פותח ניחושים אחרי live | `predictions_locked_at` בלתי־הפיך ב־DB ומשולב ב־RPC/RLS/UI | live או suspension, reschedule לעתיד וניסיון שמירה/חשיפה |
 | worker ישן כותב אחרי reclaim | fencing נבדק בתחילת ובסוף apply/finalize תחת row lock | generation/token/provider שגויים ו־lease שפג |
-| AI abuse | membership, cache, rate limit, timeout | משתמש לא מאושר ולולאת קריאות |
 | עקיפה דרך Supabase Data API | RLS ו־grants לכל טבלה | קריאות ישירות עם publishable key |
 
 ## 19. סקייל בסיסי
@@ -575,7 +582,7 @@ Services מחזירים error codes יציבים כגון:
 - pagination לבקשות, audit, היסטוריית ניחושים ומשחקים; מחזור הוא pagination טבעי למשחקים.
 - ניקוד set-based ב־PostgreSQL במקום לולאות Serverless.
 - `points` שמור ו־leaderboard מסכם במקום חישוב כל ניחוש מהתחלה.
-- cache גלובלי לניתוח AI ו־upsert לפי provider ID לנתוני ספורט.
+- upsert לפי provider ID מונע כפילויות בנתוני ספורט.
 - אינדקסים לפי דפוסי גישה, וניתוח `EXPLAIN ANALYZE` לפני אופטימיזציה נוספת.
 - Client bundle קטן באמצעות Server Components כברירת מחדל.
 
@@ -583,7 +590,7 @@ Services מחזירים error codes יציבים כגון:
 
 - leaderboard query רגיל אינו יעד לאלפי משתתפים בליגה; במקרה כזה נבחן materialized view.
 - `rate_limit_events` ב־PostgreSQL מתאים ל־MVP, לא לתעבורה גדולה או רב־אזורית.
-- Sync ו־AI רצים ב־request lifecycle; Sync מוגבל ב־lease, timeout ו־batches.
+- Sync רץ ב־request lifecycle ומוגבל ב־lease, timeout ו־batches.
   עומסים או ריצות ארוכות שיימדדו יצדיקו worker נפרד, לא נבנה כזה מראש.
 - API-Football מתעד rate limit גם לפי IP. Vercel משתמשת ב־outbound IP משותף,
   ולכן 429 אפשרי גם מתעבורה שאינה שלנו; backoff ונתונים שמורים הם ההגנה ב־MVP.
@@ -620,6 +627,7 @@ Deployment ראשון מתבצע ב־Slice 0, לא בסוף הפרויקט. כל
 | Supabase Cron | התקבל | Vercel Hobby Cron יומי בלבד; נדרש polling תכוף יותר |
 | ספק Sports קבוע מראש | הוחלף | API-Football נבחר ב־23.8.2026 לאחר POC חי לליגה 383/עונה 2026; Manual נשאר fallback |
 | Slice 7 manual-only | הוחלף | Slice 7b מוסיף API-Football provider-owned catalog ו־Sync מלא; המסלול הידני נשמר ללא mutation |
+| Slice 7c — Design System ורענון UI | התקבל | Tailwind והגבולות הקיימים מספיקים; השינוי ממקד RTL, mobile, נגישות ועקביות בלי schema, route או dependency חדשים |
 | lease לספק חי | התקבל | Data API אינו מצמיד connection; row lease עמיד עם generation/token/expiry מגן על HTTP שחוצה transactions |
 | תוצאת AET/PEN אוטומטית | נדחה לעת עתה | מדיניות המוצר היא זמן חוקי, אך ה־POC לא הוכיח שדה 90 דקות מתאים; הרשומה נכנסת ל־review ללא scoring |
 | ביטול מוקדם ו־reactivation | התקבל | PRED-05 גובר על סיווג terminal כללי: ביטול לפני חשיפה אינו קובע latch; רק canceled ללא latch ומועד עתידי יכול להיפתח מחדש, עם איפוס ניקוד אטומי דרך `score_match` |

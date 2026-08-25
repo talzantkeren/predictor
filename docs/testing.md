@@ -51,7 +51,7 @@ npm run test:e2e:preview
 ## Slice 2: יצירת ליגה, ניקוד ופרסי Demo
 
 Slice 2 ממשיך להשתמש רק ב־Supabase וב־Mailpit המקומיים. אין קריאה ל־Sports,
-AI, תשלום או Email hosted. ה־catalog מכיל competition ועונת reference בלבד;
+תשלום או Email hosted. ה־catalog מכיל competition ועונת reference בלבד;
 אין teams, fixtures, provider IDs או תוצאות מומצאות.
 
 ### מטריצת כיסוי
@@ -300,3 +300,64 @@ npm run test:e2e
 ש־`api-football` ללא key נכשל סגור, אך fake transport tests מזריקות key דמה
 שאינו credential ואינו מגיע לדוח. live canary אינו חלק מ־CI ומבוצע רק לאחר
 merge, migration ו־Vercel provisioning מאושרים.
+
+ראיות ה־Hosted canary המסוננות נמצאות ב־
+[`evidence/api-football-canary-2026-08-24.md`](./evidence/api-football-canary-2026-08-24.md).
+
+## Slice 7c: Design System ורענון UI
+
+Slice 7c אינו משנה schema או חוקים עסקיים. בדיקות העיצוב מתווספות מעל
+הכיסוי הפונקציונלי וההרשאתי הקיים ואינן מחליפות אותו.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Review לפני קוד | ארבעה מסכי עוגן ב־390px וב־1440px, token sheet, inventory רכיבים וכיוון חזותי אחד שאינו מוסיף route או feature |
+| Playwright | `/dashboard`, תקציר ליגה, משחקים ודירוג ב־Desktop Chrome וב־Pixel 5; app shell, RTL, סדר בית/חוץ, טקסט עברי/לטיני, labels, focus והיעדר overflow; הזרימות הקיימות לניחוש, חשיפה, דירוג ו־proof נשארות ירוקות |
+| Visual/manual | 390px, 768px ו־1440px; loading/empty/error/success/disabled/locked; keyboard מלא, touch targets, ניגודיות AA ו־`prefers-reduced-motion` |
+| Security regression | אין SDK/key של כלי עיצוב ב־bundle; אין טעינה מוקדמת של proof פרטי; צפייה ממשיכה דרך Route ההרשאה; אין שינוי ב־RLS/AuthZ או ב־negative tests |
+| Scope audit | אין `/leagues` חדש, תמונת פרופיל, היסטוריית דירוג, התראות, theme גלובלי או dependency UI/אייקונים/אנימציה לא מאושרת |
+
+### שער יציאה
+
+```powershell
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npm run test:e2e
+```
+
+`npm run test:db` ו־`npm run types:check` אינם אמורים להשתנות ב־Slice 7c,
+אך מורצים ב־verify המלא לפני merge כדי להוכיח שלא נוצר drift. תוצאות הבדיקה
+הידנית נרשמות ב־PR עם רוחב, מסך ומצב שנבדקו; אין לשמור screenshot שמכיל PII,
+אסמכתאה, signed URL או secret.
+
+### תוצאת אימות — 24 באוגוסט 2026
+
+- `lint`, `typecheck` ו־`build` עברו.
+- Vitest: כל 460 הבדיקות עברו, כולל הכרזת countdown תחומה למשחקים רחוקים.
+- pgTAP: כל 646 הבדיקות בעשרה קבצים עברו; בדיקת drift ישירה מול Supabase
+  המקומי אישרה ש־`database.generated.ts` עדכני.
+- Playwright: כל 20 התרחישים עברו ב־Desktop Chrome וב־Pixel 5, כולל AuthZ,
+  נעילה, חשיפה, דירוג, Sync ו־proof פרטי.
+- Visual QA: ארבעת מסכי העוגן צולמו ונבדקו עם נתוני Demo מסוננים ב־390px,
+  ב־768px וב־1440px. ה־RTL, Heebo, סדר בית/חוץ והיעדר overflow נשמרו.
+- ביקורת המשך אימתה יחס ניגודיות של לפחות 5.30 ל־`ink-muted` על לבן, רקע
+  האפליקציה ושורת המשתמש בדירוג; שלדי המשחקים והעלאת האסמכתאה עברו ל־tokens.
+- סגירת הביקורת ב־25 באוגוסט הוסיפה `control-border` ביחס של לפחות 3:1 לכל
+  בקר טופס גלוי. Playwright מאמת את ערך המסגרת המחושב בשדות הניחוש ואת בידוד
+  שמות הבית והחוץ בכותרת המשחק. מסכי החברים וההגדרות נבדקו מול אותה מעטפת
+  ו־tokens בלי שינוי ב־AuthZ, ב־queries או ב־Actions.
+- סגירת הערות S3 מאמתת ב־Playwright שרקע שדה מיקום הפרס ורקע שדה/מקטע קישור
+  ההזמנה הם לבנים ושמסגרת שניהם היא `rgb(127, 144, 164)`. כך היחס הוא 3.27:1
+  משני צדי המסגרת; מצבי focus ו־disabled בקובצי Auth והתוצאה הידנית משתמשים
+  רק ב־tokens המשותפים.
+- בדיקות ההמשך מקבעות גם accent אמרלד בעובי 4px במקטע הקישור, focus גלובלי
+  עקבי ל־`summary`, כפתור Auth ראשי ב־`action` ושדה Auth לבן עם
+  `control-border`. בדיקות הזרימה המלאות נשארות אותן בדיקות ולא מוחלפות
+  בבדיקות צבע.
+- `npm run test:e2e` כולל build עם sentinel server-only וסריקת
+  `test:client-secrets` לפני הפעלת השרת; אין צורך בהרצה נפרדת שאינה קשורה
+  לאותו build.

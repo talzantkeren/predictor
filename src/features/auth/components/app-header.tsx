@@ -4,31 +4,48 @@ import { signOutAction } from "@/features/auth/actions";
 
 export function AppHeader() {
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <header className="border-b border-line bg-white">
+      <a
+        href="#main-content"
+        className="fixed start-4 top-3 z-50 -translate-y-20 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white transition focus:translate-y-0"
+      >
+        דילוג לתוכן הראשי
+      </a>
+      <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"
-          className="font-bold text-slate-950 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg font-extrabold text-navy-900 sm:justify-start"
         >
-          Predictor1
+          <span
+            aria-hidden="true"
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-navy-900 text-lg font-black text-white"
+          >
+            P1
+          </span>
+          <span dir="ltr" className="hidden text-lg sm:inline">
+            Predictor1
+          </span>
         </Link>
-        <nav aria-label="ניווט משתמש" className="flex items-center gap-3 text-sm">
+        <nav
+          aria-label="ניווט משתמש"
+          className="flex min-w-0 items-center gap-1 text-sm sm:gap-2"
+        >
           <Link
             href="/dashboard"
-            className="rounded-lg px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+            className="inline-flex min-h-11 items-center rounded-lg px-2 font-bold text-navy-700 transition hover:bg-navy-100 sm:px-3"
           >
             הליגות שלי
           </Link>
           <Link
             href="/profile"
-            className="rounded-lg px-3 py-2 font-semibold text-blue-700 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+            className="inline-flex min-h-11 items-center rounded-lg px-2 font-bold text-navy-700 transition hover:bg-navy-100 sm:px-3"
           >
             פרופיל
           </Link>
           <form action={signOutAction}>
             <button
               type="submit"
-              className="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+              className="inline-flex min-h-11 items-center rounded-lg px-2 font-bold text-ink-muted transition hover:bg-locked-50 hover:text-navy-900 sm:px-3"
             >
               התנתקות
             </button>

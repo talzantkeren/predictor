@@ -166,6 +166,7 @@ export async function getLeagueStandings(
     status: "found",
     data: {
       league: { id: leagueResult.data.id, name: leagueResult.data.name },
+      viewerIsManager: leagueResult.data.manager_id === userId,
       standings: standings as LeagueStanding[],
     },
   };

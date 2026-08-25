@@ -29,8 +29,6 @@ const serverEnvSchema = z.object({
     .regex(canonicalUuidPattern, "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID")
     .optional(),
   SPORTS_API_KEY: z.string().min(1).optional(),
-  AI_API_KEY: z.string().min(1).optional(),
-  AI_MODEL: z.string().min(1).optional(),
 });
 
 const sportsSyncEnvSchema = z
@@ -99,8 +97,6 @@ export function parseServerEnv(input: EnvironmentInput) {
     CRON_SECRET: optionalValue(input.CRON_SECRET),
     SYNC_SYSTEM_ACTOR_ID: optionalValue(input.SYNC_SYSTEM_ACTOR_ID),
     SPORTS_API_KEY: optionalValue(input.SPORTS_API_KEY),
-    AI_API_KEY: optionalValue(input.AI_API_KEY),
-    AI_MODEL: optionalValue(input.AI_MODEL),
   });
 
   if (
@@ -191,8 +187,6 @@ export function getServerEnv() {
     CRON_SECRET: process.env.CRON_SECRET,
     SYNC_SYSTEM_ACTOR_ID: process.env.SYNC_SYSTEM_ACTOR_ID,
     SPORTS_API_KEY: process.env.SPORTS_API_KEY,
-    AI_API_KEY: process.env.AI_API_KEY,
-    AI_MODEL: process.env.AI_MODEL,
   });
 }
 

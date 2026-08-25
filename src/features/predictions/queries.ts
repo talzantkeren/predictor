@@ -185,6 +185,7 @@ export async function getLeagueMatchList(
         competitionName: league.season.competition.name,
       },
       viewerIsActiveMember,
+      viewerIsManager: league.manager_id === userId,
       databaseNow: clock,
       roundOptions: [
         ...new Set(roundsResult.data.map((match) => match.round_number)),

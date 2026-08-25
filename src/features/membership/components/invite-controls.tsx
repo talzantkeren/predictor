@@ -67,21 +67,21 @@ export function InviteControls({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl bg-slate-50 p-4">
-        <h2 className="text-xl font-bold">קישור הזמנה</h2>
+      <div className="rounded-xl bg-surface-subtle p-4">
+        <h3 className="text-xl font-black text-ink">מצב הקישור</h3>
         {createState.status === "success" ? (
-          <p className="mt-3 text-sm leading-6 text-slate-700">
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
             הקישור החדש פעיל. לאחר ההעתקה יש לרענן את העמוד כדי לטעון את המטא־נתונים העדכניים.
           </p>
         ) : revokeState.status === "success" ? (
-          <p className="mt-3 text-sm leading-6 text-slate-700">
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
             הקישור בוטל. יש לרענן את העמוד לפני יצירת קישור חדש.
           </p>
         ) : invite ? (
           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="font-semibold text-slate-600">מצב</dt>
-              <dd className="mt-1 text-slate-950">
+              <dt className="font-bold text-ink-muted">מצב</dt>
+              <dd className="mt-1 font-semibold text-ink">
                 {inviteEffectiveStatus === "revoked"
                   ? "בוטל"
                   : inviteEffectiveStatus === "expired"
@@ -90,8 +90,8 @@ export function InviteControls({
               </dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-600">תוקף</dt>
-              <dd className="mt-1 text-slate-950">
+              <dt className="font-bold text-ink-muted">תוקף</dt>
+              <dd className="mt-1 font-semibold text-ink">
                 <time dateTime={invite.expiresAt}>
                   {formatMembershipDate(invite.expiresAt)}
                 </time>
@@ -99,7 +99,7 @@ export function InviteControls({
             </div>
           </dl>
         ) : (
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
             עדיין לא נוצר קישור. הקישור הראשון יפתח את הליגה להצטרפות למשך שבעה ימים.
           </p>
         )}
@@ -116,15 +116,15 @@ export function InviteControls({
       shareableLink ? (
         <section
           aria-labelledby="one-time-invite-title"
-          className="rounded-xl border border-emerald-300 bg-emerald-50 p-4"
+          className="rounded-xl border border-success-200 border-s-4 border-s-action bg-white p-4"
         >
-          <h3 id="one-time-invite-title" className="font-bold text-emerald-950">
+          <h3 id="one-time-invite-title" className="font-extrabold text-success-900">
             קישור חד־פעמי להצגה
           </h3>
-          <p className="mt-2 text-sm leading-6 text-emerald-900">
+          <p className="mt-2 text-sm leading-6 text-success-900">
             יש להעתיק עכשיו. מטעמי אבטחה הקישור הגולמי אינו נשמר ולא יוצג לאחר רענון.
           </p>
-          <label htmlFor="new-invite-link" className="mt-3 block text-sm font-semibold text-emerald-950">
+          <label htmlFor="new-invite-link" className="mt-3 block text-sm font-bold text-success-900">
             הקישור החדש
           </label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -133,17 +133,17 @@ export function InviteControls({
               value={shareableLink}
               readOnly
               dir="ltr"
-              className="min-w-0 flex-1 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-left text-sm outline-none focus:ring-2 focus:ring-emerald-300"
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-control-border bg-white px-3 py-2 text-left text-sm text-ink outline-none focus:border-focus focus:ring-2 focus:ring-navy-200"
             />
             <button
               type="button"
               onClick={copyLink}
-              className="rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white hover:bg-emerald-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+              className="min-h-11 rounded-lg bg-action px-4 py-2 font-extrabold text-white hover:bg-action-hover"
             >
               העתקת הקישור
             </button>
           </div>
-          <p className="mt-2 text-sm text-emerald-900" aria-live="polite">
+          <p className="mt-2 text-sm text-success-900" aria-live="polite">
             {copiedMessage}
           </p>
         </section>
@@ -152,11 +152,11 @@ export function InviteControls({
       {!actionSucceeded ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           {inviteActive ? (
-            <details className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-              <summary className="cursor-pointer rounded font-semibold text-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">
+            <details className="rounded-xl border border-navy-200 bg-navy-100 p-3">
+              <summary className="inline-flex min-h-11 cursor-pointer items-center rounded font-extrabold text-navy-900">
                 החלפת הקישור הפעיל
               </summary>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-blue-950">
+              <p className="mt-3 max-w-sm text-sm leading-6 text-navy-900">
                 יצירת קישור חדש תבטל מיד את הקישור הפעיל הנוכחי.
               </p>
               <form
@@ -168,7 +168,7 @@ export function InviteControls({
                 <button
                   type="submit"
                   disabled={createPending}
-                  className="w-full rounded-lg bg-blue-700 px-4 py-2.5 font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                  className="min-h-11 w-full rounded-lg bg-action px-4 py-2.5 font-extrabold text-white hover:bg-action-hover disabled:cursor-wait disabled:opacity-60 sm:w-auto"
                 >
                   {createPending ? "יוצרים קישור..." : "אישור החלפת הקישור"}
                 </button>
@@ -183,7 +183,7 @@ export function InviteControls({
               <button
                 type="submit"
                 disabled={createPending}
-                className="w-full rounded-lg bg-blue-700 px-4 py-2.5 font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                className="min-h-11 w-full rounded-lg bg-action px-4 py-2.5 font-extrabold text-white hover:bg-action-hover disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               >
                 {createPending ? "יוצרים קישור..." : "יצירת קישור חדש"}
               </button>
@@ -191,11 +191,11 @@ export function InviteControls({
           )}
 
           {inviteActive && invite ? (
-            <details className="rounded-lg border border-red-200 bg-red-50 p-3">
-              <summary className="cursor-pointer rounded font-semibold text-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">
+            <details className="rounded-xl border border-error-200 bg-error-50 p-3">
+              <summary className="inline-flex min-h-11 cursor-pointer items-center rounded font-extrabold text-error-900">
                 ביטול הקישור
               </summary>
-              <p className="mt-3 max-w-sm text-sm leading-6 text-red-950">
+              <p className="mt-3 max-w-sm text-sm leading-6 text-error-900">
                 הביטול יחסום מיד בקשות חדשות דרך הקישור הזה.
               </p>
               <form
@@ -207,7 +207,7 @@ export function InviteControls({
                 <button
                   type="submit"
                   disabled={revokePending}
-                  className="w-full rounded-lg bg-red-700 px-4 py-2.5 font-semibold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+                  className="min-h-11 w-full rounded-lg bg-error-900 px-4 py-2.5 font-extrabold text-white disabled:cursor-wait disabled:opacity-60 sm:w-auto"
                 >
                   {revokePending ? "מבטלים..." : "אישור ביטול הקישור"}
                 </button>
