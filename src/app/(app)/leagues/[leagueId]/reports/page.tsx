@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
 import { getLeagueStatusLabel } from "@/features/leagues/display";
+import { getJoinRequestStatusCountLabel } from "@/features/membership/display";
 import { getManagerLeagueReport } from "@/features/reports/service";
 
 export const dynamic = "force-dynamic";
@@ -22,19 +23,19 @@ const summaryItems = [
   },
   {
     key: "pendingApproval" as const,
-    label: "ממתינות לאישור",
-    description: "בקשות לבדיקה ניהולית",
+    label: getJoinRequestStatusCountLabel("pending_approval"),
+    description: "בקשות שממתינות לפעולת המנהל/ת",
     tone: "bg-warning-50 text-warning-900",
   },
   {
     key: "pendingProof" as const,
-    label: "ממתינות להשלמה",
-    description: "בקשות שטרם הושלמו",
+    label: getJoinRequestStatusCountLabel("pending_proof"),
+    description: "בקשות שממתינות להשלמה מצד המצטרפים",
     tone: "bg-navy-100 text-navy-900",
   },
   {
     key: "rejected" as const,
-    label: "בקשות שנדחו",
+    label: getJoinRequestStatusCountLabel("rejected"),
     description: "בקשות היסטוריות שנדחו",
     tone: "bg-surface-subtle text-ink-secondary",
   },
@@ -117,8 +118,8 @@ export default async function ManagerReportsPage({
       </div>
 
       <DemoNotice className="mt-6" title="דוח מידע בלבד">
-        הדוח עוסק בחברות ובדירוג בלבד. המערכת אינה מציגה או מנהלת תשלומים,
-        דמי השתתפות או פרסים כספיים, ואינה מחזיקה כסף.
+        דוח זה עוסק בחברות ובדירוג בלבד ואינו מציג או מנהל תשלומים, דמי
+        השתתפות או פרסים כספיים. Predictor1 אינה גובה, מחזיקה או מעבירה כסף.
       </DemoNotice>
 
       <section className="mt-6" aria-labelledby="membership-summary-title">

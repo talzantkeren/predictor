@@ -89,7 +89,7 @@ async function createLeague(page: Page, leagueName: string) {
 }
 
 test.describe("manager-only non-monetary reports", () => {
-  test("shows bounded membership counts and current/final standings only to the exact manager", async ({
+  test("renders exact counts and isolated current/final fixtures only to the exact manager", async ({
     browser,
     page,
     request,
@@ -199,8 +199,8 @@ test.describe("manager-only non-monetary reports", () => {
     );
     for (const [label, count] of [
       ["חברים פעילים", "2"],
-      ["ממתינות לאישור", "1"],
-      ["ממתינות להשלמה", "1"],
+      ["ממתינות לבדיקת מנהל/ת הליגה", "1"],
+      ["ממתינות לתמונת Demo", "1"],
       ["בקשות שנדחו", "1"],
     ] as const) {
       const card = summary.locator("dl > div").filter({ hasText: label });
@@ -211,7 +211,7 @@ test.describe("manager-only non-monetary reports", () => {
       manager.page.getByRole("heading", { name: "דוח מידע בלבד" }),
     ).toBeVisible();
     await expect(
-      manager.page.getByText(/אינה מציגה או מנהלת תשלומים/),
+      manager.page.getByText(/דוח זה.+אינו מציג או מנהל תשלומים/),
     ).toBeVisible();
     await expect(
       manager.page.locator('a[href*="payment"], a[href*="finance"]'),
@@ -257,6 +257,8 @@ test.describe("manager-only non-monetary reports", () => {
     ).toBeVisible();
     await expect(otherManager.page.getByText(targetLeagueName)).toHaveCount(0);
 
+    // Slice 8 is query-only. This fixture verifies completed-state rendering;
+    // the user-visible lifecycle transition is planned for Slice 9.
     setLeagueStatusInDisposableLocalDatabase(leagueId, "completed");
     await manager.page.reload();
     await expect(

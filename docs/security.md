@@ -440,8 +440,10 @@
 - ה־Service קורא לאחר מכן ל־`getLeagueStandings` הקיים, שמבצע AuthZ נוסף ונשען
   על `league_leaderboard` מסוג `security_invoker` ועל RLS. שמות תצוגה מגיעים
   רק מן ה־view המורשה; אין Email, proof, Auth metadata או PII נוסף.
-- count/list מעל 500, count שאינו safe integer, שורת standings malformed,
-  כשל query או אי־התאמה בין תוצאת הסיכום לדירוג נכשלים סגור ל־error state בטוח.
+- count שאינו safe integer לא־שלילי, שורת standings malformed, רשימת standings
+  מעל 500, כשל query או אי־התאמה בין תוצאת הסיכום לדירוג נכשלים סגור ל־error
+  state בטוח. count תקין יכול להיות גדול מ־500 משום ש־`head: true` אינו מעביר
+  את שורות התוצאה.
   SQL, stack, מזהה משתמש, proof path ופרטי ליגה אינם נרשמים או נשלחים בשגיאה.
 - אין admin/secret client, RPC, Server Action, mutation, cache חדש, migration
   או dependency. הדוח אינו קורא או מחשב שדה כספי ואינו מציג AI, דמי השתתפות,
@@ -452,6 +454,6 @@
 | IDOR של דוח ליגה | session + manager match על המשאב + RLS + AuthZ חוזר ב־standings | ordinary member, outsider ומנהל ליגה אחרת מקבלים not-found ללא שם ליגה |
 | חבר שהוסר נספר בגלל בקשת עבר | count ישיר של membership `active`; אין גזירה מ־approved requests | removed membership לצד pending/history נשאר מחוץ לספירת הפעילים |
 | proof history מכפילה בקשות או דולפת | אין קריאת `payment_proofs`; count על `join_requests.id` בלבד | query-contract assertion וספירות נפרדות ב־E2E |
-| דוח חלקי או overflow במספר חריג | cap של 500 ו־safe-integer validation בכל count וב־standings | null/fraction/unsafe/501 ומסלול standings error |
+| דוח חלקי או overflow במספר חריג | safe nonnegative integer בכל count; cap של 500 רק ברשימת standings | null/fraction/unsafe נכשלים, 501 count מתקבל ומסלול standings חריג נכשל סגור |
 | דירוג שונה מן המסך הציבורי לחברים | reuse של `getLeagueStandings`/view ללא sorting חדש | `1,1,3`, exact informational ושמות כפולים keyed by user ID |
 | שפה כספית או AI חודרת לדוח | allowlist שדות ו־UI קבוע לא־כספי | notice גלוי וחיפוש currency/percentage/AI/payment links בדסקטופ וב־Pixel 5 |

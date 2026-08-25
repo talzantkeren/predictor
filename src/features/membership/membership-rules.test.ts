@@ -10,6 +10,7 @@ import {
 } from "@/features/membership/invite-access";
 import {
   getInviteEffectiveStatus,
+  getJoinRequestStatusCountLabel,
   isInviteEffectivelyActive,
 } from "@/features/membership/display";
 import {
@@ -44,6 +45,18 @@ const publicId = "26000000-0000-4000-8000-000000000031";
 const validTokenHash =
   "0f007385b6f9d4b7eeb2748605afe1a984a0a3bfa3f014d09e2a784ce9e5cd1a";
 const timestamp = "2026-08-14T10:00:00+00:00";
+
+describe("membership status display", () => {
+  it("uses action-specific labels for request counts", () => {
+    expect(getJoinRequestStatusCountLabel("pending_proof")).toBe(
+      "ממתינות לתמונת Demo",
+    );
+    expect(getJoinRequestStatusCountLabel("pending_approval")).toBe(
+      "ממתינות לבדיקת מנהל/ת הליגה",
+    );
+    expect(getJoinRequestStatusCountLabel("rejected")).toBe("בקשות שנדחו");
+  });
+});
 
 function clientWithRpc(rpc: ReturnType<typeof vi.fn>) {
   return { rpc } as unknown as SupabaseClient<Database>;

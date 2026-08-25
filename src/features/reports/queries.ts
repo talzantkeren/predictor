@@ -6,23 +6,17 @@ import type {
 } from "@/features/reports/types";
 import type { Database } from "@/types/database.generated";
 
-export const MAX_REPORT_ROWS = 500;
-
 type ExactCountResult = {
   count: number | null;
   error: unknown;
 };
 
-export function mapBoundedExactCount(
-  result: ExactCountResult,
-  maximum = MAX_REPORT_ROWS,
-): number | null {
+export function mapExactCount(result: ExactCountResult): number | null {
   if (
     result.error ||
     result.count === null ||
     !Number.isSafeInteger(result.count) ||
-    result.count < 0 ||
-    result.count > maximum
+    result.count < 0
   ) {
     return null;
   }
@@ -83,10 +77,10 @@ export async function getManagerReportSummary(
     ]);
 
   const membership = {
-    activeMembers: mapBoundedExactCount(activeMembers),
-    pendingApproval: mapBoundedExactCount(pendingApproval),
-    pendingProof: mapBoundedExactCount(pendingProof),
-    rejected: mapBoundedExactCount(rejected),
+    activeMembers: mapExactCount(activeMembers),
+    pendingApproval: mapExactCount(pendingApproval),
+    pendingProof: mapExactCount(pendingProof),
+    rejected: mapExactCount(rejected),
   };
 
   if (Object.values(membership).some((count) => count === null)) {

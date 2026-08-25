@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   getManagerReportSummary,
-  mapBoundedExactCount,
-  MAX_REPORT_ROWS,
+  mapExactCount,
 } from "@/features/reports/queries";
 import type { Database } from "@/types/database.generated";
+
+const reportLeagueId = "62000000-0000-4000-8000-000000000001";
+const reportManagerId = "62000000-0000-4000-8000-000000000002";
 
 type ReportTable = "leagues" | "league_members" | "join_requests";
 type QueryCall = {
@@ -17,7 +19,9 @@ type QueryCall = {
 };
 
 function reportClient({
-  managerId = "62000000-0000-4000-8000-000000000002",
+  managerId = reportManagerId,
+  leagueData,
+  leagueError = null,
   counts = {
     active: 2,
     pending_approval: 1,
@@ -26,23 +30,37 @@ function reportClient({
   },
 }: {
   managerId?: string;
+  leagueData?: {
+    id: string;
+    name: string;
+    status: "active";
+    manager_id: string;
+  } | null;
+  leagueError?: unknown;
   counts?: Record<string, number | null>;
 } = {}) {
   const calls: QueryCall[] = [];
+  const resolvedLeague =
+    leagueData === undefined
+      ? {
+          id: reportLeagueId,
+          name: "ליגת דוח",
+          status: "active" as const,
+          manager_id: managerId,
+        }
+      : leagueData;
   const from = vi.fn((table: ReportTable) => {
     const call: QueryCall = { table, filters: [] };
     calls.push(call);
 
     const response = () => {
       if (table === "leagues") {
+        const requestedLeagueId = call.filters.find(
+          ([column]) => column === "id",
+        )?.[1];
         return {
-          data: {
-            id: "62000000-0000-4000-8000-000000000001",
-            name: "ליגת דוח",
-            status: "active" as const,
-            manager_id: managerId,
-          },
-          error: null,
+          data: requestedLeagueId === reportLeagueId ? resolvedLeague : null,
+          error: leagueError,
         };
       }
 
@@ -85,10 +103,10 @@ function reportClient({
 }
 
 describe("manager report exact-count mapping", () => {
-  it.each([0, 1, 3, MAX_REPORT_ROWS])(
-    "accepts a bounded exact count of %s",
+  it.each([0, 1, 3, 500, 501, Number.MAX_SAFE_INTEGER])(
+    "accepts a valid exact count of %s",
     (count) => {
-      expect(mapBoundedExactCount({ count, error: null })).toBe(count);
+      expect(mapExactCount({ count, error: null })).toBe(count);
     },
   );
 
@@ -99,21 +117,20 @@ describe("manager report exact-count mapping", () => {
     Number.NaN,
     Number.POSITIVE_INFINITY,
     Number.MAX_SAFE_INTEGER + 1,
-    MAX_REPORT_ROWS + 1,
-  ])("fails closed for malformed or unbounded count %s", (count) => {
-    expect(mapBoundedExactCount({ count, error: null })).toBeNull();
+  ])("fails closed for malformed count %s", (count) => {
+    expect(mapExactCount({ count, error: null })).toBeNull();
   });
 
   it("fails closed when the count query returns an error", () => {
     expect(
-      mapBoundedExactCount({ count: 2, error: { message: "private detail" } }),
+      mapExactCount({ count: 2, error: { message: "private detail" } }),
     ).toBeNull();
   });
 });
 
 describe("manager report query contract", () => {
-  const leagueId = "62000000-0000-4000-8000-000000000001";
-  const managerId = "62000000-0000-4000-8000-000000000002";
+  const leagueId = reportLeagueId;
+  const managerId = reportManagerId;
 
   it("counts active memberships once and keeps request states separate", async () => {
     const { calls, client } = reportClient();
@@ -128,6 +145,12 @@ describe("manager report query contract", () => {
         pendingProof: 1,
         rejected: 1,
       },
+    });
+
+    expect(calls[0]).toMatchObject({
+      table: "leagues",
+      columns: "id, name, status, manager_id",
+      filters: [["id", leagueId]],
     });
 
     const membershipCall = calls.find(
@@ -179,18 +202,42 @@ describe("manager report query contract", () => {
     expect(calls[0]?.table).toBe("leagues");
   });
 
-  it("fails closed when a report count exceeds the configured cap", async () => {
-    const { client } = reportClient({
-      counts: {
-        active: MAX_REPORT_ROWS + 1,
-        pending_approval: 0,
-        pending_proof: 0,
-        rejected: 0,
-      },
+  it("returns not-found when RLS hides the requested league", async () => {
+    const { calls, client } = reportClient({ leagueData: null });
+
+    await expect(
+      getManagerReportSummary(client, leagueId, managerId),
+    ).resolves.toEqual({ status: "not-found" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.filters).toEqual([["id", leagueId]]);
+  });
+
+  it("fails closed when the league lookup fails", async () => {
+    const { calls, client } = reportClient({
+      leagueError: { message: "private database detail" },
     });
 
     await expect(
       getManagerReportSummary(client, leagueId, managerId),
     ).resolves.toEqual({ status: "error" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("keeps a large valid historical request count available", async () => {
+    const { client } = reportClient({
+      counts: {
+        active: 2,
+        pending_approval: 0,
+        pending_proof: 0,
+        rejected: 501,
+      },
+    });
+
+    await expect(
+      getManagerReportSummary(client, leagueId, managerId),
+    ).resolves.toMatchObject({
+      status: "found",
+      membership: { activeMembers: 2, rejected: 501 },
+    });
   });
 });

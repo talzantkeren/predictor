@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.14 |
+| גרסה | 3.15 |
 | תאריך עדכון | 25 באוגוסט 2026 |
-| סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — Hardening, מסמכים והצגה |
+| סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -621,6 +621,8 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/match+league status/season נאכפים במסד | saved timestamp |
 | `removeMember` | league + member | membership service | status removed + audit |
 | `applyManualResult` | match + result/status | `score_match` via admin client | result and ranking updated |
+| `startLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | `open` → `active` אחרי AuthZ ותנאי מעבר |
+| `completeLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | `active` → `completed` אחרי חישוב סופי ותנאי מעבר |
 
 כל action מגדיר schema קלט, בודק session ומשאב, ואינו מקבל actor/user id סמכותי מהלקוח.
 
@@ -1133,7 +1135,7 @@ build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענ�
 ### Slice 8 — דוח מנהל לא־כספי
 
 **סטטוס: הושלם ב־25 באוגוסט 2026.** המימוש query-only, ללא schema או תלות,
-עבר `npm run verify`: כל 485 בדיקות Vitest, כל 646 בדיקות pgTAP וכל 22 תרחישי
+עבר `npm run verify`: כל 489 בדיקות Vitest, כל 646 בדיקות pgTAP וכל 22 תרחישי
 Playwright בדסקטופ וב־Pixel 5 עברו. build ו־client-secret scan ירוקים; לא נעשה
 שימוש ב־admin client, AI, חישוב כספי או mutation Hosted.
 
@@ -1151,9 +1153,12 @@ Playwright בדסקטופ וב־Pixel 5 עברו. build ו־client-secret scan �
 - `getLeagueStandings`, טיפוסי הדירוג ו־mapping קיימים נשארים מקור האמת.
   הסדר הוא points, אחריו correct outcomes, ואחריו `rank()` משותף כגון
   `1, 1, 3`; exact scores הם מידע בלבד.
-- כל count ורשימת standings חסומים ל־500 ונבדקים כ־safe integer. חריגה או
-  נתון malformed נכשלות סגור ומציגות error state ללא פרטי DB.
+- ספירות `head: true` אינן מעבירות שורות ומקבלות כל safe integer לא־שלילי;
+  שגיאה או נתון malformed נכשלים סגור. רשימת standings נשארת חסומה ל־500
+  שורות ונכשלת סגור במקום להחזיר דירוג חלקי.
 - `completed` בלבד מוצג כ־"דירוג סופי"; בכל status אחר מוצג "דירוג נוכחי".
+  Slice 8 אינו מקדם סטטוס. בדיקת Playwright משתמשת ב־fixture DB מבודד כדי
+  להוכיח rendering בלבד; Actions של lifecycle מתוכננים במפורש ל־Slice 9.
 - UI עברי/RTL, Server Component, notice קבוע, כרטיסי ספירה, cards במובייל,
   table סמנטי עם caption בדסקטופ, loading/error/empty, keyboard וללא overflow
   ב־Pixel 5 ובדסקטופ.
@@ -1169,6 +1174,10 @@ current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל ש�
 
 **תוצר:** מוצר שניתן להגיש ולהסביר.
 
+- סגירת lifecycle לפני ההקשחה: `startLeague` ו־`completeLeague` דרך Server
+  Actions צרים ו־RPC אטומי, עם session, Zod, הרשאת מנהל על המשאב, בדיקות מצב
+  מקור ותנאי מעבר. E2E עובר דרך זרימת המוצר ומדגים active/current ולאחר מכן
+  completed/final בלי כתיבה ישירה למסד כהוכחת flow.
 - E2E core suite, accessibility smoke ו־responsive pass.
 - Security/Performance Advisors ו־`EXPLAIN ANALYZE` לשאילתות מרכזיות.
 - השלמת `docs/testing.md`, `docs/security.md`, `docs/scale.md` ו־README.
@@ -1184,7 +1193,7 @@ current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל ש�
 | עד 24 באוגוסט | Slices 0–7b, Hosted canary ומימוש מקומי של Slice 7c — הושלמו |
 | 25 באוגוסט | Preview ואישור חזותי של Slice 7c |
 | 25–29 באוגוסט | Slice 8 — דוח מנהל לא־כספי |
-| 30 באוגוסט–3 בספטמבר | Slice 9 — Hardening ומסמכי הגשה |
+| 30 באוגוסט–3 בספטמבר | Slice 9 — סגירת lifecycle, Hardening ומסמכי הגשה |
 | 4–5 בספטמבר | תיקוני blocker, rehearsal ו־submission checklist |
 | 6 בספטמבר | הגשה |
 
@@ -1243,8 +1252,8 @@ current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל ש�
 ## 20. המשימה הבאה לסוכן הקידוד
 
 Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. המשימה הבאה היא
-**Slice 9 — Hardening, מסמכים והצגה**, בגבולות הסעיף לעיל וללא הרחבת scope
-לפיצ'ר חדש, AI או מנגנון כספי.
+**Slice 9 — סגירת lifecycle המתוכנן, Hardening, מסמכים והצגה**, בגבולות הסעיף
+לעיל וללא פיצ'ר נוסף מעבר ל־lifecycle שכבר נדרש במוצר, AI או מנגנון כספי.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

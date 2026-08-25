@@ -373,10 +373,10 @@ admin client, migration, RPC חדש, ספק חיצוני, AI, תשלום, קופ
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest — queries | count exact של חברויות `active` בלבד; `pending_approval`, `pending_proof` ו־`rejected` כשאילתות נפרדות; אין קריאת `payment_proofs`; ordinary member/manager אחר נעצרים לפני counts; `null`, שלילי, fraction, `NaN`, infinity, unsafe integer ויותר מ־500 נכשלים סגור |
+| Vitest — queries | count exact של חברויות `active` בלבד; `pending_approval`, `pending_proof` ו־`rejected` כשאילתות נפרדות; אין קריאת `payment_proofs`; filter מדויק של league ID; ordinary member/manager אחר, שורה שמוסתרת ב־RLS וכשל query נעצרים לפני counts; `null`, שלילי, fraction, `NaN`, infinity ו־unsafe integer נכשלים סגור, ו־501 תקין נשאר זמין |
 | Vitest — service | creator-only, אפס חברים ודירוג ריק, ספירות סטטוס נפרדות, ranking `1,1,3`, שמות תצוגה כפולים עם keys שונים לפי `userId`, authorization לפני standings, שגיאת limit מן ה־standings הקיים ו־`completed` בלבד כדירוג סופי |
 | רגרסיית scoring | `mapStanding` ממשיך לדחות aggregate חסר או unsafe; `getLeagueStandings` וה־view הקיימים נשארים מקור האמת ואין ranking משוכפל בדוח |
-| Playwright | guest מוחזר ל־login עם `next` מאומת; המנהל המדויק מגיע דרך tab "דוחות" ורואה 2 חברים פעילים וספירה נפרדת אחת לכל סטטוס; חברות `removed` אינה נספרת; חבר פעיל ומנהל ליגה אחרת מקבלים not-found אטום; active→current ו־completed→final; notice קבוע; אין currency/percentage/AI/payment link; table+caption בדסקטופ, cards ב־Pixel 5, RTL וללא overflow |
+| Playwright | guest מוחזר ל־login עם `next` מאומת; המנהל המדויק מגיע דרך tab "דוחות" ורואה 2 חברים פעילים וספירה נפרדת אחת לכל סטטוס; חברות `removed` אינה נספרת; חבר פעיל ומנהל ליגה אחרת מקבלים not-found אטום; fixtures מבודדים של `active` ו־`completed` מוכיחים current/final rendering בלבד עד שזרימת lifecycle תושלם ב־Slice 9; notice קבוע; אין currency/percentage/AI/payment link; table+caption בדסקטופ, cards ב־Pixel 5, RTL וללא overflow |
 | Visual/manual | 390px ו־1440px, loading/error/empty, keyboard/focus, headings סמנטיים, caption לטבלה, טקסט ארוך ושמות כפולים ללא overflow |
 
 העובדה שקבצי proof מרובים אינם משפיעים על הספירה מוכחת גם מבנית: query הדוח
@@ -399,7 +399,7 @@ npm run test:e2e -- e2e/reports.spec.ts
 
 - `npm ci`: 425 packages הותקנו, audit מצא 0 vulnerabilities.
 - `lint`, `typecheck`, build, DB lint ו־generated-types drift עברו.
-- Vitest: כל 485 הבדיקות ב־36 קבצים עברו.
+- Vitest: כל 489 הבדיקות ב־36 קבצים עברו.
 - pgTAP: כל 646 הבדיקות בעשרה קבצים עברו לאחר reset מקומי מלא.
 - Playwright ממוקד לדוח: 2/2 עברו; `npm run verify` המלא: 22/22 עברו
   בדסקטופ וב־Pixel 5, כולל AuthZ, current/final והיעדר overflow.
