@@ -73,8 +73,9 @@
 - שדות הטקסט של הליגה דוחים תווי בקרה ב־Zod וב־check constraints: שם הליגה הוא
   חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים רק tab ומעברי שורה.
 - allowlist ההפניות לאחר התחברות מקבל בדיוק את `/dashboard`, `/profile`,
-  `/update-password`, `/leagues/new`, נתיב סיכום/הגדרות/משחקי ליגה עם UUID תקין
-  ונתיב `/matches/[matchId]` עם UUID תקין. query string של הקשר ליגה אינו נכנס
+  `/update-password`, `/leagues/new`, נתיב סיכום/הגדרות/משחקים/דירוג/דוחות של
+  ליגה עם UUID תקין ונתיב `/matches/[matchId]` עם UUID תקין. query string של
+  הקשר ליגה אינו נכנס
   ל־`next`; אם יש כמה הקשרים המשתמש בוחר אותם מחדש במסך המורשה. כל ערך אחר —
   כולל origin חיצוני, `//`, backslash, query או fragment — חוזר ל־`/dashboard`.
 - יצירת ליגה אינה אידמפוטנטית גלובלית: שליחה חוזרת מפורשת יוצרת ליגה חדשה
@@ -422,3 +423,35 @@
 | merge של Demo או קבוצה שגויה | provider IDs ו־unique indexes בלבד | name/code collision, Demo snapshot unchanged, codes כפולים |
 | חשיפה או פתיחה שגויה סביב ביטול | DB-time latch, PRED-05 RLS ו־reactivation צר | ביטול מוקדם בין שני משתמשים, איפוס scoring, leaderboard ו־save חוזר; live/SUSP/INT נשארים נעולים |
 | ניקוד לא רשמי/כפול | FT+fulltime בלבד ו־`score_match` הקיימת | live/AET/PEN/score חסר, retry, correction ו־audit source |
+
+## דוח מנהל לא־כספי ב־Slice 8
+
+- `/leagues/[leagueId]/reports` מאמת UUID לפני query ודורש session באמצעות
+  `getUser()` בשרת. return path של אורח נוסף ל־allowlist המדויק בלי query,
+  fragment, backslash או segment נוסף.
+- נקודת ההרשאה הראשונה קוראת את הליגה תחת RLS עם user-scoped Supabase client
+  ומשווה `manager_id` ל־user המאומת. חבר פעיל רגיל, משתמש זר, מנהל של ליגה
+  אחרת ומנהל מערכת שאינו מנהל הליגה מקבלים not-found זהה; הסתרת tab היא UX
+  בלבד ואינה גבול הרשאה.
+- רק אחרי התאמת המנהל מתבצעות ספירות `head + count=exact`. חברים נספרים רק
+  מ־`league_members.status='active'`; בקשות נספרות ב־`join_requests` בשלוש
+  שאילתות status נפרדות. אין join או query ל־`payment_proofs`, ולכן אין נתיב,
+  digest, metadata של קובץ או הכפלת בקשות לפי מספר ההעלאות.
+- ה־Service קורא לאחר מכן ל־`getLeagueStandings` הקיים, שמבצע AuthZ נוסף ונשען
+  על `league_leaderboard` מסוג `security_invoker` ועל RLS. שמות תצוגה מגיעים
+  רק מן ה־view המורשה; אין Email, proof, Auth metadata או PII נוסף.
+- count/list מעל 500, count שאינו safe integer, שורת standings malformed,
+  כשל query או אי־התאמה בין תוצאת הסיכום לדירוג נכשלים סגור ל־error state בטוח.
+  SQL, stack, מזהה משתמש, proof path ופרטי ליגה אינם נרשמים או נשלחים בשגיאה.
+- אין admin/secret client, RPC, Server Action, mutation, cache חדש, migration
+  או dependency. הדוח אינו קורא או מחשב שדה כספי ואינו מציג AI, דמי השתתפות,
+  קופה, תשלום, פרס כספי, אחוז פרס, payout מדומה או payment link.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| IDOR של דוח ליגה | session + manager match על המשאב + RLS + AuthZ חוזר ב־standings | ordinary member, outsider ומנהל ליגה אחרת מקבלים not-found ללא שם ליגה |
+| חבר שהוסר נספר בגלל בקשת עבר | count ישיר של membership `active`; אין גזירה מ־approved requests | removed membership לצד pending/history נשאר מחוץ לספירת הפעילים |
+| proof history מכפילה בקשות או דולפת | אין קריאת `payment_proofs`; count על `join_requests.id` בלבד | query-contract assertion וספירות נפרדות ב־E2E |
+| דוח חלקי או overflow במספר חריג | cap של 500 ו־safe-integer validation בכל count וב־standings | null/fraction/unsafe/501 ומסלול standings error |
+| דירוג שונה מן המסך הציבורי לחברים | reuse של `getLeagueStandings`/view ללא sorting חדש | `1,1,3`, exact informational ושמות כפולים keyed by user ID |
+| שפה כספית או AI חודרת לדוח | allowlist שדות ו־UI קבוע לא־כספי | notice גלוי וחיפוש currency/percentage/AI/payment links בדסקטופ וב־Pixel 5 |

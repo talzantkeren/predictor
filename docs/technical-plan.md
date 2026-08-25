@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.13 |
+| גרסה | 3.14 |
 | תאריך עדכון | 25 באוגוסט 2026 |
-| סטטוס | Slice 7c הושלם, עבר Preview ואושר חזותית; השלב הבא הוא Slice 8 — דוחות Demo |
+| סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — Hardening, מסמכים והצגה |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -107,7 +107,7 @@ npx playwright install
 │   │   │   │   ├── matches/page.tsx
 │   │   │   │   ├── standings/page.tsx
 │   │   │   │   ├── members/page.tsx
-│   │   │   │   ├── finance/page.tsx
+│   │   │   │   ├── reports/page.tsx
 │   │   │   │   └── settings/page.tsx
 │   │   │   └── matches/[matchId]/page.tsx
 │   │   ├── admin/
@@ -416,7 +416,7 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 - `correct_outcomes`.
 - `exact_scores`.
 - `predictions_submitted`.
-- `rank()` לפי points ואז correct outcomes. אין `dense_rank()`: שני חברים במקום 1 גורמים למקום הבא להיות 3, בהתאם לחלוקת מקומות הפרס.
+- `rank()` לפי points ואז correct outcomes. אין `dense_rank()`: שני חברים במקום 1 גורמים למקום הבא להיות 3, בהתאם ל־competition ranking.
 
 ארבעת האגרגטים כוללים רק ניחושים של משחקים שעבורם `now() >= kickoff_at`.
 הספירה של ניחוש עתידי נשארת 0 גם לבעל הניחוש, ולכן ה־View אינו מחזיר totals
@@ -621,7 +621,6 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/match+league status/season נאכפים במסד | saved timestamp |
 | `removeMember` | league + member | membership service | status removed + audit |
 | `applyManualResult` | match + result/status | `score_match` via admin client | result and ranking updated |
-| `completeLeague` | league id | report/league service | final report read-only |
 
 כל action מגדיר schema קלט, בודק session ומשאב, ואינו מקבל actor/user id סמכותי מהלקוח.
 
@@ -963,7 +962,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 שורות לפני הפתיחה ונחשפים רק לחברים פעילים אחרי הפתיחה.
 
 Slice 5 אינו כולל ואינו טוען ל־scoring/leaderboard (Slice 6), Sports Sync/Cron
-או override (Slice 7) או finance (Slice 8).
+או override (Slice 7) או דוח המנהל (Slice 8).
 
 ### Slice 6 — תוצאות, ניקוד ודירוג
 
@@ -1131,16 +1130,40 @@ Canary מורשה קלט 14 קבוצות, 26 מחזורים ו־182 משחקים
 build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענף עבר QA רספונסיבי ואישור
 חזותי לפני מיזוג ל־Production.
 
-### Slice 8 — דוחות Demo
+### Slice 8 — דוח מנהל לא־כספי
 
-**תוצר:** finance summary ודוח prize allocation פשוטים.
+**סטטוס: הושלם ב־25 באוגוסט 2026.** המימוש query-only, ללא schema או תלות,
+עבר `npm run verify`: כל 485 בדיקות Vitest, כל 646 בדיקות pgTAP וכל 22 תרחישי
+Playwright בדסקטופ וב־Pixel 5 עברו. build ו־client-secret scan ירוקים; לא נעשה
+שימוש ב־admin client, AI, חישוב כספי או mutation Hosted.
 
-- queries בלבד, ללא BI או charts מיותרים.
-- approved/pending formulas.
-- shared-position examples.
-- סימון Demo בכל מסך.
+**תוצר:** `/leagues/[leagueId]/reports` למנהל הליגה בלבד, עם תמונת מצב חברות
+ודירוג נוכחי או סופי שאינו כספי.
 
-**Exit:** נתונים שנדחו אינם בקופה; חישוב פרסים תואם unit tests.
+- feature ממוקד תחת `src/features/reports/` עם `types.ts`, `queries.ts`,
+  `service.ts` ובדיקות. אין dependency, migration, RPC, Action או mutation.
+- UUID ו־session נבדקים לפני הקריאה. הרשאת המשאב משווה את המשתמש המאומת
+  ל־`leagues.manager_id` המדויקת דרך user-scoped Supabase client תחת RLS.
+  חבר רגיל, זר או מנהל ליגה אחרת מקבלים not-found אטום.
+- ספירת חברים פעילים מגיעה רק מ־`league_members.status='active'`; חבר שהוסר
+  או בקשה ישנה שאושרה אינם נספרים. `pending_approval`, `pending_proof`
+  ו־`rejected` נשמרים כספירות נפרדות ללא join ל־`payment_proofs`.
+- `getLeagueStandings`, טיפוסי הדירוג ו־mapping קיימים נשארים מקור האמת.
+  הסדר הוא points, אחריו correct outcomes, ואחריו `rank()` משותף כגון
+  `1, 1, 3`; exact scores הם מידע בלבד.
+- כל count ורשימת standings חסומים ל־500 ונבדקים כ־safe integer. חריגה או
+  נתון malformed נכשלות סגור ומציגות error state ללא פרטי DB.
+- `completed` בלבד מוצג כ־"דירוג סופי"; בכל status אחר מוצג "דירוג נוכחי".
+- UI עברי/RTL, Server Component, notice קבוע, כרטיסי ספירה, cards במובייל,
+  table סמנטי עם caption בדסקטופ, loading/error/empty, keyboard וללא overflow
+  ב־Pixel 5 ובדסקטופ.
+- הדוח מידע בלבד: אין AI, דמי השתתפות, קופה, תשלום או עיבוד תשלום, פרס כספי,
+  אחוזי פרס, payout מדומה, currency symbol או קישור תשלום.
+
+**Exit:** מנהל רואה ספירות ו־standings נכונים; creator-only/zero/removed/
+status separation/empty/shared positions/duplicate names/limits/malformed
+מכוסים ב־Vitest; Playwright מוכיח manager/guest/member/other-manager,
+current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל שערי verify ירוקים.
 
 ### Slice 9 — Hardening, מסמכים והצגה
 
@@ -1160,7 +1183,7 @@ build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענ�
 | --- | --- |
 | עד 24 באוגוסט | Slices 0–7b, Hosted canary ומימוש מקומי של Slice 7c — הושלמו |
 | 25 באוגוסט | Preview ואישור חזותי של Slice 7c |
-| 25–29 באוגוסט | Slice 8 — דוחות Demo |
+| 25–29 באוגוסט | Slice 8 — דוח מנהל לא־כספי |
 | 30 באוגוסט–3 בספטמבר | Slice 9 — Hardening ומסמכי הגשה |
 | 4–5 בספטמבר | תיקוני blocker, rehearsal ו־submission checklist |
 | 6 בספטמבר | הגשה |
@@ -1172,7 +1195,7 @@ build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענ�
 אם הלו"ז מחליק, חותכים לפי הסדר:
 
 1. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
-2. finance UI מתקדם; נשארת טבלה/מספרים נכונים.
+2. הרחבות דוח כגון export, BI או charts; נשארים הסיכום והדירוג הנכונים.
 3. אנימציות, וריאציות ויזואליות ואיורים שאינם נדרשים לבהירות.
 
 לא חותכים:
@@ -1219,9 +1242,9 @@ build ו־E2E הרלוונטי ירוקים. ה־Preview הקבוע של הענ�
 
 ## 20. המשימה הבאה לסוכן הקידוד
 
-Slice 7c הושלם, נפרס ל־Preview ואושר חזותית ב־25 באוגוסט 2026. המשימה הבאה היא
-**Slice 8 — דוחות Demo**, בלי יכולת כסף אמיתי ובלי להרחיב
-את גבולות ה־MVP.
+Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. המשימה הבאה היא
+**Slice 9 — Hardening, מסמכים והצגה**, בגבולות הסעיף לעיל וללא הרחבת scope
+לפיצ'ר חדש, AI או מנגנון כספי.
 
 ## 21. מקורות טכניים — אומתו ב־15 באוגוסט 2026
 

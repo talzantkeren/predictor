@@ -361,3 +361,47 @@ npm run test:e2e
 - `npm run test:e2e` כולל build עם sentinel server-only וסריקת
   `test:client-secrets` לפני הפעלת השרת; אין צורך בהרצה נפרדת שאינה קשורה
   לאותו build.
+
+## Slice 8: דוח מנהל לא־כספי
+
+בדיקות Slice 8 קוראות רק את Supabase המקומי דרך session משתמש ו־RLS. אין
+admin client, migration, RPC חדש, ספק חיצוני, AI, תשלום, קופה, פרס כספי או
+חישוב payout. ה־E2E יוצר משתמשים ונתוני ליגה סינתטיים במסד המקומי החד־פעמי;
+אין שינוי Hosted או Production.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest — queries | count exact של חברויות `active` בלבד; `pending_approval`, `pending_proof` ו־`rejected` כשאילתות נפרדות; אין קריאת `payment_proofs`; ordinary member/manager אחר נעצרים לפני counts; `null`, שלילי, fraction, `NaN`, infinity, unsafe integer ויותר מ־500 נכשלים סגור |
+| Vitest — service | creator-only, אפס חברים ודירוג ריק, ספירות סטטוס נפרדות, ranking `1,1,3`, שמות תצוגה כפולים עם keys שונים לפי `userId`, authorization לפני standings, שגיאת limit מן ה־standings הקיים ו־`completed` בלבד כדירוג סופי |
+| רגרסיית scoring | `mapStanding` ממשיך לדחות aggregate חסר או unsafe; `getLeagueStandings` וה־view הקיימים נשארים מקור האמת ואין ranking משוכפל בדוח |
+| Playwright | guest מוחזר ל־login עם `next` מאומת; המנהל המדויק מגיע דרך tab "דוחות" ורואה 2 חברים פעילים וספירה נפרדת אחת לכל סטטוס; חברות `removed` אינה נספרת; חבר פעיל ומנהל ליגה אחרת מקבלים not-found אטום; active→current ו־completed→final; notice קבוע; אין currency/percentage/AI/payment link; table+caption בדסקטופ, cards ב־Pixel 5, RTL וללא overflow |
+| Visual/manual | 390px ו־1440px, loading/error/empty, keyboard/focus, headings סמנטיים, caption לטבלה, טקסט ארוך ושמות כפולים ללא overflow |
+
+העובדה שקבצי proof מרובים אינם משפיעים על הספירה מוכחת גם מבנית: query הדוח
+קוראת רק `join_requests` עם count exact לפי status ואינה מצרפת או קוראת את
+`payment_proofs`. ה־RLS הקיימת נשארת הגנת עומק; בדיקת ה־Service אינה מחליפה
+את בדיקות ה־manager/other-manager ב־Playwright.
+
+### הרצה ממוקדת
+
+```powershell
+npm run test -- src/features/reports/queries.test.ts src/features/reports/service.test.ts src/features/scoring/queries.test.ts src/features/auth/auth-rules.test.ts
+npm run test:e2e -- e2e/reports.spec.ts
+```
+
+לפני מסירה מורצים גם `npm ci`, reset מקומי, pgTAP הקיים, drift, build,
+`npm run verify` ו־`git diff --check`. אין לסמן את Slice 8 כנמסר אם אחד מן
+ה־gates לא רץ בהצלחה בפועל.
+
+### תוצאת אימות — 25 באוגוסט 2026
+
+- `npm ci`: 425 packages הותקנו, audit מצא 0 vulnerabilities.
+- `lint`, `typecheck`, build, DB lint ו־generated-types drift עברו.
+- Vitest: כל 485 הבדיקות ב־36 קבצים עברו.
+- pgTAP: כל 646 הבדיקות בעשרה קבצים עברו לאחר reset מקומי מלא.
+- Playwright ממוקד לדוח: 2/2 עברו; `npm run verify` המלא: 22/22 עברו
+  בדסקטופ וב־Pixel 5, כולל AuthZ, current/final והיעדר overflow.
+- client-secret scan עבר על 50 build artifacts. לא בוצעה קריאת ספק חיה,
+  mutation Hosted, deploy או merge.
