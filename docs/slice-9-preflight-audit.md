@@ -6,15 +6,18 @@
 | ענף ביקורת | `feature/slice-9-preflight-audit` |
 | SHA בסיס מקובע | `a14edfc4df446a57f0bfe7153f6f0870e0cab243` |
 | מקור הבסיס | `origin/main`, לאחר `git fetch origin --prune` |
+| בסיס ריוויזיה | PR #13 היה `OPEN` ו־Draft ב־head `1b5b28f4e2190e6597cee8e48fcc12b3aee4e3c4`; רק שלושת קובצי התיעוד המורשים היו ב־diff |
 | re-fetch סופי לפני commit | `origin/main` נשאר `a14edfc4df446a57f0bfe7153f6f0870e0cab243`; הביקורת אינה stale |
 | פלטפורמה | Windows 11, Node `v24.16.0`, npm `11.13.0`, Docker Server `29.7.2`, PostgreSQL מקומי 17 |
 | פסק דין מבוקר | **SLICE 9 BACKLOG READY** |
 
 פסק הדין אומר שה־backlog של Slice 9 שלם, ממוסמך וניתן לתכנון. הוא **אינו**
-אומר שהמוצר מוכן לשחרור. ב־defect register יש 25 ממצאים: P1=6, P2=11,
-P3=8; יחד עם חמש דרישות Slice 9 החסרות יש 30 רשומות פתוחות: P1=9, P2=13,
-P3=8. לכן אסור להשתמש בניסוח `RELEASE READY`, להתחיל הגשה או למזג תיקון עד
-השלמת Slice 9 וביקורת סופית חדשה על SHA פרוס יחיד.
+אומר שהמוצר מוכן לשחרור. לאחר ריוויזיית הסיווג יש 19 ממצאי delivery פתוחים
+ו־5 דרישות Slice 9 פתוחות: **24 רשומות שאינן decision-only — P1=7, P2=8,
+P3=9**. בנפרד יש חמש החלטות מוצר סגורות, החלטה טכנית אחת שנסגרה כ־accepted
+residual risk ושלוש החלטות טכניות פתוחות שאינן נספרות כ־defects. לכן אסור
+להשתמש בניסוח `RELEASE READY`, להתחיל הגשה או למזג תיקון עד השלמת Slice 9
+וביקורת סופית חדשה על SHA פרוס יחיד.
 
 PR זה הוא תיעוד בלבד. הוא אינו כולל תיקון runtime, migration, שינוי Hosted,
 קריאת ספק חיה, AI או יכולת כספית.
@@ -48,7 +51,7 @@ RLS, RPC, Actions, Handlers, בדיקות, CI, GitHub, Vercel ו־Supabase נב�
 | בדיקות | 36 קובצי Vitest, 10 קובצי pgTAP ו־8 קובצי Playwright; ללא `.skip`, `.only` או `.todo` |
 | Runtime מקומי | reset מאפס, verify מלא, בדיקת concurrency רב־session, query plans, UI מקומי ו־clean clone חד־פעמי |
 | UI ידני | ציבורי/Auth/Dashboard/League/Matches/Match/Standings/Members/Settings/Reports/Admin/Invite-unavailable; `360`, `390`, `768`, `1024`, `1440`; Chrome Desktop ו־Pixel 5 באוטומציה |
-| Hosted | Production ציבורי, Vercel env names, deployment SHA, Supabase migrations/Auth/URLs/Cron/Advisors, GitHub checks/PRs — read-only בלבד |
+| Hosted | Production ו־Preview: Vercel deployment status/URL/commit, env names, Supabase migrations/Auth/URLs/Cron/Advisors ו־GitHub checks/PRs — read-only בלבד |
 | חסום במכוון | Hosted Auth mutation/email אמיתי, evaluator GitHub identity, שינוי Cron/SMTP, Preview private-flow מלא, וזום דפדפן native 200%; כולם מופיעים כשערי Slice 9 ולא כ־PASS |
 
 ### 2.1 מלאי Routes וגבולות
@@ -148,7 +151,7 @@ Route Handlers: `GET /auth/confirm`,
 | --- | --- | --- |
 | Auth Actions + `/auth/confirm` | Supabase server session, form/URL Zod/safe redirect | Supabase Auth; profile RLS; DEF-001/004 |
 | League create | `getUser()`; form Zod | `create_league` RPC אטומי + creator membership/audit |
-| Invite/request/decision Actions | `getUser()`; IDs/forms untrusted | exact RPC manager/member checks + RLS/audit; terminal gap DEF-005 |
+| Invite/request/decision Actions | `getUser()`; IDs/forms untrusted | exact RPC manager/member checks + RLS/audit; terminal composition מתוכנן ב־REQ-001 |
 | Invite exchange Handler | fragment-derived proof/cookie input, no secret path | hash verification, HttpOnly scoped cookie, opaque response |
 | Proof upload/view Handlers | session + UUID/form/body/file untrusted | exact request/proof authorization, fixed private bucket, sanitize/re-encode/signed ≤60s |
 | Prediction Action | session + scores/UUIDs | `save_prediction`; DB member/league/match locks; DEF-002 |
@@ -161,7 +164,8 @@ Status transitions שנבדקו: league `draft→open` בלבד קיים; member
 `pending_proof→pending_approval→approved/rejected`; member `active/removed`;
 match `scheduled/postponed/live/finished/canceled` עם fail-closed review;
 sync `running→succeeded/failed/skipped`; scoring overwrites current result.
-Lifecycle gaps ו־terminal composition מופיעים DEF-005/006/REQ-001.
+החלטות ה־lifecycle נסגרו בריוויזיה; ה־runtime וה־terminal composition נשארים
+פתוחים ב־REQ-001, כאשר DEF-005 ו־DEF-021 מוזגו לתנאי הקבלה שלו.
 
 #### Bound/pagination ledger
 
@@ -239,7 +243,7 @@ Lifecycle gaps ו־terminal composition מופיעים DEF-005/006/REQ-001.
 
 | path | סוג/תפקיד | נבדק בפועל | drift/disposition |
 | --- | --- | --- | --- |
-| `docs/architecture.md` | Markdown קנוני | נקרא במלואו | חוזה lifecycle דורש הכרעה S9-DEF-006 |
+| `docs/architecture.md` | Markdown קנוני | נקרא במלואו | state-machine/DB-authority הכלליים נשמרו, אך §10.2 עדיין מתאר overwrite בכל הליגות; סנכרונו ל־PDEC-003 הוא prerequisite ראשון בתוך REQ-001 ואסור היה לערוך אותו מעבר לשלושת הקבצים המורשים ב־PR זה |
 | `docs/design-brief.md` | visual reference | נקרא במלואו | אין הרחבת scope; עיצוב light/RTL נשמר |
 | `docs/design/slice-7c/README.md` | visual/historical | נקרא במלואו | Slice 7c היסטורי, לא סטטוס שחרור נוכחי |
 | `docs/design/slice-7c/claude-design-export.html` | visual reference | DOM ו־render נבדקו | source visual בלבד; קובצי helper חסרים אינם runtime product |
@@ -257,7 +261,7 @@ Lifecycle gaps ו־terminal composition מופיעים DEF-005/006/REQ-001.
 | `docs/design/slice-7c/s3-polish-review-prompt.md` | historical prompt | נקרא במלואו | לא מקור קנוני |
 | `docs/evidence/api-football-canary-2026-08-24.md` | evidence היסטורי | נקרא במלואו | נשמר קשור ל־SHA/מועד המקורי; לא שוכתב |
 | `docs/evidence/api-football-poc-2026-08-23.md` | evidence היסטורי | נקרא במלואו | מוכיח בחירת provider, לא תצפית release נוכחית |
-| `docs/product.md` | Markdown קנוני | נקרא במלואו | status header תוקן מכנית ב־PR; קישור PDF חסר נשאר S9-DEF-023 |
+| `docs/product.md` | Markdown קנוני | נקרא במלואו | version/status והחלטות lifecycle/members עודכנו; provenance פתוח ב־S9-TDEC-003 (alias DEF-023) |
 | `docs/project-book.docx` | derived/course deliverable | text + 4/4 pages | Slice 8 next, 460/20, תוכן כספי ופריסת עמודים: S9-DEF-013 |
 | `docs/prompts/slice-6-implementation-prompt.md` | historical prompt | נקרא במלואו | אינו contract נוכחי |
 | `docs/scale.md` | ניתוח קנוני תומך | נקרא במלואו | advisor/query-scale disposition ב־S9-REQ-005 |
@@ -271,13 +275,16 @@ Lifecycle gaps ו־terminal composition מופיעים DEF-005/006/REQ-001.
 Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScript/Supabase/Vercel,
 אפיון, DB/זרימות/הרשאות, בדיקות, scale, security, URL חי, GitHub, הוראות local
 ומצגת 10–15 דקות. אין בו משקלי ציון; לא הומצא rubric. הקישור הנוכחי
-`project_sources/01-Internet-Technologies.pdf` אינו tracked ולכן דורש תיקון
-ב־S9-DEF-023, בלי לערוך את PDF המקור.
+`project_sources/01-Internet-Technologies.pdf` אינו tracked ולכן דורש הכרעה
+ב־S9-TDEC-003 (alias DEF-023), בלי לערוך את PDF המקור.
 
 ## 4. מטריצת עקיבות — דרישות מוצר
 
 כל שורה מפנה בנפרד למקור, למימוש, לראיה חיובית, לראיה שלילית/edge/concurrency
 ולראיית Hosted/manual. `PASS` הוא לדרישה המדויקת בלבד ולא לשחרור הכולל.
+כל 53 ה־IDs שהיו בסעיף 9 ב־SHA הבסיס נבדקו שוב מול חוזי Actions/Routes; לא
+נמצא orphan נוסף מעבר ל־MATCH-03 שכבר מוזג ל־S9-DEF-003. חמש החלטות המוצר
+שאושרו בריוויזיה קיבלו IDs חדשים, ולכן המטריצה המעודכנת מכסה **58/58**.
 
 | מקור | ID | התנהגות | קוד/migration | בדיקה חיובית | בדיקה שלילית/edge/concurrency | Hosted/manual | סטטוס | finding |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -285,27 +292,31 @@ Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScrip
 | `docs/product.md` §9.1 | AUTH-02 | confirm/login/logout/recovery | `src/features/auth/actions.ts`; `src/app/auth/confirm/route.ts` | `e2e/auth.spec.ts` login/recovery local | reuse/old-password/429/Hosted delivery חסרים | Hosted mutation לא בוצעה; no SMTP | FAIL | S9-DEF-001, S9-DEF-004 |
 | `docs/product.md` §9.1 | AUTH-03 | profile אוטומטי ועדכון עצמי | `supabase/migrations/20260812220000_identity.sql`; `src/features/auth/actions.ts` | `supabase/tests/identity.test.sql` own update | `supabase/tests/identity.test.sql` other-user denial | local | PASS | — |
 | `docs/product.md` §9.1 | AUTH-04 | session בכל route מוגן | `src/proxy.ts`; Server Components `getUser()` | `src/proxy.test.ts` refresh; Auth E2E | Playwright guest/cross-role denials | Production public shell בלבד | PASS למימוש | — |
-| `docs/product.md` §9.1 | AUTH-05 | redirect בטוח ומחובר→dashboard | `src/features/auth/schemas.ts`; `src/features/auth/actions.ts`; `src/proxy.ts` | Auth E2E valid next | `src/features/auth/auth-rules.test.ts` hostile next | allowlist Hosted חלקי | PARTIAL | S9-DEF-014 |
+| `docs/product.md` §9.1 | AUTH-05 | redirect בטוח ומחובר→dashboard | `src/features/auth/schemas.ts`; `src/features/auth/actions.ts`; `src/proxy.ts` | Auth E2E valid next | `src/features/auth/auth-rules.test.ts` hostile next | Production/local callback verification תחת DEF-004 | PASS למימוש | S9-DEF-014 הוא docs-only |
 | `docs/product.md` §9.2 | LEAGUE-01 | create + manager | `src/features/leagues/actions.ts`; `supabase/migrations/20260813182000_leagues.sql` | `e2e/leagues.spec.ts` create | `supabase/tests/leagues.test.sql` foreign actor | local | PASS | — |
 | `docs/product.md` §9.2 | LEAGUE-02 | כל שדות והגדרות | `src/features/leagues/schemas.ts`; create RPC | create form happy path | invalid create covered; edit path absent | local | PARTIAL | S9-DEF-007 |
 | `docs/product.md` §9.2 | LEAGUE-03 | prize rules =100% | `supabase/migrations/20260813183000_harden_prize_rule_invariant.sql` | valid split unit/pgTAP | invalid total/position pgTAP | local Demo | PASS ביצירה | S9-DEF-007 לעדכון |
 | `docs/product.md` §9.2 | LEAGUE-04 | scoring nonnegative + version | `league_scoring_rules`; `supabase/migrations/20260816110600_slice6_scoring_and_leaderboard.sql` | valid 3/1/0 pgTAP | negative/mutation-after-lock pgTAP | local | PASS | — |
-| `docs/product.md` §9.2 | LEAGUE-05 | lock לפני kickoff ראשון | `supabase/migrations/20260823190000_slice7b_api_football_sync.sql` lock trigger | normal lock pgTAP | first-kickoff lifecycle/concurrency חסר | multi-session time failure reproduced | PARTIAL | S9-DEF-006, S9-DEF-002 |
+| `docs/product.md` §9.2 | LEAGUE-05 | lock לפני kickoff ראשון | `supabase/migrations/20260823190000_slice7b_api_football_sync.sql` lock trigger | normal lock pgTAP | first-kickoff lifecycle/concurrency חסר | multi-session time failure reproduced | PARTIAL | S9-DEF-002, S9-REQ-001 |
 | `docs/product.md` §9.2 | LEAGUE-06 | manager/system-admin mutation | create AuthZ בלבד; settings mutation absent | manager create | cross-user create covered; edit absent | N/A | FAIL | S9-DEF-007 |
 | `docs/product.md` §9.2 | LEAGUE-07 | create atomic | `public.create_league` in `supabase/migrations/20260813182000_leagues.sql` | creator/membership pgTAP | rollback/replay pgTAP | local | PASS | — |
+| `docs/product.md` §9.2 | LEAGUE-08 | manual activation + automatic first-kickoff fallback | planned `startLeague` + lifecycle RPC/system reconciliation | N/A — planned | manual/automatic race + DB-time fallback missing | no Hosted lifecycle | PLANNED | S9-REQ-001, S9-DEF-002 |
+| `docs/product.md` §9.2 | LEAGUE-09 | terminal-only atomic completion | planned `completeLeague` RPC | N/A — planned | nonterminal/AET/PEN/replay/concurrency missing | no Hosted lifecycle | PLANNED | S9-REQ-001 |
 | `docs/product.md` §9.3 | JOIN-01 | create/revoke/rotate invite | `src/features/membership/actions.ts`; Slice 3 RPCs | valid invite E2E | non-manager/revoked pgTAP | local | PASS | — |
 | `docs/product.md` §9.3 | JOIN-02 | expired/revoked deny | `public.resolve_invite`; submit RPC | valid token E2E | expired/revoked/malformed pgTAP/E2E | local | PASS | — |
 | `docs/product.md` §9.3 | JOIN-03 | בקשה פעילה יחידה | Slice 3 partial unique index + submit RPC | first request pgTAP | duplicate/cross-user pgTAP | local | PASS | — |
 | `docs/product.md` §9.3 | JOIN-04 | status enum | `join_request_status`; membership display | every expected state unit | invalid transition pgTAP | local | PASS | — |
-| `docs/product.md` §9.3 | JOIN-05 | proof→pending approval | upload Handler + `finalize_payment_proof` | file/E2E valid image | bad bytes/oversize/replay pgTAP/unit | local synthetic | PASS | S9-DEF-005 terminal |
-| `docs/product.md` §9.3 | JOIN-06 | exact manager approve/reject | `src/features/membership/actions.ts`; decision RPCs | approve/reject E2E | other-league denial pgTAP/E2E; terminal חסר | local | PARTIAL | S9-DEF-005 |
-| `docs/product.md` §9.3 | JOIN-07 | membership atomic/idempotent | `supabase/migrations/20260815143000_manager_join_request_decisions.sql` | approve creates member | replay/concurrency pgTAP; terminal חסר | local | PARTIAL | S9-DEF-005 |
+| `docs/product.md` §9.3 | JOIN-05 | proof→pending approval | upload Handler + `finalize_payment_proof` | file/E2E valid image | bad bytes/oversize/replay pgTAP/unit | local synthetic | PASS למצב הקיים | — |
+| `docs/product.md` §9.3 | JOIN-06 | exact manager approve/reject | `src/features/membership/actions.ts`; decision RPCs | approve/reject E2E | other-league denial pgTAP/E2E | local | PASS למצב הקיים | — |
+| `docs/product.md` §9.3 | JOIN-07 | membership atomic/idempotent | `supabase/migrations/20260815143000_manager_join_request_decisions.sql` | approve creates member | replay/concurrency pgTAP | local | PASS למצב הקיים | — |
 | `docs/product.md` §9.3 | JOIN-08 | resubmit after reject while open | `private.join_request_eligibility` | resubmit E2E | closed/duplicate denial pgTAP | local | PASS | — |
-| `docs/product.md` §9.3 | JOIN-09 | 1:N private proof history | `payment_proofs`; RLS; `src/features/files/private-proof-storage.ts` | multiple proof history pgTAP | cross-league/direct-storage denial | local | PASS | S9-DEF-005 terminal |
+| `docs/product.md` §9.3 | JOIN-09 | 1:N private proof history | `payment_proofs`; RLS; `src/features/files/private-proof-storage.ts` | multiple proof history pgTAP | cross-league/direct-storage denial | local | PASS | — |
 | `docs/product.md` §9.3 | JOIN-10 | hash/fragment/7d/one-time | invite RPC + `src/app/api/invites/[publicId]/exchange/route.ts` | valid exchange E2E | replay/expired/raw-token absence | local | PASS | S9-DEF-016, S9-DEF-020 UX |
 | `docs/product.md` §9.3 | JOIN-11 | idempotent/concurrent request | partial unique + submit RPC | first submit | real DB concurrent duplicate pgTAP | local | PASS | — |
-| `docs/product.md` §9.3 | JOIN-12 | safe WebP/idempotency/rate cap | upload Handler; `src/features/files/image.ts`; rate RPC | JPEG/PNG/WebP unit/E2E | magic/decode/pixel/rate/replay/compensation | local synthetic only | PASS | S9-DEF-005 terminal |
-| `docs/product.md` §9.3 | JOIN-13 | uploader/exact manager signed ≤60s | proof-view Handler + private gateway | authorized signed URL | outsider/other-league/path denial | local | PASS | S9-DEF-005 terminal |
+| `docs/product.md` §9.3 | JOIN-12 | safe WebP/idempotency/rate cap | upload Handler; `src/features/files/image.ts`; rate RPC | JPEG/PNG/WebP unit/E2E | magic/decode/pixel/rate/replay/compensation | local synthetic only | PASS | — |
+| `docs/product.md` §9.3 | JOIN-13 | uploader/exact manager signed ≤60s | proof-view Handler + private gateway | authorized signed URL | outsider/other-league/path denial | local | PASS | — |
+| `docs/product.md` §9.3 | JOIN-14 | completion closes both pending states atomically with `LEAGUE_COMPLETED` | planned `completeLeague`; existing `rejected` representation | N/A — planned | upload/finalize/approve/reject completion races missing | no Hosted lifecycle | PLANNED | S9-REQ-001; S9-DEF-005 merged |
+| `docs/product.md` §9.3 | JOIN-15 | read-only active-member list + queue | queue קיים; active-member list query/UI absent | queue E2E | pagination/cross-league/list completeness missing | N/A | PARTIAL planned | S9-REQ-001; S9-DEF-021 merged |
 | `docs/product.md` §9.4 | MATCH-01 | round/date display | `src/features/predictions/queries.ts`; league matches page | query/unit + Playwright | empty/filter/date edges | local | PASS | — |
 | `docs/product.md` §9.4 | MATCH-02 | teams/UTC/status/result | sports schema/provider/pages | provider fixtures/unit/E2E | unknown/status identity failures | local + Hosted catalog | PASS | S9-DEF-010 reliability |
 | `docs/product.md` §9.4 | MATCH-03 | system-admin full create/correct | `src/features/scoring/actions.ts` result-only | result override E2E | create/schedule/team correction absent | N/A | FAIL | S9-DEF-003, S9-DEF-009 |
@@ -314,6 +325,7 @@ Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScrip
 | `docs/product.md` §9.4 | MATCH-06 | run audit/no duplicate window | sync claim/apply/finalize RPCs | sync pgTAP/E2E normal | time/fairness/429/timeout/type/stage edges | Hosted one Cron + no active lease snapshot | PARTIAL | S9-DEF-002, S9-DEF-010, S9-DEF-011, S9-DEF-012, S9-DEF-018, S9-DEF-019 |
 | `docs/product.md` §9.4 | MATCH-07 | irreversible reveal latch | sync apply + lock trigger | early-cancel privacy pgTAP | cancellation/lock multi-session race reproduced statically | local | FAIL under concurrency | S9-DEF-002 |
 | `docs/product.md` §9.4 | MATCH-08 | FT only; AET/PEN review | provider normalizer/planner/apply | recorded FT fixtures | AET/PEN/unknown fail-closed unit/pgTAP | historical POC | PASS | — |
+| `docs/product.md` §9.4 | MATCH-09 | completed-league correction requires explicit reconciliation | current scorer rewrites globally; planned lifecycle reconciliation boundary | N/A — planned | provider correction after completion/replay/AuthZ missing | no Hosted lifecycle | PLANNED | S9-REQ-001 |
 | `docs/product.md` §9.5 | PRED-01 | active member, integer nonnegative | prediction Action/RPC/constraints | valid save E2E | invalid score/inactive denial; member #201 gap | local | PARTIAL at scale | S9-DEF-009 |
 | `docs/product.md` §9.5 | PRED-02 | unique user/league/match | unique constraint + upsert | first save | double-submit/replay pgTAP | local | PASS | — |
 | `docs/product.md` §9.5 | PRED-03 | DB time strictly before kickoff | `public.save_prediction` | ordinary pre-kickoff pgTAP | real multi-session late-commit failure | local reproduction | FAIL | S9-DEF-002 |
@@ -325,11 +337,11 @@ Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScrip
 | `docs/product.md` §9.6 | SCORE-03 | no prediction = 0 display | invoker leaderboard/report | no-prediction display test | no phantom row/points | local | PASS | — |
 | `docs/product.md` §9.6 | SCORE-04 | scoring metadata persisted | predictions columns + scoring function | metadata pgTAP | stale version/correction assertions | local | PASS | — |
 | `docs/product.md` §9.6 | SCORE-05 | overwrite/idempotent | `private.score_match` | retry same result | replay does not increment pgTAP | local | PASS | — |
-| `docs/product.md` §9.6 | SCORE-06 | correction replaces | same function | corrected result E2E | old points/version replaced | local | PASS | — |
+| `docs/product.md` §9.6 | SCORE-06 | correction replaces in non-completed; completed requires explicit reconciliation | current function rewrites globally; planned lifecycle guard/reconciliation | corrected result E2E לפני completion | post-completion silent rewrite/review/AuthZ חסרים | local only | PARTIAL planned | S9-REQ-001 |
 | `docs/product.md` §9.6 | SCORE-07 | points/outcomes/shared rank | `public.league_leaderboard` | rank `1,1,3` unit/pgTAP | draw/tie/retry edges | local | PASS | — |
 | `docs/product.md` §9.6 | SCORE-08 | exact display only | leaderboard view/order/UI | exact display/tie tests | no arbitrary secondary tie-break | local | PASS | — |
 | `docs/product.md` §9.7 | REPORT-01 | exact manager opaque deny | `src/features/reports/service.ts` | manager report E2E | member/outsider/other-manager denial | local | PASS | — |
-| `docs/product.md` §9.7 | REPORT-02 | active-member count | `src/features/reports/queries.ts` | creator/active count | removed member excluded; terminal mutation gap | local | PARTIAL terminal | S9-DEF-005 |
+| `docs/product.md` §9.7 | REPORT-02 | active-member count | `src/features/reports/queries.ts` | creator/active count | removed member excluded | local | PASS למצב הקיים | — |
 | `docs/product.md` §9.7 | REPORT-03 | distinct request counts | report queries | approved/rejected counts | proof-history nondup | local | PASS | — |
 | `docs/product.md` §9.7 | REPORT-04 | canonical shared rank | leaderboard reuse | rank render unit/E2E | tie ordering edge | local | PASS | — |
 | `docs/product.md` §9.7 | REPORT-05 | current vs final by completed | report service/page | final fixture renders | product completion path absent | no Hosted lifecycle | PARTIAL planned | S9-REQ-001 |
@@ -342,18 +354,23 @@ Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScrip
 | course PDF pp.1–6 | COURSE-01 | מוצר Web E2E עם ערך משתמש | Slices 0–8 + canonical docs | 22 Playwright green | lifecycle/full-demo absent | Production public | PARTIAL | S9-REQ-001 |
 | course PDF pp.2–6 | COURSE-02 | אפיון, architecture, plan | `docs/product.md`; `docs/architecture.md`; `docs/technical-plan.md` | full document review | cross-document drift review | N/A | PASS עם findings | S9-REQ-004 |
 | course PDF pp.1,4,7 | COURSE-03 | Next.js+TS+Supabase+Vercel | `package.json`; migrations; `.github/workflows/ci.yml` | build/CI/deployment exact base SHA | final SHA not yet exists | Production base | PASS לבסיס | S9-REQ-003 לסופי |
-| course PDF pp.3–6 | COURSE-04 | DB/pages/APIs/flow/permissions/services | inventories §2 + canonical docs | route/DB/service coverage | missing fallback/settings/terminal mutations | local | PARTIAL | S9-DEF-003, S9-DEF-005, S9-DEF-007 |
+| course PDF pp.3–6 | COURSE-04 | DB/pages/APIs/flow/permissions/services | inventories §2 + canonical docs | route/DB/service coverage | missing match-create/settings/lifecycle capabilities | local | PARTIAL | S9-DEF-003, S9-DEF-007, S9-REQ-001 |
 | course PDF pp.5–6 | COURSE-05 | core/invalid/AuthZ/DB/edge/UI tests | 54 test files; `npm run verify` | 489/646/22 fresh | listed concurrency/manual/Hosted gaps | local/CI | PARTIAL | S9-REQ-005 |
 | course PDF p.6 | COURSE-06 | scale/queries/indexes/limits/future | `docs/scale.md`; plans; Advisors | 8 local plans + linked stats | seed/hosted shape קטן; hundreds absent | linked CLI/dashboard | PARTIAL | S9-REQ-005 |
-| course PDF p.6 | COURSE-07 | AuthN/AuthZ/validation/API/secrets/security | `docs/security.md`; RLS/grants/scans | 646 pgTAP + secret boundary scan | Hosted Auth/lifecycle/bidi/key-scope gaps | Advisor/config read-only | PARTIAL | S9-DEF-004, S9-DEF-005, S9-DEF-015, S9-DEF-025 |
+| course PDF p.6 | COURSE-07 | מסמך AuthN/AuthZ/validation/API/secrets/residual risks | `docs/security.md`; RLS/grants/scans | 646 pgTAP + secret boundary scan | final security document/candidate evidence pending | Advisor/config read-only | PARTIAL | S9-REQ-004, S9-REQ-005 |
 | course PDF p.7 | COURSE-08 | live URL/GitHub/local instructions | README + CI/deployment | clean clone and public 200 | evaluator private-repo identity unavailable | Production base | BLOCKED לסופי | S9-REQ-003 |
 | course PDF pp.7–9 | COURSE-09 | presentation 10–15 דקות | artifact absent | N/A — missing | N/A — no rehearsal/timing | N/A | MISSING | S9-REQ-002 |
 | course PDF pp.8–9 | COURSE-10 | value/architecture/flows/tests/scale/security/future | deck/demo script absent | N/A — missing | N/A — outage/credential fallback absent | N/A | MISSING | S9-REQ-002 |
 | internal release gate | INTERNAL-AUTH | evaluator signup/recovery reliable | Supabase Auth config + Auth Actions | local Mailpit | arbitrary Hosted recipient/reuse/429 absent | default SMTP team-only/2h | FAIL | S9-DEF-004 |
-| internal release gate | INTERNAL-BRANCH | required checks protected | GitHub settings/API | exact-SHA CI green | protection/ruleset API 403 | GitHub private/free | BLOCKED | S9-DEF-017 |
+| internal release gate | INTERNAL-BRANCH | manual reviewed-PR release control | documented owner control | exact-SHA CI green | GitHub protection/ruleset API 403; procedural control אינו enforced | GitHub private/free | RESOLVED — ACCEPTED RESIDUAL RISK | S9-DEF-017 / S9-TDEC-001 |
 | internal release gate | INTERNAL-URL | incognito ללא protection | Vercel deployment/alias | Production alias HTTP 200 | final candidate absent | public base | PASS לבסיס | S9-REQ-003 לסופי |
 | README | INTERNAL-CLEAN | clean-clone local run | README + `.env.example` + migrations | clone/install/reset/dev, `/`+`/login` 200 | values withheld; disposable cleanup | local fresh clone | PASS | — |
 | internal accessibility gate | INTERNAL-UI | RTL/responsive/keyboard/zoom | global CSS/layouts/components | 360–1440 + desktop/mobile E2E | native 200%/full keyboard/contrast missing | local manual | PARTIAL | S9-REQ-005 |
+
+ה־PDF דורש URL חי, קישור GitHub, מסמכי מוצר/תכנון/בדיקות/סקייל/אבטחה,
+הוראות local/env, בדיקות ומצגת 10–15 דקות. Branch protection, Preview Auth,
+custom SMTP ו־leaked-password protection אינם דרישות מפורשות שלו; הם נשארים
+מסומנים כ־internal controls/evidence ולא מיוחסים ישירות לקורס.
 
 ## 6. פקודות ותוצאות בפועל
 
@@ -410,10 +427,17 @@ Script graph נבדק: `verify` מריץ lint→typecheck→Vitest→pgTAP→typ
   `https://predictor-cboalnn2l-tals-projects-19902e47.vercel.app`; alias
   `https://predictor-swart.vercel.app` נפתח ללא login/protection והציג Demo
   בעברית.
+- בנקודת baseline של הריוויזיה, Preview deployment ‏`6095307286` היה
+  `success` עבור head הישן של PR #13, ‏
+  `1b5b28f4e2190e6597cee8e48fcc12b3aee4e3c4`, ב־
+  `https://predictor-4mxgk52ja-tals-projects-19902e47.vercel.app`; HEAD ציבורי
+  החזיר 200. זהו Preview של תיעוד הביקורת, לא ה־SHA המקובע של המוצר ולא הוכחת
+  Auth callback/private flow. Preview של head החדש יאומת אחרי push ברמת PR,
+  בלי להציג אותו כראיית runtime ל־`origin/main`.
 - Production כולל את תשעת שמות ה־env הצפויים, ללא קריאת ערכים:
   Supabase URL/publishable/secret, app URL, Demo mode, provider/key, Cron secret
   ו־system actor. Preview כולל שישה שמות, ברירת המחדל שלו Manual, וכן entries
-  ישנים branch-specific; ראו S9-DEF-025.
+  ישנים branch-specific; ראו S9-TDEC-002 (alias S9-DEF-025).
 - PR #9, `Docs: expand Slice 10 production hardening contract`, פתוח, non-draft
   ו־`DIRTY`. הוא היסטורי בלבד ולא מוזג/נסגר. רק הדרישות התקפות של SMTP/recovery
   עברו עצמאית ל־register זה. אין בו review אנושי או review decision; comment
@@ -425,7 +449,8 @@ Script graph נבדק: `verify` מריץ lint→typecheck→Vitest→pgTAP→typ
   Scoring, Manual Sync, API-Football, Design ו־Reports; #6 הוסיף prompt היסטורי.
   לא נכרה כל commit ישן ולא הוחזר רעיון superseded.
 - API branch-protection ו־rulesets החזירו 403: repository פרטי בתכנית הנוכחית
-  אינו מספק את יכולת ההגנה הדרושה. אין מכאן ראיה ש־main מוגן; ראו S9-DEF-017.
+  אינו מספק enforcement. אין מכאן ראיה ש־main מוגן; residual risk התקבל עם
+  manual release control ב־S9-DEF-017/S9-TDEC-001.
 - evaluator access ל־repository הפרטי לא ניתן לאימות ללא זהות evaluator; זהו
   שער מפורש ב־S9-REQ-003.
 
@@ -463,6 +488,30 @@ CLI read-only: `supabase inspect db table-stats --linked` ו־
   כלל `5` `skipped`. ה־lease generation היה `167`, ללא `run_id`,
   `locked_until` או `backoff_until`. זה מוכיח מצב רגעי בלבד, לא slow path.
 
+אלה שני ה־`SELECT` המסוננים ששימשו ל־snapshot; הם אינם בוחרים actor IDs,
+operator notes, payloads או secrets:
+
+```sql
+select
+  clock_timestamp() as observed_at,
+  provider,
+  sync_kind,
+  status,
+  count(*)::bigint as run_count
+from public.sync_runs
+group by provider, sync_kind, status
+order by provider, sync_kind, status;
+
+select
+  provider,
+  generation,
+  run_id,
+  locked_until,
+  backoff_until
+from public.sync_leases
+order by provider;
+```
+
 ### 7.1 Security Advisor — 0 errors, 22 warnings, 6 info
 
 | פריטים | disposition |
@@ -470,7 +519,7 @@ CLI read-only: `supabase inspect db table-stats --linked` ו־
 | `pg_net` ב־`public` | ה־job הנוכחי תלוי ב־`pg_net`; לא הוכח שמיקום `public` עצמו נדרש. יש לאמת schema/dependencies נתמכים לפני כל move ב־S9-REQ-005 |
 | advisor role-entries ל־`SECURITY DEFINER`: `resolve_invite`, `approve_join_request`, `authorize_payment_proof_access`, `consume_proof_upload_rate_limit`, `create_league`, `create_or_rotate_invite`, `finalize_payment_proof`, `get_join_request_upload_context`, `get_league_invite_metadata`, `get_manager_join_requests`, `get_my_join_requests`, `get_my_join_requests_v2`, `is_system_admin`, `reject_join_request`, `revoke_invite`, `save_prediction`, `submit_join_request` | gateways מכוונים, `search_path=''`, grants מצומצמים ו־pgTAP. לשמור disposition function-by-function; אין warning אוטומטי שהוא bypass |
 | `rls_auto_enable` ל־anon/authenticated | אינו קיים ב־local migrations אך הופיע ב־Hosted Advisor; owner/definition/grants חייבים להיבדק ולהיות מוסברים או מבוטלים לפני release |
-| leaked password protection disabled | מגבלת plan מאומתת; להחליט plan/mitigation, rate limiting ו־password policy ב־S9-REQ-005 |
+| leaked password protection disabled | מגבלת plan מאומתת; S9-TDEC-004 יכריע plan או mitigation מתועד, ו־S9-REQ-005 יאמת rate/password/monitor controls |
 | שש טבלאות RLS ללא policies: `audit_logs`, `invite_links`, `rate_limit_events`, `sports_provider_rounds`, `sync_leases`, `system_admins` | deny-all מכוון עם gateway/RPC; לשמר tests של no direct grant |
 
 ### 7.2 Performance Advisor — 0 errors, 0 warnings, 20 info
@@ -511,7 +560,7 @@ predictions, 10 requests, 46 profiles ו־2 sync runs. לתוכניות fixture/
 | Manager request counts | bitmap index על `join_requests_league_status_created_idx`, 0.034ms | advisor “unused” אינו מייצג workload זה |
 | Sync history | 2-row scan/sort, 0.020ms | cap 100 קיים; retention עתידי measurement-gated |
 | Sync due candidate | `matches_external_identity_key` + sort, 25 eligible→20, 0.035ms | query-equivalent read-only; `matches_status_kickoff_idx` לא נבחר ב־shape זה. DEF-010 דורש fairness, לא index עיוור |
-| Lifecycle eligibility prototype | league PK + 5-row terminal scan, 0.027ms | predicate עצמו עדיין החלטה פתוחה, לא מאושר מהמבחן |
+| Lifecycle eligibility prototype | league PK + 5-row terminal scan, 0.027ms | predicate הוכרע תיעודית; plan קטן זה אינו ראיית implementation/concurrency של REQ-001 |
 
 Hosted table stats היו קטנים גם הם (כ־187 matches, 172 sync runs, 26 rounds,
 20 teams, lease אחד). אין ראיה לצורך Redis, queue, backend נפרד, cache חיצוני
@@ -550,11 +599,59 @@ Hosted table stats היו קטנים גם הם (כ־187 matches, 172 sync runs, 
 
 ## 10. Defect register
 
-סיכום defect-only: **P0: 0; P1: 6; P2: 11; P3: 8**. לפי סוג: 13 `BUG`, שלושה
-`DATA_INTEGRITY`, שני `RELEASE_BLOCKER`, ארבעה `DOC_CONFLICT`, אחד
-`DECISION_REQUIRED` ושני `SECURITY`. כל P1/P2 חוסם release; waiver ל־P2 דורש
-owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר בזמן הביקורת. עם חמש
-רשומות REQ: **30 פתוחות — P1=9, P2=13, P3=8**.
+Type, category, priority ו־status הם שדות נפרדים. `RELEASE_BLOCKER` יכול לתאר
+פער evidence/מסירה או planned requirement אך אינו severity; רשומת
+`DECISION_REQUIRED` או `ACCEPTED_RISK` נספרת ב־decision/risk ledger ולא בתוך
+open defect count. רשומת `Merged` אינה נספרת שוב.
+
+ריוויזיה זו מוסיפה במפורש שלוש classifications שאינן `BUG` ואינן מנפחות את
+ספירת ה־implementation defects: `MISSING_MVP_CAPABILITY` ל־DEF-003,
+`LIFECYCLE_PREREQUISITE` הממוזג ל־DEF-005 ו־`OPERABILITY_RISK` ל־DEF-012.
+שדות Category של Hosted/governance/decision alias אינם Type נוסף.
+
+החשבון המכני לאחר הריוויזיה:
+
+| קבוצה | P1 | P2 | P3 | סה״כ | disposition |
+| --- | ---: | ---: | ---: | ---: | --- |
+| implementation/security defects פתוחים | 2 | 5 | 7 | 14 | `BUG` 11, `DATA_INTEGRITY` 2, `SECURITY` 1 |
+| documentation conflicts פתוחים | 0 | 1 | 1 | 2 | DEF-013/014 |
+| missing MVP capability פתוח | 1 | 0 | 0 | 1 | DEF-003 |
+| Hosted configuration/evidence gap פתוח | 1 | 0 | 0 | 1 | DEF-004 |
+| unreproduced operability risk פתוח | 0 | 0 | 1 | 1 | DEF-012 |
+| **ממצאי delivery פתוחים** | **4** | **6** | **9** | **19** | לא כולל decisions/merged/accepted risk |
+| accepted residual risk סגור | 0 | 0 | 1 | 1 | DEF-017; P3 tracked אך לא open delivery |
+| planned Slice 9 requirements | 3 | 2 | 0 | 5 | REQ-001–005 |
+| **delivery פתוח כולל REQ** | **7** | **8** | **9** | **24** | בסיס ה־critical path |
+
+בנפרד: חמש החלטות מוצר `S9-PDEC-*` סגורות ואפס פתוחות; החלטה טכנית אחת
+נסגרה כ־accepted residual risk ושלוש `S9-TDEC-*` פתוחות. ארבע רשומות DEF
+אינן פתוחות עצמאית: DEF-005 ו־DEF-021 מוזגו ל־REQ-001, DEF-006 נסגר כהחלטת
+מוצר ו־DEF-017 נסגר כ־accepted risk. DEF-023/025 הם aliases ל־technical
+decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver ל־P2
+דורש owner, נימוק, mitigation ותאריך בכתב. אין waiver חדש ל־P2.
+
+#### Disposition של ריוויזיית `AUDIT_NEEDS_REVISION`
+
+| delta | disposition מדויק |
+| --- | --- |
+| Scope statement | `CORRECTED` — היעדים לא השתנו; capability scope התרחב במפורש ב־DEF-003/007/008/009 וב־active-members acceptance |
+| S9-DEF-003 | `RECLASSIFIED` ל־`MISSING_MVP_CAPABILITY`, נשאר P1; team CRUD הוסר והוגדר catalog/seed/identity בטוח |
+| CLAUDE-NEW-001 | `MERGED INTO S9-DEF-003`; אינו ID/ממצא נספר |
+| Product §9 orphan sweep | `58/58` לאחר חמש החלטות חדשות; כל 53 ה־IDs המקוריים נבדקו ולא נמצא orphan נוסף; LEAGUE-06 תוקן בתוך DEF-007 |
+| S9-DEF-004 | `RETAINED` כ־P1 Hosted release/evidence gap; configuration child של split DEF-014 נבלע בו ללא ID חדש |
+| S9-DEF-005 | `MERGED INTO S9-REQ-001`; terminal matrix/locks/negative+real concurrency נשארו חובה, לא blocker עצמאי לפני lifecycle |
+| S9-DEF-006 | `VERIFIED RESOLVED — PRODUCT DECISION CONTRACT`; אין טענת runtime fix |
+| S9-DEF-012 | `RECLASSIFIED` ל־`OPERABILITY_RISK`, P3; promotion condition מוגדר |
+| S9-DEF-014 | `SPLIT WITHOUT DUPLICATION`: README/stale+wildcard Preview aliases נשארים DEF-014 P3; Production/local Hosted config/evidence הוא child `CONFIGURATION` P2 dependency של DEF-004 ואינו ID/ספירה נוספת |
+| S9-DEF-015 / 016 | `RETAINED`, downgraded to P3; נשארים ב־final RTL/accessibility pass |
+| S9-DEF-017 | `P3 ACCEPTED RESIDUAL RISK`; נסגר באמצעות manual release control מאושר, ללא public repo/plan purchase |
+| S9-DEF-021 | policy/docs `VERIFIED RESOLVED`; read-only active-member capability `MERGED INTO S9-REQ-001` |
+| S9-REQ-001–005 | `RETAINED` כ־planned requirements, לא regressions; REQ-001 הורחב רק ב־merged acceptance והחלטות הבעלים |
+| Decision-table delta | lock order הועבר ל־implementation/data-integrity invariant; `/members` הוכרע ב־PDEC-005 ואינו open policy |
+| Decisions/counts | product/technical decisions הופרדו מ־defects; כל המספרים חושבו מחדש בטבלה לעיל |
+| Course attribution | branch/Preview/SMTP/leaked-password מסומנים internal ולא מיוחסים ישירות ל־PDF |
+| Critical path | resolved decisions ו־DEF-017 הוסרו מעבודת engineering; DEF-005/021 נכנסו ל־REQ-001; capability work תוזמן במפורש |
+| Test-count limitation in Claude review | `NOT A FINDING`; 489/646/22 נשארים evidence של הריצה המקובעת המתועדת, ולא נטענת ריצת runtime חדשה בריוויזיה. final candidate חייב rerun תחת REQ-005 |
 
 **P0 — No findings.** לא נמצאה דליפת credential, bypass cross-tenant, גישה
 ציבורית ל־proof פרטי, מחיקה/השחתה הרסנית או יכולת כסף אמיתי.
@@ -634,49 +731,83 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-003 — fallback ידני מלא למשחקים חסר
 
-- Type: `BUG`
+- Type: `MISSING_MVP_CAPABILITY`
 - Severity: `P1`; Confidence: `CONFIRMED`; Release blocking: `Yes`
-- Affected requirements/slices: MATCH-02/03/04, fallback non-negotiable; Slices
-  4, 6, 7.
+- Affected requirements/slices: MATCH-02/03/04/05/09, fallback non-negotiable; Slices
+  5–7 ו־Slice 9.
 - Environment/SHA: static + local UI, `a14edfc4…`.
 - Roles/routes/data: system admin, `/admin/matches`; `teams`, `matches`, results,
   audit log.
-- Preconditions/reproduction: להשבית/לא לבחור API-Football ולנסות ליצור או
-  לתקן teams/round/kickoff/status. UI/Action מאפשרים רק `finished`/`canceled`
-  ותוצאה על match קיים.
-- Expected: admin יכול להזין schedule ותוצאה מלאה, צרה ומבוקרת; Manual seed
-  תמיד מאפשר demo.
+- Preconditions/reproduction: לבחור `SPORTS_API_PROVIDER=manual` ולנסות לאכלס
+  או ליצור match חדש. `src/features/sync/orchestrator.ts:82-89` מחזיר
+  `skipped/MANUAL_PROVIDER` לפני ש־fixtures של ה־adapter מוחלים. migration
+  `supabase/migrations/20260815200600_slice5_manual_demo_fixtures.sql:1-69`
+  מספקת חמש רשומות Demo סטטיות בלבד. ה־adapter הנוכחי ב־
+  `src/features/sports/fixtures.ts:3-78` משתמש ב־IDs לא־UUID, תאריכי אוגוסט
+  ו־live/finished ישנים שאינם תואמים ל־UUIDs/תאריכי אוקטובר של ה־seed; אסור
+  להזרים payload זה כפי שהוא. אין workflow מוצרי ליצירה/תיקון מלאים.
+- Expected: system admin יכול ליצור או לתקן match מתוך season ושתי teams
+  קיימות, עם stable server-issued create UUID, round, kickoff UTC, status
+  ותוצאה לפי הסטטוס. אין team-CRUD כללי.
 - Actual/evidence: `src/features/scoring/actions.ts:21-71` ו־
   `src/features/scoring/components/manual-result-form.tsx:14-46` הם result-only;
-  Manual provider הוא fixtures מוקלטים ב־
-  `src/features/sports/provider-factory.ts:17-21` ו־
-  `src/features/sports/fixtures.ts:18-78`; manual sync אינו משנה matches.
-- Impact/root cause: outage/provider drift יכול לעצור core prediction league;
-  partial manual override נחשב בטעות ל־Manual adapter מלא.
-- Minimal fix boundary: system-admin workflow צר ליצירה/תיקון match/team/
-  round/kickoff/status/result, לא generic DB editor ולא provider חדש.
-- Required changes: schemas, Action/service, RPC אטומי ואודיט, UI, migration,
-  RLS/grants/generated types, product/architecture/testing/runbook.
-- Acceptance: create/correct/replay audited; Demo/API identities אינן מתמזגות
-  בשם; ordinary user/anonymous denied opaquely; UTC/score/status validation;
-  no browser provider call.
+  Manual provider עצמו קיים ונבדק ב־`src/features/sports/manual-provider.ts`
+  וב־`src/features/sports/sports-provider.test.ts`, אך orchestration הידני אינו
+  מחיל אותו. MATCH-03 נמצא ב־`docs/product.md` וה־base technical plan לא כלל
+  owning Action, implementation boundary או exit criterion; שלושתם נוספו
+  כעת לחוזה Slice 9.
+- Impact/root cause: outage, Preview Manual או catalog drift משאירים רק את
+  ה־fixtures ההיסטוריים ואת result-only override. זו יכולת MVP שמעולם לא
+  תוזמנה בחוזה פעולה, לא regression של Action שנמסר.
+- Minimal fix boundary: `createOrCorrectMatch` צר ל־system admin; בחירת teams
+  קיימות בלבד; round/kickoff/status/result; ו־`ManualSportsProvider` שמגיע
+  למסלול persistence server-only חסום ואידמפוטנטי. אין generic DB editor,
+  provider חדש או team CRUD.
+- Required changes: deterministic catalog/seed עם UUIDs יציבים, bounded manual
+  adapter import, schemas, Action/service, RPC אטומי ואודיט, UI, migration,
+  RLS/grants/generated types ו־testing/runbook.
+- Acceptance: create/correct/replay audited; ordinary user/anonymous denied
+  opaquely; אותו create UUID+payload יוצר row ו־audit outcome יחידים ו־payload
+  שונה לאותו UUID נכשל; UTC/score/status/team/season validation; no browser
+  provider call. finished לפני DB kickoff נדחה; latch של
+  `predictions_locked_at` אינו נפתח; שינוי season/teams עם predictions קיימים
+  נכשל סגור; manual create/correction מסמן manual ownership עד clear מפורש;
+  completed-league correction נכנס ל־REQ-001 review ולא משכתב final בשקט.
+  `manual-catalog-v1` נגזר במדויק מ־5 matches/6 teams שב־seed migration; adapter
+  ו־DB עוברים parity של UUID/season/team/kickoff/status. Manual sync אינו מחזיר
+  עוד `skipped/MANUAL_PROVIDER` אלא `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` typed
+  אחרי import bounded. conflict לא־זהה, provider-owned row, prediction/latch או
+  regression של time/status נכשלים אטומית, ולכן אין overwrite של seed עתידי
+  ל־live/finished ישן ואין catalog כפול. כל invocation מוסיף `sync_runs` סופי
+  אחד; רק mutation ראשון מוסיף business audit, ו־no-change replay אינו מכפיל
+  rows/audit. manual/synthetic rows נשארים ללא provider
+  identity; API-Football upsert נשאר לפי `(external_provider, external_id)`
+  בלבד. שם תצוגה לעולם אינו merge key, ומיפוי עתידי הוא reconciliation מפורש.
 - Regression: Vitest validators; pgTAP AuthZ/atomicity/replay/audit/provider
   isolation; Playwright provider-outage/manual-demo path.
 - Dependencies/order: אחרי S9-DEF-002 ולפני lifecycle completion; Waiver: N/A;
   Status: `Open`.
 
+`CLAUDE-NEW-001 — MERGED INTO S9-DEF-003`. הראיה ש־MATCH-03 היה orphan בחוזה
+הטכני וכל תנאי הקבלה שלו נמצאים ברשומה זו; אין P2 או finding נוסף.
+
 ### S9-DEF-004 — Hosted confirmation/recovery אינו בר־הדגמה אמינה
 
-- Type: `RELEASE_BLOCKER`
+- Type: `RELEASE_BLOCKER`; Category: `HOSTED_CONFIG_GAP`
 - Severity: `P1`; Confidence: `CONFIRMED` לגבי configuration/evidence gap;
   Release blocking: `Yes`.
-- Affected requirements/slices: AUTH-01/02, COURSE-01/07/08, Slice 1.
+- Affected requirements/slices: AUTH-01/02 וה־internal evaluator-release gate,
+  Slice 1. ה־PDF דורש מוצר live ובר־הדגמה, אך אינו דורש במפורש custom SMTP,
+  Preview Auth או ספק Email מסוים.
 - Environment/SHA: Hosted read-only config + docs, `a14edfc4…`.
-- Roles/routes/data: evaluator/new user; signup, recovery, SMTP, redirects,
-  templates, sessions. אין שימוש בחשבון אמיתי בביקורת.
+- Roles/routes/data: evaluator/new user; Production/local signup, recovery,
+  Email delivery, redirects, templates ו־sessions. אין שימוש בחשבון אמיתי
+  בביקורת.
 - Preconditions/reproduction: dashboard מציג no custom SMTP, built-in sender
-  team-address-only ושתי הודעות/שעה; current Preview callback אינו allowlisted;
-  אין current evidence ל־delivery→session→update→reuse denial.
+  team-address-only ושתי הודעות/שעה; אין current Production evidence ל־
+  delivery→session→update→reuse denial. drift של aliases/README ב־Preview נשאר
+  DEF-014 docs-only; אם Preview Auth נשמר כ־internal QA path, יישור Hosted שלו
+  הוא child dependency לא־נספר בתוך DEF-004 ולא finding נוסף.
 - Expected: arbitrary approved evaluator/test recipient יכול לאשר ולהשלים
   recovery באופן אמין, ללא credential committed וללא enumeration.
 - Actual: בסיס יכול לשלוח best-effort רק לנמעני team; Hosted mutation נאסרה
@@ -685,85 +816,65 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 - Impact/root cause: registration/recovery — core course flow — עלול להיכשל
   בזמן demo. default SMTP אינו production contract.
 - Minimal fix boundary: custom SMTP עם sender/domain בטוחים או חלופה מאושרת
-  שמוכיחה arbitrary evaluator delivery; exact redirect/template/rate config;
-  אין לפרסם password.
+  שמוכיחה arbitrary evaluator delivery; exact Production/local redirect,
+  template ו־rate config; אין לפרסם password. Preview Auth נדרש רק אם ייבחר
+  כנתיב QA פנימי.
 - Required changes: Hosted Auth/SMTP/redirect config, safe evidence/runbook,
   README/security/testing; אין secret ב־Git.
 - Acceptance: authorized disposable Hosted E2E: request known+unknown with
   comparable handling, delivery, same-browser callback, session, password
   update, link reuse denied, logout, old password denied, new login success;
-  429/cooldown actionable; current Preview/Production origins מדויקים.
+  429/cooldown actionable; Production וה־local callback origins מדויקים.
+  Preview נבדק בנפרד רק אם הוא חלק מ־internal release runbook.
 - Regression: manual Hosted evidence + local Playwright/Mailpit; config
   screenshots/logs sanitized and tied to final SHA.
-- Dependencies/order: S9-DEF-001 ו־014 קודם; Waiver: N/A; Status: `Open`.
+- Dependencies/order: S9-DEF-001 קודם; child docs/config alignment מתוך
+  DEF-014 נסגר כחלק מאותו Hosted pass. Waiver: N/A; Status: `Open`.
 
 ### S9-DEF-005 — terminal league נשאר mutable דרך membership/proof
 
-- Type: `DATA_INTEGRITY`
-- Severity: `P1`; Confidence: `CONFIRMED`; Release blocking: `Yes`
-- Affected requirements/slices: JOIN-05/06/07/09/12/13, REPORT-02/05,
-  architecture lifecycle read-only; Slices 3–4 ו־9.
-- Environment/SHA: static SQL/UI, `a14edfc4…`.
-- Roles/routes/tables: manager/applicant; proof upload, members decisions;
-  `leagues`, `join_requests`, `payment_proofs`, `league_members`, `audit_logs`.
-- Preconditions/reproduction: league מסומן `completed`/`archived` עם pending
-  request. upload-context/rate/finalize/approve/reject אינם נועלים ובודקים
-  terminal league; UI תמיד מציג פעולות pending.
-- Expected: completed/archived הוא read-only; final member counts/standings אינם
-  משתנים. policy מפורש קובע מה קורה ל־pending request בזמן completion.
-- Actual/evidence: RPCs ב־
-  `supabase/migrations/20260814231000_slice3_membership_and_proofs.sql:1087-1417`
-  וב־
-  `supabase/migrations/20260815143000_manager_join_request_decisions.sql:106-342`
-  בודקים request/manager אך לא league status;
-  `src/app/(app)/leagues/[leagueId]/members/page.tsx:73-87` וה־card מציגים
-  actions; אין terminal negative pgTAP.
-- Impact/root cause: אחרי S9 completion ניתן להחליף proof או לאשר/לדחות,
-  לשנות membership/report final. lifecycle לא הורכב לתוך RPCs קודמים.
-- Minimal fix boundary: lock order league→request; explicit status matrix עבור
-  upload/decision; opaque error, audit/idempotency נשמרים.
-- Required changes: forward migration/RPCs, UI disabled/read-only states,
-  generated types אם נדרש, product decision/docs/tests.
-- Acceptance: completed/archived reject all forbidden mutations atomically;
-  double/concurrent completion+decision deterministic; pending policy מתועד;
-  final report immutable.
-- Regression: pgTAP manager/other/anonymous plus completion race; Playwright
-  terminal members/proof UI; no direct DB fixture transition ב־flow הסופי.
-- Dependencies/order: הכרעת S9-DEF-006 ואז לפני S9-REQ-001; Waiver: N/A;
-  Status: `Open`.
+- Type: `LIFECYCLE_PREREQUISITE`; Severity: `Unscored`; Release blocking: `No independent
+  blocker`; Status: **`MERGED INTO S9-REQ-001`**.
+- Disposition: הראיה המקורית נשמרת: RPCs של upload/finalize/approve/reject אינם
+  מחילים כיום terminal-league guard, משום ש־`completed` טרם reachable דרך
+  המוצר. לכן אין defect עצמאי לפני מימוש lifecycle; זהו prerequisite בלתי־נפרד
+  מהטרנזקציה שמכניסה ליגה ל־`completed`.
+- Absorbed contract: `completeLeague` נועל לפי הסדר הגלובלי
+  `leagues → profiles → join_requests(id) → payment_proofs(id) →
+  league_members(id) → matches(id) → match_result_reviews(match_id, result_version) →
+  league_match_snapshots(league_id, match_id) → league_match_reconciliations(id)`,
+  בסדר UUID לכל `id` ובסדר לקסיקוגרפי למפתחות הזוגיים; הוא סוגר את שני מצבי ה־pending באופן אטומי
+  ל־`rejected` עם `rejection_reason='LEAGUE_COMPLETED'`, משמר proofs/history/
+  audit וחוסם terminal upload/finalize/approve/reject. levels שאינם נדרשים
+  ניתנים לדילוג, וכל leaf path אסור שירכוש parent מאוחר יותר.
+- Absorbed acceptance/regression: negative manager/other/anonymous cases;
+  completion מול upload/finalize/approve/reject, replay ו־double completion
+  בחיבורים אמיתיים; final member count נשאר immutable ו־report אינו משתנה
+  אוטומטית/ללא הרשאה (explicit reconciliation הוא החריג); UI terminal read-only;
+  flow סופי ללא direct DB fixture transition. כל אלה נספרים פעם אחת ב־REQ-001.
 
 ### S9-DEF-006 — חוזה lifecycle אינו מוכרע
 
-- Type: `DECISION_REQUIRED`
-- Severity: `P1`; Confidence: `CONFIRMED`; Release blocking: `Requires explicit decision`
-- Affected requirements/slices: LEAGUE-05, REPORT-05, Slice 9 lifecycle.
-- Environment/SHA: canonical docs + schema/code, `a14edfc4…`.
-- Roles/routes/tables: manager/system sync; league status, matches/scoring/audit.
-- Preconditions/reproduction: product/architecture דורשים active לכל המאוחר
-  ב־first kickoff; technical plan מתאר `startLeague` ידני בלבד. completion
-  predicate אינו מגדיר canceled/postponed/live/AET/PEN/review/unknown. מקורות:
-  `docs/product.md:190-198`, `docs/architecture.md:238-252`,
-  `docs/technical-plan.md:610-625`.
-- Expected: source state, actor, preconditions, automatic deadline guarantee,
-  terminal predicate, correction policy, replay/concurrency/audit כולם חד־משמעיים.
-- Actual: רק invite מעביר `draft→open`; אין product actions ל־active/completed,
-  והמסמכים אינם פותרים manual-vs-first-kickoff או terminal exceptions.
-- Impact/root cause: implementation שיבחר silently עלול להשאיר league open
-  אחרי kickoff, לנעול מוקדם, להשלים עם unresolved match או להיתקע לנצח.
-- Viable options: (A) transition אוטומטי מתוזמן/ב־sync; (B) effective state
-  נגזר עם reconciliation persisted; (C) manager start + DB fallback אוטומטי
-  ב־first kickoff. לכל אפשרות tradeoff של auditability, cron dependence ו־UX.
-  אין בחירה בביקורת זו.
-- Minimal fix boundary: החלטה מפורשת ועדכון product/architecture/technical plan
-  לפני קוד; completion matrix כולל finished/canceled/postponed/review/correction.
-- Required changes: canonical docs first; אחר כך S9-REQ-001 RPCs/Actions/tests.
-- Acceptance: decision מאושר עם state machine/lock order/idempotency/audit;
-  terminal predicate אינו מתעלם מ־unresolved ואינו נתקע על canceled; scoring
-  reconciliation סופי מוגדר.
-- Regression: pgTAP allowed/forbidden/replay/concurrent/first-kickoff/provider
-  correction; Playwright `open→active/current→completed/final` דרך UI.
-- Dependencies/order: לפני כל lifecycle implementation; Waiver: N/A;
-  Status: `Decision required`.
+- Type: `DECISION_REQUIRED`; Category: `PRODUCT_DECISION`; Severity: `Unscored`; Release blocking: `Resolved
+  decision, runtime work remains in S9-REQ-001`; Status: **`VERIFIED RESOLVED —
+  PRODUCT DECISION CONTRACT`**.
+- Owner/date: product owner, 26.8.2026. ההכרעות נרשמו ב־`docs/product.md`
+  וב־`docs/technical-plan.md` כ־S9-PDEC-001–005.
+- Resolved contract: מנהל רשאי להפעיל מוקדם; fallback אוטומטי אטומי,
+  idempotent ומתועד חייב לקבע status/audit לא יאוחר מ־kickoff הראשון. tick
+  מאוחר מחיל DB-time guard מיד, אך recovery עם `activated_at` של הגבול,
+  `recorded_at` אמיתי ו־`ACTIVATION_PERSIST_LATE` הוא כשל SLA ולא PASS לחוזה.
+  השלמה מותרת רק כאשר כל included fixture
+  terminal/resolved: `canceled`, או `finished` עם FT רשמי/הכרעת system admin;
+  `scheduled/live/postponed`, durable review שעדיין pending, unknown provider
+  status וכן AET/PEN לא־פתור חוסמים. `review` אינו `match_status`.
+  correction אחרי completion אינו משנה final league בשקט אלא עובר review/
+  reconciliation מפורש של system admin. completion סוגר pending requests לפי
+  החוזה שב־REQ-001. `/members` כולל active-member list read-only; removal/
+  reactivation נשאר post-MVP.
+- No runtime claim: ב־SHA המבוקר אין עדיין Actions/RPCs/flow. lock order,
+  idempotency, audit, negative cases ו־real concurrency נשארים acceptance של
+  REQ-001; רשומה זו אינה defect או blocker נספר.
 
 ### S9-DEF-007 — מסך הגדרות ליגה אינו משנה הגדרות
 
@@ -775,7 +886,8 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   joins, scoring/prizes.
 - Preconditions/reproduction: לפתוח settings כמנהל. הדף מכיל invite בלבד;
   אין Action ל־edit, ו־create service מכריח `joins_close_at=null`.
-- Expected: manager בלבד יכול לעדכן שדות מותרים, join close וחוקים לפני lock.
+- Expected: manager של הליגה או system admin יכול לעדכן שדות מותרים, join
+  close וחוקים לפני lock; member/other manager/anonymous נדחים opaquely.
 - Actual/evidence:
   `src/app/(app)/leagues/[leagueId]/settings/page.tsx:14-110`,
   `src/features/leagues/actions.ts:31-67`,
@@ -783,14 +895,14 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   אך אינו קיים.
 - Impact/root cause: דרישות שהוגדרו ביצירה אינן ניתנות לניהול והצטרפות לא ניתנת
   לסגירה לפי זמן. Slice 2 מסר create vertical בלבד בלי לסגור edit contract.
-- Minimal fix boundary: manager-only explicit fields; no real payment; scoring/
-  prizes atomic/versioned ונעולים לפי DB state.
+- Minimal fix boundary: manager-or-system-admin explicit fields; no real
+  payment; scoring/prizes atomic/versioned ונעולים לפי DB state.
 - Required changes: schema/Action/service/RPC/migration/RLS/grants/types/UI/docs.
 - Acceptance: valid pre-lock update; invalid 100%/negative/locked/foreign actor
   denied atomically; joins_close_at משפיע על request eligibility; opaque errors.
 - Regression: Vitest schemas; pgTAP other-manager/active/locked/replay/concurrent;
   Playwright settings mobile/RTL/error/success.
-- Dependencies/order: אחרי S9-DEF-006 ו־002; Waiver: none; Status: `Open`.
+- Dependencies/order: אחרי S9-DEF-002; Waiver: none; Status: `Open`.
 
 ### S9-DEF-008 — אין פעולה להסרת manual override
 
@@ -909,9 +1021,10 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-012 — Cron timeout קצר מ־budget חוקי של האפליקציה
 
-- Type: `BUG`
-- Severity: `P2`; Confidence: `CONFIRMED` configuration mismatch;
-  Release blocking: `Yes`.
+- Type: `OPERABILITY_RISK`
+- Severity: `P3`; Confidence: `PROBABLE` overall — ה־numeric mismatch
+  `CONFIRMED`, השפעת runtime לא שוחזרה; Release blocking: `No, tracked until the controlled
+  slow-path gate`.
 - Affected requirements/slices: MATCH-06, deployment/operations Slice 7b.
 - Environment/SHA: Hosted read-only dashboard + code, `a14edfc4…`.
 - Roles/routes/data: scheduled Cron `/api/cron/sync`, lease/finalization.
@@ -920,12 +1033,14 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 - Expected: outer timeout > measured app worst case + margin, < lease/function
   limit, או app budget נמוך ומוכח; finalize exactly once.
 - Actual/evidence: job יחיד כל דקה ל־Production;
-  `src/features/sports/api-football-client.ts:291-306`; lease 120s מוגדר ב־
-  `supabase/migrations/20260823190000_slice7b_api_football_sync.sql:293-465`.
+  `src/features/sports/api-football-client.ts:291-306`; ה־effective lease של
+  120s נקבע ב־
+  `supabase/migrations/20260824090000_slice7b_review_hardening.sql:328-346`.
   שם ה־job הוא `predictor-slice7-manual-sync` אף שהספק API-Football.
 - Impact/root cause: `pg_net` יכול לסיים את חלון התצפית שלו לפני Route חוקי
-  של 30s. לא הוכח אם Vercel ממשיך או נעצר אחרי disconnect ולא הוכח lease
-  expiry; הצלחת pg_cron מוכיחה enqueue בלבד, לא completion/finalization.
+  של 30s, אך לא הוכח ש־Vercel מפסיק את העבודה, שנשאר orphan lease או שיש
+  finalization חסר/כפול. הצלחת pg_cron מוכיחה enqueue בלבד, לא completion;
+  לכן זו השערת operability שנדרשת לשחזור ולא defect מאומת.
 - Minimal fix boundary: align numbers and rename job provider-neutrally; לא לשנות
   Hosted במהלך audit.
 - Required changes: controlled Supabase Cron config, runbook/docs, slow fake test.
@@ -934,7 +1049,10 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   `pg_net` מקושרת לאותה שורת `sync_runs` terminal יחידה ול־lease משוחרר;
   sanitized scheduled Hosted evidence after deploy.
 - Regression: Vitest fake transport/route + pgTAP fencing/expiry; manual Hosted.
-- Dependencies/order: אחרי S9-DEF-011/002; Waiver: none; Status: `Open`.
+- Promotion condition: להעלות ל־P2 defect רק אם controlled slow path מוכיח
+  response truncation, orphaned lease, failed finalization או duplicate
+  finalization. failure שאינו יוצר אחת מארבע התוצאות נשאר evidence תפעולי P3.
+- Dependencies/order: אחרי S9-DEF-011/002; Waiver: none; Status: `Open risk`.
 
 ### S9-DEF-013 — ספר הפרויקט derived סותר את המקור הקנוני
 
@@ -966,32 +1084,43 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 ### S9-DEF-014 — Redirect allowlist ו־README אינם מתארים את Preview הנוכחי
 
 - Type: `DOC_CONFLICT`
-- Severity: `P2`; Confidence: `CONFIRMED`; Release blocking: `Yes`
-- Affected requirements/slices: AUTH-01/02/05, COURSE-08, Slices 1/7c.
+- Severity: `P3`; Confidence: `CONFIRMED`; Release blocking: `No, tracked`
+- Affected requirements/slices: AUTH-01/02/05 וה־internal Preview QA runbook,
+  Slices 1/7c. ה־PDF אינו דורש Preview Auth או aliases מסוימים.
 - Environment/SHA: README/code + Hosted Auth/Vercel read-only, `a14edfc4…`.
 - Roles/routes/data: new/recovery user on Preview/Production; callback URL.
 - Preconditions/reproduction: להשוות `README.md:340-353`, Vercel aliases ו־
   Supabase Redirect URLs. Hosted כולל local, old Slice1, Production ו־old
-  Slice3 wildcard; README מזכיר old Slice1/3/5 ו־Slice7c באופן אחר; current
-  Preview origin ש־Action בוחר אינו exact allowlisted.
-- Expected: Site URL + exact local/current Preview/Production callbacks, ללא
-  obsolete wildcard/aliases, tie ל־SHA ו־flow evidence.
-- Actual: drift בין שלושה מקורות ו־Preview Auth עלול להידחות.
+  Slice3 wildcard; README מזכיר old Slice1 ומחזיק שני `/**` wildcards על
+  aliases ישנים של Slice3/Slice5, וכן Slice7c באופן אחר. current Preview
+  origin ש־Action בוחר אינו exact allowlisted.
+- Expected: README/runbook מבדילים במדויק בין local, Production ו־Preview
+  פנימי; aliases ישנים נמחקים או מסומנים historical, בלי להבטיח callback שלא
+  הוגדר. Actual: drift תיעודי בין המקורות; Preview Auth עשוי להידחות.
 - Impact/root cause: stale per-slice aliases נשארו אחרי merges ו־README עודכן
   חלקית; confirmation/recovery Preview אינו אמין.
-- Minimal fix boundary: לבחור current stable Preview policy וליישר config/docs;
-  לא להרחיב wildcard ללא צורך.
-- Required changes: Supabase Auth URLs, README, Vercel alias/env documentation,
-  sanitized evidence.
-- Acceptance: local/Preview/Production signup+recovery callback עוברים; obsolete
-  entries נמחקים/מנומקים; redirects exact and no open redirect.
-- Regression: Auth unit/Playwright + manual current Preview/Production proof.
-- Dependencies/order: לפני S9-DEF-004; Waiver: none; Status: `Open`.
+- Minimal fix boundary: README ו־runbook בלבד עבור stale aliases ו־Preview
+  policy. Production/local Hosted configuration/evidence אינו נספר כאן ונבלע
+  ב־DEF-004; אם Preview Auth נשמר, יישור config שלו הוא child dependency של
+  אותו Hosted pass.
+- Split disposition: **(a)** stale README + stale/wildcard Preview aliases הם
+  DEF-014 `DOC_CONFLICT`, P3, וזו הרשומה הנספרת; **(b)** Supabase Hosted
+  redirect configuration/evidence ל־Production/local הוא child dependency
+  `CONFIGURATION`, P2 unverified, של DEF-004 ואינו מקבל ID או ספירה נוספת.
+  Preview Auth עצמו נשאר internal QA concern ואינו course-submission blocker.
+- Required changes: README/deployment docs; sanitized config evidence רק כאשר
+  Preview Auth נבחר בפועל.
+- Acceptance: המסמכים מציגים origins ויכולות אמיתיים; obsolete entries
+  נמחקים/מנומקים; אין open redirect או הבטחת Preview flow לא־מאומתת.
+- Regression: link/config-name review; Auth tests ו־Production/local proof תחת
+  DEF-004. Dependencies/order: לצד DEF-004 docs pass; Waiver: none; Status:
+  `Open`.
 
 ### S9-DEF-015 — שמות לא־מהימנים מאפשרים bidi spoofing ואינם מבודדים
 
 - Type: `SECURITY`
-- Severity: `P2`; Confidence: `CONFIRMED` code-level; Release blocking: `Yes`
+- Severity: `P3`; Confidence: `CONFIRMED` code-level; Release blocking: `No,
+  tracked for final RTL/security pass`
 - Affected requirements/slices: RTL/accessibility, validation/security, all UI.
 - Environment/SHA: static + viewport review, `a14edfc4…`.
 - Roles/routes/data: כל user; display/league names ב־dashboard, standings,
@@ -1022,7 +1151,8 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 ### S9-DEF-016 — skip link ב־invite מחובר מצביע ליעד חסר
 
 - Type: `BUG`
-- Severity: `P2`; Confidence: `CONFIRMED`; Release blocking: `Yes`
+- Severity: `P3`; Confidence: `CONFIRMED`; Release blocking: `No, tracked for
+  final accessibility pass`
 - Affected requirements/slices: JOIN-10, accessibility keyboard, Slice 3/7c.
 - Environment/SHA: static + local invalid route/E2E valid flow, `a14edfc4…`.
 - Roles/routes/data: authenticated invite user, `/invite/[publicId]`.
@@ -1043,27 +1173,27 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-017 — אין אכיפה מוכחת של required checks על `main`
 
-- Type: `RELEASE_BLOCKER`
-- Severity: `P2`; Confidence: `CONFIRMED` plan limitation; Release blocking: `Yes unless explicitly waived`
+- Type: `ACCEPTED_RISK`; Category: `GOVERNANCE_CONTROL`
+- Severity: `P3`; Confidence: `CONFIRMED` plan
+  limitation; Release blocking: `No — approved manual control`.
 - Affected requirements/slices: internal release governance, all slices.
 - Environment/SHA: GitHub API read-only, `a14edfc4…`.
 - Roles/routes/data: repository maintainers, PR merge path.
 - Preconditions/reproduction: branch-protection ו־ruleset endpoints מחזירים 403
   עם הודעת private-repo plan limitation; green CI קיים אך אינו מוכיח enforcement.
-- Expected: `main` דורש quality/DB/E2E ו־no direct unreviewed merge, או חלופה
-  מתועדת ומאושרת שמספקת אותה הגנה.
-- Actual: אין יכולת לאמת/להפעיל protection בתכנית הנוכחית.
-- Impact/root cause: אפשר לעקוף checks ולמזג SHA שלא נבדק; feature תלוי GitHub
-  plan, לא בקוד.
-- Minimal fix boundary/options: להפוך public אם מותר, לשדרג plan, או owner-approved
-  manual release control/waiver עם evidence. הביקורת אינה בוחרת.
-- Required changes: GitHub setting או release policy/docs; no runtime change.
-- Acceptance: API/setting proof של required checks על final branches, או waiver
-  חתום עם owner/date/mitigation/revisit deadline.
-- Regression/evidence: negative merge attempt או screenshot/API sanitized;
-  final PR checks on exact SHA.
-- Dependencies/order: לפני final merge; Waiver owner currently `None`;
-  Status: `Open`.
+- Decision/owner/date: repository owner `talzantkeren`, 26.8.2026 — המאגר נשאר
+  private ובתכנית הנוכחית; אין public-repo conversion או plan purchase כחלק
+  מ־Slice 9. rationale: single-maintainer course repository וה־API מחזיר 403.
+- Approved control: אין direct push ל־`main`; merge רק מ־reviewed PR; נרשמים
+  exact candidate SHA והצלחת `Lint, typecheck, unit tests and build`,
+  `Supabase database tests` ו־`Playwright core flows` על אותו SHA; לאחר מכן
+  מאומתים Production commit, immutable URL וה־Production alias.
+- Residual risk: ההליך אינו platform-enforced ולכן maintainer עדיין יכול
+  לעקוף אותו. final Production SHA/URL evidence נשאר REQ-003 ואינו נסגר כאן.
+- Reopen triggers: collaborator חדש, שינוי visibility/plan, ניסיון direct
+  push, כשל בביצוע ה־control או דרישת evaluator ל־enforcement.
+- Evidence/status: API 403 + decision ledger S9-TDEC-001; **`RESOLVED —
+  ACCEPTED RESIDUAL RISK`**. אין finding פתוח או waiver לא־מוגדר.
 
 ### S9-DEF-018 — `FORCE_COOLDOWN` חוקי ב־DB אך נדחה ב־TypeScript
 
@@ -1136,26 +1266,17 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-021 — חוזה `/members` סותר את גבול ההסרה/reactivation
 
-- Type: `DOC_CONFLICT`
-- Severity: `P3`; Confidence: `CONFIRMED`; Release blocking: `No, tracked`
-- Affected requirements/slices: page map/member lifecycle, Slice 4/9.
-- Environment/SHA: canonical docs + UI, `a14edfc4…`.
-- Affected roles/routes/data: manager/member, `/members`.
-- Preconditions/reproduction: product page map אומר requests+members+proofs;
-  technical table מזכיר activation/removal, אך approved boundary דוחה general
-  removal/reactivation; UI מציג queue בלבד. מקורות: `docs/product.md:305-318`,
-  `docs/technical-plan.md:16-20,610-625`.
-- Expected: הכרעה מפורשת אם active-member list הוא MVP ומה deferred. Actual:
-  `docs/product.md` page map מול `docs/technical-plan.md` boundary.
-- Impact/root cause: implementation עלול להרחיב scope או להשאיר deliverable חסר.
-- Minimal fix boundary: reconcile canonical docs first; אין להוסיף removal בלי
-  approval.
-- Required migration/RLS/grant/config/doc changes: docs בלבד אם list deferred;
-  אם נדרש list — query/UI/RLS tests, ללא removal mutation אוטומטי.
-- Acceptance: page contract מדויק; removal נשאר future אם זו ההכרעה.
-- Regression: אם list required — privacy/pagination/cross-league tests; אחרת link/
-  contract review.
-- Dependencies/order: החלטה לפני final docs; Waiver: N/A; Status: `Open`.
+- Type: `DOC_CONFLICT`; Category: `RESOLVED_PRODUCT_DECISION / MERGED_RECORD`;
+  Severity: `Unscored`;
+  Release blocking: `No independent blocker`.
+- Decision/owner/date: S9-PDEC-005, product owner, 26.8.2026 — `/members` ב־MVP
+  כולל active-member list read-only לצד queue/proofs הקיימים; general removal/
+  reactivation נשאר post-MVP.
+- Disposition: policy/docs **`VERIFIED RESOLVED`** ב־`docs/product.md` וב־
+  `docs/technical-plan.md`. ה־query/UI/RLS privacy/pagination/cross-league
+  acceptance של הרשימה **`MERGED INTO S9-REQ-001`** ואינו finding נוסף.
+- No mutation claim: לא נוסף runtime במסמך זה, ו־`removeMember` אינו חלק מ־
+  Slice 9. Status: `Resolved decision; implementation tracked by REQ-001`.
 
 ### S9-DEF-022 — פערי נגישות קטנים ב־loading/forms/targets
 
@@ -1182,24 +1303,27 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-023 — קישור מקור הקורס אינו זמין ב־repository
 
-- Type: `DOC_CONFLICT`
-- Severity: `P3`; Confidence: `CONFIRMED`; Release blocking: `No, tracked`
+- Type: `DECISION_REQUIRED`; Category: `TECHNICAL_DECISION_ALIAS`; Severity: `Unscored`; Confidence:
+  `CONFIRMED`; Release blocking: `Decision remains open`.
 - Affected requirements/slices: documentation provenance, all slices.
 - Environment/SHA: docs + external PDF, `a14edfc4…`.
-- Affected data: `docs/product.md:3-12,391-397` header/source link.
+- Affected data: `docs/product.md:3-9,459-466` header/course-source sections.
 - Preconditions/reproduction: ב־SHA המקובע header היה "approved to begin
-  implementation" אף ש־Slice 8 complete; הוא תוקן מכנית ב־PR זה לגרסה 2.11/
+  implementation" אף ש־Slice 8 complete; הוא תוקן מכנית ב־PR זה לגרסה 2.12/
   26.8/Slices 0–8 complete. link ל־`project_sources/01-Internet-Technologies.pdf`
   עדיין אינו tracked.
 - Expected: current status ו־delivery/source provenance תקין בלי לשכפל או לערוך
-  PDF שלא אושר ל־repo. Actual open: link החסר ב־`product.md` section 17.
+  PDF שלא אושר ל־repo. Actual open: link קיים ב־`product.md` section 17 אך
+  target `project_sources/01-Internet-Technologies.pdf` אינו tracked.
 - Impact/root cause: evaluator/agent עלול להסיק שלב שגוי או לא למצוא source.
-- Minimal fix boundary: mechanical link only after deciding whether course PDF
-  may be tracked or referenced externally; status header כבר תוקן ב־PR זה.
+- Minimal fix boundary: mechanical link only after S9-TDEC-003 decides whether
+  course PDF may be tracked or referenced externally; status header כבר תוקן
+  ב־PR זה.
 - Required migration/RLS/grant/config/doc changes: `N/A`; docs/provenance בלבד.
 - Acceptance: source link opens for evaluator; no course text rewrite.
 - Regression: link/date/version checker + manual evaluator open.
-- Dependencies/order: final docs; Waiver: N/A; Status: `Open`.
+- Dependencies/order: final docs; Waiver: N/A; Status: **`OPEN TECHNICAL
+  DECISION — alias of S9-TDEC-003`**. אינו defect count.
 
 ### S9-DEF-024 — full E2E ירוק משאיר server error לא מוסבר
 
@@ -1224,8 +1348,8 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 ### S9-DEF-025 — production sports credential זמין ל־Preview שאינו משתמש בו
 
-- Type: `SECURITY`
-- Severity: `P3`; Confidence: `CONFIRMED` scope; Release blocking: `No, tracked decision`
+- Type: `DECISION_REQUIRED`; Category: `TECHNICAL_DECISION_ALIAS`; Severity: `Unscored`; Confidence:
+  `CONFIRMED` scope; Release blocking: `Decision remains open`.
 - Affected requirements/slices: least privilege, Slice 7b deployment.
 - Environment/SHA: Vercel env names/scopes read-only, `a14edfc4…`.
 - Affected roles/data: Preview deployments; `SPORTS_API_KEY` (value not read).
@@ -1236,15 +1360,19 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   עם key low-quota נפרד. Actual: scope רחב מהצורך.
 - Impact/root cause: Preview code/PR compromise יכול לקרוא credential production;
   env scopes drifted after provider selection.
-- Minimal fix boundary/options: Production-only key; או trusted-preview canary
-  policy + separate constrained credential. אין בחירה שקטה.
+- Minimal fix boundary/options: S9-TDEC-002 יבחר Production-only key או
+  trusted-preview canary policy + separate constrained credential. אין בחירה
+  שקטה.
 - Required migration/RLS/grant/config/doc changes: `N/A`; Vercel env scope +
   deployment/security docs בלבד.
-- Acceptance: scope screenshot sanitized, Preview manual tests green, no value/
-  log/browser bundle.
+- Acceptance: בשתי האפשרויות scope screenshot sanitized ואין value/log/browser
+  bundle. אם נבחר Production-only, Preview נשאר Manual והבדיקות הירוקות מוכיחות
+  שאין key. אם נבחר trusted canary, Preview מקבל credential נפרד ומוגבל quota,
+  והראיה מוכיחה שמפתח Production אינו מוזרק וש־canary משתמש רק במפתח הנפרד.
 - Regression: final env-name/scope matrix + client-secret scan.
-- Dependencies/order: final env review; Waiver: owner/date required if retained;
-  Status: `Decision required`.
+- Dependencies/order: final env review; owner/date/rationale נדרשים לבחירה;
+  Status: **`OPEN TECHNICAL DECISION — alias of S9-TDEC-002`**. אינו defect
+  count.
 
 ## 11. דרישות Slice 9 שעדיין חסרות
 
@@ -1254,26 +1382,91 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 
 - Type: `RELEASE_BLOCKER`; Severity: `P1`; Confidence: `CONFIRMED` missing;
   Release blocking: `Yes`.
-- Source/affected requirements: Slice 9 planned scope, LEAGUE-05, REPORT-05,
-  COURSE-01; `open→active→completed`.
+- Source/affected requirements: Slice 9 planned scope, LEAGUE-05/08/09,
+  JOIN-14/15, MATCH-09, REPORT-05 ו־COURSE-01; `open→active→completed`.
 - Environment/SHA/roles/data: `a14edfc4…`; manager, system sync, members;
-  leagues/matches/predictions/scoring/audit.
+  leagues/join requests/members/matches/predictions/scoring/audit.
 - Preconditions/evidence: אין `startLeague`/`completeLeague` Action/RPC/UI;
-  report E2E משתמש fixture DB להדגמת final בלבד.
+  אין active-member list; report E2E משתמש fixture DB להדגמת final בלבד.
 - Expected/actual: product path אטומי/authorized/idempotent עם audit; בפועל
   transitions אינם קיימים. זה planned Slice 9, ולכן אינו `BUG`.
-- Minimal boundary: לאחר S9-DEF-006/002 ואחרי DEF-003/005/008, Server Actions
-  צרים + services + forward RPCs; no generic status update.
-- Required changes: product/architecture decision, migration/RLS/grants/types,
-  Actions/UI/docs/audit.
-- Acceptance: source/preconditions/actor/lock order/replay/concurrency מוגדרים;
-  scoring rules locked; terminal predicate + final reconciliation; opaque
-  cross-user denial; E2E `open→active/current→completed/final` ללא DB mutation.
-- Regression: Vitest state rules; real multi-session pgTAP; Playwright full flow;
-  Hosted/manual proof after deploy.
-- Dependencies/order:
-  `DEF-006→DEF-002→{DEF-003,DEF-005,DEF-008}→REQ-001`; שלושת הפריטים בסוגריים
-  מקבילים. Waiver: N/A; Status: `Open`.
+- Minimal boundary: לאחר DEF-002 ואחרי DEF-003/008, Server Actions צרים +
+  services + forward RPCs; no generic status update. DEF-005 ו־DEF-021 נבלעו
+  כאן; DEF-006 כבר הוכרע ואינו dependency פתוח.
+- Included-set contract: לפני completion כל match עם
+  `matches.season_id=leagues.season_id` נכלל. completion מקפיא באותה טרנזקציה
+  `league_match_snapshots` עם match id, terminal status, scores,
+  result version וזמן completion; final match/report reads משתמשים ב־snapshot,
+  לכן fixture חדש מאוחר לעולם אינו נכנס לסט, ותיקון של match שכבר נמצא בו
+  משנה תוצאה רק דרך reconciliation.
+- Activation contract: manager רשאי `startLeague` מוקדם. worker מתוזמן עם
+  DB-time lookahead/retry מקבע אטומית/idempotently status/audit לפני הגבול
+  ולא יאוחר ממנו; זהו תנאי קבלה, לא best effort. הוא רץ בתחילת ה־
+  `/api/cron/sync` הקיים, לפני Manual/API-Football
+  branching ולפני provider I/O; אין Cron שני, וכשל provider אינו מבטל
+  activation. אם tick התעכב, כל boundary עסקי מחיל effective-active החל מ־
+  first kickoff; boundary שרוכש league ראשון או ה־Cron הבא מבצע reconciliation:
+  `activated_at=first_kickoff_at`, `recorded_at` נשאר זמן הכתיבה האמיתי ונרשם
+  `ACTIVATION_PERSIST_LATE`. אין backdated audit או open behavior, אך late הוא
+  כשל תפעולי/alert ואינו סוגר את בדיקת ה־deadline.
+- Completion contract: `completeLeague` מצליח רק כאשר כל included fixture
+  resolved terminal. `canceled` פתור; `finished` פתור רק עם provider FT רשמי
+  או הכרעת system admin מתועדת. scheduled/live/postponed או
+  `matches.requires_review=true` עם review code ל־AET/PEN/unknown חוסמים; review
+  אינו enum status. `match_result_reviews(match_id,result_version)` שומר
+  provider/candidate result, pending/resolved disposition, תוצאת זמן חוקי או
+  ביטול שנבחרו, `applied_result_version`, actor ו־created/decided timestamps עם
+  constraints. Action צר `resolveMatchResultReview` נועל match→review ומאמת
+  pending/current version; success אטומי כותב canonical finished+legal-time
+  score או canceled, מעלה result version, מסמן review resolved ומנקה את שלושת
+  review flags רק לגרסה שהוכרעה. הוא מנקד רק ליגות שאינן completed ויוצר
+  pending reconciliation רק לליגה completed שכבר מכילה snapshot לאותו match;
+  רק `reconcileCompletedLeague`
+  רשאי לשנות snapshot סופי. actor זר, stale/replay, version חדש ומירוץ provider
+  נבדקים, ו־success מוכיח שהוא אכן פותח completion.
+- Membership contract absorbed from DEF-005/021: באותה טרנזקציה completion
+  סוגר את שני מצבי ה־pending ל־existing `rejected`/closed representation עם
+  `rejection_reason='LEAGUE_COMPLETED'` ו־display copy "הליגה הושלמה", תוך
+  שמירת proofs/history/audit; terminal proof/join mutations נדחות. `/members`
+  מציג active-member list read-only עם privacy, pagination ו־cross-league
+  authorization; אין removal/reactivation mutation.
+- Correction contract: result correction אחרי `completed` אינו משכתב final
+  score/standings בשקט. unique durable
+  `league_match_reconciliations` כולל `id` UUID server-issued ו־unique
+  `(league_id,match_id,result_version)`, שומר snapshot ו־pending/applied/dismissed;
+  composite FK אל `league_match_snapshots(league_id,match_id)` מונע יצירת queue
+  עבור fixture שנוסף אחרי completion. system admin מחיל/דוחה אטומית ומתועד
+  ורק אם snapshot קיים; אחרת מתקבל not-found/no-op אטום. mixed
+  completed+active leagues sharing a season ו־provider replay נשארים בטוחים.
+- Global lock order: `leagues → profiles → join_requests(id) →
+  payment_proofs(id) → league_members(id) → matches(id) →
+  match_result_reviews(match_id, result_version) →
+  league_match_snapshots(league_id, match_id) → league_match_reconciliations(id)`.
+  טבלאות `id` ננעלות בסדר UUID והמפתחות הזוגיים בסדר לקסיקוגרפי; מותר לדלג
+  על level; אסור לרכוש parent מאוחר. rate-limit הוא leaf
+  profile→request; finalize league→request→proof; approve league→request→member;
+  `score_match` match-only ואינו רוכש league.
+- Required changes: migration/RPCs/RLS/grants/generated types, Actions/services/
+  UI, audit/error contracts, ומסמכי architecture/testing/security מסונכרנים
+  באותו implementation change. סנכרון `docs/architecture.md` §10.2 עם
+  PDEC-003 הוא הצעד הראשון לפני migration/runtime; omission זה נרשם כאן ואינו
+  החלטה טכנית רביעית.
+- Acceptance: actors/preconditions/DB-time/locks/replay/audit עומדים בחוזה;
+  scoring rules locked; final report מוגן משינוי אוטומטי/לא־מורשה ורק explicit
+  reconciliation יכול לעדכנו; opaque cross-user denial;
+  E2E `open→active/current→completed/final` ללא direct DB mutation.
+- Regression: Vitest state/terminal rules; pgTAP negative permissions ו־real
+  multi-session races עבור manual-vs-scheduled fallback/delayed tick,
+  pending match review מול provider correction/replay,
+  כולל assertion ש־on-time שומר status/audit עד הגבול וש־delayed מסומן
+  `ACTIVATION_PERSIST_LATE` ואינו נספר כהצלחת deadline,
+  completion-vs-upload/finalize/approve/reject, double completion,
+  create/sync-after-completion, mixed active+completed leagues ו־post-completion
+  correction כולל ליגה ללא ניחוש מדויק/ללא ניחושים; fixture חדש אחרי completion
+  אינו יוצר reconciliation ואינו נכנס לסט הקפוא; Playwright full flow +
+  active-members/frozen-final view; Hosted/manual proof after deploy.
+- Dependencies/order: `S9-DEF-002→{S9-DEF-003,S9-DEF-008}→S9-REQ-001`;
+  שני הפריטים בסוגריים מקבילים. Waiver: N/A; Status: `Open`.
 
 ### S9-REQ-002 — מצגת, demo script וחזרה של 10–15 דקות
 
@@ -1329,13 +1522,14 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   Release blocking: `Yes unless explicitly waived`.
 - Source: course PDF + Slice 9 plan; README, testing, security, scale, project book.
 - Environment/SHA/roles/data: evaluator/maintainer; current docs inspected;
-  drift defects 013/014/021/023.
+  drift defects DEF-013/014 והחלטת provenance ‏S9-TDEC-003 (alias DEF-023).
 - Preconditions/reproduction: full text/link inventory + DOCX 4/4 render מפיקים
   את ה־drift המתועד ברשומות אלה.
 - Expected: one consistent current status/date/version, setup/env/deploy URLs,
   architecture/DB/flows/tests/scale/security/residual risks and project book.
-- Actual: canonical supporting docs mostly current אך derived book/redirect/source/
-  members scope drifted; safe evaluator/demo instructions חסרים.
+- Actual: canonical supporting docs mostly current ו־members scope כבר הוכרע;
+  derived book/redirect/source provenance drifted ו־safe evaluator/demo
+  instructions חסרים.
 - Impact/root cause: evaluator עלול לקבל counts/status/setup סותרים; derived
   artifacts והגדרות Hosted לא סונכרנו במחזור אחד.
 - Minimal boundary: correct only approved facts; synchronize DOCX deterministically;
@@ -1347,8 +1541,8 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
   source-provenance + deterministic render instructions.
 - Regression/verification: link checker/manual, document render,
   `git diff --check`, full staged allowlist review.
-- Dependencies/order: אחרי decisions/fixes, לפני REQ-002/003; Waiver: none;
-  Status: `Open`.
+- Dependencies/order: אחרי content fixes והכרעת S9-TDEC-003, לפני REQ-002/003;
+  Waiver: none; Status: `Open`.
 
 ### S9-REQ-005 — hardening וראיית בדיקה סופית
 
@@ -1371,10 +1565,13 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 - Required evidence: command logs/counts/durations, Playwright artifacts sanitized,
   Preview/Production manual gates, accepted-risk owner/date/trigger.
 - Required migration/RLS/grant/config/doc changes: לפי כל finding בלבד; כל Advisor
-  מקבל add/no-add/waive disposition, אין שינוי schema עיוור.
+  מקבל add/no-add/waive disposition, אין שינוי schema עיוור. leaked-password
+  protection נסגר דרך החלטת S9-TDEC-004 עם owner/date/mitigation; הוא internal
+  hardening decision ולא דרישת PDF ישירה.
 - Regression: full canonical verify פעם אחת + targeted reruns לפי failure;
   real multi-session, clean clone, Hosted/manual matrix על exact final SHA.
-- Dependencies/order: אחרי כל fixes, לפני REQ-003; Waiver: none; Status: `Open`.
+- Dependencies/order: אחרי כל fixes ואחרי disposition מתועד ל־S9-TDEC-002–004,
+  לפני REQ-003; Waiver: none; Status: `Open`.
 
 ## 12. בדיקה מחדש של regressions היסטוריים
 
@@ -1387,28 +1584,32 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 | manager review wording | `VERIFIED RESOLVED` | `membership/display.ts` ו־card אומרים בדיקת מנהל, לא verified receipt |
 | Slice 5 DB-lock at deadline | Open/reproduced | late commit אמיתי, DEF-002 |
 | canceled-before-kickoff privacy | static/tests resolved, race open | pgTAP מכסה early cancel; cancellation-latch race DEF-002 |
-| manual start vs first kickoff | Open decision | DEF-006 |
-| completion terminal statuses | Open decision | DEF-006/REQ-001 |
+| manual start vs first kickoff | `VERIFIED RESOLVED` decision; runtime open | DEF-006/PDEC-001 resolved; REQ-001 implements |
+| completion terminal statuses | `VERIFIED RESOLVED` decision; runtime open | DEF-006/PDEC-002–004 resolved; REQ-001 implements |
 | stale technical/product/testing status | `VERIFIED RESOLVED` | technical/testing היו current; product header תוקן מכנית ב־PR audit |
 | project book Slice 8/old counts/finance | Open | rendered/extracted, DEF-013 |
 | README aliases/deployment SHA | חלקי | deployment SHA verified; redirects DEF-014 |
-| `main` protection | BLOCKED/open | GitHub plan 403, DEF-017 |
+| `main` protection | `RESOLVED — ACCEPTED RESIDUAL RISK` | GitHub plan 403; approved manual release control, DEF-017/TDEC-001 |
 | PR #9 Slice 10 | `VERIFIED HISTORICAL` | open/non-draft/DIRTY; לא מוזג; SMTP migrated independently |
 | Hosted demo password ב־Git | `VERIFIED RESOLVED` | scoped scan לא מצא credential; instructions עדיין REQ-002/003 |
 
 ## 13. שערים חסומים/ידניים
 
-| שער | מדוע אינו PASS עכשיו | תנאי סגירה |
+יש **8 שערים פתוחים** ושער governance אחד שנסגר בהחלטת accepted risk. סגירת
+ההחלטה על branch control אינה מחליפה את ביצוע ה־control על ה־candidate הסופי,
+שנשאר חלק מ־REQ-003.
+
+| שער | סטטוס | מדוע אינו PASS עכשיו / תנאי סגירה |
 | --- | --- | --- |
-| Hosted signup/recovery | mutation/email אסורים ללא disposable authorization; config לא אמין | DEF-004 acceptance |
-| current Preview private Auth | redirect חסר ו־smoke ציבורי בלבד | DEF-014 + Preview E2E |
-| Cron slow path | שינוי Hosted/provider call אסור בביקורת | DEF-011/012 fake + sanitized Hosted run |
-| final deployment SHA | Slice 9 טרם מומש | REQ-003 |
-| evaluator private GitHub access | זהות evaluator לא ידועה | evaluator confirmation out-of-band |
-| branch protection | GitHub plan limitation | DEF-017 option/waiver |
-| native 200%/contrast/full keyboard | browser-control zoom חסום, smoke אינו manual audit מלא | REQ-005 manual matrix |
-| presentation rehearsal | artifacts חסרים | REQ-002 |
-| project-book regeneration | אין workflow deterministic ב־repo | DEF-013 |
+| Hosted signup/recovery | `OPEN` | mutation/email אסורים ללא disposable authorization; DEF-004 acceptance על Production/local |
+| Preview Auth callback/private-flow | `OPEN — INTERNAL ONLY` | DEF-014 מיישר docs/policy; אם נשמר מסלול Preview, child Hosted alignment + E2E נסגרים ב־DEF-004. אינו course blocker ישיר |
+| Cron slow path | `OPEN` | DEF-011 fake + DEF-012 controlled slow path ו־sanitized Hosted run; DEF-012 מקודם רק בתנאי המוגדר |
+| final deployment SHA | `OPEN` | Slice 9 טרם מומש; REQ-003 |
+| evaluator private GitHub access | `OPEN` | זהות evaluator אינה ידועה; confirmation out-of-band תחת REQ-003 |
+| native 200%/contrast/full keyboard | `OPEN` | smoke אינו manual audit מלא; REQ-005 manual matrix |
+| presentation rehearsal | `OPEN` | artifacts חסרים; REQ-002 |
+| project-book regeneration | `OPEN` | אין workflow deterministic ב־repo; DEF-013/REQ-004 |
+| enforced branch protection | `RESOLVED — ACCEPTED RESIDUAL RISK` | plan limitation; TDEC-001/DEF-017 קובעים manual reviewed-PR/exact-SHA control, והוא מבוצע שוב ב־REQ-003 |
 
 ## 14. סיכונים שהתקבלו בעבר ו־post-MVP
 
@@ -1420,6 +1621,7 @@ owner, נימוק, mitigation ותאריך בכתב. אין waiver מאושר ב
 | אין lease renewal | architecture/scale | 120s lease ו־30s app budget, fencing | measured run מתקרב ל־lease או batch גדל |
 | אין retention job/materialized leaderboard/cache | scale document | bounded history ו־small private leagues | plans/latency/storage חוצים thresholds מתועדים |
 | Hosted `NS→live→FT` observation opportunistic | canary plan | recorded fixtures + Manual path + fail-closed review | חלון משחק חוקי זמין ללא בזבוז quota |
+| אין platform-enforced protection על `main` | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-001 | private repo; no direct push; merge reviewed PR בלבד; exact candidate SHA + שלושת checks הנקובים + Production commit/immutable URL/alias | collaborator/visibility/plan משתנים, direct-push attempt, control failure או דרישת evaluator |
 
 אין waiver חדש ל־P2 בביקורת זו. P4/post-MVP בלבד: export/charts/BI, malware
 scanning רחב, materialized leaderboard/Redis/queue לפי מדידה, ושילוב model
@@ -1428,35 +1630,48 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 
 ## 15. Critical path של Slice 9
 
-1. לאשר את audit PR וה־register; לא להתחיל runtime לפני אישור DEF-006.
-2. להכריע automatic/manual first-kickoff, completion matrix, pending terminal
-   requests, members scope, branch policy ו־Preview credential scope.
-3. לתקן forward-only את DEF-002 ולכתוב שלוש בדיקות DB רב־session.
-4. לתקן DEF-001/014, להגדיר SMTP/redirects ולסגור DEF-004 בראיית Hosted מורשית.
-5. לאחר DEF-002 לקדם במקביל את DEF-003, DEF-005 ו־DEF-008; כששלושתם סגורים,
-   לממש REQ-001 lifecycle מלא.
-6. להשלים settings/bounds: DEF-007/009.
-7. לתקן sports reliability: DEF-010/011/012/018/019.
-8. לסגור bidi/invite/accessibility: DEF-015/016/020/022 ו־native 200% matrix.
-9. לפתור כל P3 או לתעד defer מפורש; אין P3 שנעלם מה־register.
-10. לסנכרן README/docs/project book וליצור deck/demo/rehearsal: DEF-013/021/023,
-    REQ-002/004.
-11. להריץ REQ-005 full verification/Advisors/plans/clean clone על candidate נקי.
-12. לפרוס אותו SHA ל־Preview/Production, לאמת evaluator access/branch control,
-    ולבצע final audit: אפס P0/P1 וללא P2 שאינו waived במפורש.
+1. לאשר את audit PR וה־register; חמש החלטות המוצר כבר סגורות ואין decision
+   blocker לפני תחילת engineering.
+2. לתקן forward-only את DEF-002 ולכתוב את בדיקות ה־DB הרב־session.
+3. לתקן DEF-001 ולסגור DEF-004 ב־Production/local Hosted evidence; ליישר את
+   DEF-014 docs/policy באותו pass בלי להפוך Preview לדרישת קורס.
+4. לאחר DEF-002 לקדם את capability work המפורש: DEF-003, DEF-007, DEF-008
+   ו־DEF-009. DEF-003/008 הם dependencies ישירים של lifecycle.
+5. לממש REQ-001 לפי PDEC-001–005; הוא סופג את DEF-005/021 וכולל terminal
+   matrix, lock order, races אמיתיים, active-members ו־post-completion review.
+6. לתקן sports reliability: DEF-010/011/018/019; לשחזר DEF-012 ב־controlled
+   slow path ולהעלות priority רק אם תנאי הקידום מתקיים.
+7. לסגור RTL/invite/accessibility: DEF-015/016/020/022 ו־native 200% matrix.
+8. לסנכרן README/docs/project book וליצור deck/demo/rehearsal: DEF-013/014,
+   REQ-002/004; provenance לפי TDEC-003.
+9. לסגור עם owner/date/rationale את שלוש ההחלטות הטכניות הפתוחות
+   S9-TDEC-002–004; TDEC-001 אינו עבודת engineering פתוחה.
+10. לפתור כל P3 או לתעד defer מפורש, ואז להריץ REQ-005 full verification,
+    Advisors, plans ו־clean clone על candidate נקי.
+11. לפרוס אותו SHA ל־Preview/Production לפי המדיניות שנבחרה, לאמת evaluator
+    access ולבצע את manual branch control המאושר תחת REQ-003.
+12. לבצע final audit: אפס P0/P1 וללא P2 שאינו waived במפורש.
 
-## 16. החלטות שחייבות אישור
+## 16. החלטות מוצר וטכניות
 
-| החלטה | אפשרויות/tradeoff |
-| --- | --- |
-| first-kickoff activation | Cron/sync automatic; effective-derived + reconciliation; manager action + DB fallback. tradeoff: תלות scheduler מול audit/UX |
-| completion predicate | finished+canceled terminal עם review gate; explicit manager override; או provider reconciliation חובה. אסור להתעלם מ־postponed/AET/PEN/unknown |
-| pending requests at completion | reject/freeze אוטומטי; allow read-only history; או block completion עד הכרעה. חייב lock order league→request |
-| `/members` scope | active-member list read-only ב־MVP או defer מפורש; removal/reactivation אינו נוסף בשקט |
-| branch protection | public repo, plan upgrade, או manual signed waiver/control |
-| Preview sports key | Production-only או key נפרד low-quota ל־trusted canary |
-| course PDF provenance | track approved copy תחת `project_sources/` או link delivery יציב; אין להמציא/לערוך מקור |
-| leaked-password protection | plan upgrade או documented password/rate/monitor mitigation |
+חמש החלטות המוצר סגורות; **אין product decision פתוחה**:
+
+| ID | סטטוס | חוזה מאושר — product owner, 26.8.2026 |
+| --- | --- | --- |
+| `S9-PDEC-001` | `RESOLVED` | manager רשאי להפעיל מוקדם; fallback מתוזמן אטומי/idempotent/audited חייב לשמור active+audit לא יאוחר מ־first included kickoff. late guard מונע open behavior אך נרשם `ACTIVATION_PERSIST_LATE` ואינו PASS |
+| `S9-PDEC-002` | `RESOLVED` | completion רק כשכל included fixture resolved terminal: canceled או finished עם FT רשמי/הכרעת system admin; nonterminal/pending durable review/unknown/AET/PEN לא־פתור חוסם |
+| `S9-PDEC-003` | `RESOLVED` | correction אחרי completion דורש explicit system-admin review/reconciliation; אין silent final rewrite |
+| `S9-PDEC-004` | `RESOLVED` | completion סוגר אטומית את שני pending states ל־existing rejected/closed representation עם `LEAGUE_COMPLETED` ושומר proofs/history/audit |
+| `S9-PDEC-005` | `RESOLVED` | `/members` מציג active-member list read-only; removal/reactivation post-MVP |
+
+החלטה טכנית אחת נסגרה ושלוש בלבד נשארו פתוחות, ללא severity/defect count:
+
+| ID | סטטוס | owner/options/תנאי סגירה |
+| --- | --- | --- |
+| `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK` | repository owner `talzantkeren`, 26.8.2026; manual reviewed-PR/exact-SHA/three-check/Production-proof control; reopen triggers ב־DEF-017 |
+| `S9-TDEC-002` | `OPEN` | owner יבחר Production-only sports key או trusted Preview עם credential נפרד low-quota; alias DEF-025 |
+| `S9-TDEC-003` | `OPEN` | owner יאשר tracked course PDF תחת `project_sources/` או stable delivery link; אין להמציא או לערוך מקור; alias DEF-023 |
+| `S9-TDEC-004` | `OPEN` | owner יבחר plan שמאפשר leaked-password protection או password/rate/monitor mitigation מתועד; internal hardening, לא דרישת PDF ישירה |
 
 ## 17. מקורות רשמיים שנבדקו
 
@@ -1498,5 +1713,5 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 כל מקור שהיה יכול לשנות את זיהוי או היקף ה־backlog נבדק. כל defect מאומת,
 דרישה חובה חסרה, החלטה, שער Hosted וסתירת מסמכים מופיעים בקובץ זה ובסעיף Slice
 9 של `docs/technical-plan.md`. אין ממצא הקיים רק בצ׳אט. המוצר אינו מוכן לשחרור:
-יש להשלים את critical path, לקבל החלטות, ולהריץ ביקורת סופית חדשה על SHA אחד
-שגם עבר CI וגם פרוס בפועל.
+יש להשלים את critical path, לסגור את שלוש ההחלטות הטכניות הפתוחות בנקודות
+הרלוונטיות, ולהריץ ביקורת סופית חדשה על SHA אחד שגם עבר CI וגם פרוס בפועל.
