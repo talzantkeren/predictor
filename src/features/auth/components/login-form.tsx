@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { loginAction, type AuthActionState } from "@/features/auth/actions";
+import type { AuthFlowPresentation } from "@/features/auth/auth-flow-results";
 
 import { FieldError, FormMessage } from "./form-message";
 
 export function LoginForm({
   nextPath,
-  statusMessage,
+  statusPresentation,
 }: {
   nextPath: string;
-  statusMessage?: string;
+  statusPresentation?: AuthFlowPresentation;
 }) {
   const initialState: AuthActionState = { status: "idle" };
   const [state, formAction, pending] = useActionState(loginAction, initialState);
@@ -21,7 +22,11 @@ export function LoginForm({
   return (
     <form action={formAction} noValidate className="space-y-5">
       <input type="hidden" name="next" value={nextPath} />
-      {statusMessage ? <FormMessage kind="success">{statusMessage}</FormMessage> : null}
+      {statusPresentation ? (
+        <FormMessage kind={statusPresentation.kind}>
+          {statusPresentation.message}
+        </FormMessage>
+      ) : null}
       {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>

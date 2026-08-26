@@ -10,9 +10,9 @@ Playwright קורא ממנו בזמן הריצה רק את כתובת ה־API ו
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | נרמול ואימות Email, אורך סיסמה, התאמת סיסמאות, trim וגבולות שם תצוגה, allowlist ל־redirects ומיפוי שגיאות Auth בטוח |
+| Vitest | נרמול ואימות Email, אורך סיסמה, התאמת סיסמאות, trim וגבולות שם תצוגה, allowlist ל־redirects; תוצאה זהה ל־success/unknown address; מיפוי typed ל־429, outage ו־callback invalid/expired/reused/session mismatch בלי provider copy |
 | pgTAP | מבנה `profiles`, FK, constraints כולל Unicode whitespace, מקרי metadata/fallback, התנהגות `updated_at`, RLS, column grants, הרשאות פונקציות, self access וחסימת משתמש זר/anon |
-| Playwright | חסימת אורח, אכיפת מינימום סיסמה ישירות ב־Auth, הרשמה ואישור בהקשר דפדפן חדש עם login ידני, Dashboard, עדכון פרופיל, redirects של משתמש מחובר ועוין, חסימה אחרי logout, הודעת mismatch ושחזור PKCE תקף, מחיקת recovery marker ובידוד קריאה/כתיבה בין שני משתמשים |
+| Playwright | חסימת אורח, אכיפת מינימום סיסמה ישירות ב־Auth, הרשמה ואישור בהקשר דפדפן חדש עם login ידני, Dashboard, עדכון פרופיל, redirects של משתמש מחובר ועוין; שחזור ידוע/לא־ידוע עם copy זהה, delivery דרך Mailpit, mismatch בין דפדפנים, callback באותו דפדפן, עדכון, replay שנדחה, logout, דחיית הסיסמה הישנה והתחברות בחדשה; בידוד קריאה/כתיבה בין משתמשים |
 | Visual | עברית ו־RTL, labels, autocomplete, focus states והיעדר overflow ב־390px וב־1440px |
 
 ### הרצה מקומית
@@ -46,7 +46,20 @@ npm run test:e2e:preview
 ה־API המקומי ונשלף קישור PKCE. בדיקת האישור פותחת אותו תחילה ב־browser context
 חדש ומוודאת שהכתובת אושרה ושאפשר להתחבר ידנית. בדיקת השחזור מוודאת שבהקשר חדש
 מוצגת הנחיה מדויקת, ואז מבקשת ופותחת קישור חדש באותו context. כך CI מכסה גם
-את מגבלת PKCE, נשאר דטרמיניסטי ואינו שולח Email אמיתי.
+את מגבלת PKCE, נשאר דטרמיניסטי ואינו שולח Email אמיתי. ה־URL הרגיש נשמר רק
+בזיכרון הבדיקה; trace, screenshots, video ו־DOM error snapshot כבויים. לאחר
+העדכון הבדיקה פותחת שוב את אותו callback, מאמתת `recovery-link-reused`, בודקת
+שה־session נסגר, שהסיסמה הישנה נדחית ושהחדשה מתקבלת.
+
+### Slice 9 W2 — תוצאות Auth ו־recovery
+
+ב־26 באוגוסט 2026 הורצו לאחר השינוי `auth-flow-results.test.ts` יחד עם
+`auth-rules.test.ts` — 96/96 עברו — ולאחר build הורצה `auth.spec.ts` בשני
+הפרויקטים — 6/6 עברו. הראיה המסוננת והפקודות המדויקות נמצאות ב־
+[`docs/evidence/slice-9/w2/S9-DEF-001.md`](./evidence/slice-9/w2/S9-DEF-001.md).
+המסירה ב־Hosted, חשבון disposable, rate limit וה־callback origins נשארים gate
+נפרד שאינו PASS עד לביצוע owner; ראו
+[`S9-DEF-004.md`](./evidence/slice-9/w2/S9-DEF-004.md).
 
 ## Slice 2: יצירת ליגה, ניקוד ופרסי Demo
 

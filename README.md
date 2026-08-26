@@ -5,11 +5,13 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
-- Slice 5 Preview: [https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app)
-- Slice 7c approved Preview: [https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app](https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
+
+קישורי Preview ישנים הם ראיה היסטורית בלבד ואינם endpoints נתמכים. Preview
+נוכחי משמש smoke ציבורי; זרימות Auth בו הן יכולת QA פנימית אופציונלית ורק
+לאחר allowlist מפורש ל־callback המדויק. אין להסיק מעצם קיום Preview שאישור או
+שחזור Email הוגדרו בו.
 
 מצב נוכחי: Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. השלב הבא
 הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה. ראיות ה־Canary
@@ -84,6 +86,14 @@ npm run dev
 בקישור Mailpit ומסתיים בהתחברות מחדש עם הסיסמה החדשה. בגלל PKCE, השלמת session
 אוטומטית דורשת את הדפדפן שבו התחילה הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר
 את הכתובת ומציג התחברות ידנית; בשחזור יש לבקש קישור חדש בדפדפן שבו ייפתח.
+
+בקשת שחזור מחזירה אותה הודעה ציבורית לכתובת מוכרת ולכתובת שאינה מוכרת.
+cooldown/`429` ושירות Email שאינו זמין מוצגים ככשל actionable, בלי לחשוף את
+תשובת Supabase. ה־callback ממפה רק תוצאות allowlisted: קישור לא תקין, פג
+תוקף, שכבר שימש, חוסר התאמה לדפדפן/PKCE או זמינות ספק. הצלחה מוצגת ב־
+`role="status"`; כשל שמצריך פעולה מוצג ב־`role="alert"`. אחרי עדכון סיסמה
+ה־session המקומי נסגר, הקישור שכבר נוצל נדחה, והמשתמש נדרש להתחבר בסיסמה
+החדשה.
 
 טפסי Auth נשלחים ל־Server Actions ומאומתים שם באמצעות Zod. בנוסף,
 `supabase/config.toml` והפרויקט המארח אוכפים מינימום של 8 תווים ברמת Supabase
@@ -334,23 +344,30 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 שולח Email אמיתי.
 
 שירות ה־Email המובנה של Supabase hosted מיועד לניסוי, מוגבל בקצב וזמין על
-בסיס best-effort. לפני שימוש אמיתי יידרש SMTP ייעודי; מגבלה זו אינה נעקפת
-בפריסת הקורס.
+בסיס best-effort. ה־snapshot המסונן של 26 באוגוסט 2026 אינו מציג custom SMTP
+ומגביל delivery לנמעני team; לכן זרימת arbitrary-recipient ב־Hosted עדיין
+אינה ראיית PASS. לפני הדגמת evaluator יש להגדיר custom SMTP או מנגנון מסירה
+מאושר אחר, ואז לבצע בחשבון disposable מורשה את הזרימה המלאה המתועדת ב־
+`docs/evidence/slice-9/w2/S9-DEF-004.md`. אין להכניס credential או סיסמת בדיקה
+למאגר.
 
 ## הגדרות Redirect ב־Supabase hosted
 
-ב־Authentication → URL Configuration יש להגדיר ללא wildcard רחב:
+החוזה הנתמך מוגדר ללא wildcard רחב:
 
-- Site URL: `https://predictor-swart.vercel.app`
-- Redirect URL: `http://localhost:3000/auth/confirm`
-- Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
-- Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
-- Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
-- Redirect URL: `https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app/**`
+- Production origin / Site URL: `https://predictor-swart.vercel.app`
+- Production callback: `https://predictor-swart.vercel.app/auth/confirm`
+- Local origin: `http://localhost:3000`
+- Local callback: `http://localhost:3000/auth/confirm`
+- Local alternate for an explicitly selected loopback origin:
+  `http://127.0.0.1:3000/auth/confirm`
 
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבות ה־Preview של PR #4 ו־PR
-#5 מגדירות `NEXT_PUBLIC_APP_URL` ל־branch alias היציב שלהן, וה־aliases המדויקים
-מופיעים ב־allowlist; `Site URL` נשאר כתובת ה־Production.
+טפסי ההרשמה והשחזור משתמשים רק ב־origin בטוח מתוך ה־allowlist האפליקטיבי.
+ב־Hosted יש להשאיר את `Site URL` ב־Production, לשמור את שני ה־callbacks
+הנתמכים במדויק, ולהסיר aliases היסטוריים/wildcards לאחר בדיקת owner שאין להם
+צרכן. אם owner בוחר להפעיל Auth ב־Preview לצורכי QA פנימי, יש להוסיף רק את
+ה־callback המדויק של branch alias הפעיל ולבדוק אותו בנפרד; זו אינה דרישת
+הקורס ואינה חלק מ־smoke ה־Preview הציבורי.
 
 ## Migrations וטיפוסים
 

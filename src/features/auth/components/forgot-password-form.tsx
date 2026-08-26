@@ -2,27 +2,35 @@
 
 import { useActionState } from "react";
 
+import { forgotPasswordAction } from "@/features/auth/actions";
 import {
-  forgotPasswordAction,
-  type AuthActionState,
-} from "@/features/auth/actions";
+  getRecoveryRequestPresentation,
+  type AuthFlowPresentation,
+  type RecoveryRequestState,
+} from "@/features/auth/auth-flow-results";
 
 import { FieldError, FormMessage } from "./form-message";
 
-export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }) {
-  const initialState: AuthActionState = { status: "idle" };
+export function ForgotPasswordForm({
+  statusPresentation,
+}: {
+  statusPresentation?: AuthFlowPresentation;
+}) {
+  const initialState: RecoveryRequestState = { outcome: "IDLE" };
   const [state, formAction, pending] = useActionState(
     forgotPasswordAction,
     initialState,
   );
-  const fieldErrors = state.fieldErrors ?? {};
-  const message = state.message ?? statusMessage;
+  const fieldErrors =
+    state.outcome === "VALIDATION_ERROR" ? state.fieldErrors : {};
+  const presentation =
+    getRecoveryRequestPresentation(state.outcome) ?? statusPresentation;
 
   return (
     <form action={formAction} noValidate className="space-y-5">
-      {message ? (
-        <FormMessage kind={state.status === "error" ? "error" : "info"}>
-          {message}
+      {presentation ? (
+        <FormMessage kind={presentation.kind}>
+          {presentation.message}
         </FormMessage>
       ) : null}
 

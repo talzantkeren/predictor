@@ -936,7 +936,7 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - Email + Password בלבד. OAuth, תמונת פרופיל, תפקידי מנהל מערכת וחברויות ליגה אינם חלק מה־slice.
 - עמודים: `/login`, `/register`, `/forgot-password`, `/update-password`, `/profile` ו־`/dashboard`; Route Handler ב־`/auth/confirm`.
 - טפסי Auth שולחים מוטציות ל־Server Actions עם Zod ו־Server client; Browser client נשאר בתשתית אך אינו גבול אכיפה. SSR cookies ו־`src/proxy.ts` משמשים ל־session, ללא Auth Context או Redux גלובלי.
-- כל לקוחות Supabase מחוברים ל־`Database` generated. זרימת Email משתמשת ב־PKCE של `@supabase/ssr`; ב־Free tier עם ספק האימייל המובנה פתיחה במכשיר אחר מאשרת את הכתובת אך דורשת login ידני, ושחזור דורש בקשה חדשה באותו דפדפן. ה־UI מסביר זאת במפורש.
+- כל לקוחות Supabase מחוברים ל־`Database` generated. זרימת Email משתמשת ב־PKCE של `@supabase/ssr`; ב־Free tier עם ספק האימייל המובנה פתיחה במכשיר אחר מאשרת את הכתובת אך דורשת login ידני, ושחזור דורש בקשה חדשה באותו דפדפן. ה־UI מסביר זאת במפורש. חוזה Slice 9 מחזיר תוצאות typed: success/unknown address שקולים; `429` ו־outage מובחנים; callback invalid/expired/reused/session mismatch/provider unavailable ממופה ל־copy allowlisted בלבד ולתפקיד ARIA מתאים.
 - `proxy.ts` מרענן session ומבצע redirect בסיסי בלבד. כל Server Action/Query מאמת משתמש והרשאה מחדש.
 - identity migration יוצרת `profiles(id → auth.users.id, display_name, created_at, updated_at)`, trigger יצירה אוטומטי, constraints, RLS ו־least-privilege grants באותה migration.
 - מדיניות Slice 1: משתמש authenticated קורא ומעדכן רק את הפרופיל שלו; אין client insert/delete ואין קריאת פרופילים אחרים עד שקיימת טבלת חברות.

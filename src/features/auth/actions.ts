@@ -10,6 +10,10 @@ import {
   getAuthConfirmReturnCookieOptions,
   getRegistrationConfirmationUrl,
 } from "@/features/auth/confirmation-return";
+import {
+  getRecoveryRequestResult,
+  type RecoveryRequestState,
+} from "@/features/auth/auth-flow-results";
 import { getSafeAuthErrorMessage } from "@/features/auth/errors";
 import {
   getSafeAuthOrigin,
@@ -38,15 +42,21 @@ export type ProfileActionState = {
   fieldErrors?: Record<string, string[] | undefined>;
 };
 
-const CONSISTENT_RECOVERY_MESSAGE =
-  "אם קיים חשבון התואם לכתובת, נשלח אליו קישור לשחזור הסיסמה.";
-
 function validationFailure(
   fieldErrors: Record<string, string[] | undefined>,
 ): AuthActionState {
   return {
     status: "error",
     message: "יש לתקן את השדות המסומנים.",
+    fieldErrors,
+  };
+}
+
+function recoveryValidationFailure(
+  fieldErrors: Record<string, string[] | undefined>,
+): RecoveryRequestState {
+  return {
+    outcome: "VALIDATION_ERROR",
     fieldErrors,
   };
 }
@@ -151,26 +161,23 @@ export async function loginAction(
 }
 
 export async function forgotPasswordAction(
-  _previousState: AuthActionState,
+  _previousState: RecoveryRequestState,
   formData: FormData,
-): Promise<AuthActionState> {
+): Promise<RecoveryRequestState> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
 
   if (!parsed.success) {
-    return validationFailure(getFieldErrors(parsed.error));
+    return recoveryValidationFailure(getFieldErrors(parsed.error));
   }
 
   const origin = await getAuthRequestOrigin();
   const supabase = await createClient();
 
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: `${origin}/auth/confirm?next=/update-password`,
   });
 
-  return {
-    status: "success",
-    message: CONSISTENT_RECOVERY_MESSAGE,
-  };
+  return getRecoveryRequestResult(error);
 }
 
 export async function updatePasswordAction(

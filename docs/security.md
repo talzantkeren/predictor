@@ -12,6 +12,11 @@
   Server Actions הן בקשות POST שאינן נשמרות ב־cache.
 - `/auth/confirm` מוחק את פרטי ה־token מהיעד, חוסם redirects שאינם ב־allowlist
   ומוסיף `Referrer-Policy: no-referrer`.
+- ה־callback אינו מחזיר הודעת ספק או query חופשי ל־UI. הוא ממפה קודי שגיאה
+  מוכרים ל־invalid/expired/reused/session-mismatch/provider-unavailable
+  allowlisted. digest חד־כיווני קצר־חיים ב־cookie `HttpOnly`, שמוגבל ל־
+  `/auth/confirm`, מאפשר לזהות replay מיידי באותו דפדפן; הוא diagnostic בלבד,
+  אינו כולל את הקוד הגולמי ואינו מקור AuthN/AuthZ.
 - קישורי Email משתמשים ב־PKCE. פתיחה מחוץ לדפדפן שיזם את הבקשה אינה יכולה
   להחליף את הקוד ב־session: באישור הכתובת המשתמש מופנה להתחברות ידנית, ובשחזור
   הוא מקבל הנחיה לבקש קישור חדש בדפדפן הנוכחי. היעד נגזר רק מ־origin ו־path
@@ -61,9 +66,13 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ## פרטיות ושגיאות
 
-- שחזור סיסמה מחזיר תמיד הודעה עקבית שאינה מגלה אם כתובת Email רשומה.
-- הודעות UI ממופות מקודי Auth מוכרים; הודעות ספק, SQL ו־stack traces אינן
-  מוחזרות למשתמש.
+- הצלחת בקשת שחזור וכתובת שאינה קיימת מחזירות תוצאה typed זהה והודעה עקבית
+  שאינה מגלה אם כתובת Email רשומה. `429`/cooldown ממופה להמתנה ו־outage
+  ממופה ל־retry מאוחר; אלה כשלים תפעוליים ולא אות קיום חשבון.
+- הודעות UI ממופות מקודי Auth מוכרים בלבד; invalid, expired, replay ו־PKCE/
+  browser mismatch מובחנים בלי להחזיר הודעות ספק, SQL, stack traces או
+  `error_description`. הצלחה משתמשת ב־`role="status"` וכשל actionable ב־
+  `role="alert"`.
 - אין שימוש ב־`SUPABASE_SECRET_KEY` או ב־admin client בזרימות Auth/Profile.
 - CI משתמש רק ב־Supabase ו־Mailpit מקומיים ואינו מדפיס את פלט המפתחות של
   `supabase start`.
