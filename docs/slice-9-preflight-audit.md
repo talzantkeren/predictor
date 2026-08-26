@@ -12,10 +12,10 @@
 | פסק דין מבוקר | **SLICE 9 BACKLOG READY** |
 
 פסק הדין אומר שה־backlog של Slice 9 שלם, ממוסמך וניתן לתכנון. הוא **אינו**
-אומר שהמוצר מוכן לשחרור. לאחר ריוויזיית הסיווג יש 19 ממצאי delivery פתוחים
-ו־5 דרישות Slice 9 פתוחות: **24 רשומות שאינן decision-only — P1=7, P2=8,
-P3=9**. בנפרד יש חמש החלטות מוצר סגורות, החלטה טכנית אחת שנסגרה כ־accepted
-residual risk ושלוש החלטות טכניות פתוחות שאינן נספרות כ־defects. לכן אסור
+אומר שהמוצר מוכן לשחרור. לאחר סגירת ההחלטות יש 20 ממצאי delivery פתוחים
+ו־5 דרישות Slice 9 פתוחות: **25 רשומות שאינן decision-only — P1=7, P2=8,
+P3=10**. בנפרד יש חמש החלטות מוצר וארבע החלטות טכניות סגורות, אפס החלטות
+פתוחות ושני accepted residual risks סגורים. לכן אסור
 להשתמש בניסוח `RELEASE READY`, להתחיל הגשה או למזג תיקון עד השלמת Slice 9
 וביקורת סופית חדשה על SHA פרוס יחיד.
 
@@ -26,7 +26,8 @@ PR זה הוא תיעוד בלבד. הוא אינו כולל תיקון runtime,
 
 הביקורת קראה תחילה את `AGENTS.md`, ולאחריו, לפי הסדר, את
 `docs/product.md`, `docs/architecture.md`, `docs/technical-plan.md`, את כל תשעת
-עמודי `Internet Technologies.pdf`, ואת כל הקבצים תחת `docs/`. קוד, migration,
+עמודי ה־export המדויק שמזוהה ב־[`docs/course-source.md`](./course-source.md),
+ואת כל הקבצים תחת `docs/`. קוד, migration,
 RLS, RPC, Actions, Handlers, בדיקות, CI, GitHub, Vercel ו־Supabase נבדקו מול
 המסמכים הקנוניים. מסמכי prompt, mockups, PRים לא ממוזגים וראיות POC הוגדרו
 כהיסטוריים או כהפניות חזותיות; הם אינם מחליפים דרישת מוצר או ארכיטקטורה.
@@ -41,8 +42,8 @@ RLS, RPC, Actions, Handlers, בדיקות, CI, GitHub, Vercel ו־Supabase נב�
 | משטח | כיסוי שבוצע בפועל |
 | --- | --- |
 | עץ Git מקובע | 279 קבצים tracked ב־SHA; worktree ו־`origin/main` היו זהים בתחילת הביקורת |
-| `docs/` | 26/26 קבצים מהעץ המקובע; גם `rg --files docs` החזיר 26, ללא הבדל |
-| קורס | PDF חיצוני בן 9 עמודים: extraction מלא + render ובדיקה חזותית של 9/9 |
+| `docs/` | 26/26 קבצים בעץ הבסיס; ה־audit הוסיף path אחד והסגירה הנוכחית מוסיפה את `course-source.md`, ולכן head זה מכיל 28 paths תחת `docs/` |
+| קורס | export PDF חיצוני בן 9 עמודים: extraction מלא + render ובדיקה חזותית של 9/9; provenance ו־SHA-256 מדויקים ב־[`course-source.md`](./course-source.md) |
 | ספר פרויקט | `docs/project-book.docx`: extraction מלא של 48 פסקאות ו־2 טבלאות; export לקריאה בלבד דרך Word ובדיקה חזותית של 4/4 עמודים |
 | עיצוב | HTML אחד ו־9/9 mockups נפתחו ונבדקו חזותית; החלטות mockup בלבד לא קודמו לדרישות |
 | Routes | 18 pages, שני layouts, root/global error, not-found ו־9 משטחי loading (root ועוד 8 route-specific) |
@@ -235,11 +236,11 @@ sync `running→succeeded/failed/skipped`; scoring overwrites current result.
 
 ## 3. מלאי מלא של `docs/`
 
-לפני הכתיבה, העץ המקובע וה־working tree הכילו אותם 26 paths. לאחר הכתיבה
-ה־working tree מכיל 27: ההפרש היחיד הוא הקובץ החדש
-`docs/slice-9-preflight-audit.md`; `docs/technical-plan.md` ו־`docs/product.md`
-הם paths קיימים ששונו במכוון. המלאי הבא כולל את 26 מקורות הבסיס ואת artifact
-הביקורת החדש.
+העץ המקובע הכיל 26 paths תחת `docs/`. כתיבת ה־audit הוסיפה את
+`docs/slice-9-preflight-audit.md`; סגירת `S9-TDEC-003` מוסיפה את
+`docs/course-source.md`. לכן head זה מכיל 28 paths תחת `docs/`; שינויים
+בקבצים קיימים אינם משנים את הספירה. המלאי הבא כולל את 26 מקורות הבסיס, את
+artifact הביקורת ואת manifest ה־provenance.
 
 | path | סוג/תפקיד | נבדק בפועל | drift/disposition |
 | --- | --- | --- | --- |
@@ -247,7 +248,7 @@ sync `running→succeeded/failed/skipped`; scoring overwrites current result.
 | `docs/design-brief.md` | visual reference | נקרא במלואו | אין הרחבת scope; עיצוב light/RTL נשמר |
 | `docs/design/slice-7c/README.md` | visual/historical | נקרא במלואו | Slice 7c היסטורי, לא סטטוס שחרור נוכחי |
 | `docs/design/slice-7c/claude-design-export.html` | visual reference | DOM ו־render נבדקו | source visual בלבד; קובצי helper חסרים אינם runtime product |
-| `docs/design/slice-7c/final-review-prompt.md` | historical prompt | נקרא במלואו | instructions היסטוריות בלבד |
+| `docs/design/slice-7c/final-review-prompt.md` | historical prompt | נקרא במלואו | instructions היסטוריות בלבד; טקסט optional lookup ישן נשמר כראיה היסטורית ואינו source/dependency פעיל |
 | `docs/design/slice-7c/implementation-review-prompt.md` | historical prompt | נקרא במלואו | כנ״ל |
 | `docs/design/slice-7c/mockups/component-states.png` | visual reference | נבדק ברזולוציה מקורית | states בלבד |
 | `docs/design/slice-7c/mockups/dashboard-desktop.png` | visual reference | נבדק ברזולוציה מקורית | אין דרישת aggregation חדשה |
@@ -261,22 +262,26 @@ sync `running→succeeded/failed/skipped`; scoring overwrites current result.
 | `docs/design/slice-7c/s3-polish-review-prompt.md` | historical prompt | נקרא במלואו | לא מקור קנוני |
 | `docs/evidence/api-football-canary-2026-08-24.md` | evidence היסטורי | נקרא במלואו | נשמר קשור ל־SHA/מועד המקורי; לא שוכתב |
 | `docs/evidence/api-football-poc-2026-08-23.md` | evidence היסטורי | נקרא במלואו | מוכיח בחירת provider, לא תצפית release נוכחית |
-| `docs/product.md` | Markdown קנוני | נקרא במלואו | version/status והחלטות lifecycle/members עודכנו; provenance פתוח ב־S9-TDEC-003 (alias DEF-023) |
+| `docs/product.md` | Markdown קנוני | נקרא במלואו | version/status והחלטות lifecycle/members עודכנו; קישור המקור מפנה ל־manifest קיים ו־portable |
+| `docs/course-source.md` | evidence/provenance manifest | נבדק מול export שנבדק בביקורת | מזהה upstream, תאריך, filename, bytes, 9 pages ו־SHA-256; אינו specification וה־PDF אינו ב־Git |
 | `docs/project-book.docx` | derived/course deliverable | text + 4/4 pages | Slice 8 next, 460/20, תוכן כספי ופריסת עמודים: S9-DEF-013 |
 | `docs/prompts/slice-6-implementation-prompt.md` | historical prompt | נקרא במלואו | אינו contract נוכחי |
 | `docs/scale.md` | ניתוח קנוני תומך | נקרא במלואו | advisor/query-scale disposition ב־S9-REQ-005 |
-| `docs/security.md` | ניתוח קנוני תומך | נקרא במלואו | Hosted Auth ו־advisor residual gates פתוחים |
-| `docs/slice-9-preflight-audit.md` | audit artifact חדש | נכתב ונקרא במלואו; diff/staged review לפני commit | source durable לכל finding; אינו משנה runtime |
+| `docs/security.md` | ניתוח קנוני תומך | נקרא במלואו | TDEC-004 ו־mitigations תועדו; Hosted Auth/password-policy evidence נשאר פתוח בלי claim של configuration שהושלם |
+| `docs/slice-9-preflight-audit.md` | audit artifact חדש | נכתב ונקרא במלואו; diff/staged review לפני commit | source durable לכל finding; decision closure אינו משנה runtime/Hosted |
 | `docs/sports-provider-poc.md` | החלטה/תכנית POC | נקרא במלואו | API-Football נבחר; Manual/recorded fallbacks נשארים |
 | `docs/technical-plan.md` | Markdown קנוני | נקרא במלואו | סעיף Slice 9 עודכן לקישור ול־register זה |
 | `docs/testing.md` | תכנית/ראיות בדיקה | נקרא במלואו | ספירות 489/646/22 אומתו מחדש; פערי regression רשומים |
 
-ה־PDF של הקורס נמצא מחוץ ל־checkout ב־`C:/Users/Tal/Downloads/Internet
-Technologies.pdf`. תשעת עמודיו דורשים מוצר Next.js/TypeScript/Supabase/Vercel,
-אפיון, DB/זרימות/הרשאות, בדיקות, scale, security, URL חי, GitHub, הוראות local
-ומצגת 10–15 דקות. אין בו משקלי ציון; לא הומצא rubric. הקישור הנוכחי
-`project_sources/01-Internet-Technologies.pdf` אינו tracked ולכן דורש הכרעה
-ב־S9-TDEC-003 (alias DEF-023), בלי לערוך את PDF המקור.
+מקור ה־upstream הוא Google Document מוגבל גישה שמזהה המסמך שלו
+`16lecHM5vEMoao_P3WiN3k-UHzFQzZCcq_L3p5rAE2AA`. ה־export המדויק שנבדק הוא
+`Internet Technologies.pdf`, בן 9 עמודים ו־`407508` bytes, עם SHA-256
+`19b5dabc8e3f359d69b82bd0a0674740ba8704273b80602d3d7a25706557f39c`.
+הפרטים ודרך האימות נשמרים ב־[`docs/course-source.md`](./course-source.md);
+ה־PDF נמסר בנפרד בערוץ הקורס/evaluator ואינו ב־Git כחומר צד שלישי. תשעת
+עמודיו דורשים מוצר Next.js/TypeScript/Supabase/Vercel, אפיון,
+DB/זרימות/הרשאות, בדיקות, scale, security, URL חי, GitHub, הוראות local ומצגת
+10–15 דקות. אין בו משקלי ציון; לא הומצא rubric.
 
 ## 4. מטריצת עקיבות — דרישות מוצר
 
@@ -437,7 +442,8 @@ Script graph נבדק: `verify` מריץ lint→typecheck→Vitest→pgTAP→typ
 - Production כולל את תשעת שמות ה־env הצפויים, ללא קריאת ערכים:
   Supabase URL/publishable/secret, app URL, Demo mode, provider/key, Cron secret
   ו־system actor. Preview כולל שישה שמות, ברירת המחדל שלו Manual, וכן entries
-  ישנים branch-specific; ראו S9-TDEC-002 (alias S9-DEF-025).
+  ישנים branch-specific. S9-TDEC-002 הכריעה שה־sports key הוא Production-only;
+  המצב הנצפה טרם שונה ולכן S9-DEF-025 נשאר פתוח.
 - PR #9, `Docs: expand Slice 10 production hardening contract`, פתוח, non-draft
   ו־`DIRTY`. הוא היסטורי בלבד ולא מוזג/נסגר. רק הדרישות התקפות של SMTP/recovery
   עברו עצמאית ל־register זה. אין בו review אנושי או review decision; comment
@@ -519,7 +525,7 @@ order by provider;
 | `pg_net` ב־`public` | ה־job הנוכחי תלוי ב־`pg_net`; לא הוכח שמיקום `public` עצמו נדרש. יש לאמת schema/dependencies נתמכים לפני כל move ב־S9-REQ-005 |
 | advisor role-entries ל־`SECURITY DEFINER`: `resolve_invite`, `approve_join_request`, `authorize_payment_proof_access`, `consume_proof_upload_rate_limit`, `create_league`, `create_or_rotate_invite`, `finalize_payment_proof`, `get_join_request_upload_context`, `get_league_invite_metadata`, `get_manager_join_requests`, `get_my_join_requests`, `get_my_join_requests_v2`, `is_system_admin`, `reject_join_request`, `revoke_invite`, `save_prediction`, `submit_join_request` | gateways מכוונים, `search_path=''`, grants מצומצמים ו־pgTAP. לשמור disposition function-by-function; אין warning אוטומטי שהוא bypass |
 | `rls_auto_enable` ל־anon/authenticated | אינו קיים ב־local migrations אך הופיע ב־Hosted Advisor; owner/definition/grants חייבים להיבדק ולהיות מוסברים או מבוטלים לפני release |
-| leaked password protection disabled | מגבלת plan מאומתת; S9-TDEC-004 יכריע plan או mitigation מתועד, ו־S9-REQ-005 יאמת rate/password/monitor controls |
+| leaked password protection disabled | `S9-TDEC-004` נסגר כ־accepted residual risk: אין upgrade רק עבור היכולת ואין client-side lookup. `S9-REQ-005` עדיין מאמת read-only את התאמת מדיניות password ‏8–128 ואת בקרות rate/monitoring לפני final evidence |
 | שש טבלאות RLS ללא policies: `audit_logs`, `invite_links`, `rate_limit_events`, `sports_provider_rounds`, `sync_leases`, `system_admins` | deny-all מכוון עם gateway/RPC; לשמר tests של no direct grant |
 
 ### 7.2 Performance Advisor — 0 errors, 0 warnings, 20 info
@@ -611,24 +617,29 @@ open defect count. רשומת `Merged` אינה נספרת שוב.
 
 החשבון המכני לאחר הריוויזיה:
 
-| קבוצה | P1 | P2 | P3 | סה״כ | disposition |
-| --- | ---: | ---: | ---: | ---: | --- |
-| implementation/security defects פתוחים | 2 | 5 | 7 | 14 | `BUG` 11, `DATA_INTEGRITY` 2, `SECURITY` 1 |
-| documentation conflicts פתוחים | 0 | 1 | 1 | 2 | DEF-013/014 |
-| missing MVP capability פתוח | 1 | 0 | 0 | 1 | DEF-003 |
-| Hosted configuration/evidence gap פתוח | 1 | 0 | 0 | 1 | DEF-004 |
-| unreproduced operability risk פתוח | 0 | 0 | 1 | 1 | DEF-012 |
-| **ממצאי delivery פתוחים** | **4** | **6** | **9** | **19** | לא כולל decisions/merged/accepted risk |
-| accepted residual risk סגור | 0 | 0 | 1 | 1 | DEF-017; P3 tracked אך לא open delivery |
-| planned Slice 9 requirements | 3 | 2 | 0 | 5 | REQ-001–005 |
-| **delivery פתוח כולל REQ** | **7** | **8** | **9** | **24** | בסיס ה־critical path |
+| קבוצה | P1 | P2 | P3 | Unscored | סה״כ | disposition |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| implementation/security defects פתוחים | 2 | 5 | 7 | 0 | 14 | `BUG` 11, `DATA_INTEGRITY` 2, `SECURITY` 1 |
+| documentation conflicts פתוחים | 0 | 1 | 1 | 0 | 2 | DEF-013/014 |
+| missing MVP capability פתוח | 1 | 0 | 0 | 0 | 1 | DEF-003 |
+| Hosted configuration/evidence gaps פתוחים | 1 | 0 | 1 | 0 | 2 | DEF-004/025 |
+| unreproduced operability risk פתוח | 0 | 0 | 1 | 0 | 1 | DEF-012 |
+| **ממצאי delivery פתוחים** | **4** | **6** | **10** | **0** | **20** | לא כולל decisions/merged/accepted risk |
+| accepted residual risks סגורים | 0 | 0 | 1 | 1 | 2 | DEF-017/TDEC-001 הם סיכון P3 יחיד; TDEC-004 הוא decision risk unscored |
+| planned Slice 9 requirements | 3 | 2 | 0 | 0 | 5 | REQ-001–005 |
+| **delivery פתוח כולל REQ** | **7** | **8** | **10** | **0** | **25** | בסיס ה־critical path |
 
-בנפרד: חמש החלטות מוצר `S9-PDEC-*` סגורות ואפס פתוחות; החלטה טכנית אחת
-נסגרה כ־accepted residual risk ושלוש `S9-TDEC-*` פתוחות. ארבע רשומות DEF
-אינן פתוחות עצמאית: DEF-005 ו־DEF-021 מוזגו ל־REQ-001, DEF-006 נסגר כהחלטת
-מוצר ו־DEF-017 נסגר כ־accepted risk. DEF-023/025 הם aliases ל־technical
-decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver ל־P2
-דורש owner, נימוק, mitigation ותאריך בכתב. אין waiver חדש ל־P2.
+| ledger | Resolved | Open |
+| --- | ---: | ---: |
+| החלטות מוצר `S9-PDEC-*` | 5 | 0 |
+| החלטות טכניות `S9-TDEC-*` | 4 | 0 |
+| gates ידניים/config/evidence (§13) | 3 | 10 |
+
+חמש רשומות DEF אינן פתוחות עצמאית: DEF-005 ו־DEF-021 מוזגו ל־REQ-001,
+DEF-006 נסגר כהחלטת מוצר, DEF-017 נסגר כ־accepted risk ו־DEF-023 נסגר עם
+manifest ה־provenance. DEF-025 הוא כעת finding פתוח P3: TDEC-002 הכריעה את
+המדיניות אך שינוי Hosted והראיות טרם בוצעו. כל P1/P2 delivery חוסם release;
+waiver ל־P2 דורש owner, נימוק, mitigation ותאריך בכתב. אין waiver חדש ל־P2.
 
 #### Disposition של ריוויזיית `AUDIT_NEEDS_REVISION`
 
@@ -646,6 +657,9 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 | S9-DEF-015 / 016 | `RETAINED`, downgraded to P3; נשארים ב־final RTL/accessibility pass |
 | S9-DEF-017 | `P3 ACCEPTED RESIDUAL RISK`; נסגר באמצעות manual release control מאושר, ללא public repo/plan purchase |
 | S9-DEF-021 | policy/docs `VERIFIED RESOLVED`; read-only active-member capability `MERGED INTO S9-REQ-001` |
+| S9-TDEC-002 / DEF-025 | decision `RESOLVED`: sports key Production-only ו־Preview/Local/CI Manual ללא live canary; DEF-025 חזר כ־P3 פתוח עד שינוי Vercel והראיות |
+| S9-TDEC-003 / DEF-023 | `RESOLVED`: manifest tracked ו־exact PDF נמסר בנפרד; DEF-023 נסגר |
+| S9-TDEC-004 | `RESOLVED — ACCEPTED RESIDUAL RISK`: אין plan upgrade/client lookup; Hosted password-policy evidence נשאר ב־REQ-005 |
 | S9-REQ-001–005 | `RETAINED` כ־planned requirements, לא regressions; REQ-001 הורחב רק ב־merged acceptance והחלטות הבעלים |
 | Decision-table delta | lock order הועבר ל־implementation/data-integrity invariant; `/members` הוכרע ב־PDEC-005 ואינו open policy |
 | Decisions/counts | product/technical decisions הופרדו מ־defects; כל המספרים חושבו מחדש בטבלה לעיל |
@@ -1113,8 +1127,8 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 - Acceptance: המסמכים מציגים origins ויכולות אמיתיים; obsolete entries
   נמחקים/מנומקים; אין open redirect או הבטחת Preview flow לא־מאומתת.
 - Regression: link/config-name review; Auth tests ו־Production/local proof תחת
-  DEF-004. Dependencies/order: לצד DEF-004 docs pass; Waiver: none; Status:
-  `Open`.
+  DEF-004.
+- Dependencies/order: לצד DEF-004 docs pass; Waiver: none; Status: `Open`.
 
 ### S9-DEF-015 — שמות לא־מהימנים מאפשרים bidi spoofing ואינם מבודדים
 
@@ -1303,27 +1317,28 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 
 ### S9-DEF-023 — קישור מקור הקורס אינו זמין ב־repository
 
-- Type: `DECISION_REQUIRED`; Category: `TECHNICAL_DECISION_ALIAS`; Severity: `Unscored`; Confidence:
-  `CONFIRMED`; Release blocking: `Decision remains open`.
+- Type: `DOCUMENTATION_PROVENANCE`; Category: `RESOLVED_TECHNICAL_DECISION`;
+  Severity: `Unscored`; Confidence: `CONFIRMED`; Release blocking: `No — resolved`.
 - Affected requirements/slices: documentation provenance, all slices.
-- Environment/SHA: docs + external PDF, `a14edfc4…`.
-- Affected data: `docs/product.md:3-9,459-466` header/course-source sections.
-- Preconditions/reproduction: ב־SHA המקובע header היה "approved to begin
-  implementation" אף ש־Slice 8 complete; הוא תוקן מכנית ב־PR זה לגרסה 2.12/
-  26.8/Slices 0–8 complete. link ל־`project_sources/01-Internet-Technologies.pdf`
-  עדיין אינו tracked.
-- Expected: current status ו־delivery/source provenance תקין בלי לשכפל או לערוך
-  PDF שלא אושר ל־repo. Actual open: link קיים ב־`product.md` section 17 אך
-  target `project_sources/01-Internet-Technologies.pdf` אינו tracked.
-- Impact/root cause: evaluator/agent עלול להסיק שלב שגוי או לא למצוא source.
-- Minimal fix boundary: mechanical link only after S9-TDEC-003 decides whether
-  course PDF may be tracked or referenced externally; status header כבר תוקן
-  ב־PR זה.
+- Environment/SHA: docs + separately delivered external PDF, `a14edfc4…`.
+- Affected data: `AGENTS.md`, `docs/product.md`, `docs/course-source.md` וה־audit.
+- Resolution/evidence: `docs/course-source.md` קיים כ־provenance manifest ולא
+  כ־specification. הוא מזהה את Google Document upstream, תאריך verification,
+  filename מדויק, 9 עמודים, `407508` bytes ו־SHA-256
+  `19b5dabc8e3f359d69b82bd0a0674740ba8704273b80602d3d7a25706557f39c`.
+  `AGENTS.md` ו־`docs/product.md` מפנים ליעד tracked ו־portable.
+- Delivery policy: ה־PDF הוא חומר צד שלישי, אינו נכלל ב־Git ונמסר בנפרד דרך
+  ערוץ הקורס/evaluator הרשמי. אין Email אישי או טקסט מהותי מן המקור ב־manifest.
+- Impact/root cause: לפני הסגירה agent/evaluator היה עלול לא למצוא את המקור;
+  manifest + fingerprint מאפשרים לזהות את ה־export המדויק בלי redistribution.
+- Minimal fix boundary: manifest וקישורים בלבד; לא שוכתב מסמך הקורס.
 - Required migration/RLS/grant/config/doc changes: `N/A`; docs/provenance בלבד.
-- Acceptance: source link opens for evaluator; no course text rewrite.
-- Regression: link/date/version checker + manual evaluator open.
-- Dependencies/order: final docs; Waiver: N/A; Status: **`OPEN TECHNICAL
-  DECISION — alias of S9-TDEC-003`**. אינו defect count.
+- Acceptance: manifest tracked; fingerprint ו־page count מדויקים; אין absolute
+  path או live broken source link; export נמסר out-of-band וניתן להשוואה.
+- Regression: link/date/version checker, `rg` לנתיבים שבורים ואימות hash/page
+  של ה־export שנמסר.
+- Dependencies/order: final docs; Waiver: N/A; Status: **`Closed —
+  S9-TDEC-003 RESOLVED, 2026-08-26`**. אינו open delivery count.
 
 ### S9-DEF-024 — full E2E ירוק משאיר server error לא מוסבר
 
@@ -1348,31 +1363,37 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 
 ### S9-DEF-025 — production sports credential זמין ל־Preview שאינו משתמש בו
 
-- Type: `DECISION_REQUIRED`; Category: `TECHNICAL_DECISION_ALIAS`; Severity: `Unscored`; Confidence:
-  `CONFIRMED` scope; Release blocking: `Decision remains open`.
+- Type: `CONFIGURATION`; Category: `HOSTED_ACCEPTANCE`; Severity: `P3`;
+  Confidence: `CONFIRMED` scope; Release blocking: `No, tracked`.
 - Affected requirements/slices: least privilege, Slice 7b deployment.
 - Environment/SHA: Vercel env names/scopes read-only, `a14edfc4…`.
 - Affected roles/data: Preview deployments; `SPORTS_API_KEY` (value not read).
 - Preconditions/reproduction: Vercel environment settings מציגים
   `SPORTS_API_KEY` ב־Production+Preview, אך `SPORTS_API_PROVIDER` Production-only
   ולכן Preview defaults Manual; values לא נקראו.
-- Expected: unused production credential אינו מוזרק ל־Preview, או policy מבודדת
-  עם key low-quota נפרד. Actual: scope רחב מהצורך.
+- Selected policy: `S9-TDEC-002 — RESOLVED, 2026-08-26` —
+  `SPORTS_API_KEY` הוא Production-only; Production משתמשת ב־
+  `SPORTS_API_PROVIDER=api-football`; Preview, Local ו־CI משתמשים ב־
+  `SPORTS_API_PROVIDER=manual`, recorded fixtures ו־fake transport, ללא key.
+  אין live provider canary ב־Preview ב־MVP.
+- Expected/actual: unused Production credential אינו מוזרק ל־Preview; בפועל
+  ה־scope הנצפה עדיין רחב ולכן finding זה נשאר פתוח עד שינוי Hosted וראיה.
 - Impact/root cause: Preview code/PR compromise יכול לקרוא credential production;
   env scopes drifted after provider selection.
-- Minimal fix boundary/options: S9-TDEC-002 יבחר Production-only key או
-  trusted-preview canary policy + separate constrained credential. אין בחירה
-  שקטה.
-- Required migration/RLS/grant/config/doc changes: `N/A`; Vercel env scope +
-  deployment/security docs בלבד.
-- Acceptance: בשתי האפשרויות scope screenshot sanitized ואין value/log/browser
-  bundle. אם נבחר Production-only, Preview נשאר Manual והבדיקות הירוקות מוכיחות
-  שאין key. אם נבחר trusted canary, Preview מקבל credential נפרד ומוגבל quota,
-  והראיה מוכיחה שמפתח Production אינו מוזרק וש־canary משתמש רק במפתח הנפרד.
-- Regression: final env-name/scope matrix + client-secret scan.
-- Dependencies/order: final env review; owner/date/rationale נדרשים לבחירה;
-  Status: **`OPEN TECHNICAL DECISION — alias of S9-TDEC-002`**. אינו defect
-  count.
+- Minimal fix boundary: להסיר את `SPORTS_API_KEY` מ־Preview scope, לסמן אותו
+  Sensitive ב־Production ככל שנתמך, ולא לשנות provider/runtime.
+- Required migration/RLS/grant/config/doc changes: `N/A` migration/RLS/grant;
+  Vercel env scope + deployment/security evidence בלבד.
+- Acceptance: מטריצת env-name/scope מסוננת ללא values; key אינו קיים ב־Preview;
+  client bundle ולוגים נקיים; CI ירוק עם Manual; Production Cron ממשיך לפעול
+  עם `api-football`. אין טענה ששני keys היו חולקים או מבודדים quota: בידוד
+  מכסה נפרד אינו מאומת, ורכישת subscription נוסף רק ל־Preview אינה מוצדקת
+  ב־MVP. אפשר לשקול key/subscription נפרדים רק אם דרישת live-provider QA
+  מהימנה עתידית תצדיק זאת.
+- Regression: final sanitized env-name/scope matrix + client/log secret scan +
+  Manual CI + Production Cron observation.
+- Dependencies/order: TDEC-002 resolved; שינוי Hosted תחת final env review.
+  Waiver: N/A; Status: **`Open`** עד configuration/evidence.
 
 ## 11. דרישות Slice 9 שעדיין חסרות
 
@@ -1522,14 +1543,14 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
   Release blocking: `Yes unless explicitly waived`.
 - Source: course PDF + Slice 9 plan; README, testing, security, scale, project book.
 - Environment/SHA/roles/data: evaluator/maintainer; current docs inspected;
-  drift defects DEF-013/014 והחלטת provenance ‏S9-TDEC-003 (alias DEF-023).
+  drift defects DEF-013/014; provenance ‏S9-TDEC-003/DEF-023 כבר נסגר.
 - Preconditions/reproduction: full text/link inventory + DOCX 4/4 render מפיקים
   את ה־drift המתועד ברשומות אלה.
 - Expected: one consistent current status/date/version, setup/env/deploy URLs,
   architecture/DB/flows/tests/scale/security/residual risks and project book.
-- Actual: canonical supporting docs mostly current ו־members scope כבר הוכרע;
-  derived book/redirect/source provenance drifted ו־safe evaluator/demo
-  instructions חסרים.
+- Actual: canonical supporting docs mostly current, members scope הוכרע ו־
+  source provenance קיבל manifest; derived book/redirect ו־safe evaluator/demo
+  instructions עדיין חסרים.
 - Impact/root cause: evaluator עלול לקבל counts/status/setup סותרים; derived
   artifacts והגדרות Hosted לא סונכרנו במחזור אחד.
 - Minimal boundary: correct only approved facts; synchronize DOCX deterministically;
@@ -1541,7 +1562,8 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
   source-provenance + deterministic render instructions.
 - Regression/verification: link checker/manual, document render,
   `git diff --check`, full staged allowlist review.
-- Dependencies/order: אחרי content fixes והכרעת S9-TDEC-003, לפני REQ-002/003;
+- Dependencies/order: אחרי content fixes, לפני REQ-002/003; manifest ה־course
+  נשאר חלק מ־link/hash verification אך אינו dependency פתוח.
   Waiver: none; Status: `Open`.
 
 ### S9-REQ-005 — hardening וראיית בדיקה סופית
@@ -1566,12 +1588,15 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
   Preview/Production manual gates, accepted-risk owner/date/trigger.
 - Required migration/RLS/grant/config/doc changes: לפי כל finding בלבד; כל Advisor
   מקבל add/no-add/waive disposition, אין שינוי schema עיוור. leaked-password
-  protection נסגר דרך החלטת S9-TDEC-004 עם owner/date/mitigation; הוא internal
-  hardening decision ולא דרישת PDF ישירה.
+  protection נסגר כ־accepted residual risk דרך S9-TDEC-004; acceptance שנותר
+  הוא ראיית read-only שמדיניות Hosted תואמת ל־8–128 ותיעוד rate/monitoring,
+  ללא claim שהיכולת הופעלה. גם DEF-025 דורש scope matrix/secret scan/Cron
+  evidence אחרי שינוי Vercel.
 - Regression: full canonical verify פעם אחת + targeted reruns לפי failure;
   real multi-session, clean clone, Hosted/manual matrix על exact final SHA.
-- Dependencies/order: אחרי כל fixes ואחרי disposition מתועד ל־S9-TDEC-002–004,
-  לפני REQ-003; Waiver: none; Status: `Open`.
+- Dependencies/order: אחרי כל fixes ואחרי acceptance ה־Hosted/manual שנותר
+  מהחלטות S9-TDEC-002/004, לפני REQ-003; כל ארבע ההחלטות עצמן כבר סגורות.
+  Waiver: none; Status: `Open`.
 
 ## 12. בדיקה מחדש של regressions היסטוריים
 
@@ -1595,21 +1620,27 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 
 ## 13. שערים חסומים/ידניים
 
-יש **8 שערים פתוחים** ושער governance אחד שנסגר בהחלטת accepted risk. סגירת
-ההחלטה על branch control אינה מחליפה את ביצוע ה־control על ה־candidate הסופי,
-שנשאר חלק מ־REQ-003.
+יש **10 שערי implementation/configuration/evidence פתוחים** ו־**3 שערי
+policy/provenance/governance סגורים**. סגירת החלטה אינה מתחזה לשינוי Hosted:
+ה־acceptance של DEF-025 ושל מדיניות password נשאר פתוח. באותה מידה, סגירת
+branch control כ־accepted risk אינה מחליפה את ביצוע ה־control על ה־candidate
+הסופי תחת REQ-003.
 
 | שער | סטטוס | מדוע אינו PASS עכשיו / תנאי סגירה |
 | --- | --- | --- |
 | Hosted signup/recovery | `OPEN` | mutation/email אסורים ללא disposable authorization; DEF-004 acceptance על Production/local |
 | Preview Auth callback/private-flow | `OPEN — INTERNAL ONLY` | DEF-014 מיישר docs/policy; אם נשמר מסלול Preview, child Hosted alignment + E2E נסגרים ב־DEF-004. אינו course blocker ישיר |
 | Cron slow path | `OPEN` | DEF-011 fake + DEF-012 controlled slow path ו־sanitized Hosted run; DEF-012 מקודם רק בתנאי המוגדר |
+| Production sports credential scope | `OPEN` | TDEC-002 הכריעה Production-only, אך DEF-025 דורש הסרה מ־Preview, Sensitive ב־Production ככל שנתמך, matrix ללא values, scan, Manual CI ו־Production Cron proof |
+| Hosted password-policy/control evidence | `OPEN — INTERNAL ONLY` | TDEC-004 קיבלה את היעדר leaked-password protection; REQ-005 עדיין דורש read-only proof של התאמת 8–128 ו־rate/monitor controls, ללא שינוי Auth ב־PR זה |
 | final deployment SHA | `OPEN` | Slice 9 טרם מומש; REQ-003 |
 | evaluator private GitHub access | `OPEN` | זהות evaluator אינה ידועה; confirmation out-of-band תחת REQ-003 |
 | native 200%/contrast/full keyboard | `OPEN` | smoke אינו manual audit מלא; REQ-005 manual matrix |
 | presentation rehearsal | `OPEN` | artifacts חסרים; REQ-002 |
 | project-book regeneration | `OPEN` | אין workflow deterministic ב־repo; DEF-013/REQ-004 |
+| course-source provenance | `RESOLVED` | TDEC-003/DEF-023: manifest tracked, fingerprint+9 pages recorded וה־PDF נמסר בנפרד |
 | enforced branch protection | `RESOLVED — ACCEPTED RESIDUAL RISK` | plan limitation; TDEC-001/DEF-017 קובעים manual reviewed-PR/exact-SHA control, והוא מבוצע שוב ב־REQ-003 |
+| leaked-password protection availability | `RESOLVED — ACCEPTED RESIDUAL RISK` | TDEC-004: אין plan upgrade רק עבור היכולת ואין client lookup; reopen triggers מתועדים. שורת ה־evidence הפתוחה לעיל נשארת נפרדת |
 
 ## 14. סיכונים שהתקבלו בעבר ו־post-MVP
 
@@ -1622,6 +1653,7 @@ decisions ואינם defect count. כל P1/P2 delivery חוסם release; waiver 
 | אין retention job/materialized leaderboard/cache | scale document | bounded history ו־small private leagues | plans/latency/storage חוצים thresholds מתועדים |
 | Hosted `NS→live→FT` observation opportunistic | canary plan | recorded fixtures + Manual path + fail-closed review | חלון משחק חוקי זמין ללא בזבוז quota |
 | אין platform-enforced protection על `main` | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-001 | private repo; no direct push; merge reviewed PR בלבד; exact candidate SHA + שלושת checks הנקובים + Production commit/immutable URL/alias | collaborator/visibility/plan משתנים, direct-push attempt, control failure או דרישת evaluator |
+| leaked-password protection אינה זמינה/מופעלת | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-004 | validation ‏8–128; Hosted policy consistency evidence תחת REQ-005; rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only; אין client-side breached-password lookup | plan כולל את היכולת מסיבה אחרת, הרחבה לנתונים רגישים מהותית, incident/credential-stuffing evidence או דרישת evaluator |
 
 אין waiver חדש ל־P2 בביקורת זו. P4/post-MVP בלבד: export/charts/BI, malware
 scanning רחב, materialized leaderboard/Redis/queue לפי מדידה, ושילוב model
@@ -1630,8 +1662,9 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 
 ## 15. Critical path של Slice 9
 
-1. לאשר את audit PR וה־register; חמש החלטות המוצר כבר סגורות ואין decision
-   blocker לפני תחילת engineering.
+1. לאשר את audit PR וה־register; חמש החלטות המוצר וארבע ההחלטות הטכניות כבר
+   סגורות ואין decision blocker לפני תחילת engineering. סגירת decision אינה
+   סוגרת את acceptance ה־Hosted שמסומן להלן.
 2. לתקן forward-only את DEF-002 ולכתוב את בדיקות ה־DB הרב־session.
 3. לתקן DEF-001 ולסגור DEF-004 ב־Production/local Hosted evidence; ליישר את
    DEF-014 docs/policy באותו pass בלי להפוך Preview לדרישת קורס.
@@ -1640,15 +1673,19 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 5. לממש REQ-001 לפי PDEC-001–005; הוא סופג את DEF-005/021 וכולל terminal
    matrix, lock order, races אמיתיים, active-members ו־post-completion review.
 6. לתקן sports reliability: DEF-010/011/018/019; לשחזר DEF-012 ב־controlled
-   slow path ולהעלות priority רק אם תנאי הקידום מתקיים.
+   slow path ולהעלות priority רק אם תנאי הקידום מתקיים. באותו workstream
+   לסגור את DEF-025 לפי TDEC-002: להסיר `SPORTS_API_KEY` מ־Preview, לסמן אותו
+   Sensitive ב־Production ככל שנתמך, ללכוד matrix מסוננת, להוכיח שאין key
+   ב־bundle/logs, להשאיר CI על Manual ולאמת ש־Production Cron ממשיך לפעול.
 7. לסגור RTL/invite/accessibility: DEF-015/016/020/022 ו־native 200% matrix.
 8. לסנכרן README/docs/project book וליצור deck/demo/rehearsal: DEF-013/014,
-   REQ-002/004; provenance לפי TDEC-003.
-9. לסגור עם owner/date/rationale את שלוש ההחלטות הטכניות הפתוחות
-   S9-TDEC-002–004; TDEC-001 אינו עבודת engineering פתוחה.
+   REQ-002/004; manifest ה־provenance שכבר נסגר נכלל ב־link/hash check.
+9. תחת REQ-005 להשלים את acceptance של TDEC-004: ראיית read-only שמדיניות
+   Hosted תואמת ל־8–128, תיעוד rate/monitor controls ואימות Demo accounts;
+   אין plan upgrade, client lookup או claim שה־leaked-password feature הופעלה.
 10. לפתור כל P3 או לתעד defer מפורש, ואז להריץ REQ-005 full verification,
     Advisors, plans ו־clean clone על candidate נקי.
-11. לפרוס אותו SHA ל־Preview/Production לפי המדיניות שנבחרה, לאמת evaluator
+11. לפרוס אותו SHA ל־Preview/Production לפי המדיניות המאושרת, לאמת evaluator
     access ולבצע את manual branch control המאושר תחת REQ-003.
 12. לבצע final audit: אפס P0/P1 וללא P2 שאינו waived במפורש.
 
@@ -1664,19 +1701,23 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 | `S9-PDEC-004` | `RESOLVED` | completion סוגר אטומית את שני pending states ל־existing rejected/closed representation עם `LEAGUE_COMPLETED` ושומר proofs/history/audit |
 | `S9-PDEC-005` | `RESOLVED` | `/members` מציג active-member list read-only; removal/reactivation post-MVP |
 
-החלטה טכנית אחת נסגרה ושלוש בלבד נשארו פתוחות, ללא severity/defect count:
+ארבע ההחלטות הטכניות סגורות ואפס פתוחות. החלטה סגורה אינה טענת Hosted
+configuration: acceptance שלא בוצע נשאר finding/gate פתוח במפורש.
 
 | ID | סטטוס | owner/options/תנאי סגירה |
 | --- | --- | --- |
 | `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK` | repository owner `talzantkeren`, 26.8.2026; manual reviewed-PR/exact-SHA/three-check/Production-proof control; reopen triggers ב־DEF-017 |
-| `S9-TDEC-002` | `OPEN` | owner יבחר Production-only sports key או trusted Preview עם credential נפרד low-quota; alias DEF-025 |
-| `S9-TDEC-003` | `OPEN` | owner יאשר tracked course PDF תחת `project_sources/` או stable delivery link; אין להמציא או לערוך מקור; alias DEF-023 |
-| `S9-TDEC-004` | `OPEN` | owner יבחר plan שמאפשר leaked-password protection או password/rate/monitor mitigation מתועד; internal hardening, לא דרישת PDF ישירה |
+| `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` Production-only; Production `api-football`; Preview/Local/CI Manual ללא key/live canary. quota isolation בין credentials unverified ורכישה רק ל־Preview אינה מוצדקת. DEF-025 נשאר פתוח עד Vercel change/evidence |
+| `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | manifest tracked; exact PDF export נמסר בנפרד; אין commit של חומר צד שלישי ללא redistribution permission. DEF-023 closed |
+| `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין upgrade רק עבור leaked-password protection ואין client lookup; mitigations ו־reopen triggers ב־§14/`docs/security.md`. Hosted password-policy evidence נשאר gate פתוח תחת REQ-005 |
 
 ## 17. מקורות רשמיים שנבדקו
 
 כל הקישורים הבאים נפתחו ונבדקו ב־26 באוגוסט 2026:
 
+- קורס: [`docs/course-source.md`](./course-source.md) מזהה את Google Document
+  upstream המוגבל גישה ואת export ה־PDF המדויק שנבדק באמצעות filename,
+  9 pages, bytes ו־SHA-256. ה־export נמסר בנפרד ואינו ב־Git.
 - Next.js: [Production Checklist](https://nextjs.org/docs/app/guides/production-checklist),
   [Data Security](https://nextjs.org/docs/app/guides/data-security),
   [Proxy](https://nextjs.org/docs/app/api-reference/file-conventions/proxy),
@@ -1713,5 +1754,6 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 כל מקור שהיה יכול לשנות את זיהוי או היקף ה־backlog נבדק. כל defect מאומת,
 דרישה חובה חסרה, החלטה, שער Hosted וסתירת מסמכים מופיעים בקובץ זה ובסעיף Slice
 9 של `docs/technical-plan.md`. אין ממצא הקיים רק בצ׳אט. המוצר אינו מוכן לשחרור:
-יש להשלים את critical path, לסגור את שלוש ההחלטות הטכניות הפתוחות בנקודות
-הרלוונטיות, ולהריץ ביקורת סופית חדשה על SHA אחד שגם עבר CI וגם פרוס בפועל.
+כל החלטות המוצר וההחלטות הטכניות סגורות, אך יש להשלים את critical path ואת
+שערי ה־Hosted/manual הפתוחים — לרבות DEF-025 וראיית password-policy — ולהריץ
+ביקורת סופית חדשה על SHA אחד שגם עבר CI וגם פרוס בפועל.

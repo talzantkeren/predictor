@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.18 |
+| גרסה | 3.19 |
 | תאריך עדכון | 26 באוגוסט 2026 |
 | סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה |
 | דדליין | 6 בספטמבר 2026 |
@@ -77,6 +77,7 @@ npx playwright install
 ├── docs/
 │   ├── product.md
 │   ├── architecture.md
+│   ├── course-source.md        # provenance בלבד; ה־PDF נמסר בנפרד
 │   ├── technical-plan.md
 │   ├── design-brief.md         # קלט עיצובי מאושר ל־Slice 7c
 │   ├── testing.md              # ייכתב תוך כדי ה־slices
@@ -205,6 +206,18 @@ DEMO_MODE=true
   והעמום `api` אינו תקין.
 - `SPORTS_API_KEY` אינו נדרש כאשר provider הוא `manual`, ונדרש בזמן ריצה כאשר
   provider הוא `api-football`.
+- **`S9-TDEC-002` — מדיניות סביבות מאושרת, 26 באוגוסט 2026:** Production
+  חייבת להשתמש ב־`SPORTS_API_PROVIDER=api-football`, ו־`SPORTS_API_KEY` יוגדר
+  בה בלבד ויסומן Sensitive במקום שבו Vercel תומכת בכך. Preview, Local ו־CI
+  חייבות להשתמש ב־`SPORTS_API_PROVIDER=manual`, recorded fixtures ו־fake
+  transport, ללא `SPORTS_API_KEY`. אין live-provider canary ב־Preview ב־MVP הקורס.
+  subscription/key נפרדים ל־Preview יישקלו רק אם דרישת QA חיה ומהימנה עתידית
+  תצדיק זאת. בידוד מכסה בין credentials נפרדים אינו מאומת, ואין הצדקה לרכוש
+  subscription נוסף רק עבור Preview ב־MVP.
+- ההחלטה התיעודית אינה משנה את Vercel. `S9-DEF-025` נשאר פתוח עד להסרת ה־key
+  מ־Preview, סימון Production כ־Sensitive ככל שנתמך, מטריצת שמות/scope
+  מסוננת ללא ערכים, סריקת bundle/logs, CI ירוק עם Manual ואימות ש־Production
+  Cron ממשיך לפעול.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
 - `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
   מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
@@ -912,7 +925,9 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - `proxy.ts` מרענן session ומבצע redirect בסיסי בלבד. כל Server Action/Query מאמת משתמש והרשאה מחדש.
 - identity migration יוצרת `profiles(id → auth.users.id, display_name, created_at, updated_at)`, trigger יצירה אוטומטי, constraints, RLS ו־least-privilege grants באותה migration.
 - מדיניות Slice 1: משתמש authenticated קורא ומעדכן רק את הפרופיל שלו; אין client insert/delete ואין קריאת פרופילים אחרים עד שקיימת טבלת חברות.
-- Zod בגבול ה־Server Action: Email תקין, סיסמה באורך 8 לפחות, התאמת אישור סיסמה ושם תצוגה באורך 2–50 אחרי trim. Supabase Auth אוכף בנפרד מינימום 8 תווים ב־Local ובפרויקט המארח.
+- Zod בגבול ה־Server Action: Email תקין, סיסמה באורך 8–128, התאמת אישור
+  סיסמה ושם תצוגה באורך 2–50 אחרי trim. Local נשמר תואם; מדיניות Hosted
+  נבדקת לקריאה בלבד תחת S9-REQ-005 לפני טענת PASS.
 - redirects מאומתים: אורח בעמוד מוגן → `/login`; משתמש מחובר בעמוד Auth → `/dashboard`; אישור Email → `/dashboard`; שחזור תקף → `/update-password`.
 - `SUPABASE_SECRET_KEY` ו־admin client אינם בשימוש בפעולות Slice 1.
 - Vitest ל־validation ול־safe redirect, pgTAP ל־trigger/constraints/RLS כולל משתמש זר, ו־Playwright ל־signup/login/profile/logout/protected route/reset, התנהגות פתיחה בהקשר דפדפן חדש ובידוד שני משתמשים.
@@ -1354,19 +1369,21 @@ API-Football ממשיך לבצע upsert רק לפי `(external_provider, externa
 
 #### Register מחייב וחשבון priorities
 
-ה־register הפעיל למסירה כולל **24 רשומות שאינן decision-only: P1=7, P2=8,
-P3=9**.
+ה־register הפעיל למסירה כולל **25 רשומות שאינן decision-only: P1=7, P2=8,
+P3=10**.
 
 - P1: `S9-DEF-001`, `002`, `003`, `004`, ו־`S9-REQ-001`–`003`.
 - P2: `S9-DEF-007`–`011`, `013`, ו־`S9-REQ-004`–`005`.
-- P3: `S9-DEF-012`, `014`–`016`, `018`–`020`, `022`, `024`.
+- P3: `S9-DEF-012`, `014`–`016`, `018`–`020`, `022`, `024`, `025`.
 
 Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-001`;
 `S9-DEF-006` נסגר כהחלטת מוצר; `S9-DEF-017` הוא
 `RESOLVED — ACCEPTED RESIDUAL RISK` פנימי;
 `S9-DEF-021` נסגר כסתירת מסמכים והיכולת מוזגה ל־`S9-REQ-001`;
-ה־traceability gap של MATCH-03 מוזג ל־`S9-DEF-003`. `S9-DEF-023` ו־`025`
-הועברו ל־decision ledger ואינם נספרים כ־defects.
+ה־traceability gap של MATCH-03 מוזג ל־`S9-DEF-003`; `S9-DEF-023` נסגר לאחר
+הוספת [`docs/course-source.md`](./course-source.md) והכרעת `S9-TDEC-003`.
+`S9-DEF-025` חזר ל־register הפתוח כ־P3 Hosted configuration/evidence לאחר
+שהמדיניות הוכרעה ב־`S9-TDEC-002`; ההחלטה אינה מתחזה לשינוי Vercel שבוצע.
 
 #### דרישות Slice 9 מתוכננות
 
@@ -1377,21 +1394,26 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 - `S9-REQ-003` — final CI/deployment SHA, public incognito וגישת evaluator ל־GitHub.
 - `S9-REQ-004` — חבילת מסמכי הגשה וספר פרויקט מסונכרנים.
 - `S9-REQ-005` — full verification, Advisors dispositions, representative plans,
-  native 200%, keyboard/contrast/touch וראיות Hosted/manual סופיות.
+  native 200%, keyboard/contrast/touch וראיות Hosted/manual סופיות. הראיות
+  כוללות את acceptance של `S9-TDEC-004`: מדיניות password ב־Hosted תואמת
+  ל־8–128, בקרות rate/monitoring מתועדות ואין טענת leaked-password protection;
+  וכן את acceptance של `S9-DEF-025` לגבי scope סוד הספורט.
 
 #### Technical decision ledger
 
 | ID | מצב | owner/הכרעה |
 | --- | --- | --- |
 | `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | repository owner (`talzantkeren`): המאגר נשאר פרטי ובתכנית הנוכחית; אין direct push ל־`main`; merge רק מ־PR שנבדק; נרשמים candidate SHA והצלחת `Lint, typecheck, unit tests and build`, `Supabase database tests` ו־`Playwright core flows` על אותו SHA, ואז מאומתים Production commit, immutable URL וה־alias. rationale: single-maintainer course repo ו־API 403. reopen: collaborator/visibility/plan משתנים, ניסיון direct push, control failure או דרישת evaluator |
-| `S9-TDEC-002` | `OPEN` | Preview sports credential: Production-only או key נפרד low-quota ל־trusted canary |
-| `S9-TDEC-003` | `OPEN` | course-PDF provenance: עותק מאושר tracked או delivery link יציב |
-| `S9-TDEC-004` | `OPEN` | Supabase leaked-password protection: plan upgrade או mitigation מתועד של password/rate/monitoring |
+| `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות נשארים פתוחים ב־DEF-025 |
+| `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | נשמר manifest provenance ב־[`docs/course-source.md`](./course-source.md); ה־PDF המדויק נמסר בנפרד ולא נכלל ב־Git ללא הרשאת redistribution מפורשת |
+| `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation ‏8–128, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. Hosted password-policy evidence נשאר פתוח ב־REQ-005. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
 
-רק `S9-TDEC-002`–`004` נשארו להכרעת review טכני ייעודי. אין להפוך את המאגר
-לציבורי ואין לרכוש plan כחלק מ־`S9-TDEC-001`. Branch control, Preview Auth,
-custom SMTP ו־leaked-password protection הם gates פנימיים; PDF הקורס אינו
-מוצג כמקור ישיר להם.
+כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. אין להפוך את המאגר לציבורי, לרכוש
+plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. סגירת decision
+אינה סגירת acceptance: שינוי scope של Vercel נשאר ב־`S9-DEF-025`, וראיית
+password/rate/monitor controls נשארת ב־`S9-REQ-005`. Branch control, Preview
+Auth, custom SMTP ו־leaked-password protection הם gates פנימיים ואינם מיוחסים
+ישירות למסמך הקורס.
 
 **כלל release:** אפס P0/P1 פתוחים, ואין P2 ללא תיקון או waiver כתוב שאושר על
 ידי owner וכולל תאריך, rationale, mitigation ו־revisit deadline. green CI לבדו
@@ -1399,10 +1421,10 @@ custom SMTP ו־leaked-password protection הם gates פנימיים; PDF הקו
 Hosted/manual evidence כאשר הרשומה דורשת זאת.
 
 **Exit:** כל `S9-DEF-*` ו־`S9-REQ-*` קיבל disposition סופי לפי הכלל לעיל,
-ושלוש ההחלטות הטכניות הפתוחות הוכרעו; Definition of Done בסעיף 18; verify מלא
-ו־clean clone על candidate אחד; CI, Preview ו־Production קשורים לאותו SHA;
-מצגת ודמו עברו rehearsal; וביקורת שחרור סופית חדשה החזירה release verdict
-מתאים.
+ארבע ההחלטות הטכניות נשארות סגורות וה־Hosted/manual acceptance שלהן הושלם;
+Definition of Done בסעיף 18; verify מלא ו־clean clone על candidate אחד; CI,
+Preview ו־Production קשורים לאותו SHA; מצגת ודמו עברו rehearsal; וביקורת
+שחרור סופית חדשה החזירה release verdict מתאים.
 
 ## 16. לוח זמנים מוצע
 
@@ -1469,6 +1491,7 @@ Hosted/manual evidence כאשר הרשומה דורשת זאת.
 | קוד בדיקות | `src/**/__tests__`, `supabase/tests`, `e2e` |
 | סקייל בסיסי | `docs/scale.md` |
 | אבטחה בסיסית | `docs/security.md` |
+| provenance של מקור הקורס | `docs/course-source.md`; ה־PDF המדויק נמסר בנפרד בערוץ הרשמי |
 | הוראות הרצה ומשתני סביבה | `README.md`, `.env.example` |
 | Vercel URL ו־GitHub | `README.md` ועמוד ההגשה |
 | מצגת 10–15 דקות | `presentation/` או קישור מצורף להגשה |

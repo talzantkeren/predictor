@@ -2,7 +2,7 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 2.12 |
+| גרסה | 2.13 |
 | תאריך עדכון | 26 באוגוסט 2026 |
 | סטטוס | Slices 0–8 הושלמו; השלב הבא הוא Slice 9 — lifecycle, hardening והגשה |
 | היקף MVP | ליגות פרטיות על בסיס ליגת העל הישראלית, עונת 2026/27 |
@@ -463,7 +463,7 @@ members נסגרו בסעיפים 7, 9, 10 ו־14. שער הכסף האמיתי 
 
 ## 17. מקורות
 
-- [Internet Technologies — מסמך הוראות הקורס](../project_sources/01-Internet-Technologies.pdf)
+- [Internet Technologies — מניפסט מקור וגרסת export שנבדקה](./course-source.md)
 - `Predictor1_Product_Specification_HE.docx`, גרסה 1.0, 3 באוגוסט 2026
 - `predictor-architecture-review.pdf`, 4 באוגוסט 2026
 - [סקירת הכנסת: הימורים לא חוקיים בישראל — נתונים ומדיניות](https://fs.knesset.gov.il/25/Committees/25_cs_mmm_5560172.pdf)
