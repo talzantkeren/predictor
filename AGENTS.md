@@ -13,9 +13,16 @@ Read these files before planning or editing product code, in this order:
 1. `docs/product.md` — product scope, business rules, roles, MVP and acceptance criteria.
 2. `docs/architecture.md` — the single canonical architecture and security boundaries.
 3. `docs/technical-plan.md` — repository layout, schema, APIs, tests and slice order.
-4. `Internet Technologies.pdf` / `project_sources/01-Internet-Technologies.pdf` — course constraints when available.
+4. `docs/course-source.md` — evidence/provenance for the access-controlled
+   course source. When the separately supplied `Internet Technologies.pdf` is
+   available, verify its SHA-256 and page count against the manifest before
+   using it for course constraints.
 
-`AGENTS.md` contains durable working rules, not a second specification. `CLAUDE.md` is only a pointer to the same sources. Never create agent-specific architecture or product documents.
+`docs/course-source.md` is not a product or architecture specification and does
+not replace the separately supplied course document. `AGENTS.md` contains
+durable working rules, not a second specification. `CLAUDE.md` is only a pointer
+to the same sources. Never create agent-specific architecture or product
+documents.
 
 When an approved decision changes, update the applicable canonical document in the same change. If code and docs conflict, stop and resolve the conflict explicitly; do not silently choose one.
 
