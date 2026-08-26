@@ -30,7 +30,7 @@ regression חדש שהיה נכשל ללא התיקון.
 
 | ID | Priority | Workstream | Title | Status | Acceptance source (audit §) | Evidence path | Commit SHA | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| S9-DEF-002 | P1 | W1 | החלטות זמן מתקבלות לפני serialization | IMPLEMENTED | §10, `S9-DEF-002` | `docs/evidence/slice-9/w1/S9-DEF-002.md` | — | 119 regressions מרובי חיבורים ו־765 בדיקות DB מלאות עברו; ממתין ל־commit SHA ולסנכרון VERIFIED. |
+| S9-DEF-002 | P1 | W1 | החלטות זמן מתקבלות לפני serialization | VERIFIED | §10, `S9-DEF-002` | `docs/evidence/slice-9/w1/S9-DEF-002.md` | `6a11de606ddc2d7276b881fefcc22633c3a0cb54` | regression חדש: `npx supabase test db supabase/tests/slice9-time-serialization.test.sql` עבר 119/119; `npm run test:db` עבר 765/765; schema lint וטיפוסים עברו. |
 | S9-DEF-001 | P1 | W2 | recovery suppresses and misclassifies errors | NOT_STARTED | §10, `S9-DEF-001` | `docs/evidence/slice-9/w2/S9-DEF-001.md` | — | Typed allowlisted outcomes, enumeration resistance ו־Mailpit lifecycle. |
 | S9-DEF-004 | P1 | W2 | Hosted confirmation/recovery אינו בר־הדגמה אמינה | NOT_STARTED | §10, `S9-DEF-004` | `docs/evidence/slice-9/w2/S9-DEF-004.md` | — | Engineering מקומי תחילה; credential/account-only פעולות יסומנו במדויק אם נדרשת בעלות. |
 | S9-DEF-003 | P1 | W3 | fallback ידני מלא למשחקים חסר | NOT_STARTED | §10, `S9-DEF-003` | `docs/evidence/slice-9/w3/S9-DEF-003.md` | — | Catalog ידני קנוני של 5 משחקים/6 קבוצות, persistence תחום ו־system-admin match flow. |
