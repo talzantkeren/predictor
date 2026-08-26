@@ -2,8 +2,8 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.16 |
-| תאריך עדכון | 25 באוגוסט 2026 |
+| גרסה | 3.17 |
+| תאריך עדכון | 26 באוגוסט 2026 |
 | סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה |
 | דדליין | 6 בספטמבר 2026 |
 
@@ -1172,19 +1172,95 @@ current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל ש�
 
 ### Slice 9 — Hardening, מסמכים והצגה
 
-**תוצר:** מוצר שניתן להגיש ולהסביר.
+**תוצר:** מוצר שניתן להגיש ולהסביר. ביקורת שער השחרור המקובעת ל־
+`a14edfc4df446a57f0bfe7153f6f0870e0cab243` וה־backlog המחייב נמצאים ב־
+[`docs/slice-9-preflight-audit.md`](./slice-9-preflight-audit.md). מסמך זה הוא
+המקור לפרטי reproduction, acceptance, regression, Hosted evidence ו־dependency
+של כל מזהה להלן. אישור ה־audit אינו אישור release.
 
-- סגירת lifecycle לפני ההקשחה: `startLeague` ו־`completeLeague` דרך Server
-  Actions צרים ו־RPC אטומי, עם session, Zod, הרשאת מנהל על המשאב, בדיקות מצב
-  מקור ותנאי מעבר. E2E עובר דרך זרימת המוצר ומדגים active/current ולאחר מכן
+ההיקף המתוכנן נשאר ללא שינוי:
+
+- סגירת lifecycle: `startLeague` ו־`completeLeague` דרך Server Actions צרים
+  ו־RPC אטומי, עם session, Zod, הרשאת מנהל על המשאב, בדיקות מצב מקור ותנאי
+  מעבר. E2E עובר דרך זרימת המוצר ומדגים active/current ולאחר מכן
   completed/final בלי כתיבה ישירה למסד כהוכחת flow.
-- E2E core suite, accessibility smoke ו־responsive pass.
-- Security/Performance Advisors ו־`EXPLAIN ANALYZE` לשאילתות מרכזיות.
-- השלמת `docs/testing.md`, `docs/security.md`, `docs/scale.md` ו־README.
-- env/deployment instructions, links ו־seeded demo accounts.
-- מצגת 10–15 דקות וחזרה מלאה.
+- Hardening, E2E core suite, accessibility/RTL/responsive pass, Advisors,
+  query plans וראיות Hosted/פריסה.
+- השלמת testing/security/scale/README, ספר הפרויקט, הוראות evaluator, מצגת
+  10–15 דקות וחזרה מלאה.
+- אין runtime AI, מנגנון כספי, provider חדש או תשתית לא מוכחת במדידה.
 
-**Exit:** Definition of Done בסעיף 18.
+#### Register מחייב — P1
+
+- `S9-DEF-001` — recovery suppresses/misclassifies errors; נדרשים Vitest,
+  Mailpit E2E וראיית Hosted לאחר config.
+- `S9-DEF-002` — time decisions before serialization; נדרשות שלוש בדיקות DB
+  רב־session אמיתיות לניחוש, cancellation latch ו־lease.
+- `S9-DEF-003` — fallback ידני מלא ליצירה/תיקון match חסר; נדרשים RPC אטומי,
+  AuthZ/audit pgTAP ו־Playwright provider-outage.
+- `S9-DEF-004` — Hosted signup/recovery אינו אמין; נדרשים custom SMTP או חלופה
+  מאושרת, redirects/templates/rates ו־E2E disposable מלא.
+- `S9-DEF-005` — membership/proof mutations אינן מכבדות terminal league;
+  נדרשים lock/status matrix ו־negative/concurrency tests.
+- `S9-DEF-006` — manual start מול first-kickoff ו־completion predicate דורשים
+  החלטת מוצר/ארכיטקטורה לפני implementation.
+
+#### Register מחייב — P2
+
+- `S9-DEF-007` — settings update חסר.
+- `S9-DEF-008` — explicit clear manual override חסר.
+- `S9-DEF-009` — caps של 100/200 משמשים כ־completeness/AuthZ במקום pagination.
+- `S9-DEF-010` — targeted sync יכול להרעיב catalog/reconciliation.
+- `S9-DEF-011` — `Retry-After` ארוך מאבד rate-limit/backoff.
+- `S9-DEF-012` — Cron 10s קצר מ־application budget; נדרשת slow-path evidence.
+- `S9-DEF-013` — ספר הפרויקט stale/כספי/עם counts ישנים ופריסה פגומה.
+- `S9-DEF-014` — README ו־Hosted redirect allowlist אינם תואמים Preview נוכחי.
+- `S9-DEF-015` — bidi controls/isolation בשמות לא־מהימנים.
+- `S9-DEF-016` — skip link ב־invite מחובר ללא target.
+- `S9-DEF-017` — branch protection/required checks אינם ניתנים לאכיפה בתכנית
+  GitHub הנוכחית בלי חלופה או waiver מפורש.
+
+#### Register מחייב — P3
+
+- `S9-DEF-018` — `FORCE_COOLDOWN` DB/TypeScript contract drift.
+- `S9-DEF-019` — sync error taxonomy אינו מבחין provider/planner/apply/finalize.
+- `S9-DEF-020` — unavailable invite מאבד authenticated navigation/logout.
+- `S9-DEF-021` — חוזה `/members` סותר את גבול removal/reactivation.
+- `S9-DEF-022` — loading/form accessibility semantics חסרים.
+- `S9-DEF-023` — course source link אינו זמין ב־repository; ה־product status
+  header תוקן מכנית ב־audit PR.
+- `S9-DEF-024` — Playwright green run משאיר `destination stream closed early`
+  לא מוסבר.
+- `S9-DEF-025` — production sports key scoped גם ל־Preview שאינו משתמש בו.
+
+כל P3 מתוקן ב־Slice 9 או מקבל defer מפורש עם owner, נימוק ו־deadline; הוא אינו
+נמחק מהרשימה בגלל שאינו stop-ship.
+
+#### דרישות Slice 9 מתוכננות
+
+- `S9-REQ-001` — lifecycle מלא דרך המוצר לפי
+  `DEF-006→DEF-002→{DEF-003,DEF-005,DEF-008}→REQ-001`; שלושת הפריטים בסוגריים
+  יכולים להתקדם במקביל לאחר תיקון גבול הזמן.
+- `S9-REQ-002` — deck, demo script וחזרה מוכחת של 10–15 דקות.
+- `S9-REQ-003` — final CI/deployment SHA, public incognito וגישת evaluator ל־GitHub.
+- `S9-REQ-004` — חבילת מסמכי הגשה וספר פרויקט מסונכרנים.
+- `S9-REQ-005` — full verification, Advisors dispositions, representative plans,
+  native 200%, keyboard/contrast/touch וראיות Hosted/manual סופיות.
+
+החלטות שחייבות להיסגר לפני קוד lifecycle: מנגנון first-kickoff activation;
+terminal predicate ל־finished/canceled/postponed/live/AET/PEN/review/unknown;
+מדיניות pending requests בזמן completion; גבול `/members`; וסדר הנעילות
+league→request/match. אסור לבחור אחת מהאפשרויות בשקט בתוך migration.
+
+**כלל release:** אפס P0/P1 פתוחים, ואין P2 ללא תיקון או waiver כתוב שאושר על
+ידי owner וכולל תאריך, rationale, mitigation ו־revisit deadline. green CI לבדו
+אינו עוקף את הכלל. כל blocker נסגר ב־regression המוגדר ברשומת ה־audit וב־
+Hosted/manual evidence כאשר הרשומה דורשת זאת.
+
+**Exit:** כל `S9-DEF-*` ו־`S9-REQ-*` במצב סגור/מאושר לפי הכלל לעיל; Definition
+of Done בסעיף 18; verify מלא ו־clean clone על candidate אחד; CI, Preview ו־
+Production קשורים לאותו SHA; מצגת ודמו עברו rehearsal; וביקורת שחרור סופית
+חדשה החזירה release verdict מתאים.
 
 ## 16. לוח זמנים מוצע
 
@@ -1203,7 +1279,8 @@ current/final, notice, היעדר UI כספי/AI והיעדר overflow. כל ש�
 
 אם הלו"ז מחליק, חותכים לפי הסדר:
 
-1. provider אוטומטי; נשאר Manual adapter מלא ומתועד.
+1. provider אוטומטי; Manual adapter מלא ומתועד יישאר רק לאחר מסירת
+   `S9-DEF-003`. עד אז fallback התוצאה החלקי הקיים אינו עומד בחוזה זה.
 2. הרחבות דוח כגון export, BI או charts; נשארים הסיכום והדירוג הנכונים.
 3. אנימציות, וריאציות ויזואליות ואיורים שאינם נדרשים לבהירות.
 
