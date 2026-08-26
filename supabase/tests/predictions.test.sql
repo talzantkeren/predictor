@@ -247,7 +247,7 @@ values
   ('51000000-0000-4000-8000-000000000007', '26000000-0000-4000-8000-000000000027', 91,
    'e1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000002', now() + interval '1 day', 'finished', 1, 1),
   ('51000000-0000-4000-8000-000000000008', '26000000-0000-4000-8000-000000000027', 92,
-   'e1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000002', now() + interval '1 second', 'scheduled', null, null),
+   'e1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000002', now() + interval '1 day', 'scheduled', null, null),
   ('51000000-0000-4000-8000-000000000009', '26000000-0000-4000-8000-000000000027', 92,
    'e1000000-0000-4000-8000-000000000001', 'e1000000-0000-4000-8000-000000000002', now() + interval '1 day', 'scheduled', null, null),
   ('52000000-0000-4000-8000-000000000001', '27000000-0000-4000-8000-000000000027', 1,
@@ -494,7 +494,8 @@ select is(
   'a filtered read of another member before kickoff returns zero rows'
 );
 
--- Score validation and exact lock boundary use transaction-stable PostgreSQL now().
+-- Score validation and ordinary exact/past/future lock boundaries. The
+-- cross-transaction wait over kickoff is covered by the Slice 9 dblink suite.
 select throws_ok(
   format($sql$select * from public.save_prediction(%L::uuid, '51000000-0000-4000-8000-000000000001', -1, 0)$sql$,
     (select league_id from prediction_fixture)),
@@ -523,7 +524,7 @@ select throws_ok(
 select lives_ok(
   format($sql$select * from public.save_prediction(%L::uuid, '51000000-0000-4000-8000-000000000008', 1, 0)$sql$,
     (select league_id from prediction_fixture)),
-  'a kickoff at transaction now plus one second remains writable without sleeping'
+  'a scheduled match comfortably before kickoff remains writable'
 );
 
 select set_config('request.jwt.claims', '{"sub":"a1111111-1111-4111-8111-111111111111","role":"authenticated"}', true);

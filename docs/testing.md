@@ -152,8 +152,9 @@ npm run test:e2e
 ## Slice 5: משחקים, ניחושים, נעילה וחשיפה
 
 בדיקות Slice 5 משתמשות רק ב־Supabase המקומי וב־fixtures שנוצרים בתוך transaction
-או בתוך מכולת PostgreSQL המקומית. אין קריאה לספק Sports, אין המתנה אמיתית עד
-kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־seed הקבוע הוא Demo ידני בלבד;
+או בתוך מכולת PostgreSQL המקומית. אין קריאה לספק Sports ואין שימוש בשעון
+הדפדפן כגבול קבלה. בדיקות Slice 5 הרגילות אינן ממתינות ל־kickoff; בדיקת W1
+הייעודית משתמשת בכמה חיבורי PostgreSQL אמיתיים כדי לחצות אותו. ה־seed הקבוע הוא Demo ידני בלבד;
 בדיקות הניחושים יוצרות קבוצות ומשחקים משלהן ולכן אינן תלויות בו.
 
 ### מטריצת כיסוי
@@ -161,19 +162,21 @@ kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־see
 | שכבה | כיסוי |
 | --- | --- |
 | Vitest | parsing קשיח של ציונים שלמים 0–30; דחיית ריק/שלילי/31/fraction; מיפוי חמשת הסטטוסים ומצבי open/editable/locked/unavailable; `draft`/`open`/`active` לעומת `completed`/`archived`; גבול millisecond לפני/בדיוק/אחרי; countdown טהור עם יחיד/רבים תקינים; UTC→`Asia/Jerusalem` ואזור זמן נוסף; גבולות תאריך DST; round/date search params; allowlist לנתיבי המשחקים ומיפוי `PREDICTION_LOCKED` בטוח |
-| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; `now()` ו־`now()+1 second`; exact/after lock; scheduled/postponed לעומת live/finished/canceled; `completed`/`archived` read-only ו־FORBIDDEN אטום לזר; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
+| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; בדיוק/אחרי kickoff ו־fixture עתידי מרווח; scheduled/postponed לעומת live/finished/canceled; `completed`/`archived` read-only ו־FORBIDDEN אטום לזר; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
 | Playwright | שני חברים מאומתים ב־Desktop Chrome/UTC וב־Pixel 5/`Asia/Jerusalem`; רשימת משחקים וכל חמשת הסטטוסים/תוצאה/שעה מקומית/נעילה; create→refresh timestamp→edit; `Promise.all` כפול שמחזיר שורה אחת; UI, תוכן ה־RSC ו־PostgREST שמסתירים ניחוש אחר לפני kickoff; שינוי kickoff מקומי לעבר ללא sleep; stale create/edit וה־RPC הישיר נדחים; reveal לשני החברים; outsider ולאחר מכן pending requester מקבלים not-found ואפס שורות; RTL וללא overflow |
 | Manual/Preview | כניסה כחבר פעיל, בדיקת רשימה ומסנן, שמירה ועריכה, שעה מוחלטת + timezone, stale-tab בטוח וחשיפה בשני חשבונות. Preview דורש שה־migrations החדשות יוחלו בפרויקט Supabase המורשה לפני בדיקה מאומתת |
 
-`now()` של PostgreSQL קבוע בתוך transaction של pgTAP. לכן fixture עם
-`kickoff_at := now()` מוכיח דחייה מדויקת, ו־`now() + interval '1 second'`
-מוכיח הרשאה ללא `sleep`. Playwright משנה fixture סינתטי ל־דקה בעבר דרך helper
+`now()` של PostgreSQL קבוע בתוך transaction ולכן אינו סמכות תקינה ל־commit
+שהמתין על lock. ה־RPC דוגם `clock_timestamp()` אחרי נעילת match; fixture עם
+`kickoff_at := now()` עדיין מוכיח דחייה מדויקת, ו־fixture עתידי מרווח מוכיח
+הרשאה רגילה ללא תלות במשך ה־suite. Playwright משנה fixture סינתטי לדקה בעבר דרך helper
 שמקבל UUIDs קנוניים בלבד, דורש בדיוק `UPDATE 1` ואינו מדפיס stderr. כך גם טופס
 שכבר פתוח נבדק מול זמן המסד בפעולת השמירה.
 
-pgTAP הוא חיבור יחיד ואינו מוכיח race רשת אמיתי. unique constraint, נעילת שורת
-המשחק וה־upsert נבדקים במסד; Playwright מוסיף שתי קריאות `save_prediction`
-מקבילות עם `Promise.all` ומאמת שנשארת רשומה יחידה.
+`predictions.test.sql` הוא חיבור יחיד; ה־unique constraint, נעילת שורת המשחק
+וה־upsert נבדקים בו, ו־Playwright מוסיף שתי קריאות `save_prediction` מקבילות.
+ה־race על זמן נבדק בנפרד ב־`slice9-time-serialization.test.sql` עם dblink
+אסינכרוני ו־row lock אמיתי — לא באמצעות `Promise.all` או שעון Node.
 
 ה־seed הקבוע כולל רק מועדים עתידיים (`scheduled`, `postponed`, `canceled`) ולכן
 אינו נועל מיד את חוקי הניקוד. trigger `enforce_scoring_rule_lock` עדיין בוחן את
@@ -279,6 +282,34 @@ provider-owned שהוא מציג נזרעים ישירות במסד המקומי
 | pgTAP | schema/RLS/grants; browser denial; actor validation; claim מקביל בשתי sessions אמיתיות; `NOT_DUE` ללא row; force cooldown/backoff; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; בידוד regression בתוך batch; ביטול מוקדם ללא חשיפת ניחוש; reactivation עם איפוס metadata/leaderboard; provider-ID upsert idempotent; Demo isolation; AET review והחרגה מ־targeted; FT/correction/retry דרך `score_match` ואודיט source |
 | Route/Action | Cron auth/content type/env; manual/API-Football/not-due/concurrent/success/failure; קריאת orchestration יחידה; trigger של system admin בלבד; safe response ללא סוד/token/generation |
 | Playwright | ordinary user מול system admin, status page ו־manual trigger, שורות observability שנזרעו ישירות, provider AET fixture שנזרע ומוצג כ־"דורש בדיקה" בלי לפתוח prediction, ו־Desktop/Pixel RTL. אין כאן fake live-provider flow; הפרדת key נבדקת non-vacuously ב־build API-Football עם sentinel וסריקת HTML/client artifacts לפני הפעלת השרת ב־manual. |
+
+### Slice 9 W1 — serialization וזמן מסד
+
+`supabase/tests/slice9-time-serialization.test.sql` פותח חיבור control, holder,
+worker ו־system-admin אמיתיים אל PostgreSQL המקומי. הוא צופה ב־
+`wait_event_type = 'Lock'`, חוצה גבול לפי `clock_timestamp()` של המסד ורק אז
+משחרר את השורה.
+119 assertions מכסים: שמירת ניחוש שמתחילה לפני kickoff ומשתחררת אחריו; ביטול
+שחוצה kickoff ו־reactivation עתידי; ביטול מוקדם שמועדו המקורי חל; latch גם תחת
+manual override; apply אמיתי שמחזיק match במקביל ל־`save_prediction` שמחזיק את
+prefix הנעילות league/member, עם probe עצמאי שמוכיח ב־`NOWAIT` ששורות ה־prefix
+טרם ננעלו על ידי apply; due של reconciliation; forced cooldown; provider
+backoff; lease expiry/reclaim; claimant זכאי שממתין שלוש שניות ועדיין מקבל יותר
+מ־118 שניות זמינות; ו־120 שניות מדויקות מ־`sync_runs.started_at`. לכל waiter יש
+`statement_timeout`/`lock_timeout`, והבדיקה שוללת deadlock או timeout.
+
+הרצה ממוקדת שנצפתה ב־26.8.2026:
+
+```powershell
+npx supabase test db supabase/tests/slice9-time-serialization.test.sql
+npx supabase test db supabase/tests/predictions.test.sql
+npx supabase test db supabase/tests/scoring.test.sql
+npx supabase test db supabase/tests/sync-api-football.test.sql
+npm run types:check
+```
+
+התוצאות שנצפו: 119/119, 81/81, 73/73 ו־75/75 בהתאמה, ו־generated types ללא
+drift. אין להריץ את ה־dblink suite מול פרויקט linked/Hosted.
 
 ### הרצה
 

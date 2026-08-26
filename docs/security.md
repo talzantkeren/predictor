@@ -266,7 +266,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורות הליגה, החברות והמשחק, דורש
   `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הליגה
   `completed`/`archived`, כאשר סטטוס המשחק אינו `scheduled`/`postponed`, או
-  כאשר `now() >= kickoff_at`. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
+  כאשר `clock_timestamp() >= kickoff_at`. דגימת ה־wall-clock מתבצעת רק אחרי
+  נעילת שורת המשחק, ולכן transaction שהתחיל לפני kickoff והמתין מעבר לו אינו
+  יכול לשמור. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
   זר מקבל `FORBIDDEN` זהה בלי ללמוד אם הליגה קיימת או read-only. ה־Action מבצע
   מחדש session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן או לסטטוס.
 - `predicted_outcome` הוא generated column. הלקוח שולח רק שני ציונים שלמים
@@ -290,7 +292,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| שינוי או יצירה אחרי נעילה | membership/match row locks + `now() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי ו־stale replay; Playwright מזיז kickoff לעבר ובודק stale create/edit + RPC |
+| שינוי או יצירה אחרי נעילה | lock order של league→membership→match ואז `clock_timestamp() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי, waiter מרובה־חיבורים שחוצה kickoff ו־stale replay; Playwright מזיז kickoff לעבר |
 | הצצה לניחוש אחר לפני הפתיחה | RLS חברות+זמן; שאילתות ממוקדות; אין hidden rows ב־payload | שני משתמשים: UI ללא שם/score ו־PostgREST מסונן מחזיר `[]`; אחרי kickoff שתי השורות נחשפות |
 | IDOR בין ליגות/עונות | Action AuthZ, RPC התאמת membership/season, consistency trigger ו־RLS | other league, cross-season, outsider ו־`?league=` זר נדחים; parent season change עם prediction נכשל |
 | זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
@@ -347,7 +349,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | זיוף actor דרך הטופס או קריאת gateway לא מורשית | אין actor בקלט; header פנימי נוצר רק במודול `server-only`; `system_admins` ללא CRUD | בדיקות schema/grants/import boundary ו־actor שאינו בטבלה |
 | ניקוד כפול או שאריות מתוצאה קודמת | overwrite set-based לפי result/rule version בתוך transaction אחת | exact/outcome/wrong/draw, retry זהה, correction ו־cancel |
 | תוצאת סיום מוקדמת יוצרת totals תלויי־צופה | זמן DB אחרי match lock + דחיית `finished` לפני kickoff; אגרגטים מסננים לפי kickoff | pgTAP לתוצאה מוקדמת ללא mutation ולניחוש עתידי שאינו נספר גם לבעליו |
-| deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד ואינה נועלת league/rules | pgTAP עם שני חיבורי `dblink` שמריצים `score_match` ו־`save_prediction` במקביל |
+| deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד; provider apply מקבע `lease → run → match` ואינו נועל league/rules | probes מרובי־חיבורים עם audit wait מבוקר מריצים גם `score_match`/save וגם apply/save חופפים |
 | דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
 | שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |
 
@@ -420,8 +422,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   CRUD. claim/apply/finalize הן `SECURITY DEFINER`, `search_path=''`, שמות
   schema מלאים ו־EXECUTE ל־service_role בלבד. כל אחת מאמתת actor פנימי מול
   `system_admins`; manual trigger גוזר actor מה־session ואינו מקבל אותו בטופס.
-- claim מחזיק row lock רק לטרנזקציה קצרה. generation מונוטוני ו־token UUID
-  חדש מגדרים את העבודה אחרי HTTP. apply/finalize נועלים את אותה שורה ומאמתים
+- claim מחזיק row lock רק לטרנזקציה קצרה. רק לאחר הנעילה הוא דוגם wall-clock
+  טרי ומכריע expiry/due/backoff/cooldown; admitted run מקבל 120 שניות מלאות
+  מ־`started_at`. generation מונוטוני ו־token UUID חדש מגדרים את העבודה אחרי
+  HTTP. apply/finalize נועלים את אותה שורה ומאמתים
   provider/run/generation/token/expiry בתחילה; apply בודקת expiry שוב בסוף כך
   ש־commit אחרי expiry עושה rollback. reclaim מסיים run נטוש ומבטל token ישן.
 - apply מקבלת batch חסום, מאמתת כל field שוב, מדלגת על manual override
@@ -431,7 +435,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - `predictions_locked_at` הוא latch שאינו ניתן לאיפוס על ידי provider apply.
   `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/FT/AET/PEN ואחריהם
   reschedule עתידי נשארים נעולים. CANC/ABD/AWD/WO נועלים רק אם DB time הגיע
-  למועד קנוני או שהיה latch קודם, ולכן ביטול מוקדם אינו מפר את PRED-05.
+  למועד קנוני/נכנס או שהיה latch קודם. ההכרעה מתבצעת תחת match row lock,
+  נשמרת גם כשהתוצאה בבעלות manual override, ו־reactivation דורש ששני המועדים
+  עדיין עתידיים; לכן ביטול מוקדם אינו מפר את PRED-05 ומועד עתידי אינו פותח
+  חשיפה שכבר החלה.
 - force של מנהל עוקף due-window בלבד. backoff נאכף תמיד ו־`last_forced_at`
   מגביל ניסיון ידני לניסיון אחד בדקה גם בין invocations/processes.
 - `/admin/sync` ו־manual trigger דורשים session ו־system-admin resource AuthZ.
@@ -444,9 +451,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | key ב־browser/log/fixture | server-only env, fixed client, redaction ו־sentinel build scan | env/client/unit; build עם sentinel וסריקת HTML/client artifacts; חיפוש repository |
 | SSRF או endpoint אסור | URL constant ו־methods purpose-specific בלבד | client tests לכל endpoint ושבירת query/ID לא קנוני |
 | payload גדול/לא תקין | streaming cap + Zod + DB batch/field validation | size/JSON/schema/unit ו־apply rollback ב־pgTAP |
-| שתי ריצות או worker ישן | row claim + generation/token/expiry, start/end fencing | concurrent claim, reclaim, wrong/stale/expired token |
+| שתי ריצות או worker ישן | row claim + זמן טרי אחרי lock + generation/token/expiry, start/end fencing | concurrent claim; due/cooldown/backoff/expiry waiter; reclaim; wrong/stale/expired token |
 | merge של Demo או קבוצה שגויה | provider IDs ו־unique indexes בלבד | name/code collision, Demo snapshot unchanged, codes כפולים |
-| חשיפה או פתיחה שגויה סביב ביטול | DB-time latch, PRED-05 RLS ו־reactivation צר | ביטול מוקדם בין שני משתמשים, איפוס scoring, leaderboard ו־save חוזר; live/SUSP/INT נשארים נעולים |
+| חשיפה או פתיחה שגויה סביב ביטול | DB-time latch תחת match lock, PRED-05 RLS ושני גבולות kickoff ב־reactivation | ביטול שחוצה kickoff, ביטול מוקדם שמועדו חל, manual override, reschedule עתידי ו־save חוזר |
 | ניקוד לא רשמי/כפול | FT+fulltime בלבד ו־`score_match` הקיימת | live/AET/PEN/score חסר, retry, correction ו־audit source |
 
 ## דוח מנהל לא־כספי ב־Slice 8

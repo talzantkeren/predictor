@@ -248,6 +248,9 @@ DEMO_MODE=true
 | 009 `seed_current_season` | נמסר ב־Slice 5 כקטלוג Demo ידני, מסומן וסינתטי עם מועדים עתידיים וללא provider IDs; ספק אמיתי נשאר לשער Slice 7 | האפליקציה עובדת ללא ספק חיצוני ואינה טוענת לאימות fixture אמיתי |
 | 010 `slice7b_api_football_sync` | external identity לעונה, round label, irreversible prediction lock, `sync_leases`, הרחבת `sync_runs` ו־RPCs claim/apply/finalize | upsert לפי provider ID בלבד, token ישן/פג נדחה, RLS/grants ופונקציות service-only נבדקים |
 | 011 `slice7b_review_hardening` | תיקון forward-only ל־cancellation latch/reactivation, quarantine של regression, cooldown ל־force והרחבה צרה של `score_match` לאיפוס מצב unscored | ביטול מוקדם אינו חושף; reactivation בטוח; fixture חריג אינו מפיל batch; אין retry storm |
+| 012 `slice9_database_time_serialization` | תיקון forward-only: `save_prediction` ו־`claim_sports_sync` דוגמות wall-clock רק לאחר נעילת שורת ההכרעה; apply מקדים fencing ונעילת match להכרעת ביטול | waiter שחוצה kickoff/due/backoff/expiry מוכרע לפי הזמן שלאחר ההמתנה |
+| 013 `slice9_database_time_serialization_review` | helper פרטי ללא Data API EXECUTE מכריע cancellation תחת match lock מול kickoff שמור ונכנס, משמר latch גם ב־manual override ודורש שני מועדים עתידיים ל־reactivation | reschedule אינו פותח ניחושים אחרי גבול שחל; apply/save מקביליים אינם יוצרים deadlock |
+| 014 `slice9_full_sync_lease_duration` | מפריד ב־claim בין דגימת decision שלאחר lock לבין issuance לאחר תכנון העבודה | `sync_runs.started_at` הוא זמן ההנפקה ו־`locked_until = started_at + 120 seconds` גם לאחר המתנה |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -325,8 +328,10 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 - `provider_status text null` — קוד הסטטוס האחרון שאומת מהספק, כולל
   `AET`/`PEN` review-only שאינם תוצאה רשמית אוטומטית.
 - `predictions_locked_at timestamptz null` — latch בלתי־הפיך שנקבע עם
-  live/interrupted/FT/AET/PEN. ביטול קובע אותו רק אחרי שה־kickoff הקנוני הגיע
-  או כאשר היה latch קודם; ביטול מוקדם לבדו אינו חושף ניחושים.
+  live/interrupted/FT/AET/PEN. ביטול מוכרע תחת נעילת המשחק לפי wall-clock טרי
+  מול ה־kickoff השמור והנכנס: latch קודם או כל גבול שכבר חל נשמרים, גם כאשר
+  `manual override` מונע שינוי תוצאה. ביטול מוקדם לבדו אינו חושף ניחושים,
+  ו־reactivation אפשרי רק כאשר שני המועדים עדיין עתידיים.
 - `external_provider`, `external_id`, timestamps.
 - checks: קבוצות שונות; score קיים רק ל־`finished`; canceled ללא score.
 
@@ -414,7 +419,9 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 - כתיבה עוברת דרך `save_prediction` בלבד. ה־RPC גוזר actor מ־`auth.uid()`,
   נועל את שורות הליגה, החברות והמשחק, דורש חברות `active`, מאמת התאמת עונה
   ומאפשר upsert רק בליגה `draft`/`open`/`active` ועבור משחק
-  `scheduled` או `postponed` כאשר `now() < kickoff_at`.
+  `scheduled` או `postponed`. סדר הנעילות הוא
+  `leagues → league_members → matches`; רק לאחר נעילת המשחק נדגם
+  `clock_timestamp()` טרי ונדרש שהוא קטן מ־`kickoff_at` וש־latch החשיפה ריק.
   ליגות `completed` ו־`archived` הן read-only; הבדיקה מתבצעת אחרי אימות חברות
   כדי שלא לחשוף קיום או סטטוס של ליגה פרטית דרך הבדל שגיאות.
   `live`, `finished` ו־`canceled` אינם ניתנים לכתיבה גם אם המועד עתידי.
@@ -540,8 +547,9 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
    לחשב מחדש את אותה ליגה באמצעות אותה נוסחת scoring קנונית.
 6. canceled מאפס נקודות ומסמן flags false בלי למחוק תחזיות.
 7. reactivation מותר רק מ־`canceled`, ללא latch/manual override, עם source
-   `api-football` ומועד עתידי. הוא מחזיר `points=0` וכל metadata הניקוד ל־null
-   באותה transaction; אין כתיבה ישירה מ־apply.
+   `api-football`, ורק כאשר wall-clock טרי קטן גם מן ה־kickoff השמור וגם מן
+   המועד הנכנס. הוא מחזיר `points=0` וכל metadata הניקוד ל־null באותה
+   transaction; אין כתיבה ישירה מ־apply.
 8. audit תוצאה, תיקון ו־reactivation.
 9. commit אחד.
 
@@ -571,14 +579,17 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 
 - מקבלת provider קנוני ו־`force` בלבד; actor נקרא מה־header הפנימי ונבדק מול
   `system_admins`.
-- נועלת את שורת `sync_leases`, מסיימת run נטוש אחרי expiry ומגדילה generation.
+- נועלת את שורת `sync_leases` ורק אז דוגמת `clock_timestamp()` להכרעות
+  expiry/due/backoff/cooldown, מסיימת run נטוש אחרי expiry ומגדילה generation.
 - בודקת due עבור catalog (12 שעות), reconciliation (6 שעות) ו־targeted
   (כדקה, עד 20 fixture IDs). quota/backoff יכולים לדחות עבודה משנית.
 - force של מנהל עוקף due-window בלבד; הוא אינו עוקף `backoff_until` ומוגבל
   באמצעות `last_forced_at` עמיד לניסיון אחד בדקה.
 - `NOT_DUE` אינו יוצר run. lease פעיל יוצר skip סופי `CONCURRENT_ATTEMPT`.
-- claim מוצלח יוצר `running`, token UUID חדש ו־`locked_until` של 120 שניות
-  ומחזיר plan typed. אין קריאת ספק או mutation לקטלוג ב־RPC הזה.
+- לאחר בחירת ה־plan נדגמת דגימת issuance נפרדת. claim מוצלח יוצר `running`,
+  token UUID חדש, `started_at` מזמן ההנפקה ו־
+  `locked_until = started_at + 120 seconds`, ומחזיר plan typed. אין קריאת ספק
+  או mutation לקטלוג ב־RPC הזה.
 
 ### 7.7 `apply_api_football_sync_batch(...)`
 
@@ -588,6 +599,10 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
   provider ID, ומקדים batches של עד 20 קבוצות ל־fixture batches. קבוצה חדשה
   מקבלת label מסונן ומסומן כלא־ממופה ואינה חוסמת את כל הריצה.
 - מאמתת lease בתחילת ובסוף הטרנזקציה. expiry בסוף גורם rollback מלא.
+- לפני טיפול ב־fixture קיים, ה־wrapper מקבע את סדר
+  `sync_leases → sync_runs → matches`; משפחת cancellation נועלת את המשחק,
+  דוגמת wall-clock טרי ומשווה גם למועד השמור וגם למועד הנכנס. latch של
+  `manual override` נכתב בנפרד אף ששינוי תוצאת הספק מדולג.
 - upsert נעשה רק לפי `(external_provider, external_id)`; Demo rows עם IDs
   ריקים אינם מועמדים לעדכון. season, round label, teams ו־matches נשמרים
   provider-owned.
@@ -1054,10 +1069,11 @@ normalized batches → atomic provider upsert/scoring → finalize → admin UI`
   רק ב־`score.fulltime`; AET/PEN שומרים provider status/latch כ־review ללא
   scoring, מוצגים כ־"דורש בדיקה" ואינם נשארים ב־targeted עד החלטת מוצר.
 - `predictions_locked_at` מונע re-open אחרי live/SUSP/INT/FT/AET/PEN. משפחת
-  הביטול נועלת רק אם המועד הקנוני כבר הגיע או שהיה latch; ביטול מוקדם אינו
-  חושף, ו־reactivation ללא latch מאפס scoring metadata ומאפשר ניחוש עד המועד
-  החדש.
-- row lease עם generation מונוטוני, token UUID ו־120s expiry; HTTP מחוץ ל־DB,
+  הביטול מוכרעת תחת match lock ונועלת אם ה־kickoff השמור או הנכנס כבר הגיעו,
+  או אם היה latch; ביטול מוקדם אינו חושף, ו־reactivation ללא latch מאפס
+  scoring metadata רק כאשר שני המועדים עתידיים.
+- row lease עם generation מונוטוני, token UUID ו־120s מלאים מזמן issuance;
+  decision נדגם אחרי נעילת שורת ה־lease, HTTP מחוץ ל־DB,
   fencing בתחילת וסוף apply/finalize, reclaim ל־abandoned run ו־`NOT_DUE` ללא
   שורת run.
 - apply חסום ואידמפוטנטי, אינו נוגע ב־Demo או override, ו־FT/reactivation
