@@ -992,9 +992,10 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - `proxy.ts` מרענן session ומבצע redirect בסיסי בלבד. כל Server Action/Query מאמת משתמש והרשאה מחדש.
 - identity migration יוצרת `profiles(id → auth.users.id, display_name, created_at, updated_at)`, trigger יצירה אוטומטי, constraints, RLS ו־least-privilege grants באותה migration.
 - מדיניות Slice 1: משתמש authenticated קורא ומעדכן רק את הפרופיל שלו; אין client insert/delete ואין קריאת פרופילים אחרים עד שקיימת טבלת חברות.
-- Zod בגבול ה־Server Action: Email תקין, סיסמה באורך 8–128, התאמת אישור
-  סיסמה ושם תצוגה באורך 2–50 אחרי trim. Local נשמר תואם; מדיניות Hosted
-  נבדקת לקריאה בלבד תחת S9-REQ-005 לפני טענת PASS.
+- Zod בגבול ה־Server Action: Email תקין, סיסמה בת שמונה תווים לפחות ועד
+  72 בתים בקידוד UTF-8, התאמת אישור סיסמה ושם תצוגה באורך 2–50 אחרי trim.
+  גבול הבתים תואם ל־GoTrue הפעיל ונאכף שוב ב־Hosted; מדיניות Hosted נבדקת
+  לקריאה בלבד תחת S9-REQ-005 לפני טענת PASS.
 - redirects מאומתים: אורח בעמוד מוגן → `/login`; משתמש מחובר בעמוד Auth → `/dashboard`; אישור Email → `/dashboard`; שחזור תקף → `/update-password`.
 - `SUPABASE_SECRET_KEY` ו־admin client אינם בשימוש בפעולות Slice 1.
 - Vitest ל־validation ול־safe redirect, pgTAP ל־trigger/constraints/RLS כולל משתמש זר, ו־Playwright ל־signup/login/profile/logout/protected route/reset, התנהגות פתיחה בהקשר דפדפן חדש ובידוד שני משתמשים.
@@ -1510,7 +1511,8 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 - `S9-REQ-005` — full verification, Advisors dispositions, representative plans,
   native 200%, keyboard/contrast/touch וראיות Hosted/manual סופיות. הראיות
   כוללות את acceptance של `S9-TDEC-004`: מדיניות password ב־Hosted תואמת
-  ל־8–128, בקרות rate/monitoring מתועדות ואין טענת leaked-password protection;
+  למינימום שמונה תווים ולתקרת 72 בתים, בקרות rate/monitoring מתועדות ואין
+  טענת leaked-password protection;
   וכן את acceptance של `S9-DEF-025` לגבי scope סוד הספורט.
 
 #### Technical decision ledger
@@ -1520,7 +1522,7 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 | `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | repository owner (`talzantkeren`): המאגר נשאר פרטי ובתכנית הנוכחית; אין direct push ל־`main`; merge רק מ־PR שנבדק; נרשמים candidate SHA והצלחת `Lint, typecheck, unit tests and build`, `Supabase database tests` ו־`Playwright core flows` על אותו SHA, ואז מאומתים Production commit, immutable URL וה־alias. rationale: single-maintainer course repo ו־API 403. reopen: collaborator/visibility/plan משתנים, ניסיון direct push, control failure או דרישת evaluator |
 | `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות נשארים פתוחים ב־DEF-025 |
 | `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | נשמר manifest provenance ב־[`docs/course-source.md`](./course-source.md); ה־PDF המדויק נמסר בנפרד ולא נכלל ב־Git ללא הרשאת redistribution מפורשת |
-| `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation ‏8–128, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. Hosted password-policy evidence נשאר פתוח ב־REQ-005. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
+| `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation של שמונה תווים לפחות ועד 72 בתים בקידוד UTF-8, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. מדיניות Hosted ו־Advisor אומתו ב־REQ-005 ב־28.8.2026. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
 
 כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. אין להפוך את המאגר לציבורי, לרכוש
 plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. סגירת decision

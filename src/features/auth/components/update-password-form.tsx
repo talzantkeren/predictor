@@ -6,6 +6,7 @@ import {
   updatePasswordAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { PASSWORD_MAX_UTF8_BYTES } from "@/features/auth/schemas";
 
 import { FieldError, FormMessage } from "./form-message";
 
@@ -32,6 +33,7 @@ export function UpdatePasswordForm() {
           autoComplete="new-password"
           dir="ltr"
           minLength={8}
+          maxLength={PASSWORD_MAX_UTF8_BYTES}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
           className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
@@ -50,6 +52,7 @@ export function UpdatePasswordForm() {
           autoComplete="new-password"
           dir="ltr"
           minLength={8}
+          maxLength={PASSWORD_MAX_UTF8_BYTES}
           aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
           aria-describedby={
             fieldErrors.passwordConfirmation ? "password-confirmation-error" : undefined
