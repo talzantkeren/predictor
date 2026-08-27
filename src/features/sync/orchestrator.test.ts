@@ -346,4 +346,36 @@ describe("shared sports sync orchestration", () => {
     expect(deps.apply).not.toHaveBeenCalled();
     expect(deps.finalize).not.toHaveBeenCalled();
   });
+
+  it("returns a forced cooldown skip without provider I/O or a finalizer call", async () => {
+    const deps = dependencies();
+    deps.claim.mockResolvedValueOnce({
+      outcome: "NOT_DUE",
+      runId: null,
+      provider: "api-football",
+      reason: "FORCE_COOLDOWN",
+    });
+    const transport = recordedTransport();
+
+    await expect(
+      runSportsSync(
+        {
+          systemActorId: actorId,
+          provider: "api-football",
+          apiKey: "recorded-test-key",
+          force: true,
+          transport,
+        },
+        deps,
+      ),
+    ).resolves.toEqual({
+      runId: null,
+      status: "skipped",
+      reason: "FORCE_COOLDOWN",
+    });
+    expect(deps.claim).toHaveBeenCalledWith(actorId, true);
+    expect(transport).not.toHaveBeenCalled();
+    expect(deps.apply).not.toHaveBeenCalled();
+    expect(deps.finalize).not.toHaveBeenCalled();
+  });
 });

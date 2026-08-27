@@ -1111,6 +1111,11 @@ select results_eq(
   $$values ('NOT_DUE'::text, 'FORCE_COOLDOWN'::text, null::uuid)$$,
   'forced catalog attempts have a durable one-minute cooldown without history bloat'
 );
+select is(
+  (select count(*)::bigint from public.sync_runs),
+  (select count from slice7b_backoff_run_count),
+  'FORCE_COOLDOWN creates no sync history row'
+);
 
 set local role service_role;
 select set_config(

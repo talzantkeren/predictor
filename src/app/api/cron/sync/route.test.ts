@@ -238,6 +238,27 @@ describe("POST /api/cron/sync", () => {
     expect(body).not.toContain("never-return-this-key");
   });
 
+  it("returns FORCE_COOLDOWN as a neutral skip without exposing credentials", async () => {
+    mocks.getSportsSyncEnv.mockReturnValue({
+      SPORTS_API_PROVIDER: "api-football",
+      SPORTS_API_KEY: "never-return-this-key",
+    });
+    mocks.runSportsSync.mockResolvedValue({
+      runId: null,
+      status: "skipped",
+      reason: "FORCE_COOLDOWN",
+    });
+
+    const response = await POST(
+      syncRequest({ authorization: `Bearer ${cronSecret}` }),
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain("FORCE_COOLDOWN");
+    expect(body).not.toContain("never-return-this-key");
+  });
+
   it("returns a recorded provider failure with a safe 503 result", async () => {
     mocks.runSportsSync.mockResolvedValue({
       runId,

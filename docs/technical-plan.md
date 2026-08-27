@@ -594,7 +594,9 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
   בתוך targeted, כל `live` קודם ל־stale/near-live ורק אחריו kickoff ו־external
   ID קובעים את 20 ה־IDs. `CONCURRENT_ATTEMPT` חסר generation אינו נחשב שירות.
 - force של מנהל עוקף due-window בלבד; הוא אינו עוקף `backoff_until` ומוגבל
-  באמצעות `last_forced_at` עמיד לניסיון אחד בדקה.
+  באמצעות `last_forced_at` עמיד לניסיון אחד בדקה. ניסיון מוקדם חוזר כ־
+  `NOT_DUE/FORCE_COOLDOWN`; parser ו־union של TypeScript מקבלים אותו כ־skip,
+  וה־Action מציגה copy ייעודי שאינו נראה ככשל.
 - `NOT_DUE` אינו יוצר run. lease פעיל יוצר skip סופי `CONCURRENT_ATTEMPT`.
 - לאחר בחירת ה־plan נדגמת דגימת issuance נפרדת. claim מוצלח יוצר `running`,
   token UUID חדש, `started_at` מזמן ההנפקה ו־

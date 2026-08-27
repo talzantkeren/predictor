@@ -31,11 +31,14 @@ describe("sync run display semantics", () => {
     ).toBe("הספק לא היה זמין.");
   });
 
-  it("uses neutral labels for both current skip outcomes", () => {
+  it("uses neutral labels for every current skip outcome", () => {
     expect(getSyncStatusLabel("skipped")).toBe("דולג");
     expect(getSyncSkipReasonLabel("CONCURRENT_ATTEMPT")).toContain(
       "ניסיון מקביל",
     );
     expect(getSyncSkipReasonLabel("FUTURE_REASON")).toBe("סיבת דילוג אחרת");
+    expect(getSyncSkipReasonLabel("FORCE_COOLDOWN")).toContain("פעם בדקה");
+    expect(getSyncSkipReasonLabel("NOT_DUE")).toContain("מועד ביצועה");
+    expect(getSyncSkipReasonLabel("PROVIDER_BACKOFF")).toContain("הספק ביקש");
   });
 });

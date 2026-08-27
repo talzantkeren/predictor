@@ -355,6 +355,12 @@ rename/timeout/preservation/idempotency/duplicate denial וכן denial אפקט�
 ל־Data API. ראיית Hosted לאחר deploy נשארת owner action מפורשת ב־
 [`docs/evidence/slice-9/w5/S9-DEF-012.md`](./evidence/slice-9/w5/S9-DEF-012.md).
 
+S9-DEF-018 מוסיף fixture מדויק של שורת RPC ‏`NOT_DUE/FORCE_COOLDOWN` ל־parser
+הטהור, בדיקת orchestrator ללא transport/apply/finalize, Route ‏200 ו־Action
+עם copy cooldown. ‏pgTAP מאמת את השורה האמיתית ואת היעדר שורת run חדשה. parser
+הופרד ממודול ה־admin כדי ש־import sentinel יישאר ללא allowlist חדש. הראיה ב־
+[`docs/evidence/slice-9/w5/S9-DEF-018.md`](./evidence/slice-9/w5/S9-DEF-018.md).
+
 ### Slice 9 W1 — serialization וזמן מסד
 
 `supabase/tests/slice9-time-serialization.test.sql` פותח חיבור control, holder,

@@ -592,6 +592,9 @@ validation לפני קריאת ה־RPC אינו invocation מסדי ולכן א�
   `backoff_until` נאכף גם ב־scheduled וגם ב־force. מדיניות threshold אוטומטית
   למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry storm ואין polling כל 15
   שניות.
+- force נוסף בתוך דקת ה־cooldown חוזר מה־RPC כ־
+  `NOT_DUE/FORCE_COOLDOWN`. החוזה הזה הוא skip ניטרלי לכל אורך DB → gateway →
+  orchestration → Route/Action; אין provider I/O, ‏finalize או שורת run חדשה.
 - ה־Base URL, league ID והעונה הם constants/configuration typed ולא קלט
   משתמש. ה־API key נשמר רק ב־Vercel עבור Next.js ואינו נשמר ב־Vault.
 

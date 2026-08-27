@@ -60,7 +60,7 @@ export type SportsSyncClaim =
       outcome: "NOT_DUE";
       runId: null;
       provider: "api-football";
-      reason: "NOT_DUE" | "PROVIDER_BACKOFF";
+      reason: "FORCE_COOLDOWN" | "NOT_DUE" | "PROVIDER_BACKOFF";
     }
   | {
       outcome: "CONCURRENT_ATTEMPT";
@@ -85,6 +85,7 @@ export type SyncInvocationResult =
       status: "skipped";
       reason:
         | "CONCURRENT_ATTEMPT"
+        | "FORCE_COOLDOWN"
         | "NOT_DUE"
         | "PROVIDER_BACKOFF";
     };

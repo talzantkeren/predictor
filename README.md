@@ -249,7 +249,8 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
   ושם העונה זהים.
 - `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ריצות, lifecycle, counters,
   quota והערות review בטוחות, ומאפשר trigger ידני באותה lease. רק
-  `status='failed'` הוא כשל.
+  `status='failed'` הוא כשל. ניסיון force נוסף בתוך דקה חוזר כ־skip
+  `FORCE_COOLDOWN`, אינו פונה לספק או יוצר run ומציג הודעת cooldown ניטרלית.
 
 ### הקמת principal ו־Cron
 

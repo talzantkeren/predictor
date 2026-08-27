@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { getSystemAdminAuthorization } from "@/features/scoring/queries";
+import { getSyncSkipReasonLabel } from "@/features/sync/display";
 import { runSportsSync } from "@/features/sync/orchestrator";
 import { getSportsSyncEnv } from "@/lib/env";
 
@@ -63,10 +64,7 @@ export async function triggerSportsSyncAction(
     if (result.status === "skipped") {
       return {
         status: "skipped",
-        message:
-          result.reason === "CONCURRENT_ATTEMPT"
-            ? "ריצה אחרת כבר פעילה; לא נשלחה קריאה נוספת לספק."
-            : "לא הייתה עבודה שמועד ביצועה הגיע.",
+        message: getSyncSkipReasonLabel(result.reason),
         ...(result.runId ? { runId: result.runId } : {}),
       };
     }
