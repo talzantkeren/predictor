@@ -1049,7 +1049,10 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     );
 
     await manager.page.getByRole("button", { name: "אישור וצירוף לליגה" }).click();
-    await assertVisible(manager.page.getByText("אושרה", { exact: true }));
+    const approvedRequestCard = manager.page.locator("article").filter({
+      has: manager.page.getByRole("heading", { name: "מבקש הצטרפות" }),
+    });
+    await assertVisible(approvedRequestCard.getByText("אושרה", { exact: true }));
 
     const replayApprovals = await Promise.all([
       callAuthenticatedRpc(managerAccessToken, "approve_join_request", {
