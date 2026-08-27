@@ -48,7 +48,7 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-DEF-016 | P3 | W6 | skip link ב־invite מחובר מצביע ליעד חסר | VERIFIED | §10, `S9-DEF-016` | `docs/evidence/slice-9/w6/S9-DEF-016.md` | `3ed8a1b62fad7dac24c2da2035cc79de9fbe0a0a` | יעד יחיד, גלוי ובר־focus לכל guest/auth × valid/unavailable; regression עבר 4/4 ב־Desktop/Pixel. |
 | S9-DEF-020 | P3 | W6 | invite unavailable מאבד escape למשתמש מחובר | VERIFIED | §10, `S9-DEF-020` | `docs/evidence/slice-9/w6/S9-DEF-020.md` | `251b87f76bb35f46cc79dc4f161660e06fbc714f` | guest/auth × malformed/expired/revoked עברו 4/4 ב־Desktop/Pixel; Dashboard/logout ניתנים רק ל־session מאומת וללא נתוני resource. |
 | S9-DEF-022 | P3 | W6 | פערי נגישות קטנים ב־loading/forms/targets | OWNER_ACTION_REQUIRED | §10, `S9-DEF-022` | `docs/evidence/slice-9/w6/S9-DEF-022.md` | `a2a398c146eb56135cb57da0e9d05d481c67444a`, `ecfd412c917f860ecba83e45d7c943aabeedfd73` | axe+keyboard+focus+contrast+touch עברו 10/10 על 4 routes × 5 widths × 2 projects; 42px/20px targets תוקנו; private loading/rejection עברו 2/2+4/4. פעולה יחידה: owner מבצע Chrome native Zoom=200% לפי הראיה. |
-| S9-DEF-024 | P3 | W6 | full E2E ירוק משאיר server error לא מוסבר | VERIFIED | §10, `S9-DEF-024` | `docs/evidence/slice-9/w6/S9-DEF-024.md` | `1bc326dde52c7162337485fda134003719d1592c` | stream abort שוחזר, teardown הוסדר ו־WebServer Error מכשיל את ה־runner; שלוש חזרות Desktop+Mobile נקיות עברו 2/2. |
+| S9-DEF-024 | P3 | W6 | full E2E ירוק משאיר server error לא מוסבר | VERIFIED | §10, `S9-DEF-024` + supplement | `docs/evidence/slice-9/w6/S9-DEF-024.md`, `docs/evidence/slice-9/w6/S9-DEF-024-final-head-recurrence.md` | `1bc326dde52c7162337485fda134003719d1592c`, `056f6af4cb88415c1b18eef72a870da47acc456f` | recurrence אמיתי על `ea37f99` הוכשל בידי ה־runner; `AppLink` ללא prefetch, המתנת RSC POST+idle ו־teardown מדורג עברו 5 focused repeats ו־38/38 מלאים ללא WebServer error. |
 | S9-DEF-013 | P2 | W7 | ספר הפרויקט derived סותר את המקור הקנוני | VERIFIED | §10, `S9-DEF-013` | `docs/evidence/slice-9/w7/S9-DEF-013.md` | `867da06b9a2459eb6be9a042377fa394f3eca976` | source/workflow ו־regeneration דטרמיניסטיים; ‏624/624 Vitest, ‏1443/1443 DB ו־28/28 E2E נמדדו; 5/5 עמודים נבדקו ב־Word/Poppler ללא clipping או overlap. |
 | S9-DEF-014 | P3 | W7 | Redirect allowlist ו־README אינם מתארים את Preview הנוכחי | VERIFIED | §10, `S9-DEF-014` | `docs/evidence/slice-9/w7/S9-DEF-014.md` | `dc0673acc14db431f67bd582b5a10c60c10858a7` | README/runbook מציגים Production/Local exact, ‏Preview PR #14 כ־smoke ציבורי ו־Auth לא־נתמך/לא־מאומת; ‏88/88 focused עברו ו־0 URL wildcards נמצאו. |
 | S9-REQ-002 | P1 | W7 | מצגת, demo script וחזרה של 10–15 דקות | OWNER_ACTION_REQUIRED | §11, `S9-REQ-002` | `docs/evidence/slice-9/w7/S9-REQ-002.md` | `c52393d654f63906a4561231d1943e38de2437d1`, `7a087986493ec1e421cc7db81df246717a84a98b` | 9 slides/renders/notes, deck source, deterministic timing, 3 fallbacks ו־evaluator checklist עברו Artifact Tool/fidelity/overflow/link/regression checks; obsolete counts הוסרו. פעולה יחידה: owner מבצע חזרה אנושית רציפה 10–15 דקות וממלא checklist+log. |
@@ -80,6 +80,19 @@ Checkpoint `4ee7bedbb096c8dcd1112324bf9b317ba5cf4712` נבדק ב־27.8.2026 ל�
 בדיקת native Chrome 200%, ‏Hosted/Production, delivery, evaluator והרצה אנושית
 לא הוסקו מן המטריצה ונשארים בשבע פעולות owner, אחת לכל רשומה פתוחה. מצב
 המסירה נשאר 18 `VERIFIED` ו־7 `OWNER_ACTION_REQUIRED`.
+
+### Recurrence על final candidate ותיקון קדימה
+
+ה־candidate `ea37f999ada508a9e15189a717545363d05dd46e` נפסל: `npm.cmd run verify`
+הריץ 38/38 תרחישי Playwright, אך detector פעיל צפה ב־server error מסוג
+`The destination stream closed early` וה־runner החזיר exit 1. לא נרשם PASS ל־SHA זה.
+
+התיקון הקדמי `056f6af4cb88415c1b18eef72a870da47acc456f` מונע prefetch ספקולטיבי
+דרך `AppLink`, ממתין ל־RSC POST ול־network idle לפני reload אחרי שמירת prediction,
+ומחנה דפים ב־`about:blank` לפני סגירה סדרתית של contexts. ראיה שנצפתה לפני
+ה־push: lint ו־typecheck עברו; regression עבר 5/5; חמש ריצות focused עברו 2/2
+ב־28.5/28.6/28.5/28.6/28.4 שניות; והמטריצה המלאה עברה 38/38 ב־6.4 דקות, exit
+0 וללא WebServer error. הראיה המצונזרת נמצאת ב־supplement של S9-DEF-024.
 
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
