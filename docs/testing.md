@@ -591,6 +591,14 @@ DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך
 indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב־Desktop וב־Pixel 5.
 בדיקת native 200% מתועדת בנפרד בראיית S9-DEF-022 ואינה מוחלפת ב־CSS zoom.
 
+### Slice 9 W6 — WebServer error signal
+
+`scripts/run-e2e.ts` מעביר את פלט Playwright המקומי כרגיל אך מכשיל run שבו
+מופיעה שורת `[WebServer] … Error:`; test count ירוק אינו יכול עוד להסתיר server
+error. תרחיש `prediction-lock` ממתין בסוף בלבד להשלמת response streams לפני
+סגירת contexts. הרגרסיה הצרה שוחזרה תחילה עם `destination stream closed early`,
+ולאחר התיקון עברה שלוש פעמים רצופות ב־Desktop וב־Mobile ללא WebServer error.
+
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים
 בנפרד ב־checkpoint 7; הצלחת הבדיקות האטומיות כאן אינה מוצגת כראיית race.

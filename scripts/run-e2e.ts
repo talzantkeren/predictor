@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
+import { containsUnexpectedWebServerError } from "@/lib/playwright-server-log";
+
 type LocalSupabaseStatus = {
   API_URL?: unknown;
   PUBLISHABLE_KEY?: unknown;
@@ -69,16 +71,42 @@ function getProcessEnvironment() {
 
 const processEnvironment = getProcessEnvironment();
 
-function run(args: string[], env: NodeJS.ProcessEnv) {
+function run(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  options: { rejectWebServerErrors?: boolean } = {},
+) {
   const result = spawnSync(npmCommand, [...npmArgumentPrefix, ...args], {
     cwd: process.cwd(),
+    encoding: "utf8",
     env,
+    maxBuffer: 16 * 1024 * 1024,
     shell: npmNeedsShell,
-    stdio: "inherit",
+    stdio: options.rejectWebServerErrors
+      ? ["inherit", "pipe", "pipe"]
+      : "inherit",
   });
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : "";
+  const stderr = typeof result.stderr === "string" ? result.stderr : "";
+
+  if (options.rejectWebServerErrors) {
+    process.stdout.write(stdout);
+    process.stderr.write(stderr);
+  }
 
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
+  }
+
+  if (
+    options.rejectWebServerErrors &&
+    containsUnexpectedWebServerError(`${stdout}\n${stderr}`)
+  ) {
+    console.error(
+      "Playwright emitted an unexpected local web-server error; the passing test count is not sufficient evidence.",
+    );
+    process.exit(1);
   }
 }
 
@@ -169,4 +197,5 @@ run(
     ...playwrightArguments,
   ],
   environment,
+  { rejectWebServerErrors: !externalBaseUrl },
 );
