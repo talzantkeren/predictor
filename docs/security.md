@@ -598,3 +598,31 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | IDOR בין ליגות | RLS league read + resource check חוזר ב־RPC | manager/member מורשים ו־foreign manager נדחה ב־pgTAP וב־Playwright |
 | דליפת PII או proof | return shape ו־Zod strict allowlist | catalog shape, rejection של extra fields והיעדר email/manager UI בדפדפן |
 | הסרה/הפעלה מחדש דרך מסך הקריאה | אין mutation RPC/action/grant | UPDATE ישיר של authenticated נדחה; אין control ב־UI |
+
+## Slice 9 — סדר נעילות lifecycle ומרוצי completion
+
+- mutation RPCs של approval, rejection, proof finalization ו־prediction
+  קובעים תחילה את advisory serialization הקיים, מאמתים ונועלים את הליגה,
+  ורק אחר כך מעבירים ל־implementation הפרטי שנועל request/proof/member/match.
+  כך completion והפעולה המתחרה משתמשים באותו סדר parent→child ולא יכולים
+  להחזיק child בזמן שהם ממתינים ל־league.
+- wrappers זהים שומרים את effective-active guard בגבולות league-first של
+  invite, submit ו־completion. helper פרטי ללא Data API grant מקבע transition
+  מאוחר פעם אחת, נועל את חוקי הניקוד ב־first kickoff ושומר
+  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. כתיבת fixture מסונכרנת
+  באמצעות אותו advisory lock, ולכן aggregate ה־first kickoff אינו משתנה
+  באמצע ההכרעה.
+- ה־RPCs הציבוריים נשארים narrow, ‏`SECURITY DEFINER`, ‏`search_path=''`
+  ו־authenticated-only לפי החוזה הקודם. implementations שהוזזו ל־`private`
+  איבדו את כל grants של Data API; אין generic client או mutation חדש.
+- upload שקיבל context לפני completion עדיין חייב לעבור finalize. אם
+  completion נסגר ראשון, finalize מחזיר `REQUEST_NOT_UPLOADABLE`; ה־Route
+  מסווג זאת כדחיית DB ודאית ומוחק את אותו object נגזר. proof business row אינו
+  נוצר, ו־proof history קיים אינו נמחק.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| deadlock completion↔join/proof | advisory + league→request→proof/member | backends נפרדים ל־finalize/approve/reject מול completion |
+| שתי השלמות יוצרות snapshot/audit כפול | league lock + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
+| provider עוקף review במירוץ | advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
+| תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |

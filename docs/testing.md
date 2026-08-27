@@ -505,7 +505,7 @@ npm run test:e2e -- e2e/reports.spec.ts
 `docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
 בפרויקט linked.
 
-## Slice 9 — S9-REQ-001 checkpoints 4–6
+## Slice 9 — S9-REQ-001 checkpoints 4–7
 
 השלמה, review ויישוב נבדקים מול Supabase מקומי seeded בלבד. ה־fixtures
 סינתטיים ונגללים לאחור; אין provider חי, linked project, proof content או
@@ -527,6 +527,15 @@ Vitest מלא עבר 572/572 ו־pgTAP מלא עבר 1286/1286 ב־24 קבצים
 `e2e/pagination.spec.ts` עבר 2/2 ב־Desktop וב־Mobile ומוכיח 25+2 שורות,
 keyboard/RTL/no-overflow, היעדר manager controls לחבר פעיל ו־not-found לליגה
 זרה. אין בתרחיש פעולת removal/reactivation או קריאת proof.
+
+Checkpoint 7 מוסיף שתי בדיקות dblink אמיתיות עם backends נפרדים. הראשונה
+עברה 74/74 ומכסה manual-vs-scheduled activation, ‏tick מאוחר, effective-active
+בגבול prediction, completion מול upload/finalize/approve/reject ו־double
+completion. השנייה עברה 35/35 ומכסה provider FT מול review, replay אחרי הכרעת
+מנהל מערכת, active exact מול completed non-exact וליגה ללא predictions,
+ליגה ללא snapshot ו־fixture חדש אחרי completion. יחד הן עברו 109/109; בדיקת
+Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
+finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
 
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים

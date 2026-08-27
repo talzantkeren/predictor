@@ -399,10 +399,24 @@ select ok(
     'private.join_request_eligibility' in
     pg_get_functiondef('public.resolve_invite(uuid,text)'::regprocedure)
   ) > 0
-  and position(
-    'private.join_request_eligibility' in
-    pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
-  ) > 0,
+  and (
+    position(
+      'private.join_request_eligibility' in
+      pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
+    ) > 0
+    or (
+      position(
+        'private.slice9_submit_join_request_without_activation_guard' in
+        pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
+      ) > 0
+      and position(
+        'private.join_request_eligibility' in
+        pg_get_functiondef(
+          'private.slice9_submit_join_request_without_activation_guard(uuid,text)'::regprocedure
+        )
+      ) > 0
+    )
+  ),
   'one private admission rule is reused by resolution and submission'
 );
 

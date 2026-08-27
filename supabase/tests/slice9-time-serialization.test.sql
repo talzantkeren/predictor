@@ -11,13 +11,29 @@ create extension if not exists dblink with schema extensions;
 
 select ok(
   position(
-    'clock_timestamp()'
+    'pg_advisory_xact_lock(2026090609)'
     in lower(pg_get_functiondef('public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure))
-  ) > position(
+  ) > 0
+  and position(
     'for update'
     in lower(pg_get_functiondef('public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure))
+  ) > 0
+  and position(
+    'private.slice9_save_prediction_without_league_lock'
+    in lower(pg_get_functiondef('public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure))
+  ) > 0
+  and position(
+    'clock_timestamp()'
+    in lower(pg_get_functiondef(
+      'private.slice9_save_prediction_without_league_lock(uuid,uuid,numeric,numeric)'::regprocedure
+    ))
+  ) > position(
+    'for update'
+    in lower(pg_get_functiondef(
+      'private.slice9_save_prediction_without_league_lock(uuid,uuid,numeric,numeric)'::regprocedure
+    ))
   ),
-  'save_prediction definition places its wall-clock sample after row locking begins'
+  'save_prediction locks league first and its delegate samples wall-clock time only after child locking begins'
 );
 select ok(
   position(
