@@ -26,11 +26,17 @@ export async function settleResponseStreamsBeforeCleanup(
       throw result.reason;
     }
   }
+
+  for (const page of pages) {
+    if (!page.isClosed() && page.url() !== "about:blank") {
+      await page.goto("about:blank", { waitUntil: "load", timeout: 10_000 });
+    }
+  }
 }
 
 export async function closeContextsAfterResponseStreams(
   contexts: readonly BrowserContext[],
 ) {
   await settleResponseStreamsBeforeCleanup(contexts);
-  await Promise.all(contexts.map((context) => context.close()));
+  for (const context of new Set(contexts)) await context.close();
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { useActionState } from "react";
 
 import { loginAction, type AuthActionState } from "@/features/auth/actions";

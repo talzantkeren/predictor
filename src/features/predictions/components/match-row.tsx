@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";

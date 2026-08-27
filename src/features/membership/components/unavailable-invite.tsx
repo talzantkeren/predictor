@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import type { ReactNode } from "react";
 
 import { SkipToMainLink } from "@/components/ui/skip-to-main-link";

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 
 import { ErrorState } from "@/components/ui/error-state";

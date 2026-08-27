@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";

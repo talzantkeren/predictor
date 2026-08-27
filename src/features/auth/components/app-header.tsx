@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { signOutAction } from "@/features/auth/actions";

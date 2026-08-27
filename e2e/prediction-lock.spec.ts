@@ -2,6 +2,7 @@ import {
   devices,
   expect,
   type BrowserContextOptions,
+  type Locator,
   type Page,
   test,
 } from "./support/stream-safe-test";
@@ -148,6 +149,22 @@ async function createLeague(page: Page, leagueName: string) {
     throw new Error("Created league ID was invalid.");
   }
   return leagueId;
+}
+
+async function clickServerActionAndWaitForIdle(
+  page: Page,
+  button: Locator,
+) {
+  const responsePromise = page.waitForResponse((response) => {
+    const contentType = response.headers()["content-type"] ?? "";
+    return (
+      response.request().method() === "POST" &&
+      contentType.includes("text/x-component")
+    );
+  });
+  await button.click();
+  await responsePromise;
+  await page.waitForLoadState("networkidle", { timeout: 10_000 });
 }
 
 test.describe("matches, predictions, lock, and reveal", () => {
@@ -310,7 +327,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
     );
     await managerHomeInput.fill("2");
     await managerAwayInput.fill("1");
-    await manager.page.getByRole("button", { name: "שמירת הניחוש" }).click();
+    await clickServerActionAndWaitForIdle(
+      manager.page,
+      manager.page.getByRole("button", { name: "שמירת הניחוש" }),
+    );
     await expect(manager.page.getByText("הניחוש נשמר וניתן לעריכה עד מועד הנעילה.")).toBeVisible();
 
     await manager.page.reload();
@@ -344,7 +364,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
     await manager.page.reload();
     await managerHomeInput.fill("2");
     await managerAwayInput.fill("1");
-    await manager.page.getByRole("button", { name: "עדכון הניחוש" }).click();
+    await clickServerActionAndWaitForIdle(
+      manager.page,
+      manager.page.getByRole("button", { name: "עדכון הניחוש" }),
+    );
     await expect(manager.page.getByText("הניחוש נשמר וניתן לעריכה עד מועד הנעילה.")).toBeVisible();
 
     await member.page.goto(detailPath);
@@ -369,7 +392,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
     await member.page
       .getByLabel(`שערים — ${fixtureNames.awayTeamName}`, { exact: true })
       .fill("1");
-    await member.page.getByRole("button", { name: "שמירת הניחוש" }).click();
+    await clickServerActionAndWaitForIdle(
+      member.page,
+      member.page.getByRole("button", { name: "שמירת הניחוש" }),
+    );
     await expect(member.page.getByText("הניחוש נשמר וניתן לעריכה עד מועד הנעילה.")).toBeVisible();
 
     expect(
@@ -394,7 +420,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
 
     await managerHomeInput.fill("3");
     await managerAwayInput.fill("2");
-    await manager.page.getByRole("button", { name: "עדכון הניחוש" }).click();
+    await clickServerActionAndWaitForIdle(
+      manager.page,
+      manager.page.getByRole("button", { name: "עדכון הניחוש" }),
+    );
     await expect(
       manager.page.getByText(
         "המשחק כבר ננעל ולא ניתן לשמור או לערוך את הניחוש.",
@@ -407,7 +436,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
     await staleCreationPage
       .getByLabel(`שערים — ${fixtureNames.homeTeamName}`, { exact: true })
       .fill("1");
-    await staleCreationPage.getByRole("button", { name: "שמירת הניחוש" }).click();
+    await clickServerActionAndWaitForIdle(
+      staleCreationPage,
+      staleCreationPage.getByRole("button", { name: "שמירת הניחוש" }),
+    );
     await expect(
       staleCreationPage.getByText(
         "המשחק כבר ננעל ולא ניתן לשמור או לערוך את הניחוש.",

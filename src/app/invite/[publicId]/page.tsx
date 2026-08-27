@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 import { IsolatedText } from "@/components/ui/isolated-text";
 import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
