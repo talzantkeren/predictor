@@ -582,6 +582,15 @@ system-admin ואינו מזייף אף שלב גלוי. התרחיש עבר 1/1
 DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך לכלול findings ידועים
 של פונקציות pgTAP תחת schema ‏`extensions`, ואינו מייחס אותם למיגרציית המוצר.
 
+### Slice 9 W6 — semantic loading ושגיאת דחייה
+
+שני מסכי ה־loading של מנהל המערכת נבדקים ב־Vitest כ־busy regions בעלי שם,
+ללא `aria-live`/`role=status` כפול ועם כיבוד reduced motion. תרחיש
+`e2e/join-and-proofs.spec.ts` שולח דרך ה־UI סיבת דחייה שנדחית רק בגבול השרת,
+ומאמת שה־textarea מקבל focus, ‏`aria-invalid`, תיאור help+error יחיד ו־focus
+indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב־Desktop וב־Pixel 5.
+בדיקת native 200% מתועדת בנפרד בראיית S9-DEF-022 ואינה מוחלפת ב־CSS zoom.
+
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים
 בנפרד ב־checkpoint 7; הצלחת הבדיקות האטומיות כאן אינה מוצגת כראיית race.

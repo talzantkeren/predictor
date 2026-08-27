@@ -1104,6 +1104,75 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       3,
     );
 
+    const pendingRequestCard = manager.page.locator("article").filter({
+      has: manager.page.getByRole("heading", { name: "מבקש הצטרפות" }),
+    });
+    const rejectionReason = pendingRequestCard.getByLabel("סיבת דחייה");
+    const rejectButton = pendingRequestCard.getByRole("button", {
+      name: "דחיית הבקשה",
+    });
+    await rejectionReason.fill(`סיבה ${String.fromCodePoint(0x202e)} נסתרת`);
+    await rejectButton.click();
+    await expect(rejectionReason).toBeFocused();
+    await expect(rejectionReason).toHaveAttribute("aria-invalid", "true");
+    const describedBy = await rejectionReason.getAttribute("aria-describedby");
+    expect(describedBy?.split(" ")).toHaveLength(2);
+    await expect(
+      pendingRequestCard.getByText(
+        "סיבת הדחייה מכילה תווי כיווניות בלתי־נראים שאינם מותרים.",
+      ),
+    ).toBeVisible();
+    await expect(pendingRequestCard.getByRole("alert")).toHaveCount(1);
+    const focusIsVisible = await rejectionReason.evaluate((textarea) => {
+      const style = getComputedStyle(textarea);
+      return (
+        style.boxShadow !== "none" ||
+        (style.outlineStyle !== "none" &&
+          Number.parseFloat(style.outlineWidth) > 0)
+      );
+    });
+    const rejectButtonAccessibility = await rejectButton.evaluate((button) => {
+      const parseColor = (value: string) => {
+        const channels = value.match(/[\d.]+/g)?.map(Number) ?? [];
+        return channels.length >= 3 ? channels.slice(0, 3) : [0, 0, 0];
+      };
+      const luminance = (channels: number[]) => {
+        const linear = channels.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045
+            ? value / 12.92
+            : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+      const textLuminance = luminance(parseColor(getComputedStyle(button).color));
+      let background: Element | null = button;
+      let backgroundColor = "rgb(255, 255, 255)";
+      while (background) {
+        const candidate = getComputedStyle(background).backgroundColor;
+        if (!candidate.endsWith(", 0)")) {
+          backgroundColor = candidate;
+          break;
+        }
+        background = background.parentElement;
+      }
+      const backgroundLuminance = luminance(parseColor(backgroundColor));
+      const bounds = button.getBoundingClientRect();
+      return {
+        contrastRatio:
+          (Math.max(textLuminance, backgroundLuminance) + 0.05) /
+          (Math.min(textLuminance, backgroundLuminance) + 0.05),
+        height: bounds.height,
+        width: bounds.width,
+      };
+    });
+    expect(focusIsVisible).toBe(true);
+    expect(rejectButtonAccessibility.height).toBeGreaterThanOrEqual(44);
+    expect(rejectButtonAccessibility.width).toBeGreaterThanOrEqual(44);
+    expect(rejectButtonAccessibility.contrastRatio).toBeGreaterThanOrEqual(
+      4.5,
+    );
+
     await otherManager.page.goto(`/leagues/${leagueId}/members`);
     await assertVisible(
       otherManager.page.getByRole("heading", { name: "הדף לא נמצא" }),
