@@ -1,16 +1,12 @@
 import Link from "next/link";
 
+import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { signOutAction } from "@/features/auth/actions";
 
 export function AppHeader() {
   return (
     <header className="border-b border-line bg-white">
-      <a
-        href="#main-content"
-        className="fixed start-4 top-3 z-50 -translate-y-20 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white transition focus:translate-y-0"
-      >
-        דילוג לתוכן הראשי
-      </a>
+      <SkipToMainLink />
       <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { IsolatedText } from "@/components/ui/isolated-text";
+import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { AppHeader } from "@/features/auth/components/app-header";
 import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
 import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
@@ -235,10 +236,14 @@ export default async function InvitePage({
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      {resolution.viewerState !== "guest" ? <AppHeader /> : null}
-      <main className="px-4 py-8 sm:px-6 sm:py-12">
-      <InviteFragmentScrubber />
-      <div className="mx-auto max-w-3xl space-y-6">
+      {resolution.viewerState !== "guest" ? <AppHeader /> : <SkipToMainLink />}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="px-4 py-8 outline-none sm:px-6 sm:py-12"
+      >
+        <InviteFragmentScrubber />
+        <div className="mx-auto max-w-3xl space-y-6">
         <section
           aria-labelledby="invite-title"
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
@@ -298,7 +303,7 @@ export default async function InvitePage({
             <InviteViewerPanel resolution={resolution} publicId={publicId} />
           </div>
         </section>
-      </div>
+        </div>
       </main>
     </div>
   );

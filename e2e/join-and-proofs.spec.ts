@@ -170,6 +170,27 @@ async function assertLocatorCount(locator: Locator, expected: number) {
   }
 }
 
+async function assertInviteSkipTarget(page: Page) {
+  const skipLink = page.getByRole("link", { name: "דילוג לתוכן הראשי" });
+  const mainTarget = page.locator("#main-content");
+
+  await expect(skipLink).toHaveCount(1);
+  await expect(mainTarget).toHaveCount(1);
+  await page.locator("body").press("Home");
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await expect
+    .poll(() =>
+      skipLink.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.top >= 0 && bounds.bottom <= window.innerHeight;
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("Enter");
+  await expect(mainTarget).toBeFocused();
+}
+
 async function navigateToInvite(page: Page, url: string) {
   const rawTokenMatch = new URL(url).hash.match(
     /^#invite=([A-Za-z0-9_-]{43})$/,
@@ -644,6 +665,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
+    await assertInviteSkipTarget(page);
     const requesterRegistrationContext = await browser.newContext(
       secondaryContextOptions,
     );
@@ -652,6 +674,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       requesterRegistrationPage.getByRole("heading", { name: leagueName }),
     );
+    await assertInviteSkipTarget(requesterRegistrationPage);
     await assertVisible(
       requesterRegistrationPage.getByText("Demo בלבד — ללא כסף אמיתי"),
     );
@@ -692,6 +715,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       requester.page.getByRole("heading", { name: leagueName }),
     );
+    await assertInviteSkipTarget(requester.page);
     await assertVisible(requester.page.getByRole("link", { name: "הליגות שלי" }));
     await assertVisible(requester.page.getByRole("button", { name: "התנתקות" }));
 
@@ -864,6 +888,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       outsider.page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
+    await assertInviteSkipTarget(outsider.page);
 
     const otherManager = await registerConfirmedUser({
       browser,
