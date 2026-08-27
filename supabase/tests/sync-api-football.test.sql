@@ -86,9 +86,11 @@ select ok(
 );
 select ok(
   position('pg_try_advisory_lock' in lower(pg_get_functiondef('public.claim_sports_sync(text,boolean)'::regprocedure))) = 0
-  and position('score_match' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('private.slice9_lock_leagues' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('slice9_apply_api_football_sync_batch_with_global_lock' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('score_match' in lower(pg_get_functiondef('private.slice9_apply_api_football_sync_batch_with_global_lock(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
   and position('update public.predictions' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) = 0,
-  'the lease is row-based and apply delegates scoring without direct prediction writes'
+  'the lease is row-based and apply bridges affected leagues before delegated scoring without direct prediction writes'
 );
 
 create temp table slice7b_demo_counts as

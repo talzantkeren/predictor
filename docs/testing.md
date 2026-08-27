@@ -561,6 +561,16 @@ completion. השנייה עברה 35/35 ומכסה provider FT מול review, re
 Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
 finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
 
+תיקון הביקורת המאוחר מוסיף את
+`supabase/tests/slice9-league-lock-scope.test.sql`. הוא מחזיק transaction של
+`save_prediction` ושל completion אידמפוטנטי בליגה A, מוכיח שפעולה באותה ליגה
+ממתינה וש־save/completion בליגה B מסתיימות לפני commit של A. assertions
+מבניים מאמתים את שמונת גבולות ה־lifecycle, היעדר ה־global lock מן completion,
+סדר registry→league keys בכותבי catalog ו־shared registry ב־`create_league`.
+חבילת multi-session המלאה כוללת עשרה קבצי dblink: keyset pagination, league
+settings, manual match, manual override clear, scoring, league-lock scope,
+lifecycle, review, database-time serialization ו־API-Football sync.
+
 Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
 Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
 ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת

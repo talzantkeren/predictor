@@ -690,7 +690,7 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | `create_or_correct_match` (Slice 9) | operation + existing match id לתיקון או server-issued stable create UUID, season, שתי team IDs קיימות, round, kickoff, status/result | system-admin service + RPC אטומי, idempotency ואודיט; manual ownership מסומן | match ידני יחיד נוצר/תוקן בלי team CRUD ובלי merge לפי display name |
 | `resolveMatchResultReview` (Slice 9) | match id + result version + disposition ותוצאת זמן חוקי/ביטול לפי disposition | system-admin service + RPC אטומי; row עמיד ב־`match_result_reviews`, revalidation ואודיט | valid review נפתר פעם אחת, canonical match נכתב וה־flags מתנקים; non-completed leagues מנוקדות, ורק completed leagues שכבר מכילות snapshot לאותו match מקבלות pending reconciliation |
 | `clearManualOverride` (Slice 9) | confirmation בלבד; match id נלכד מה־row ב־Server Action | session + resource AuthZ + system-admin gateway + `clear_manual_match_override` service-only | ownership חוזר רק ל־API-Football בלי לשנות result/provenance/latch/predictions; replay typed ללא audit נוסף |
-| `reconcileCompletedLeague` (Slice 9) | league id + reviewed match/version | system-admin lifecycle service + RPC אטומי לפי global lock order | explicit audited recalculation של final league או no-op אידמפוטנטי; אין silent provider rewrite |
+| `reconcileCompletedLeague` (Slice 9) | league id + reviewed match/version | system-admin lifecycle service + RPC אטומי לפי league advisory key וסדר row locks קנוני | explicit audited recalculation של final league או no-op אידמפוטנטי; אין silent provider rewrite |
 | `startLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | manager רשאי `open` → `active` מוקדם; fallback חייב לשמור status/audit לא יאוחר מ־kickoff הראשון; recovery מאוחר מסומן כהפרת SLA |
 | `completeLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | `active` → `completed` רק אחרי terminal/reconciliation; בקשות פתוחות נסגרות אטומית והדוח מוגן משינוי שקט, עם reconciliation מפורש בלבד |
 
@@ -1349,7 +1349,8 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   decided_at, created_at)`
   עם PK זוגי ו־constraints שמחייבים actor/time/result לפי disposition. AET/PEN
   או provider disposition לא־מוכר יוצרים row `pending` ואינם מתחזים ל־
-  `match_status`. `resolveMatchResultReview` של system admin נועל match→review
+  `match_status`. `resolveMatchResultReview` של system admin גוזר תחילה את כל
+  הליגות בעונת המשחק, לוקח את מפתחות הליגה בסדר יציב, נועל match→review
   ומאמת שוב שה־match עדיין באותה `review_result_version` ושה־row pending.
   disposition תקף כותב באותה טרנזקציה canonical `finished`+תוצאת זמן חוקי או
   `canceled`, מעלה `matches.result_version`, מסמן את ה־row `resolved` עם
@@ -1363,13 +1364,18 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   הבקשות ב־`rejected` עם `rejection_reason='LEAGUE_COMPLETED'`, decision
   metadata והעתק עברי ב־display layer, שומרת proofs/history, מוסיפה audit
   ומעבירה ל־`completed` פעם אחת בלבד.
-- סדר הנעילות הגלובלי למוטציות lifecycle/membership/proof/scoring הוא:
-  `leagues → profiles → join_requests(id) → payment_proofs(id) →
+- סדר הנעילות למוטציות lifecycle/membership/proof/scoring הוא:
+  `catalog registry barrier (רק create/catalog) → league advisory keys →
+  leagues → profiles → join_requests(id) → payment_proofs(id) →
   league_members(id) → matches(id) → match_result_reviews(match_id, result_version) →
   league_match_snapshots(league_id, match_id) →
   league_match_reconciliations(id)`.
-  מותר לדלג על שכבות שאינן רלוונטיות; טבלאות בעלות `id` ננעלות בסדר UUID,
-  ושני המפתחות הזוגיים ננעלים בסדר לקסיקוגרפי. אסור לרכוש
+  ה־league advisory key הוא `(2026090609, hashtext(league_id::text))`; בריבוי
+  ליגות ממיינים ומסירים כפילויות לפי מפתח ה־`int4`. רק כותב catalog שיכול
+  להוסיף fixture לוקח קודם את מחסום ה־registry הבלעדי; `create_league` מחזיקה
+  shared barrier. מוטציות lifecycle רגילות מדלגות עליו, ולכן ליגות שונות אינן
+  serialized. מותר לדלג על שכבות שאינן רלוונטיות; טבלאות בעלות `id` ננעלות
+  בסדר UUID, ושני המפתחות הזוגיים ננעלים בסדר לקסיקוגרפי. אסור לרכוש
   parent/שכבה מוקדמת אחרי child. rate-limit transaction הוא leaf path
   `profiles → join_requests` ואינו רוכש league לאחר מכן; finalize עובר
   `league → request → proof`; approve עובר `league → request → member`;
@@ -1387,7 +1393,8 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   `league_match_snapshots` אוכף membership בסט הקפוא; match שנוסף אחרי completion
   אינו מקבל reconciliation ואינו יכול להיכנס לליגה גם בפעולה מפורשת.
   `reconcileCompletedLeague` של system admin מזהה את רשומת ה־review בלי
-  לנעול אותה מוקדם, ואז נועל `league → match → snapshot → reconciliation`
+  לנעול אותה מוקדם, לוקח את מפתח הליגה, ואז נועל
+  `league → match → snapshot → reconciliation`
   במסלול apply ומחיל את ה־snapshot המפורש באותה נוסחת scoring; dismissal נועל
   `league → match → reconciliation` ורשאי לדלג על snapshot. לפני apply או
   dismissal נבדקים שוב pending/version וקיום snapshot; מזהה שאינו בסט הקפוא
@@ -1456,11 +1463,14 @@ reconciliation ב־W4.
 apply מגודר של API-Football אינו מדלג עוד על ה־match וה־snapshot המאומת הבא
 רשאי להחליף את התוצאה לפי החוזה הקנוני.
 
-חובת carry ל־S9-REQ-001/W4: כל מעבר completion או automatic completion חייב
-לקחת `pg_advisory_xact_lock(2026090609)` לפני עבודה על league או על קבוצת
-ה־matches שלה, ולשמור את סדר `leagues → matches`. ה־acceptance של W4 חייב לכלול
-מרוץ dblink אמיתי completion-vs-missing-match; ה־guard של DEF-003 אינו תחליף
-ל־snapshot/reconciliation הסופי.
+חובת ה־carry של S9-REQ-001/W4 נמסרה כך: כל מעבר completion או automatic
+completion לוקח מפתח advisory דו־חלקי לפי league לפני עבודה על הליגה או על
+קבוצת ה־matches שלה ושומר `league → matches`. כתיבת catalog שיכולה להוסיף
+match משתמשת קודם במחסום registry גלובלי צר, מגלה את כל הליגות המושפעות ואז
+לוקחת את מפתחותיהן; `create_league` משתתפת במחסום shared כדי למנוע phantom.
+מרוצי dblink אמיתיים מכסים completion-vs-missing-match וכן התקדמות בלתי תלויה
+של save/completion בשתי ליגות. ה־guard של DEF-003 אינו תחליף ל־snapshot/
+reconciliation הסופי.
 
 #### Register מחייב וחשבון priorities
 

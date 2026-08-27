@@ -585,7 +585,8 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   actor, נועל `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
   `completed/archived`.
 - כל תיקון canonical לגרסה חדשה יוצר reconciliation רק עבור snapshot קיים.
-  `reconcile_completed_league` נועל `match→snapshot→reconciliation`; apply
+  `reconcile_completed_league` לוקח advisory key של הליגה ואז נועל
+  `league→match→snapshot→reconciliation`; apply
   דורש התאמה מלאה לגרסת canonical הנוכחית ומחליף deterministically את snapshot
   וניקוד הליגה היחידה. dismiss סוגר work item בלי לשנות תוצאה. שני הנתיבים
   service-role-only מאחורי session+system-admin וה־admin gateway הקיים; IDs
@@ -593,7 +594,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| provider עוקף review או replay מכפיל work | advisory serialization, match→review locks ו־unique version | AET, replay ו־FT-while-pending ב־pgTAP |
+| provider עוקף review או replay מכפיל work | affected-league advisory keys, ‏match→review locks ו־unique version | AET, replay ו־FT-while-pending ב־pgTAP |
 | תיקון משכתב דירוג סופי בשקט | scorer מסנן completed ויוצר queue רק מ־snapshot | mixed active/completed, no-prediction ו־post-completion fixture |
 | actor זר או גרסה ישנה מכריעים | session AuthZ, fixed actor, service-only RPC ו־expected version | authenticated denial, missing actor, stale/replay |
 | יישוב ליגה אחת משנה ליגה אחרת | reconciliation league-scoped ו־snapshot composite FK | apply מול dismiss בשתי ליגות שחולקות match |
@@ -636,16 +637,20 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 ## Slice 9 — סדר נעילות lifecycle ומרוצי completion
 
 - mutation RPCs של approval, rejection, proof finalization ו־prediction
-  קובעים תחילה את advisory serialization הקיים, מאמתים ונועלים את הליגה,
+  מגלים ומאשרים תחילה את המשאב, לוקחים את המפתח הדו־חלקי
+  `(2026090609, hashtext(league_id::text))`, מאמתים ונועלים מחדש את הליגה,
   ורק אחר כך מעבירים ל־implementation הפרטי שנועל request/proof/member/match.
-  כך completion והפעולה המתחרה משתמשים באותו סדר parent→child ולא יכולים
-  להחזיק child בזמן שהם ממתינים ל־league.
+  כך completion והפעולה המתחרה באותה ליגה משתמשים באותו סדר parent→child;
+  ליגות שונות אינן חולקות מפתח, והתנגשות hash גורמת רק להמתנת־יתר בטוחה.
 - wrappers זהים שומרים את effective-active guard בגבולות league-first של
   invite, submit ו־completion. helper פרטי ללא Data API grant מקבע transition
   מאוחר פעם אחת, נועל את חוקי הניקוד ב־first kickoff ושומר
-  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. כתיבת fixture מסונכרנת
-  באמצעות אותו advisory lock, ולכן aggregate ה־first kickoff אינו משתנה
-  באמצע ההכרעה.
+  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. כתיבת fixture מגשרת את כל
+  מפתחות הליגות המושפעות, ולכן aggregate ה־first kickoff אינו משתנה באמצע
+  ההכרעה. כותבי catalog שיכולים להוסיף fixture לוקחים קודם מחסום registry
+  גלובלי צר; `create_league` מחזיקה אותו במצב shared עד commit. הסדר הוא תמיד
+  registry→league keys→league rows, והמחסום אינו נלקח בשמירה או completion
+  רגילות.
 - ה־RPCs הציבוריים נשארים narrow, ‏`SECURITY DEFINER`, ‏`search_path=''`
   ו־authenticated-only לפי החוזה הקודם. implementations שהוזזו ל־`private`
   איבדו את כל grants של Data API; אין generic client או mutation חדש.
@@ -656,9 +661,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| deadlock completion↔join/proof | advisory + league→request→proof/member | backends נפרדים ל־finalize/approve/reject מול completion |
-| שתי השלמות יוצרות snapshot/audit כפול | league lock + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
-| provider עוקף review במירוץ | advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
+| deadlock completion↔join/proof | per-league advisory + league→request→proof/member | backends נפרדים ל־finalize/approve/reject מול completion |
+| שתי השלמות יוצרות snapshot/audit כפול | per-league advisory + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
+| provider עוקף review במירוץ | affected-league advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
+| ליגה לא קשורה נתקעת מאחורי save/completion | key נפרד לכל league; global registry רק ל־catalog | save ו־completion בליגה B מסתיימים בעוד transaction בליגה A פתוחה |
 | תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |
 
 ## סיכונים שיוריים ופעולות owner למסירה

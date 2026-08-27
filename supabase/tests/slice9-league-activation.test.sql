@@ -96,22 +96,18 @@ select ok(
 
 select ok(
   position(
-    'pg_advisory_xact_lock(2026090609' in
-    replace(
-      lower(pg_get_functiondef(
-        'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
-      )),
-      ')',
-      ''
-    )
+    'private.slice9_lock_leagues' in
+    lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
   ) > 0
   and position(
-    'slice9_apply_api_football_sync_batch_unserialized' in
+    'slice9_apply_api_football_sync_batch_with_global_lock' in
     lower(pg_get_functiondef(
       'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
     ))
   ) > 0,
-  'provider apply shares the lifecycle advisory lock before fixture writes'
+  'provider apply bridges every affected league key before fixture writes'
 );
 
 insert into auth.users (

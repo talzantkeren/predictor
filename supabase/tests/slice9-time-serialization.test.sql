@@ -10,10 +10,9 @@ select no_plan();
 create extension if not exists dblink with schema extensions;
 
 select ok(
-  position(
-    'pg_advisory_xact_lock(2026090609)'
-    in lower(pg_get_functiondef('public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure))
-  ) > 0
+  lower(pg_get_functiondef(
+    'public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure
+  )) ~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*,[[:space:]]*pg_catalog\.hashtext\(p_league_id::text\)'
   and position(
     'for update'
     in lower(pg_get_functiondef('public.save_prediction(uuid,uuid,numeric,numeric)'::regprocedure))

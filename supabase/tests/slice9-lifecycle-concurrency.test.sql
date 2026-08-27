@@ -350,7 +350,12 @@ from extensions.dblink('lifecycle_second', 'select pg_backend_pid()') as result(
 select is(
   extensions.dblink_exec('lifecycle_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9800000-0000-4000-8000-000000000301')
+      );
+    end $block$;
   $remote$), 'DO', 'the activation race serialization point is held'
 );
 select is(
@@ -540,7 +545,12 @@ select results_eq(
 select is(
   extensions.dblink_exec('lifecycle_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9800000-0000-4000-8000-000000000304')
+      );
+    end $block$;
   $remote$), 'DO', 'the finalize/completion race is held'
 );
 select is(
@@ -605,7 +615,12 @@ select ok(
 select is(
   extensions.dblink_exec('lifecycle_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9800000-0000-4000-8000-000000000305')
+      );
+    end $block$;
   $remote$), 'DO', 'the approve/completion race is held'
 );
 select is(
@@ -669,7 +684,12 @@ select ok(
 select is(
   extensions.dblink_exec('lifecycle_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9800000-0000-4000-8000-000000000306')
+      );
+    end $block$;
   $remote$), 'DO', 'the reject/completion race is held'
 );
 select is(
@@ -731,7 +751,12 @@ select ok(
 select is(
   extensions.dblink_exec('lifecycle_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9800000-0000-4000-8000-000000000307')
+      );
+    end $block$;
   $remote$), 'DO', 'the double-completion race is held'
 );
 select is(

@@ -318,7 +318,12 @@ from extensions.dblink(
 select is(
   extensions.dblink_exec('review_race_locker', $remote$
     begin;
-    do $block$ begin perform pg_advisory_xact_lock(2026090609); end $block$;
+    do $block$ begin
+      perform pg_advisory_xact_lock(
+        2026090609,
+        hashtext('d9900000-0000-4000-8000-000000000301')
+      );
+    end $block$;
   $remote$),
   'DO',
   'the provider/review lifecycle serialization point is held'
