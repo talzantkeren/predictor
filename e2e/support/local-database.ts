@@ -933,3 +933,330 @@ export function removeScoringFixturesFromDisposableLocalDatabase({
     throw new Error("Local scoring fixtures could not be removed safely.");
   }
 }
+
+export type PaginationFixture = {
+  detailMatchId: string;
+  foreignLeagueId: string;
+  futureMatchIds: string[];
+  homeTeamName: string;
+  predictionLastDisplayName: string;
+  queueLastDisplayName: string;
+  selectorLastLeagueName: string;
+};
+
+function assertPaginationNamespace(value: string) {
+  if (!/^[0-9a-f]{8}$/.test(value)) {
+    throw new Error("Local pagination fixture namespace was malformed.");
+  }
+}
+
+function paginationUuid(namespace: string, group: string, ordinal: number) {
+  return `${namespace}-${group}-4000-8000-${ordinal.toString().padStart(12, "0")}`;
+}
+
+export function seedPaginationFixturesInDisposableLocalDatabase({
+  namespace,
+  leagueId,
+  managerId,
+  viewerId,
+}: {
+  namespace: string;
+  leagueId: string;
+  managerId: string;
+  viewerId: string;
+}): PaginationFixture {
+  assertPaginationNamespace(namespace);
+  assertCanonicalUuid(leagueId, "pagination league");
+  assertCanonicalUuid(managerId, "pagination manager");
+  assertCanonicalUuid(viewerId, "pagination viewer");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const detailMatchId = paginationUuid(namespace, "0700", 1);
+  const foreignLeagueId = paginationUuid(namespace, "0900", 1);
+  const homeTeamId = paginationUuid(namespace, "0800", 1);
+  const awayTeamId = paginationUuid(namespace, "0800", 2);
+  const homeTeamName = `קבוצת עמוד בית ${namespace}`;
+  const awayTeamName = `קבוצת עמוד חוץ ${namespace}`;
+  const fixtureSql = `begin;
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  '${paginationUuid(namespace, "0001", 1)}'::uuid,
+  'authenticated', 'authenticated',
+  'pagination-foreign-${namespace}@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  '{"display_name":"Pagination foreign manager"}', now(), now()
+);
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  ('${namespace}-0100-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'authenticated', 'authenticated',
+  'pagination-queue-${namespace}-' || series.i::text || '@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  pg_catalog.jsonb_build_object(
+    'display_name', 'מבקש עמוד ${namespace} ' || series.i::text
+  ),
+  now(), now()
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'authenticated', 'authenticated',
+  'pagination-prediction-${namespace}-' || series.i::text || '@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  pg_catalog.jsonb_build_object(
+    'display_name', 'מנחש עמוד ${namespace} ' || series.i::text
+  ),
+  now(), now()
+from pg_catalog.generate_series(2, 26) as series(i);
+insert into public.teams (id, name, short_name) values
+  ('${homeTeamId}'::uuid, '${homeTeamName}', 'בית ${namespace}'),
+  ('${awayTeamId}'::uuid, '${awayTeamName}', 'חוץ ${namespace}');
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+)
+select
+  ('${namespace}-0300-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${managerId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגת בחירה ${namespace} ' || series.i::text,
+  'open',
+  '2026-08-27 09:00:00+00'::timestamptz,
+  '2026-08-27 09:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 25) as series(i);
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+)
+select
+  ('${namespace}-0400-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${managerId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגת בקשה ${namespace} ' || series.i::text,
+  'open',
+  '2026-08-27 10:00:00+00'::timestamptz,
+  '2026-08-27 10:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+) values (
+  '${foreignLeagueId}'::uuid,
+  '${paginationUuid(namespace, "0001", 1)}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגה זרה ${namespace}', 'open', now(), now()
+);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+)
+select
+  ('${namespace}-0300-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${viewerId}'::uuid, 'active', '${managerId}'::uuid, now()
+from pg_catalog.generate_series(1, 25) as series(i);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+) values (
+  '${leagueId}'::uuid, '${viewerId}'::uuid, 'active', '${managerId}'::uuid, now()
+);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+)
+select
+  '${leagueId}'::uuid,
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'active', '${managerId}'::uuid, now()
+from pg_catalog.generate_series(2, 26) as series(i);
+insert into public.join_requests (
+  id, league_id, user_id, status, created_at, updated_at
+)
+select
+  ('${namespace}-0500-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${leagueId}'::uuid,
+  ('${namespace}-0100-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'pending_approval',
+  '2026-08-27 11:00:00+00'::timestamptz,
+  '2026-08-27 11:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.join_requests (
+  id, league_id, user_id, status, created_at, updated_at
+)
+select
+  ('${namespace}-0600-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  ('${namespace}-0400-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${viewerId}'::uuid,
+  'pending_proof',
+  '2026-08-27 12:00:00+00'::timestamptz,
+  '2026-08-27 12:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.matches (
+  id, season_id, round_number, home_team_id, away_team_id,
+  kickoff_at, status, created_at, updated_at
+) values (
+  '${detailMatchId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  76, '${homeTeamId}'::uuid, '${awayTeamId}'::uuid,
+  clock_timestamp() - interval '1 day', 'scheduled', now(), now()
+);
+insert into public.matches (
+  id, season_id, round_number, home_team_id, away_team_id,
+  kickoff_at, status, created_at, updated_at
+)
+select
+  ('${namespace}-0701-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  77, '${homeTeamId}'::uuid, '${awayTeamId}'::uuid,
+  '2099-01-01 12:00:00+00'::timestamptz,
+  'scheduled', now(), now()
+from pg_catalog.generate_series(1, 31) as series(i);
+insert into public.predictions (
+  id, league_id, match_id, user_id,
+  predicted_home_score, predicted_away_score, created_at, updated_at
+) values (
+  '${paginationUuid(namespace, "0a00", 1)}'::uuid,
+  '${leagueId}'::uuid, '${detailMatchId}'::uuid, '${viewerId}'::uuid,
+  1, 1, '2026-08-27 13:00:00+00'::timestamptz,
+  '2026-08-27 13:00:00+00'::timestamptz
+);
+insert into public.predictions (
+  id, league_id, match_id, user_id,
+  predicted_home_score, predicted_away_score, created_at, updated_at
+)
+select
+  ('${namespace}-0a00-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${leagueId}'::uuid,
+  '${detailMatchId}'::uuid,
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  series.i % 4, series.i % 3,
+  '2026-08-27 13:00:00+00'::timestamptz,
+  '2026-08-27 13:00:00+00'::timestamptz
+from pg_catalog.generate_series(2, 26) as series(i);
+select 'PAGINATION_FIXTURE_READY';
+commit;`;
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: fixtureSql, windowsHide: true },
+  );
+
+  if (
+    fixture.status !== 0 ||
+    !fixture.stdout.split(/\r?\n/).includes("PAGINATION_FIXTURE_READY")
+  ) {
+    throw new Error("Local pagination fixture could not be created.");
+  }
+
+  return {
+    detailMatchId,
+    foreignLeagueId,
+    futureMatchIds: Array.from({ length: 31 }, (_, index) =>
+      paginationUuid(namespace, "0701", index + 1),
+    ),
+    homeTeamName,
+    predictionLastDisplayName: `מנחש עמוד ${namespace} 26`,
+    queueLastDisplayName: `מבקש עמוד ${namespace} 1`,
+    selectorLastLeagueName: `ליגת בחירה ${namespace} 25`,
+  };
+}
+
+export function removePaginationFixturesFromDisposableLocalDatabase({
+  namespace,
+  leagueId,
+  managerId,
+  viewerId,
+}: {
+  namespace: string;
+  leagueId: string;
+  managerId: string;
+  viewerId: string;
+}) {
+  assertPaginationNamespace(namespace);
+  assertCanonicalUuid(leagueId, "pagination cleanup league");
+  assertCanonicalUuid(managerId, "pagination cleanup manager");
+  assertCanonicalUuid(viewerId, "pagination cleanup viewer");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanupSql = `begin;
+delete from public.predictions
+where id between '${namespace}-0a00-4000-8000-000000000001'::uuid
+             and '${namespace}-0a00-4000-8000-000000000026'::uuid;
+delete from public.join_requests
+where id between '${namespace}-0500-4000-8000-000000000001'::uuid
+             and '${namespace}-0600-4000-8000-000000000026'::uuid;
+delete from public.league_members
+where league_id = '${leagueId}'::uuid
+  and (
+    user_id = '${viewerId}'::uuid
+    or user_id between '${namespace}-0200-4000-8000-000000000002'::uuid
+                       and '${namespace}-0200-4000-8000-000000000026'::uuid
+  );
+delete from public.league_members
+where league_id between '${namespace}-0300-4000-8000-000000000001'::uuid
+                    and '${namespace}-0300-4000-8000-000000000025'::uuid;
+delete from public.matches
+where id between '${namespace}-0700-4000-8000-000000000001'::uuid
+             and '${namespace}-0701-4000-8000-000000000031'::uuid;
+delete from public.leagues
+where id between '${namespace}-0300-4000-8000-000000000001'::uuid
+             and '${namespace}-0400-4000-8000-000000000026'::uuid
+   or id = '${paginationUuid(namespace, "0900", 1)}'::uuid;
+delete from public.teams
+where id in (
+  '${paginationUuid(namespace, "0800", 1)}'::uuid,
+  '${paginationUuid(namespace, "0800", 2)}'::uuid
+);
+delete from public.system_admins where user_id = '${managerId}'::uuid;
+delete from auth.users
+where id = '${paginationUuid(namespace, "0001", 1)}'::uuid
+   or id between '${namespace}-0100-4000-8000-000000000001'::uuid
+             and '${namespace}-0200-4000-8000-000000000026'::uuid;
+select 'PAGINATION_FIXTURE_REMOVED';
+commit;`;
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: cleanupSql, windowsHide: true },
+  );
+
+  if (
+    cleanup.status !== 0 ||
+    !cleanup.stdout.split(/\r?\n/).includes("PAGINATION_FIXTURE_REMOVED")
+  ) {
+    throw new Error("Local pagination fixture could not be removed safely.");
+  }
+}

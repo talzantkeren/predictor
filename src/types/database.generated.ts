@@ -1110,6 +1110,36 @@ export type Database = {
           status: Database["public"]["Enums"]["join_request_status"]
         }[]
       }
+      get_league_invite_metadata: {
+        Args: { p_league_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          invite_id: string
+          is_expired: boolean
+          revoked_at: string
+          status: Database["public"]["Enums"]["invite_status"]
+        }[]
+      }
+      get_manager_join_requests_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_request_id?: string
+          p_league_id: string
+          p_page_size?: number
+          p_status?: Database["public"]["Enums"]["join_request_status"]
+        }
+        Returns: {
+          created_at: string
+          decided_at: string
+          proofs: Json
+          rejection_reason: string
+          request_id: string
+          requester_display_name: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+        }[]
+      }
       get_match_detail_context: {
         Args: { p_league_id: string; p_match_id: string }
         Returns: {
@@ -1171,36 +1201,6 @@ export type Database = {
           predictions_locked_at: string
           provider_status: string
           round_number: number
-        }[]
-      }
-      get_league_invite_metadata: {
-        Args: { p_league_id: string }
-        Returns: {
-          created_at: string
-          expires_at: string
-          invite_id: string
-          is_expired: boolean
-          revoked_at: string
-          status: Database["public"]["Enums"]["invite_status"]
-        }[]
-      }
-      get_manager_join_requests_page: {
-        Args: {
-          p_cursor_created_at?: string
-          p_cursor_request_id?: string
-          p_league_id: string
-          p_page_size?: number
-          p_status?: Database["public"]["Enums"]["join_request_status"]
-        }
-        Returns: {
-          created_at: string
-          decided_at: string
-          proofs: Json
-          rejection_reason: string
-          request_id: string
-          requester_display_name: string
-          status: Database["public"]["Enums"]["join_request_status"]
-          updated_at: string
         }[]
       }
       get_my_join_requests_page: {
