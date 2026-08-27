@@ -34,6 +34,38 @@ const artifacts = [
       "429/cooldown",
     ],
   },
+  {
+    path: "docs/runbooks/slice-9-def-012-production-cron.md",
+    required: [
+      "S9-DEF-012",
+      "single owner action",
+      "Supabase Dashboard → SQL Editor → New query",
+      "cron.job",
+      "net._http_response",
+      "public.sync_runs",
+      "public.sync_leases",
+      "timeout_is_45s",
+      "timed_out=false",
+      "lease_released=true",
+      "npm.cmd run test -- src/app/api/cron/sync/route.test.ts src/features/sync/orchestrator.test.ts",
+      "S9-DEF-012-owner-template.md",
+    ],
+  },
+  {
+    path: "docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md",
+    required: [
+      "Status: `NOT_RUN`",
+      "<candidate-sha>",
+      "NOT_CAPTURED",
+      "NOT_RUN",
+      "predictor-sports-sync",
+      "timeout_is_45s",
+      "timed_out",
+      "terminal run",
+      "lease_released",
+      "promotion condition",
+    ],
+  },
 ];
 
 function invariant(condition, message) {
@@ -62,5 +94,5 @@ invariant(
 );
 
 console.log(
-  "Owner runbooks verified: S9-DEF-004 has one exact Hosted Auth action and an empty sanitized evidence template.",
+  "Owner runbooks verified: S9-DEF-004 and S9-DEF-012 each have one exact Hosted action and an empty sanitized evidence template.",
 );
