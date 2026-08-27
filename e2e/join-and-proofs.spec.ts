@@ -6,7 +6,9 @@ import {
   type Locator,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 import sharp from "sharp";
 
 import { hashInviteToken } from "@/features/membership/invite-token";
@@ -496,11 +498,16 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
         }
       }
 
-      await Promise.allSettled([
-        expiredGuestContext?.close(),
-        requesterContext?.close(),
-        managerContext?.close(),
-      ]);
+      const contextsForCleanup = [
+        expiredGuestContext,
+        requesterContext,
+        managerContext,
+      ].filter((context): context is BrowserContext => context !== undefined);
+      try {
+        await closeContextsAfterResponseStreams(contextsForCleanup);
+      } catch (error) {
+        cleanupFailure ??= error;
+      }
 
       if (cleanupFailure !== undefined && primaryFailure === undefined) {
         throw cleanupFailure;
@@ -1277,10 +1284,12 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     );
     expect(directDelete.ok).toBe(false);
 
-    await manager.context.close();
-    await requester.context.close();
-    await outsider.context.close();
-    await otherManager.context.close();
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      requester.context,
+      outsider.context,
+      otherManager.context,
+    ]);
     } finally {
       if (cleanupAccessToken && cleanupLeagueId) {
         await revokeActiveInviteForCleanup(

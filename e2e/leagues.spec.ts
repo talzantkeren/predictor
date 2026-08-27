@@ -1,4 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   fillPasswordWithoutReportValue,
@@ -158,7 +160,7 @@ test.describe("league creation and isolation", () => {
     await returningPage.getByRole("button", { name: "התחברות" }).click();
     await expect(returningPage).toHaveURL(new RegExp(`/leagues/${leagueId}$`));
     await expect(returningPage.getByRole("heading", { name: leagueName })).toBeVisible();
-    await returning.close();
+    await closeContextsAfterResponseStreams([returning]);
 
     const second = await registerConfirmedUser({
       browser,
@@ -175,7 +177,6 @@ test.describe("league creation and isolation", () => {
     await expect(second.page.getByRole("heading", { name: "הדף לא נמצא" })).toBeVisible();
     await expect(second.page.getByText(leagueName)).toHaveCount(0);
 
-    await first.context.close();
-    await second.context.close();
+    await closeContextsAfterResponseStreams([first.context, second.context]);
   });
 });

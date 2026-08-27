@@ -5,7 +5,9 @@ import {
   type Locator,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -143,17 +145,6 @@ async function capturePresentationFallback(
     mask,
     maskColor: "#D0EDFA",
   });
-}
-
-async function settleResponseStreamsBeforeCleanup(pages: Page[]) {
-  // The last report navigation streams an RSC response. Let both authenticated
-  // pages finish before closing their contexts so teardown cannot abort the
-  // destination stream after the assertions have already passed.
-  await Promise.all(
-    pages.map((candidate) =>
-      candidate.waitForLoadState("networkidle", { timeout: 10_000 }),
-    ),
-  );
 }
 
 async function expectReportPoints({
@@ -490,7 +481,9 @@ test.describe("Slice 9 product lifecycle", () => {
     expect(layout.dir).toBe("rtl");
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
 
-    await settleResponseStreamsBeforeCleanup([manager.page, member.page]);
-    await Promise.all([manager.context.close(), member.context.close()]);
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      member.context,
+    ]);
   });
 });

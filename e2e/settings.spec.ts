@@ -4,7 +4,9 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   grantSystemAdminInDisposableLocalDatabase,
@@ -333,8 +335,10 @@ test.describe("editable league settings", () => {
       manager.page.getByText("ליגה שהושלמה או הועברה לארכיון היא לקריאה בלבד"),
     ).toBeVisible();
 
-    await manager.context.close();
-    await outsider.context.close();
-    await admin.context.close();
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      outsider.context,
+      admin.context,
+    ]);
   });
 });

@@ -4,7 +4,7 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
 
 import { registerConfirmedUser } from "./support/local-auth";
 import {

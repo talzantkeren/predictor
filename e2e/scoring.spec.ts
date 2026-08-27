@@ -4,7 +4,9 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   addActiveLeagueMemberInDisposableLocalDatabase,
@@ -518,8 +520,10 @@ test.describe("manual results and competition-ranked standings", () => {
       memberA.page.getByRole("heading", { name: "טבלת דירוג" }),
     ).toBeVisible();
 
-    await admin.context.close();
-    await memberA.context.close();
-    await memberB.context.close();
+    await closeContextsAfterResponseStreams([
+      admin.context,
+      memberA.context,
+      memberB.context,
+    ]);
   });
 });

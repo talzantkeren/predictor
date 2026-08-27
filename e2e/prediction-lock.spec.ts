@@ -4,7 +4,9 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   addActiveLeagueMemberInDisposableLocalDatabase,
@@ -146,18 +148,6 @@ async function createLeague(page: Page, leagueName: string) {
     throw new Error("Created league ID was invalid.");
   }
   return leagueId;
-}
-
-async function settleResponseStreamsBeforeCleanup(pages: Page[]) {
-  // Closing an authenticated context while a streamed RSC response is still
-  // active makes Next.js report "The destination stream closed early" after a
-  // green test. Network-idle is only used at teardown so responses finish
-  // before Playwright closes their destination streams.
-  await Promise.all(
-    pages.map((candidate) =>
-      candidate.waitForLoadState("networkidle", { timeout: 10_000 }),
-    ),
-  );
 }
 
 test.describe("matches, predictions, lock, and reveal", () => {
@@ -484,16 +474,10 @@ test.describe("matches, predictions, lock, and reveal", () => {
     expect(detailLayout.dir).toBe("rtl");
     expect(detailLayout.scrollWidth).toBeLessThanOrEqual(detailLayout.clientWidth);
 
-    await settleResponseStreamsBeforeCleanup([
-      page,
-      manager.page,
-      member.page,
-      outsider.page,
-      staleCreationPage,
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      member.context,
+      outsider.context,
     ]);
-    await staleCreationPage.close();
-    await manager.context.close();
-    await member.context.close();
-    await outsider.context.close();
   });
 });

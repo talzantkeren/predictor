@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/stream-safe-test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 

@@ -3,7 +3,7 @@ import {
   expect,
   type BrowserContextOptions,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
 
 import {
   countSyncRunsInDisposableLocalDatabase,

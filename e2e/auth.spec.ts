@@ -1,4 +1,6 @@
-import { expect, type APIRequestContext, test } from "@playwright/test";
+import { expect, type APIRequestContext, test } from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   fillPasswordWithoutReportValue,
@@ -429,8 +431,10 @@ test.describe("authentication and profile", () => {
     expect(foreignUpdate.ok).toBe(true);
     expect(await foreignUpdate.json()).toEqual([]);
 
-    await confirmationContext.close();
-    await recoveryContext.close();
-    await secondContext.close();
+    await closeContextsAfterResponseStreams([
+      confirmationContext,
+      recoveryContext,
+      secondContext,
+    ]);
   });
 });

@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
@@ -110,6 +110,50 @@ function run(
   }
 }
 
+async function runPlaywright(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  options: { rejectWebServerErrors: boolean },
+) {
+  const child = spawn(npmCommand, [...npmArgumentPrefix, ...args], {
+    cwd: process.cwd(),
+    env,
+    shell: npmNeedsShell,
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+  const output: string[] = [];
+
+  child.stdout.on("data", (chunk: Buffer) => {
+    const value = chunk.toString("utf8");
+    output.push(value);
+    process.stdout.write(value);
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    const value = chunk.toString("utf8");
+    output.push(value);
+    process.stderr.write(value);
+  });
+
+  const status = await new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+
+  if (status !== 0) {
+    process.exit(status);
+  }
+
+  if (
+    options.rejectWebServerErrors &&
+    containsUnexpectedWebServerError(output.join(""))
+  ) {
+    console.error(
+      "Playwright emitted an unexpected local web-server error; the passing test count is not sufficient evidence.",
+    );
+    process.exit(1);
+  }
+}
+
 function getLocalSupabaseEnvironment() {
   const result = spawnSync(
     npmCommand,
@@ -187,7 +231,7 @@ if (serveOnly && !externalBaseUrl) {
   process.exit(0);
 }
 
-run(
+void runPlaywright(
   [
     "exec",
     "--",
@@ -198,4 +242,7 @@ run(
   ],
   environment,
   { rejectWebServerErrors: !externalBaseUrl },
-);
+).catch(() => {
+  console.error("Playwright could not be started.");
+  process.exit(1);
+});
