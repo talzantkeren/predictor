@@ -22,6 +22,8 @@
     "preview:local": "tsx scripts/run-e2e.ts --skip-build --serve-only",
     "types:db": "supabase gen types typescript --local > src/types/database.generated.ts",
     "types:check": "tsx scripts/check-database-types.ts",
+    "docs:book": "python scripts/generate-project-book.py",
+    "docs:book:check": "python scripts/generate-project-book.py --check",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run test:e2e"
   },
