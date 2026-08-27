@@ -7,9 +7,11 @@ const readRepositoryFile = (path: string) =>
 
 const readme = readRepositoryFile("README.md");
 const deployment = readRepositoryFile("docs/deployment.md");
-const combined = `${readme}\n${deployment}`;
-const currentPreviewOrigin =
-  "https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app";
+const evaluatorRunbook = readRepositoryFile("docs/evaluator-runbook.md");
+const presentationReadme = readRepositoryFile("presentation/README.md");
+const combined = `${readme}\n${deployment}\n${evaluatorRunbook}\n${presentationReadme}`;
+const transientVercelBranchOrigin =
+  /https:\/\/[a-z0-9-]+-git-[a-z0-9-]+\.vercel\.app/iu;
 
 describe("deployment redirect documentation contract", () => {
   it("documents exact Production and local callbacks without wildcards", () => {
@@ -21,11 +23,12 @@ describe("deployment redirect documentation contract", () => {
     expect(combined).not.toMatch(/https?:\/\/[^\s`]+\/\*\*/u);
   });
 
-  it("classifies current Preview Auth as unsupported and unverified", () => {
-    expect(readme).toContain(currentPreviewOrigin);
-    expect(deployment).toContain(currentPreviewOrigin);
+  it("classifies Preview Auth without pinning a transient branch origin", () => {
+    expect(combined).not.toMatch(transientVercelBranchOrigin);
     expect(readme).toContain("Auth לא נתמך ולא מאומת");
     expect(deployment).toContain("אין callback קבוע; Auth לא נתמך ולא מאומת");
+    expect(evaluatorRunbook).toContain("אין URL יציב");
+    expect(presentationReadme).toContain("אין URL יציב");
     expect(deployment).toContain("<exact-preview-origin>/auth/confirm");
     expect(deployment).toContain("Preview Auth אינו דרישת הקורס");
   });

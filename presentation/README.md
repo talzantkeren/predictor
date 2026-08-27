@@ -21,7 +21,8 @@
 ## קישורים ציבוריים
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Preview smoke של PR #14: [https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app)
+- Preview smoke של PR #14: אין URL יציב; משתמשים ב־origin המדויק של deployment
+  candidate רק בזמן הבדיקה.
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 
 Preview משמש smoke ציבורי בלבד; Auth לא נתמך ולא מאומת בו. אין להוסיף callback

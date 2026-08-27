@@ -5,7 +5,9 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Preview smoke (Auth לא נתמך): [https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app)
+- Preview smoke (Auth לא נתמך ולא מאומת): אין URL יציב; משתמשים רק ב־origin
+  המדויק של deployment נבחר בזמן הבדיקה, והוא אינו endpoint נתמך לאחר החלפת
+  ה־deployment או מחיקת הענף.
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
@@ -425,7 +427,7 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 | Production | `https://predictor-swart.vercel.app` | `https://predictor-swart.vercel.app/auth/confirm` | חוזה ההגשה הציבורי |
 | Local | `http://localhost:3000` | `http://localhost:3000/auth/confirm` | נתמך ב־Supabase המקומי וב־Mailpit |
 | Local חלופי | `http://127.0.0.1:3000` | `http://127.0.0.1:3000/auth/confirm` | רק כשה־loopback הזה נבחר במפורש |
-| Preview של PR #14 | `https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app` | אינו רשום כ־callback | smoke ציבורי; Auth לא נתמך ולא מאומת |
+| Preview | אין origin יציב במסמכי המאגר; Vercel מנפיקה origin מדויק לכל deployment | אינו רשום כ־callback | smoke ציבורי זמני; Auth לא נתמך ולא מאומת |
 
 ה־allowlist האפליקטיבי וה־Redirect URLs של Supabase הם שני גבולות נפרדים:
 הראשון מונע בחירת Host שרירותי, אך אינו הופך Preview ל־callback מורשה אצל

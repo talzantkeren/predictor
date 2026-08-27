@@ -10,7 +10,7 @@
 | Production | אתר הקורס וה־evaluator | `https://predictor-swart.vercel.app` | `https://predictor-swart.vercel.app/auth/confirm` |
 | Local | פיתוח ובדיקות Mailpit | `http://localhost:3000` | `http://localhost:3000/auth/confirm` |
 | Local חלופי | loopback שנבחר במפורש | `http://127.0.0.1:3000` | `http://127.0.0.1:3000/auth/confirm` |
-| Preview של PR #14 | smoke ציבורי זמני | `https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app` | אין callback קבוע; Auth לא נתמך ולא מאומת |
+| Preview | smoke ציבורי זמני | אין origin יציב במסמכי המאגר; משתמשים ב־origin המדויק של deployment נבחר | אין callback קבוע; Auth לא נתמך ולא מאומת |
 
 `NEXT_PUBLIC_APP_URL` הוא ה־fallback הקנוני. ב־Vercel, Server Actions עשויים
 לבחור רק origin מדויק מתוך `VERCEL_BRANCH_URL`, ‏`VERCEL_URL` או
@@ -21,8 +21,9 @@ Supabase. ‏`next` אחרי ה־callback נשאר נתיב יחסי מתוך ה
 
 - כל deployment או branch alias ישן הוא historical בלבד לאחר שה־PR/SHA שלו
   הוחלף. אין להעתיק alias ישן ל־README ואין להציג אותו כ־endpoint נתמך.
-- ה־branch alias בטבלה נלקח מ־Vercel Preview של PR #14. הוא מתעדכן על הענף;
-  אם Vercel מחליף את ה־alias עצמו, מעדכנים יחד את הטבלה, README וה־regression.
+- אין לשמור branch alias או deployment host של Preview במסמך durable. בזמן
+  smoke לוקחים את ה־origin המדויק מ־Vercel עבור ה־SHA שנבדק ומתעדים אותו רק
+  בראיית הריצה המתוארכת, לא כחוזה גישה עתידי.
 - Preview של PR נועד ל־smoke ציבורי ללא תלות ב־Email. עצם הצלחת הפריסה אינה
   ראיה ל־confirmation, recovery או invite callback.
 - אם נדרש Auth ב־Preview לצורך QA פנימי, owner בוחר deployment אחד ומוסיף

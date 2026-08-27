@@ -6,7 +6,8 @@ credential ואינו מרחיב את היקף המוצר. הפריסה הציב
 ## קישורים וחבילת מסירה
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Preview smoke של Draft PR #14: [https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app)
+- Preview smoke של Draft PR #14: אין URL יציב; אם נדרש smoke, משתמשים רק
+  ב־origin המדויק שמופיע ב־deployment check של ה־candidate SHA באותו זמן.
 - מאגר: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - [ספר הפרויקט](project-book.docx)
 - [פנקס ראיית הגשה סופית](final-submission-evidence.md)
