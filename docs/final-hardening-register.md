@@ -2,97 +2,103 @@
 
 Status: `OWNER_ACTION_REQUIRED`
 
-המרשם הוא ראיית S9-REQ-005 למועמד ההגשה. הוא מפריד בין שערים שנמדדו מקומית
-בדיוק על ה־SHA המתועד, לבין שערי Hosted/אנוש שאין להריץ או להסיק ללא פעולת
-הבעלים. אין במסמך claim על Production סופי, CI סופי או Advisor שלא נצפו.
+המרשם הוא ראיית `S9-REQ-005`. כל item מקומי קיבל disposition נצפה על
+checkpoint נקי; אין כאן הסקה מ־Local ל־Hosted. נותרה **single remaining owner
+action** אחת: read-only password-policy + Advisor export באותו session של
+Supabase Production. שאר השערים האנושיים/Hosted ממופים לרשומות שלהם ואינם
+נספרים כפעולות owner של `S9-REQ-005`.
 
-## זיהוי מועמד
+## זיהוי checkpoint
 
 | שדה | ערך |
 | --- | --- |
 | ID | `S9-REQ-005` |
 | Branch | `feature/slice-9-implementation` |
-| Candidate SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` |
-| Pushed SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` (implementation checkpoint; evidence-only follow-up may advance HEAD) |
-| Clean-clone SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` |
-| Draft review | Draft PR #14 — נשאר Draft, לא ממוזג |
+| Candidate SHA | `a0610df0c0dad8634cbf512f9ff0b74b1bde728b` |
+| Clean-clone SHA | `a0610df0c0dad8634cbf512f9ff0b74b1bde728b` |
+| Draft review | Draft PR #14 — נשאר Draft ולא ממוזג |
+| Scope | Local Supabase בלבד; אין linked reset או Hosted mutation |
 
-## מטריצת שערים מקומיים
+## מטריצת שערים מקומיים ו־disposition
 
-כל תוצאת PASS למטה נצפתה ישירות בריצה המקומית מ־27.8.2026. השדה
-`Candidate SHA` ייקבע ל־checkpoint הדחוף לפני ריצת ה־clean clone; שערי Hosted
-נשארים פתוחים גם כשהמטריצה המקומית ירוקה.
+כל התוצאות הבאות נצפו ב־27.8.2026. ההרצה הראשונה של `npm.cmd run verify`
+חשפה failure אמיתי: spec הנגישות ייבא `Page` ישירות מ־Playwright ולכן הפר את
+fixture ה־stream-safe. הייבוא הועבר לגבול ה־fixture, הרגרסיה הממוקדת עברה
+4/4, ואז כל המטריצה הורצה מחדש בלי דילוג או ריכוך.
 
-| שער | פקודה מדויקת | Result | ראיה מצונזרת |
+| Gate | פקודה מדויקת | תוצאה נצפית | Disposition |
 | --- | --- | --- | --- |
-| Install | `npm.cmd ci` | PASS | 425 packages; 29s; 0 vulnerabilities |
-| Full verify | `npm.cmd run verify` | PASS | lint + typecheck; Vitest 48 files/627; DB 30 files/1443; types current; build; client scan 52; E2E 28/28 in 6.0m; no `[WebServer] Error` |
-| Production build | `npm.cmd run build` | PASS | Next.js 16.3.0 compiled; TypeScript/static generation completed; exit 0 |
-| Client-secret scan | `$env:CLIENT_SECRET_SENTINEL='slice9-final-client-secret-sentinel-never-ship-20260827'; npm.cmd run test:client-secrets` | PASS | 52 client/rendered artifacts; synthetic sentinel absent |
-| Dependency audit | `npm.cmd audit --audit-level=low` | PASS | 0 vulnerabilities; exit 0 |
-| Local DB lint | `npx.cmd --no-install supabase db lint --local --schema public,private --level warning --fail-on error` | PASS | public/private; no schema errors; empty results |
-| Forward migration reset | `npx.cmd --no-install supabase db reset --local` | PASS | 36 forward migrations through `20260827180000`; seed and restart completed |
-| Generated DB type drift | `npm.cmd run types:check` | PASS | generated database types current after reset |
-| Representative scale | `npm.cmd run scale:plans` | PASS | ארבעה plans: 0.153/2.182/0.464/0.834ms; rows 51/51/51/26 |
-| Viewports | `$env:FINAL_VIEWPORT_AUDIT='true'; npm.cmd run test:e2e:run -- e2e/home.spec.ts --project=desktop-chromium` | PASS | 1/1 in 2.7s; 360 / 390 / 768 / 1024 / 1440 inspected; no clipping/overlap/overflow |
-| S9-DEF-024 repeats | `npm.cmd run test:e2e:run -- e2e/prediction-lock.spec.ts` | PASS | three clean E2E repeats: 2/2 in 26.6s, 2/2 in 26.6s, 2/2 in 26.8s; no `[WebServer] Error` |
-| Clean clone | `npm.cmd ci` ואז `npm.cmd run verify` ו־`npm.cmd run build` ב־clean-clone | PASS | SHA מדויק; install 425/0 vulnerabilities; 627/1443/28 passed; E2E 5.8m; client scan 52; build exit 0; Git status clean |
+| Install | `npm.cmd ci` | PASS — 427 packages added; 428 audited; 0 vulnerabilities | closed locally |
+| Full verify | `npm.cmd run verify` | PASS — lint; strict typecheck; 49 Vitest files/631 tests; 30 pgTAP files/1443 tests; types current; production build; 52-artifact client scan; 38 Playwright tests in 5.9m; no `[WebServer] Error` | closed locally |
+| Standalone build | `npm.cmd run build` | PASS — Next.js 16.3.0 compile, TypeScript, page data and static generation | closed locally |
+| Client-secret bundle | `$env:CLIENT_SECRET_SENTINEL='<synthetic>'; npm.cmd run test:client-secrets` | PASS — sentinel absent from 52 client/rendered artifacts | closed locally |
+| Dependency audit | `npm.cmd audit --audit-level=low` | PASS — 0 vulnerabilities | closed locally |
+| Local DB lint | `npx.cmd --no-install supabase db lint --local --schema public,private --level warning --fail-on error` | PASS — `results=[]`; no public/private schema errors | closed locally |
+| Forward migration reset | `npx.cmd --no-install supabase db reset --local` | PASS — 36 forward migrations through `20260827180000`, seed and restart | closed locally |
+| Generated DB types | `npm.cmd run types:check` | PASS — no drift after reset | closed locally |
+| Representative scale | `npm.cmd run scale:plans` | PASS — four bounded plans: 0.163/2.173/0.456/0.830ms; rows 51/51/51/26 | closed locally |
+| Accessibility/viewport | included in `npm.cmd run verify` via `e2e/accessibility-matrix.spec.ts` | PASS — 10/10 across 360 / 390 / 768 / 1024 / 1440, Desktop+Mobile; axe/keyboard/focus/contrast/touch/RTL/overflow | automated portion closed; native 200% routed to S9-DEF-022 |
+| three clean E2E repeats | `npm.cmd run test:e2e:run -- e2e/prediction-lock.spec.ts` ×3 | PASS — 2/2 in 27.3s, 2/2 in 27.1s, 2/2 in 27.1s; no `[WebServer] Error` | closed locally |
+| clean-clone | `npm.cmd ci`; `npm.cmd run verify`; `npm.cmd run build`; `git status --short` | PASS on exact SHA — 631/1443/38; E2E 6.1m; second build green; Git status empty | closed locally; copied `.env.local` removed after run |
 
-## חוזי regression חדשים
+## P0/P1/P2 disposition
 
-- `npm.cmd run hardening:check` נכשל כאשר מרשם זה חסר ובודק שהשערים המקומיים,
-  בעלות הסיכונים ופעולות הבעלים נשארים מפורשים.
-- `npm.cmd run scale:plans` מריץ fixture מייצג של מאות רשומות ו־`EXPLAIN
-  (ANALYZE, BUFFERS)` על ארבעת RPCs המדופדפים. הוא דורש לכל plan זמן מקומי
-  קטן מ־500ms ותוצאה תחומה לעמוד אחד; הפלט המלא נשמר רק ב־`tmp/`.
-- `FINAL_VIEWPORT_AUDIT=true` מרחיב את `e2e/home.spec.ts` לחמישה viewports,
-  RTL, overflow, contrast, touch targets, keyboard focus וצילומי בדיקה מקומיים.
-  בדיקת native 200% אינה מוחלפת ב־CSS zoom או emulation.
-
-## ממצאים ועדיפויות
-
-| Priority | מצב מועמד מקומי | Disposition |
+| Priority | Finding set | Disposition |
 | --- | --- | --- |
-| P0 | אין finding מקומי ידוע לאחר המטריצה המקומית | אין waiver; כל finding חדש עוצר מועמד |
-| P1 | אין finding מקומי ידוע; שערי Hosted/CI למטה פתוחים | אין waiver; owner חייב לסגור לפני הגשה |
-| P2 | S9-REQ-005 עצמו פתוח עד השלמת שערי owner | אינו waived ואינו VERIFIED |
+| P0 | אין finding מקומי פתוח אחרי שתי ריצות מלאות | no waiver; finding חדש עוצר את המועמד |
+| P1 | אין finding מקומי פתוח; ה־CI על checkpoint קודם ירוק ומתועד ב־S9-REQ-003 | no waiver; final external gates נשארים ברשומות הייעודיות |
+| P2 | `S9-REQ-005` נשאר פתוח רק בגלל ראיית Hosted למטה | not waived; `OWNER_ACTION_REQUIRED` עד פעולה אחת |
 
-אין P2 waived במרשם. אם מתקבלת החלטת סיכון עתידית, נדרשים Owner, Target date
-ו־Trigger מפורשים, ובנוסף אישור בעלים מתועד לפני שינוי הסטטוס.
+אין P2 waived. היעדר `leaked-password protection` נשאר accepted residual risk
+לפי `S9-TDEC-004`; אין כאן claim שהיכולת קיימת או מופעלת. Local מוכיח את חוזה
+8–128 והזרימות, אך אינו מוכיח את policy ב־Hosted. `supabase db lint --local`
+אינו תחליף ל־Security Advisor או Performance Advisor של Production.
 
-## Advisors וסיסמאות Hosted
+## הפעולה היחידה שנותרה לבעלים
 
-אין גישת Hosted מאושרת בריצה המקומית ולכן אין רשימת Advisor עדכנית ברמת item.
-הספירה ההיסטורית אינה ראיית סגירה. הבעלים חייב לייצא snapshot מצונזר של
-Security Advisor ושל Performance Advisor על final Production SHA, ולתת לכל item
-אחד משלושה dispositions: fixed; informational/no-action עם נימוק; או accepted
-risk עם Owner, Target date ו־Trigger. כל error, warning או advice ללא disposition
-משאיר את S9-REQ-005 פתוח.
-
-יש לאמת read-only שה־Hosted password policy הוא 8–128 תווים ותואם את ה־UI,
-ולצרף rate-limit/monitoring רלוונטיים. אין claim ש־leaked-password protection
-מופעלת: הסיכון השיורי נשאר בהתאם ל־S9-TDEC-004 עד לשינוי מאושר.
-
-## פעולות בעלים מחייבות
+Contract marker: `single remaining owner action`; the combined evidence covers
+`Hosted password policy` and both Advisor tabs.
 
 | Gate | הוראת owner מדויקת | Status | Owner | Target date | Trigger |
 | --- | --- | --- | --- | --- | --- |
-| Hosted password policy | ב־Supabase Dashboard של Production, לקרוא בלבד את min/max password ולצרף צילום מצונזר המוכיח 8–128; לצרף גם הגדרות rate-limit/monitoring. אין לשנות config במהלך האיסוף. | OWNER_ACTION_REQUIRED | Project owner | 2026-09-02 | final Production SHA deployed |
-| Hosted Advisors | על final Production SHA לייצא Security Advisor ו־Performance Advisor מצונזרים, ולרשום disposition לכל item; accepted risk מחייב owner/date/trigger ואישור מתועד. | OWNER_ACTION_REQUIRED | Project owner | 2026-09-02 | final migrations applied |
-| Native 200% zoom | ב־Chrome native Zoom=200% לבדוק keyboard-only, focus, clipping, overlap ו־horizontal scroll בתרחישי הבית, auth, dashboard, lifecycle ו־members; לצרף SHA וצילומים מצונזרים. | OWNER_ACTION_REQUIRED | Accessibility owner | 2026-09-02 | final Preview deployed |
-| GitHub CI billing | לפתור את Billing/Spending limit, להריץ את workflow על final candidate SHA ולצרף run URL ותוצאה ירוקה; אין לעקוף או להשבית job. | OWNER_ACTION_REQUIRED | Repository owner | 2026-09-02 | final candidate pushed |
-| Vercel secret scope | להסיר `SPORTS_API_KEY` מ־Preview, לשמור Sensitive Production-only, לפרוס מחדש ולצרף matrix של שמות/types/scopes בלבד וסריקת Preview ללא secret. אין לקרוא את הערך. | OWNER_ACTION_REQUIRED | Vercel owner | 2026-09-02 | secret scope corrected |
-| Production Cron | לאחר deploy, לקשר response מצונזר של ה־Cron ל־run סופי יחיד, timeout תקין ו־lease משוחרר; אין לחשוף header או secret. | OWNER_ACTION_REQUIRED | Operations owner | 2026-09-02 | final Production deployment READY |
-| Hosted migration parity | להשוות read-only את רשימת המיגרציות ב־Hosted לרשימה המקומית עד המיגרציה האחרונה ולצרף רק versions/status; אין reset או destructive command. | OWNER_ACTION_REQUIRED | Database owner | 2026-09-02 | final migrations applied |
-| Evaluator access | לוודא ב־incognito שה־Production URL וה־repository הפרטי נגישים לזהות evaluator המאושרת ולצרף בדיקה מצונזרת ללא פרטי חשבון. | OWNER_ACTION_REQUIRED | Course submission owner | 2026-09-03 | evaluator identity supplied |
-| Human rehearsal | לבצע חזרה אנושית מתוזמנת של 10–15 דקות על candidate SHA לפי script, כולל fallback ו־outage; לתעד משך, SHA ובעיות/תיקונים. | OWNER_ACTION_REQUIRED | Presenter | 2026-09-03 | final Preview deployed |
-| Final Production SHA | לפרוס את final pushed SHA, לוודא immutable deployment ו־Production alias, ולתעד התאמת SHA מלאה לפני הקפאת ההגשה. | OWNER_ACTION_REQUIRED | Release owner | 2026-09-03 | CI green and owner gates complete |
+| Hosted hardening read/export | באותו session read-only ב־Supabase Production: (1) לפתוח Auth configuration, לצלם באופן מצונזר min/max password ‏8–128 ואת rate-limit/monitoring הרלוונטיים בלי שינוי; אין לטעון ש־leaked-password protection מופעלת. (2) לפתוח Database Advisors, לייצא את רשימות Security Advisor ו־Performance Advisor על final SHA, ולתת לכל item disposition: fixed, informational/no-action עם נימוק, או accepted risk עם Owner/Target date/Trigger ואישור. לשמור את ה־artifacts בנתיבי ה־owner packet ולהריץ `npm.cmd run hardening:check`. | OWNER_ACTION_REQUIRED | Project owner | 2026-09-02 | final migrations present in Production |
 
-## סיכון שיורי
+אם אחד משני המסכים אינו נגיש או item נשאר ללא disposition, הפעולה היחידה לא
+הושלמה והרשומה נשארת פתוחה. אין לבצע שינוי Hosted כחלק מאיסוף הראיה.
 
-- leaked-password protection נשאר סיכון שיורי מאושר ב־S9-TDEC-004 בלבד; אין
-  להסיק מכך שהמדיניות Hosted או ההגנות המפצות נבדקו בריצה זו.
-- יכולת Sports חיה נשארת תלויה ב־Production-only credential וב־POC המתועד;
-  manual adapter ו־seed path נשארים fallback חובה.
-- כל שער OWNER_ACTION_REQUIRED למעלה משאיר את המועמד חלקי. אין במסמך זה
-  טענת מוכנות לשחרור ואין שינוי במצב Draft של PR #14.
+## שערים המנוהלים ברשומות אחרות
+
+השורות הבאות אינן פעולות owner של `S9-REQ-005`; הן מופיעות כאן רק כדי למנוע
+כפל ownership או claim שסגירת hardening המקומי סגרה אותן.
+
+| Gate | רשומה/ראיה סמכותית | Status | גבול |
+| --- | --- | --- | --- |
+| Native 200% zoom | `S9-DEF-022` | TRACKED_BY_RECORD | human Chrome native zoom בלבד |
+| Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | uncheck Preview בלי Reveal |
+| Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final sanitized pg_net/run/lease observation |
+| Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | read-only versions; no reset |
+| Evaluator access | `S9-REQ-003` | TRACKED_BY_RECORD | approved identity, out-of-band access |
+| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | one measured 10–15 minute run |
+| Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias parity |
+
+GitHub billing is no longer an owner gate: unchanged CI ran on real runners and
+both push `33097585902` and PR `33097590476` completed green on
+`223de65f083fcbf954c082c6e83c6df2ed14bdca`. Final-head CI remains part of the
+S9-REQ-003 runbook, not this Hosted hardening read/export action.
+
+## Accepted-risk fields
+
+| Risk | Owner | Target date | Trigger | Current mitigation |
+| --- | --- | --- | --- | --- |
+| leaked-password protection unavailable/not enabled | repository owner (approval in `S9-TDEC-004`) | revisit on trigger | plan gains feature, sensitive-scope expansion, credential-stuffing incident/evidence or evaluator demand | validation 8–128; enumeration-safe recovery; rate/monitor evidence requested; Demo-only |
+| no broad malware scanner for synthetic proof images | project architecture/security | revisit on trigger | file types/public users/compliance scope changes | magic/decode/pixel cap/re-encode/private bucket |
+| no cache/queue/materialized leaderboard | architecture/scale | measurement threshold | bounded plans/latency/storage exceed documented thresholds | keyset pagination, bounded sync and indexes |
+
+## Regression contract
+
+`npm.cmd run hardening:check` verifies the local command matrix, five viewport
+widths, four representative plan labels, P0/P1/P2 and risk fields, exactly one
+`OWNER_ACTION_REQUIRED` table row, and routing of every other owner gate to its
+own record. It rejects stale candidate/count text, JWT-like strings and secret
+assignments. No workflow, test, lint rule or threshold is disabled by this
+register.
