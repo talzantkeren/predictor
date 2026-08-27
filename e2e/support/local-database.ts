@@ -546,6 +546,127 @@ export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
   }
 }
 
+export type LifecycleCatalogFixtureIds = {
+  competitionId: string;
+  seasonId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+};
+
+export function seedLifecycleCatalogInDisposableLocalDatabase(
+  ids: LifecycleCatalogFixtureIds,
+) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `lifecycle ${label}`);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const suffix = ids.competitionId.replaceAll("-", "").slice(0, 12);
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; insert into public.competitions (id, name, slug, country_code) values ('${ids.competitionId}'::uuid, 'תחרות Lifecycle ${suffix}', 'lifecycle-${suffix}', 'IL'); insert into public.seasons (id, competition_id, name, starts_on, ends_on, is_current) values ('${ids.seasonId}'::uuid, '${ids.competitionId}'::uuid, '2026/27 Lifecycle', '2026-08-01', '2027-06-30', true); insert into public.teams (id, name, short_name) values ('${ids.homeTeamId}'::uuid, 'קבוצת Lifecycle בית ${suffix}', 'בית ${suffix}'), ('${ids.awayTeamId}'::uuid, 'קבוצת Lifecycle חוץ ${suffix}', 'חוץ ${suffix}'); commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "INSERT 0 1" ||
+    output[2] !== "INSERT 0 1" ||
+    output[3] !== "INSERT 0 2" ||
+    output[4] !== "COMMIT"
+  ) {
+    throw new Error("Local lifecycle catalog fixture could not be created.");
+  }
+
+  return {
+    awayTeamName: `קבוצת Lifecycle חוץ ${suffix}`,
+    competitionName: `תחרות Lifecycle ${suffix}`,
+    homeTeamName: `קבוצת Lifecycle בית ${suffix}`,
+  };
+}
+
+export function removeLifecycleFixtureFromDisposableLocalDatabase({
+  ids,
+  leagueId,
+  systemAdminUserId,
+}: {
+  ids: LifecycleCatalogFixtureIds;
+  leagueId?: string;
+  systemAdminUserId?: string;
+}) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `lifecycle cleanup ${label}`);
+  }
+  if (leagueId) assertCanonicalUuid(leagueId, "lifecycle cleanup league");
+  if (systemAdminUserId) {
+    assertCanonicalUuid(systemAdminUserId, "lifecycle cleanup administrator");
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanupSql = `begin;
+delete from public.audit_logs
+where ${leagueId ? `entity_id = '${leagueId}'::uuid or` : ""}
+      entity_id in (
+        select match.id from public.matches as match
+        where match.season_id = '${ids.seasonId}'::uuid
+      );
+${leagueId ? `delete from public.league_match_reconciliations where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.league_match_snapshots where league_id = '${leagueId}'::uuid;` : ""}
+delete from public.match_result_reviews
+where match_id in (
+  select match.id from public.matches as match
+  where match.season_id = '${ids.seasonId}'::uuid
+);
+${leagueId ? `delete from public.predictions where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.rate_limit_events where join_request_id in (select request.id from public.join_requests as request where request.league_id = '${leagueId}'::uuid);` : ""}
+${leagueId ? `delete from public.payment_proofs where join_request_id in (select request.id from public.join_requests as request where request.league_id = '${leagueId}'::uuid);` : ""}
+${leagueId ? `delete from public.join_requests where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.invite_links where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.leagues where id = '${leagueId}'::uuid;` : ""}
+delete from public.matches where season_id = '${ids.seasonId}'::uuid;
+${systemAdminUserId ? `delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid;` : ""}
+delete from public.seasons where id = '${ids.seasonId}'::uuid;
+delete from public.competitions where id = '${ids.competitionId}'::uuid;
+delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid);
+select 'LIFECYCLE_FIXTURE_REMOVED';
+commit;`;
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: cleanupSql, windowsHide: true },
+  );
+
+  if (
+    cleanup.status !== 0 ||
+    !cleanup.stdout.split(/\r?\n/).includes("LIFECYCLE_FIXTURE_REMOVED")
+  ) {
+    throw new Error("Local lifecycle fixture could not be removed safely.");
+  }
+}
+
 export function countSyncRunsInDisposableLocalDatabase() {
   assertDisposableLocalDatabaseIsRunning();
 

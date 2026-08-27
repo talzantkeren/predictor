@@ -1155,9 +1155,11 @@ select results_eq(
   $$select action
     from public.audit_logs
     where entity_id = 'd9300000-0000-4000-8000-000000000308'
-    order by id$$,
-  $$values ('match_result_applied'::text)$$,
-  'latch-only terminal correction emits only the canonical result audit'
+    order by action$$,
+  $$values
+    ('match_manually_corrected'::text),
+    ('match_result_applied'::text)$$,
+  'latch-only terminal correction audits canonical scoring and the versioned Manual decision'
 );
 select results_eq(
   $$select metadata

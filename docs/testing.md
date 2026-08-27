@@ -505,7 +505,7 @@ npm run test:e2e -- e2e/reports.spec.ts
 `docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
 בפרויקט linked.
 
-## Slice 9 — S9-REQ-001 checkpoints 4–7
+## Slice 9 — S9-REQ-001 checkpoints 4–8
 
 השלמה, review ויישוב נבדקים מול Supabase מקומי seeded בלבד. ה־fixtures
 סינתטיים ונגללים לאחור; אין provider חי, linked project, proof content או
@@ -536,6 +536,15 @@ completion. השנייה עברה 35/35 ומכסה provider FT מול review, re
 ליגה ללא snapshot ו־fixture חדש אחרי completion. יחד הן עברו 109/109; בדיקת
 Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
 finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
+
+Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
+Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
+ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת
+system-admin ואינו מזייף אף שלב גלוי. התרחיש עבר 1/1 בנפרד ב־Desktop וב־Pixel
+5. הוא חשף ותיקן פער audit שמנע completion אחרי דיווח Manual דרך המסך;
+רגרסיית pgTAP ייעודית ושלושה קבצים ממוקדים עברו 131/131. לאחר התיקון המטריצה
+המלאה עברה 573/573 Vitest ו־1400/1400 pgTAP ב־27 קבצים, וה־client scan עבר על
+52 artifacts שנבנו עם sentinel סינתטי.
 
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים

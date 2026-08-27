@@ -559,6 +559,11 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - `league_match_results` הוא view מסוג `security_invoker`. בליגה שהושלמה הוא
   מחזיר רק שורות `league_match_snapshots` ואת התוצאה הקפואה; תיקון canonical
   או fixture מאוחר אינם משנים list/detail סופי.
+- מסלול התוצאה הידנית של המוצר שומר גם את אירוע הניקוד הקנוני וגם הכרעת
+  `match_manually_corrected` יחידה הקשורה ל־`result_version`. ההכרעה נכתבת רק
+  מתוך gateway ‏service-role של מנהל מערכת קבוע; replay אינו מכפיל אותה. כך
+  completion מקבל תוצאה ידנית שהוזנה במסך בלי להסתמך על status או ownership
+  בלבד. migration קדימה משלים רק אירוע היסטורי שתואם לגרסה הידנית הנוכחית.
 - AET/PEN נשמרים כ־`match_result_reviews(match_id,result_version)` pending.
   provider replay אינו מכפיל שורה, ו־FT שמגיע בזמן review מעדכן candidate בלבד
   ואינו עוקף הכרעת מנהל מערכת. `resolve_match_result_review` דורש fixed system
