@@ -505,7 +505,7 @@ npm run test:e2e -- e2e/reports.spec.ts
 `docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
 בפרויקט linked.
 
-## Slice 9 — S9-REQ-001 checkpoints 4–5
+## Slice 9 — S9-REQ-001 checkpoints 4–6
 
 השלמה, review ויישוב נבדקים מול Supabase מקומי seeded בלבד. ה־fixtures
 סינתטיים ונגללים לאחור; אין provider חי, linked project, proof content או
@@ -519,6 +519,14 @@ secret אמיתי. בדיקת provider משתמשת payload מצומצם שנב�
 | pgTAP מלא | 1277/1277 ב־23 קבצים לאחר forward reset מקומי seeded |
 | Playwright regression | `e2e/scoring.spec.ts` עבר 2/2 ב־Desktop וב־Mobile לאחר תיקון copy; lifecycle E2E המלא נשאר checkpoint 8 ואינו נטען כאן |
 | Gates | lint, typecheck, generated-types drift, DB lint, build וסריקת 52 client artifacts עברו |
+
+Checkpoint 6 מוסיף RPC תחום של חברים פעילים בלבד ו־UI משותף למנהל ולחבר
+פעיל. pgTAP ממוקד עבר 9/9 ומוכיח return shape ללא email/user ID/proof,
+הרשאת manager/member, דחייה אטומה של ליגה זרה, cursor תקין והיעדר UPDATE ישיר.
+Vitest מלא עבר 572/572 ו־pgTAP מלא עבר 1286/1286 ב־24 קבצים. תרחיש
+`e2e/pagination.spec.ts` עבר 2/2 ב־Desktop וב־Mobile ומוכיח 25+2 שורות,
+keyboard/RTL/no-overflow, היעדר manager controls לחבר פעיל ו־not-found לליגה
+זרה. אין בתרחיש פעולת removal/reactivation או קריאת proof.
 
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים

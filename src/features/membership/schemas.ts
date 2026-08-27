@@ -238,6 +238,23 @@ export const managerJoinRequestPageRpcSchema = z
   .array(managerJoinRequestRpcSchema)
   .max(26);
 
+const activeLeagueMemberRpcSchema = z
+  .object({
+    membership_id: z.string().uuid(),
+    display_name: z.string().min(1).max(80),
+    approved_at: timestampSchema,
+  })
+  .strict()
+  .transform((member) => ({
+    membershipId: member.membership_id,
+    displayName: member.display_name,
+    approvedAt: member.approved_at,
+  }));
+
+export const activeLeagueMemberPageRpcSchema = z
+  .array(activeLeagueMemberRpcSchema)
+  .max(26);
+
 const joinRequestStatusFilterSchema = z.enum([
   "pending_proof",
   "pending_approval",

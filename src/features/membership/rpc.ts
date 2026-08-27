@@ -10,6 +10,7 @@ export type MembershipRpcName =
   | "get_league_invite_metadata"
   | "get_my_join_requests_page"
   | "get_manager_join_requests_page"
+  | "get_active_league_members_page"
   | "approve_join_request"
   | "reject_join_request";
 

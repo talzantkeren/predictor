@@ -577,3 +577,24 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | תיקון משכתב דירוג סופי בשקט | scorer מסנן completed ויוצר queue רק מ־snapshot | mixed active/completed, no-prediction ו־post-completion fixture |
 | actor זר או גרסה ישנה מכריעים | session AuthZ, fixed actor, service-only RPC ו־expected version | authenticated denial, missing actor, stale/replay |
 | יישוב ליגה אחת משנה ליגה אחרת | reconciliation league-scoped ו־snapshot composite FK | apply מול dismiss בשתי ליגות שחולקות match |
+
+## Slice 9 — ספריית חברים פעילים לקריאה בלבד
+
+- `/leagues/[leagueId]/members` זמין רק למנהל המדויק או לחבר פעיל באותה
+  ליגה. בדיקת RLS על הליגה קודמת ל־RPC, וה־RPC מאמת שוב את session actor מול
+  המשאב. משתמש זר ומנהל ליגה אחרת מקבלים not-found אטום.
+- `get_active_league_members_page` מחזיר רק membership ID פנימי לצורכי keyset,
+  שם תצוגה ומועד אישור. הוא אינו מחזיר user ID, email, Auth metadata,
+  join-request או proof data, והוא מוגבל ל־26 שורות עבור page size של 25.
+- EXECUTE ניתן ל־`authenticated` בלבד; אין grant ל־anon/service role ואין
+  UPDATE חדש על `league_members`. פעולות removal/reactivation אינן קיימות
+  ב־RPC, ב־query או במסך.
+- תור הבקשות וה־proof history נטענים רק אחרי שהשרת קבע שהצופה הוא המנהל.
+  חבר פעיל רואה את הספרייה בלבד. שמות נעטפים ב־`bdi dir="auto"`, בעוד כללי
+  rejection/isolation המלאים של שמות לא־מהימנים נשארים ברשומת S9-DEF-015.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| IDOR בין ליגות | RLS league read + resource check חוזר ב־RPC | manager/member מורשים ו־foreign manager נדחה ב־pgTAP וב־Playwright |
+| דליפת PII או proof | return shape ו־Zod strict allowlist | catalog shape, rejection של extra fields והיעדר email/manager UI בדפדפן |
+| הסרה/הפעלה מחדש דרך מסך הקריאה | אין mutation RPC/action/grant | UPDATE ישיר של authenticated נדחה; אין control ב־UI |

@@ -222,6 +222,34 @@ test.describe("bounded keyset pagination and exact authorization", () => {
     await viewer.page.goto("/dashboard");
     await followNextByKeyboard(viewer.page, "דפדוף בליגות שלי");
     await expect(viewer.page).toHaveURL(/leagueCursor=/);
+
+    await viewer.page.goto(`/leagues/${leagueId}/members`);
+    await expectNoHorizontalOverflow(viewer.page);
+    await expect(
+      viewer.page.getByRole("heading", { name: "חברי הליגה" }),
+    ).toBeVisible();
+    const activeMembers = viewer.page.getByRole("region", {
+      name: "חברים פעילים",
+    });
+    await expect(activeMembers.getByRole("listitem")).toHaveCount(25);
+    await expect(activeMembers).not.toContainText("@example.com");
+    await expect(
+      viewer.page.getByRole("heading", { name: "בקשות הצטרפות" }),
+    ).toHaveCount(0);
+    await expect(viewer.page.getByLabel("מצב בקשה")).toHaveCount(0);
+    await followNextByKeyboard(viewer.page, "דפדוף בחברי הליגה");
+    await expect(viewer.page).toHaveURL(/membersCursor=/);
+    await expect(
+      viewer.page
+        .getByRole("region", { name: "חברים פעילים" })
+        .getByRole("listitem"),
+    ).toHaveCount(2);
+    await expect(
+      viewer.page
+        .getByRole("navigation", { name: "דפדוף בחברי הליגה" })
+        .getByText("הגעת לסוף הרשימה."),
+    ).toBeVisible();
+
     await viewer.page.goto("/dashboard");
     await followNextByKeyboard(
       viewer.page,
@@ -275,6 +303,10 @@ test.describe("bounded keyset pagination and exact authorization", () => {
     ).toBeVisible();
 
     await manager.page.goto(`/leagues/${fixture.foreignLeagueId}/matches`);
+    await expect(
+      manager.page.getByRole("heading", { name: "הדף לא נמצא" }),
+    ).toBeVisible();
+    await manager.page.goto(`/leagues/${fixture.foreignLeagueId}/members`);
     await expect(
       manager.page.getByRole("heading", { name: "הדף לא נמצא" }),
     ).toBeVisible();

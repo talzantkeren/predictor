@@ -72,6 +72,14 @@ export type ManagerJoinRequestItem = {
 
 export type ManagerJoinRequestPage = KeysetPage<ManagerJoinRequestItem>;
 
+export type ActiveLeagueMember = {
+  membershipId: string;
+  displayName: string;
+  approvedAt: string;
+};
+
+export type ActiveLeagueMemberPage = KeysetPage<ActiveLeagueMember>;
+
 export type LeagueInviteSettings = {
   id: string;
   name: string;

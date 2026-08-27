@@ -24,6 +24,7 @@ import {
   isValidInviteTokenHash,
 } from "@/features/membership/invite-token";
 import {
+  activeLeagueMemberPageRpcSchema,
   createdInviteRpcSchema,
   dashboardJoinRequestPageRpcSchema,
   inviteMetadataRpcSchema,
@@ -307,6 +308,32 @@ describe("membership RPC response validation", () => {
     });
     expect(JSON.stringify(result)).not.toContain("storage_path");
     expect(JSON.stringify(result)).not.toContain("sha256");
+  });
+
+  it("accepts only the privacy-safe active-member directory shape", () => {
+    const member = {
+      membership_id: "26000000-0000-4000-8000-000000000034",
+      display_name: "חברת ליגה",
+      approved_at: timestamp,
+    };
+
+    expect(activeLeagueMemberPageRpcSchema.parse([member])).toEqual([
+      {
+        membershipId: member.membership_id,
+        displayName: member.display_name,
+        approvedAt: member.approved_at,
+      },
+    ]);
+    expect(
+      activeLeagueMemberPageRpcSchema.safeParse([
+        {
+          ...member,
+          user_id: "26000000-0000-4000-8000-000000000035",
+          email: "private@example.com",
+          proof_path: "private/proof.webp",
+        },
+      ]).success,
+    ).toBe(false);
   });
 
   it("requires a bounded single-line rejection reason", () => {

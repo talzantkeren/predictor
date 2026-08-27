@@ -9,6 +9,7 @@ import {
   invokeMembershipRpc,
 } from "@/features/membership/rpc";
 import {
+  activeLeagueMemberPageRpcSchema,
   dashboardJoinRequestPageRpcSchema,
   inviteMetadataRpcSchema,
   inviteResolutionRpcSchema,
@@ -16,6 +17,8 @@ import {
   unavailableInviteResolutionRpcSchema,
 } from "@/features/membership/schemas";
 import type {
+  ActiveLeagueMember,
+  ActiveLeagueMemberPage,
   InviteMetadata,
   InviteResolution,
   JoinRequestDashboardItem,
@@ -31,6 +34,7 @@ import {
 import type { Database } from "@/types/database.generated";
 
 const JOIN_REQUEST_PAGE_SIZE = 25;
+const ACTIVE_MEMBER_PAGE_SIZE = 25;
 
 export async function resolveInvite(
   supabase: SupabaseClient<Database>,
@@ -238,6 +242,62 @@ export async function getManagerJoinRequests(
           (request): ManagerJoinRequestItem => request,
           (request) => ({ at: request.createdAt, id: request.requestId }),
         ),
+      }
+    : { status: "error" };
+}
+
+export async function getActiveLeagueMembersPage(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+  userId: string,
+  cursor?: KeysetCursor,
+): Promise<
+  | {
+      status: "found";
+      league: { id: string; name: string };
+      members: ActiveLeagueMemberPage;
+      viewerIsManager: boolean;
+    }
+  | { status: "not-found" }
+  | { status: "error" }
+> {
+  const { data: league, error: leagueError } = await supabase
+    .from("leagues")
+    .select("id, name, manager_id")
+    .eq("id", leagueId)
+    .maybeSingle();
+
+  if (leagueError) return { status: "error" };
+  if (!league) return { status: "not-found" };
+
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "get_active_league_members_page",
+    {
+      p_league_id: leagueId,
+      p_page_size: ACTIVE_MEMBER_PAGE_SIZE,
+      ...(cursor
+        ? {
+            p_cursor_approved_at: cursor.at,
+            p_cursor_membership_id: cursor.id,
+          }
+        : {}),
+    },
+  );
+  if (error) return { status: "error" };
+
+  const parsed = activeLeagueMemberPageRpcSchema.safeParse(data);
+  return parsed.success
+    ? {
+        status: "found",
+        league: { id: league.id, name: league.name },
+        members: buildKeysetPage(
+          parsed.data,
+          ACTIVE_MEMBER_PAGE_SIZE,
+          (member): ActiveLeagueMember => member,
+          (member) => ({ at: member.approvedAt, id: member.membershipId }),
+        ),
+        viewerIsManager: league.manager_id === userId,
       }
     : { status: "error" };
 }

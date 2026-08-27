@@ -1362,6 +1362,19 @@ export type Database = {
           result_status: Database["public"]["Enums"]["sync_status"]
         }[]
       }
+      get_active_league_members_page: {
+        Args: {
+          p_cursor_approved_at?: string
+          p_cursor_membership_id?: string
+          p_league_id: string
+          p_page_size?: number
+        }
+        Returns: {
+          approved_at: string
+          display_name: string
+          membership_id: string
+        }[]
+      }
       get_dashboard_leagues_page: {
         Args: {
           p_cursor_created_at?: string

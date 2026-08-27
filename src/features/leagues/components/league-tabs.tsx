@@ -12,10 +12,10 @@ const commonItems: { key: LeagueSection; label: string; suffix: string }[] = [
   { key: "overview", label: "סקירה", suffix: "" },
   { key: "matches", label: "משחקים וניחושים", suffix: "/matches" },
   { key: "standings", label: "טבלת דירוג", suffix: "/standings" },
+  { key: "members", label: "חברים", suffix: "/members" },
 ];
 
 const managerItems: { key: LeagueSection; label: string; suffix: string }[] = [
-  { key: "members", label: "חברים", suffix: "/members" },
   { key: "reports", label: "דוחות", suffix: "/reports" },
   { key: "settings", label: "הגדרות", suffix: "/settings" },
 ];
