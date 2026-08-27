@@ -33,10 +33,10 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-DEF-002 | P1 | W1 | החלטות זמן מתקבלות לפני serialization | VERIFIED | §10, `S9-DEF-002` | `docs/evidence/slice-9/w1/S9-DEF-002.md` | `6a11de606ddc2d7276b881fefcc22633c3a0cb54` | regression חדש: `npx supabase test db supabase/tests/slice9-time-serialization.test.sql` עבר 119/119; `npm run test:db` עבר 765/765; schema lint וטיפוסים עברו. |
 | S9-DEF-001 | P1 | W2 | recovery suppresses and misclassifies errors | VERIFIED | §10, `S9-DEF-001` | `docs/evidence/slice-9/w2/S9-DEF-001.md` | `4a500fef8a728cb13092a02040aeb694ae6f2a55` | Typed allowlisted outcomes ו־account-neutral copy; 96/96 focused Vitest ו־6/6 Mailpit Playwright ב־Desktop/Mobile עברו. |
 | S9-DEF-004 | P1 | W2 | Hosted confirmation/recovery אינו בר־הדגמה אמינה | OWNER_ACTION_REQUIRED | §10, `S9-DEF-004` | `docs/evidence/slice-9/w2/S9-DEF-004.md` | `4a500fef8a728cb13092a02040aeb694ae6f2a55` | אין credential מאושר ל־delivery או disposable recipient; אין claim על Hosted pass. הוראות owner מדויקות ו־Production/Local origins נשמרו בראיה. |
-| S9-DEF-003 | P1 | W3 | fallback ידני מלא למשחקים חסר | VERIFIED | §10, `S9-DEF-003` | `docs/evidence/slice-9/w3/S9-DEF-003.md` | — | Manual catalog קנוני, create/correct צר וגבול Action שלוכד UUID בשרת; reset ו־159 assertions מסדיים, 35 assertions של dblink, ‏44 בדיקות Vitest ו־2+2 תרחישי Desktop/Pixel עברו. SHA יירשם ב־commit גבול W3. |
-| S9-DEF-007 | P2 | W3 | מסך הגדרות ליגה אינו משנה הגדרות | VERIFIED | §10, `S9-DEF-007` | `docs/evidence/slice-9/w3/S9-DEF-007.md` | — | RPCs צרים ללא policy רוחבית, מסמך versioned אטומי ונעילת DB-time; ‏56 pgTAP, ‏75 dblink, ‏45 Vitest ו־2/2 Desktop/Pixel עברו, ולאחריהם review עצמאי סופי עבר ללא finding. SHA יירשם ב־commit גבול W3. |
-| S9-DEF-008 | P2 | W3 | אין פעולה להסרת manual override | VERIFIED | §10, `S9-DEF-008` | `docs/evidence/slice-9/w3/S9-DEF-008.md` | — | Clear צר, מורשה, audited ו־idempotent משמר result; ‏91 assertions מסדיים, ‏148 assertions של scoring/provider, ‏26 Vitest ו־1+1 Desktop/Pixel עברו, generated types נשארו ללא drift, ו־review עצמאי סופי עבר ללא finding. SHA יירשם ב־commit גבול W3. |
-| S9-DEF-009 | P2 | W3 | hard caps משמשים בטעות כשלמות נתונים והרשאה | IN_PROGRESS | §10, `S9-DEF-009` | `docs/evidence/slice-9/w3/S9-DEF-009.md` | — | exact authorization נפרד מ־keyset pagination עם cursor/hasMore; העבודה החלה רק לאחר review עצמאי ו־VERIFIED של DEF-008. |
+| S9-DEF-003 | P1 | W3 | fallback ידני מלא למשחקים חסר | VERIFIED | §10, `S9-DEF-003` | `docs/evidence/slice-9/w3/S9-DEF-003.md` | `15ced4df68faa53c67aa7d05371583ff2dc0d4e4` | ראיית session ‏27.8.2026: שני קובצי pgTAP עברו 138/138; scoring+sync עברו כחלק מ־8/8 תרחישי W3 ב־Desktop/Pixel; שערי lint/typecheck/Vitest/DB/types drift עברו לאחר repair מתועד. |
+| S9-DEF-007 | P2 | W3 | מסך הגדרות ליגה אינו משנה הגדרות | VERIFIED | §10, `S9-DEF-007` | `docs/evidence/slice-9/w3/S9-DEF-007.md` | `445a07a4a22143bd6a74769d1873a3c6e37cda4f`, `0ded7d0de1e657a72aa2447e2b8d1f560e8047ba` | ראיית session ‏27.8.2026: שני קובצי pgTAP עברו 131/131; settings עבר בשני viewports; דליפת fixture שנחשפה בריצת W3 הראשונה תוקנה, ואותה פקודה עברה 8/8. |
+| S9-DEF-008 | P2 | W3 | אין פעולה להסרת manual override | VERIFIED | §10, `S9-DEF-008` | `docs/evidence/slice-9/w3/S9-DEF-008.md` | `18014c1b4825696488f400f9782e9c859aacdfeb` | ראיית session ‏27.8.2026: שני קובצי pgTAP עברו 91/91; scoring/clear עבר בשני viewports כחלק מריצת W3 הסופית 8/8; full DB עבר 1182/1182. |
+| S9-DEF-009 | P2 | W3 | hard caps משמשים בטעות כשלמות נתונים והרשאה | VERIFIED | §10, `S9-DEF-009` | `docs/evidence/slice-9/w3/S9-DEF-009.md` | `9c5e469abe421770fb194736d8f78cde0cb1c75d`, `0f8455dd2cbdff3b4b2d600ce5344eea2670f1e2`, `ee5fb791357a7f5f789512af2451a357524d29cf` | ראיית session ‏27.8.2026: pgTAP static+concurrency עבר 89/89, ‏Vitest מלא עבר 563/563 ו־pagination עבר Desktop/Pixel; exact AuthZ נפרד מ־keyset pagination, ו־types drift סופי עבר. |
 | S9-REQ-001 | P1 | W4 | מימוש lifecycle מלא דרך המוצר | NOT_STARTED | §11, `S9-REQ-001` | `docs/evidence/slice-9/w4/S9-REQ-001.md` | — | open→active→completed, snapshot, review/reconciliation, membership closure ו־members list. |
 | S9-DEF-010 | P2 | W5 | targeted sync יכול להרעיב catalog/reconciliation | NOT_STARTED | §10, `S9-DEF-010` | `docs/evidence/slice-9/w5/S9-DEF-010.md` | — | fairness חסומה תוך שמירת live priority ו־genuine NOT_DUE. |
 | S9-DEF-011 | P2 | W5 | `Retry-After` ארוך מסווג timeout ומאבד backoff | NOT_STARTED | §10, `S9-DEF-011` | `docs/evidence/slice-9/w5/S9-DEF-011.md` | — | RATE_LIMITED נשמר לפני wait budget; ללא שינה ארוכה או קריאת provider חיה בבדיקה. |
@@ -55,6 +55,29 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-REQ-004 | P2 | W7 | חבילת מסמכי הגשה מסונכרנת | NOT_STARTED | §11, `S9-REQ-004` | `docs/evidence/slice-9/w7/S9-REQ-004.md` | — | canonical docs, README, book, deployment/evaluator instructions ונתונים סופיים מסונכרנים. |
 | S9-REQ-003 | P1 | W8 | ראיית הגשה סופית וגישת evaluator | NOT_STARTED | §11, `S9-REQ-003` | `docs/evidence/slice-9/w8/S9-REQ-003.md` | — | final candidate/evaluator/Production gates; post-merge או owner action נשארים מפורשים. |
 | S9-REQ-005 | P2 | W8 | hardening וראיית בדיקה סופית | NOT_STARTED | §11, `S9-REQ-005` | `docs/evidence/slice-9/w8/S9-REQ-005.md` | — | matrix מלאה, clean clone, Advisors/scale/UI/security וראיות final SHA. |
+
+## ראיית סגירת W3 מה־session של 27.8.2026
+
+רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
+
+| ID/שער | פקודה מדויקת | תוצאה שנצפתה |
+| --- | --- | --- |
+| S9-DEF-003 | `npx.cmd --no-install supabase test db supabase/tests/manual-match-fallback.test.sql supabase/tests/manual-match-concurrency.test.sql` | PASS — ‏2 files, ‏138 tests |
+| S9-DEF-007 | `npx.cmd --no-install supabase test db supabase/tests/league-settings.test.sql supabase/tests/league-settings-concurrency.test.sql` | PASS — ‏2 files, ‏131 tests |
+| S9-DEF-008 | `npx.cmd --no-install supabase test db supabase/tests/manual-override-clear.test.sql supabase/tests/manual-override-clear-concurrency.test.sql` | PASS — ‏2 files, ‏91 tests |
+| S9-DEF-009 | `npx.cmd --no-install supabase test db supabase/tests/keyset-pagination.test.sql supabase/tests/keyset-pagination-concurrency.test.sql` | PASS — ‏2 files, ‏89 tests |
+| W3 browser | `npm.cmd run test:e2e:run -- e2e/scoring.spec.ts e2e/sync.spec.ts e2e/settings.spec.ts e2e/pagination.spec.ts` | ריצה ראשונה: FAIL — ‏7 passed, ‏1 failed עקב דליפת fixture של settings; אחרי תיקון ואיפוס מקומי: PASS — ‏8/8 |
+| lint | `npm.cmd run lint` | PASS — exit 0 |
+| TypeScript | `npm.cmd run typecheck` | PASS — exit 0; עבר שוב אחרי generation |
+| Vitest | `npm.cmd run test` | PASS — ‏40 files, ‏563 tests |
+| DB מלא | `npm.cmd run test:db` | PASS — ‏19 files, ‏1182 tests |
+| generated types | `npm.cmd run types:check` | ריצה ראשונה: FAIL — generated types stale |
+| generation | `npm.cmd run types:db` | PASS |
+| generated types חוזר | `npm.cmd run types:check` | PASS — `Generated database types are current` |
+
+הפלטים המצונזרים, שמות ה־specs והאבחון המלא נשמרו בקובצי הראיה של כל ID
+ב־`docs/evidence/slice-9/w3/`. אין claim על Hosted/Production, provider חי או
+בדיקה שלא נצפתה ב־session הזה.
 
 ## רשומות ביקורת שאינן נספרות כמסירה פתוחה
 
