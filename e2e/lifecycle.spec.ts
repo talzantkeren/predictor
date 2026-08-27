@@ -2,9 +2,12 @@ import {
   devices,
   expect,
   type BrowserContextOptions,
+  type Locator,
   type Page,
   test,
 } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import sharp from "sharp";
 
 import {
@@ -118,6 +121,30 @@ function nextSafeUtcMinute() {
   return kickoff;
 }
 
+async function capturePresentationFallback(
+  page: Page,
+  testInfo: { project: { name: string } },
+  filename: string,
+  mask: Locator[] = [],
+) {
+  if (
+    process.env.CAPTURE_PRESENTATION_ASSETS !== "true" ||
+    testInfo.project.name !== "desktop-chromium"
+  ) {
+    return;
+  }
+
+  const outputDirectory = join(process.cwd(), "presentation", "fallback");
+  mkdirSync(outputDirectory, { recursive: true });
+  await page.screenshot({
+    path: join(outputDirectory, filename),
+    fullPage: true,
+    animations: "disabled",
+    mask,
+    maskColor: "#D0EDFA",
+  });
+}
+
 async function expectReportPoints({
   page,
   displayName,
@@ -205,6 +232,12 @@ test.describe("Slice 9 product lifecycle", () => {
     await expect(
       manager.page.getByText("פתוחה להצטרפות", { exact: true }),
     ).toBeVisible();
+    await capturePresentationFallback(
+      manager.page,
+      testInfo,
+      "01-open-league.png",
+      [manager.page.getByRole("heading", { name: leagueName })],
+    );
 
     const member = await registerConfirmedUser({
       browser,
@@ -342,6 +375,12 @@ test.describe("Slice 9 product lifecycle", () => {
       points: 3,
       mobile: testInfo.project.name.startsWith("mobile-"),
     });
+    await capturePresentationFallback(
+      manager.page,
+      testInfo,
+      "02-active-current-report.png",
+      [manager.page.getByText(memberName, { exact: true })],
+    );
 
     await manager.page.goto(`/leagues/${leagueId}`);
     const completeButton = manager.page.getByRole("button", {
@@ -425,6 +464,12 @@ test.describe("Slice 9 product lifecycle", () => {
       points: 0,
       mobile: testInfo.project.name.startsWith("mobile-"),
     });
+    await capturePresentationFallback(
+      manager.page,
+      testInfo,
+      "03-completed-final-report.png",
+      [manager.page.getByText(memberName, { exact: true })],
+    );
 
     const layout = await member.page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
