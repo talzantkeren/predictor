@@ -337,6 +337,12 @@ provider-owned שהוא מציג נזרעים ישירות במסד המקומי
 | Route/Action | Cron auth/content type/env; manual/API-Football/not-due/concurrent/success/failure; קריאת orchestration יחידה; trigger של system admin בלבד; safe response ללא סוד/token/generation |
 | Playwright | ordinary user מול system admin, status page ו־manual trigger, שורות observability שנזרעו ישירות, provider AET fixture שנזרע ומוצג כ־"דורש בדיקה" בלי לפתוח prediction, ו־Desktop/Pixel RTL. אין כאן fake live-provider flow; הפרדת key נבדקת non-vacuously ב־build API-Football עם sentinel וסריקת HTML/client artifacts לפני הפעלת השרת ב־manual. |
 
+S9-DEF-010 מוסיף pgTAP דטרמיניסטי עם 25 stale ומשחק live אחד. שלושה claims
+עוקבים חייבים לבחור targeted → catalog → reconciliation, לשמור live בראש
+מכסת 20, generation מונוטוני ו־tokens שונים, ולסיים דרך fencing הקיים.
+`NOT_DUE` ו־`PROVIDER_BACKOFF` אינם מוסיפים run; בדיקת orchestrator מאמתת שגם
+transport, apply ו־finalize אינם נקראים כאשר ה־claim מחזיר `NOT_DUE`.
+
 ### Slice 9 W1 — serialization וזמן מסד
 
 `supabase/tests/slice9-time-serialization.test.sql` פותח חיבור control, holder,

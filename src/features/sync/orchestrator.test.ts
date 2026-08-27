@@ -234,7 +234,9 @@ describe("shared sports sync orchestration", () => {
         deps,
       ),
     ).resolves.toEqual({ runId: null, status: "skipped", reason: "NOT_DUE" });
+    expect(deps.claim).toHaveBeenCalledWith(actorId, false);
     expect(transport).not.toHaveBeenCalled();
     expect(deps.apply).not.toHaveBeenCalled();
+    expect(deps.finalize).not.toHaveBeenCalled();
   });
 });

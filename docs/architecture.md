@@ -567,6 +567,12 @@ validation לפני קריאת ה־RPC אינו invocation מסדי ולכן א�
   ומחזורים נוספים.
 - משחקים חיים, משחקים שמועדיהם קרובים ומשחקים שעדיין אינם terminal אחרי
   kickoff מתרעננים בבקשת `ids` ממוקדת בערך פעם בדקה, עד 20 IDs לבקשה.
+- כאשר כמה סוגי עבודה due יחד, ה־claim מדרג את `targeted`, ‏`catalog` ו־
+  `reconciliation` לפי זמן ה־claim המגודר האחרון של כל סוג, ולא לפי הצלחה
+  בלבד. לכן כל סוג due נבחר בתוך לכל היותר שלושה claims זכאים עוקבים, גם אם
+  סוג קודם נכשל. lease פעיל, provider backoff או force cooldown משעים את
+  הספירה ואינם נעקפים. בתוך targeted, משחקי `live` קודמים לכל stale/near-live,
+  ואז נשמר סדר kickoff ו־external ID דטרמיניסטי במכסה של 20.
 - `provider_status` טרמינלי שאינו בר־ניקוד, ובפרט `AET`/`PEN`, הוא מקור review
   עמיד ואינו נשאר ב־targeted polling. הוא ממשיך להתגלות ב־reconciliation.
 - 429/`Retry-After` מעדכן `backoff_until`; quota headers נשמרים כאיתות תפעולי.

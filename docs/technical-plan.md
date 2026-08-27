@@ -587,6 +587,11 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
   expiry/due/backoff/cooldown, מסיימת run נטוש אחרי expiry ומגדילה generation.
 - בודקת due עבור catalog (12 שעות), reconciliation (6 שעות) ו־targeted
   (כדקה, עד 20 fixture IDs). quota/backoff יכולים לדחות עבודה משנית.
+- אם יותר מסוג אחד due, בוחרת את הסוג בעל ה־claim המגודר הישן ביותר מתוך
+  `sync_runs`; attempt נכשל עדיין משתתף ברוטציה. כך כל targeted/catalog/
+  reconciliation due מקבל claim בתוך שלושה claims זכאים, בלי queue נוסף.
+  בתוך targeted, כל `live` קודם ל־stale/near-live ורק אחריו kickoff ו־external
+  ID קובעים את 20 ה־IDs. `CONCURRENT_ATTEMPT` חסר generation אינו נחשב שירות.
 - force של מנהל עוקף due-window בלבד; הוא אינו עוקף `backoff_until` ומוגבל
   באמצעות `last_forced_at` עמיד לניסיון אחד בדקה.
 - `NOT_DUE` אינו יוצר run. lease פעיל יוצר skip סופי `CONCURRENT_ATTEMPT`.

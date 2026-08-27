@@ -204,6 +204,15 @@ select * from extensions.dblink(
 select is(extensions.dblink_disconnect('slice7b_claim_one'), 'OK', 'session one disconnects');
 select is(extensions.dblink_disconnect('slice7b_claim_two'), 'OK', 'session two disconnects');
 
+-- This scenario exercises a catalog apply contract, not multi-kind fairness.
+-- Make only catalog due so committed attempts from earlier real sessions or
+-- preceding pgTAP files cannot select another valid due kind here.
+update public.sync_leases
+set last_catalog_at = null,
+    last_targeted_at = clock_timestamp(),
+    last_reconciliation_at = clock_timestamp()
+where provider = 'api-football';
+
 set local role service_role;
 select set_config(
   'request.headers',
