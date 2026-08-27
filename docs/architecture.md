@@ -536,6 +536,16 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
 הוא תקין, provider-owned ואידמפוטנטי, והריצה הבאה משלימה אותו. תוצאה וניקוד של
 כל משחק נשארים אטומיים באותו batch.
 
+שרשרת הזמן המתוזמנת קבועה ומדידה: provider client עד 30 שניות; `pg_net` עד
+45 שניות; Route Handler עם `maxDuration=60`; lease מסדי של 120 שניות. כך יש
+15 שניות בין תקציב הספק לתצפית החיצונית ועוד 15 שניות עד תקרת ה־Route, וכל
+המסלול נשאר מגודר לפני expiry. ‏60 שניות נתמכות גם ב־Hobby ללא Fluid compute
+לפי [התיעוד הרשמי של Vercel](https://vercel.com/docs/functions/configuring-functions/duration).
+Migration פרטית משנה רק את ה־job הקיים משם provider-specific לשם
+`predictor-sports-sync` ומ־10 ל־45 שניות, תוך שמירת target/Vault headers,
+schedule ו־active state; היא אינה יוצרת job חסר ואינה מחזירה command שעלול
+להכיל lookup סודי.
+
 במצב `manual`, הזרימה נשארת ללא HTTP לספק אך אינה עוד short-circuit. ה־adapter
 בונה את `manual-catalog-v1` הדטרמיניסטי והחסום, וה־gateway קורא פעם אחת ל־
 `apply_manual_fixture_catalog()`. זהו wrapper צר `SECURITY DEFINER` שמקבל payload

@@ -24,8 +24,14 @@ vi.mock("@/features/sync/orchestrator", () => ({
   runSportsSync: mocks.runSportsSync,
 }));
 
-import { POST } from "@/app/api/cron/sync/route";
+import { maxDuration, POST } from "@/app/api/cron/sync/route";
 import { SyncError } from "@/features/sync/errors";
+import {
+  SPORTS_SYNC_LEASE_DURATION_MS,
+  SPORTS_SYNC_PG_NET_TIMEOUT_MS,
+  SPORTS_SYNC_PROVIDER_BUDGET_MS,
+  SPORTS_SYNC_ROUTE_MAX_DURATION_SECONDS,
+} from "@/features/sync/runtime-budget";
 
 function syncRequest(
   options: {
@@ -118,6 +124,15 @@ describe("POST /api/cron/sync", () => {
     expect(body).not.toContain(actorId);
     expect(mocks.activateDueLeagues).not.toHaveBeenCalled();
     expect(mocks.runSportsSync).not.toHaveBeenCalled();
+  });
+
+  it("keeps the route ceiling above the provider budget with margin and below the lease", () => {
+    expect(maxDuration).toBe(SPORTS_SYNC_ROUTE_MAX_DURATION_SECONDS);
+    expect(SPORTS_SYNC_PG_NET_TIMEOUT_MS).toBeGreaterThan(
+      SPORTS_SYNC_PROVIDER_BUDGET_MS + 10_000,
+    );
+    expect(SPORTS_SYNC_PG_NET_TIMEOUT_MS).toBeLessThan(maxDuration * 1_000);
+    expect(maxDuration * 1_000).toBeLessThan(SPORTS_SYNC_LEASE_DURATION_MS);
   });
 
   it("activates due leagues before the bounded Manual provider branch", async () => {

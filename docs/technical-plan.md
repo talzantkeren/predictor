@@ -252,6 +252,7 @@ DEMO_MODE=true
 | 013 `slice9_database_time_serialization_review` | helper פרטי ללא Data API EXECUTE מכריע cancellation תחת match lock מול kickoff שמור ונכנס, משמר latch גם ב־manual override ודורש שני מועדים עתידיים ל־reactivation | reschedule אינו פותח ניחושים אחרי גבול שחל; apply/save מקביליים אינם יוצרים deadlock |
 | 014 `slice9_full_sync_lease_duration` | מפריד ב־claim בין דגימת decision שלאחר lock לבין issuance לאחר תכנון העבודה | `sync_runs.started_at` הוא זמן ההנפקה ו־`locked_until = started_at + 120 seconds` גם לאחר המתנה |
 | 017 `slice9_clear_manual_override` | RPC forward-only, service-only ואידמפוטנטי שמסיר ownership ידני רק ממשחק API-Football ומוסיף audit יחיד | result/provenance/latch/predictions נשמרים; ordinary user נדחה; provider apply רשאי להתחדש לאחר clear |
+| 024 `slice9_sync_cron_budget` | מתקינה `pg_cron`, מסירה Data API schema usage ומיישרת אטומית את ה־job הקיים לשם provider-neutral ול־45s בלי לקרוא/להחזיר command | local reset; job חסר הוא no-op, כפול/לא־מוכר נכשל סגור, ו־schedule/active/target נשמרים |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -636,6 +637,11 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
   ל־`0..3600` ו־quota remaining שלם ולא־שלילי עוברים ל־finalize; הוא שומר את
   המכסה ומגדיר `backoff_until`, שנאכף גם ב־scheduled וגם ב־force.
 - token ישן, provider/run שגויים או finalize כפול נדחים ללא mutation.
+
+תקציבי ה־runtime הם contract אחד: 30s client, ‏45s `pg_net`, ‏60s Route
+ו־120s lease. ה־Route מפרסם `maxDuration=60` סטטי; migration מיישרת את job
+ה־Cron היחיד בלי לשמור secret ובלי ליצור schedule שני. בדיקת fake transport
+מריצה שלושה ניסיונות איטיים מבוקרים ומוכיחה failure סופי ו־finalize יחיד.
 
 ## 8. CRUD ופעולות אפליקטיביות
 

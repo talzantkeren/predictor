@@ -348,6 +348,13 @@ orchestration/finalize ללא provider חי, ו־pgTAP שמוכיח שמירת q
 מדויק וחסימת scheduled/force. הפקודות והפלט המצונזר נמצאים ב־
 [`docs/evidence/slice-9/w5/S9-DEF-011.md`](./evidence/slice-9/w5/S9-DEF-011.md).
 
+S9-DEF-012 מוסיף fake transport של שלושה ניסיונות בני 7 שניות תחת שעון Vitest
+מבוקר; הוא נכשל סופית אחרי 21.75 שניות לוגיות ומוכיח finalize יחיד. בדיקת
+Route קושרת את 30/45/60/120, ו־pgTAP מתקין fixture של job ישן ללא HTTP, מוכיח
+rename/timeout/preservation/idempotency/duplicate denial וכן denial אפקטיבי
+ל־Data API. ראיית Hosted לאחר deploy נשארת owner action מפורשת ב־
+[`docs/evidence/slice-9/w5/S9-DEF-012.md`](./evidence/slice-9/w5/S9-DEF-012.md).
+
 ### Slice 9 W1 — serialization וזמן מסד
 
 `supabase/tests/slice9-time-serialization.test.sql` פותח חיבור control, holder,

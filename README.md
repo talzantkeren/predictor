@@ -269,7 +269,7 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
    server-only. את אותו סוד Cron שומרים ב־Supabase Vault, לא ב־migration.
 4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
-   ב־SQL, ב־Git או בלוגים.
+   ב־SQL, ב־Git או בלוגים. שם ה־job היחיד הוא `predictor-sports-sync`.
 5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
    העברית שהקטלוג הוחל או שכבר היה מעודכן, ובמסך `/admin/sync` מוודאים שורת
    `succeeded/manual` סופית. קודי `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` מוחזרים
@@ -293,8 +293,11 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 8. לאמת ששש קבוצות וחמשת משחקי ה־Demo נשארו ללא external IDs וללא שינוי.
 9. לאמת ש־Cron ללא secret/עם secret שגוי מחזיר 401 ואינו מוסיף run/audit.
 10. לאמת lifecycle/counters/operator notes ב־`/admin/sync`.
-11. לעדכן את job ה־Supabase Cron הקיים לפי שמו; אין ליצור job כפול. לשנות tick
-    לכדקה רק לאחר שה־deployment בריא.
+11. migration ‏`20260827170000_slice9_sync_cron_budget.sql` משנה את שם ה־job
+    הישן ל־`predictor-sports-sync` ומעלה רק את `timeout_milliseconds` מ־10,000
+    ל־45,000 תוך שמירת ה־URL, ‏Vault lookup, headers, schedule ו־active state.
+    היא נכשלת סגור על job כפול או command לא מוכר ואינה יוצרת job בסביבה שבה
+    הוא חסר. אין ליצור job שני. לשנות tick לכדקה רק לאחר שה־deployment בריא.
 12. לבצע canary: `NS` → live → prediction נשאר נעול → `FT` מתוך
     `score.fulltime` → scoring דטרמיניסטי → leaderboard.
 13. לבדוק retry זהה, correction `FT→FT` ו־manual override מול refresh.
@@ -303,9 +306,13 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 15. rollback תפעולי הוא `SPORTS_API_PROVIDER=manual` ו־redeploy. הוא אינו מוחק
     provider data ואינו מחזיר migration לאחור.
 
-דוגמת Cron קיימת נשארת POST עם `Content-Type: application/json` ו־Bearer
-שנקרא מ־Vault. יש לערוך את ה־schedule של ה־job הקיים ל־`* * * * *` דרך כלי
-הניהול המאושר בלבד; אין להעתיק secret ל־SQL או ליצור job נוסף.
+חוזה התקציב הוא 30 שניות ל־provider client, ‏45 שניות לתצפית `pg_net`, ‏60
+שניות ל־Route ו־120 שניות ל־lease. ‏`maxDuration=60` נתמך גם בגבול Hobby
+הישן לפי [מסמך משך ה־Functions הרשמי של Vercel](https://vercel.com/docs/functions/configuring-functions/duration),
+ולכן אינו תלוי בהפעלת Fluid compute. לאחר apply/deploy יש לאמת דרך Dashboard
+שאכן קיים job פעיל יחיד בשם הנייטרלי, בלי להציג את ה־command או headers, ולקשר
+response מתוזמן עם `runId` לשורת `sync_runs` סופית ול־lease משוחרר. שאילתת
+הראיה המסוננת נמצאת ב־`docs/evidence/slice-9/w5/S9-DEF-012.md`.
 
 ## Slice 7c: Design System ורענון UI
 

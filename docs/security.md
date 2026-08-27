@@ -506,6 +506,12 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   Server Action משתמשת בהגנת same-origin של Next.js, אינה שולחת secret
   לדפדפן וקוראת לאותה orchestration/lease. משתמש רגיל ומנהל ליגה מקבלים
   not-found/denial אטום.
+- סכימת extension ‏`cron` חסרת `USAGE` ל־anon/authenticated/service_role, ולכן
+  ACL ברירת מחדל שבבעלות `supabase_admin` אינו מאפשר להם לקרוא `cron.job` או
+  לזמן job. רק `postgres` מקבל USAGE/SELECT ו־EXECUTE המצומצמים שנדרשים ל־helper
+  הפרטי `configure_predictor_sync_cron()`; ל־helper אין EXECUTE ל־Data API,
+  `search_path=''`, והוא מחזיר קוד תוצאה קבוע בלבד — לעולם לא command, URL,
+  header או Vault value.
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |

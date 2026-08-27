@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { SPORTS_SYNC_PROVIDER_BUDGET_MS } from "@/features/sync/runtime-budget";
+
 export const API_FOOTBALL_BASE_URL = "https://v3.football.api-sports.io";
 export const API_FOOTBALL_RESPONSE_LIMIT_BYTES = 8 * 1024 * 1024;
 export const API_FOOTBALL_MAX_FIXTURE_IDS = 20;
@@ -311,7 +313,7 @@ export class ApiFootballClient {
     this.transport =
       options.transport ?? ((request) => fetch(request.url, request.init));
     this.timeoutMs = options.timeoutMs ?? 8_000;
-    this.totalBudgetMs = options.totalBudgetMs ?? 30_000;
+    this.totalBudgetMs = options.totalBudgetMs ?? SPORTS_SYNC_PROVIDER_BUDGET_MS;
     this.maxAttempts = options.maxAttempts ?? 3;
     this.responseLimitBytes =
       options.responseLimitBytes ?? API_FOOTBALL_RESPONSE_LIMIT_BYTES;

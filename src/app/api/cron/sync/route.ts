@@ -9,6 +9,10 @@ import { getCronEnv, getSportsSyncEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// This explicit ceiling is supported even by a non-Fluid Vercel Hobby
+// function, leaves 30 seconds beyond the provider client's legal budget, and
+// remains well below the database's 120-second fencing lease.
+export const maxDuration = 60;
 
 function privateJson(body: unknown, status: number) {
   const response = NextResponse.json(body, { status });

@@ -212,6 +212,59 @@ describe("shared sports sync orchestration", () => {
     );
   });
 
+  it("finalizes exactly once after a controlled slow default retry path", async () => {
+    vi.useFakeTimers();
+    try {
+      const deps = dependencies();
+      const targetedClaim = {
+        ...claim,
+        syncKind: "targeted" as const,
+        fixtureIds: ["1900001"],
+      };
+      deps.claim.mockResolvedValueOnce(targetedClaim);
+      const transport = vi.fn(
+        async () =>
+          new Promise<Response>((resolve) => {
+            setTimeout(
+              () => resolve(new Response("{}", { status: 503 })),
+              7_000,
+            );
+          }),
+      );
+
+      const result = runSportsSync(
+        {
+          systemActorId: actorId,
+          provider: "api-football",
+          apiKey: "recorded-test-key",
+          force: false,
+          transport,
+        },
+        deps,
+      );
+      await vi.runAllTimersAsync();
+
+      await expect(result).resolves.toEqual({
+        runId,
+        status: "failed",
+        reason: "PROVIDER_UNAVAILABLE",
+      });
+      expect(transport).toHaveBeenCalledTimes(3);
+      expect(deps.apply).not.toHaveBeenCalled();
+      expect(deps.finalize).toHaveBeenCalledOnce();
+      expect(deps.finalize).toHaveBeenCalledWith(
+        actorId,
+        targetedClaim,
+        expect.objectContaining({
+          status: "failed",
+          errorCode: "PROVIDER_UNAVAILABLE",
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("returns a typed failure when failure finalization also fails", async () => {
     const deps = dependencies();
     deps.finalize.mockRejectedValueOnce(new Error("stale lease"));
