@@ -1,14 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { parseInviteSecretFragment } from "@/features/membership/invite-fragment";
 import { hashInviteToken } from "@/features/membership/invite-token";
 import { UnavailableInvite } from "@/features/membership/components/unavailable-invite";
 
-export function InviteBootstrap({ publicId }: { publicId: string }) {
+export function InviteBootstrap({
+  authenticatedNavigation,
+  publicId,
+}: {
+  authenticatedNavigation?: ReactNode;
+  publicId: string;
+}) {
   const router = useRouter();
   const [unavailable, setUnavailable] = useState(false);
 
@@ -56,7 +62,9 @@ export function InviteBootstrap({ publicId }: { publicId: string }) {
   }, [publicId, router]);
 
   if (unavailable) {
-    return <UnavailableInvite />;
+    return (
+      <UnavailableInvite authenticatedNavigation={authenticatedNavigation} />
+    );
   }
 
   return (

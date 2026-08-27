@@ -215,21 +215,39 @@ export default async function InvitePage({
   params: Promise<{ publicId: string }>;
 }) {
   const { publicId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const authenticatedNavigation = user ? <AppHeader /> : undefined;
 
   if (!isValidInvitePublicId(publicId)) {
-    return <UnavailableInvite />;
+    return (
+      <UnavailableInvite
+        authenticatedNavigation={authenticatedNavigation}
+      />
+    );
   }
 
   const tokenHash = await getInviteAccessTokenHash(publicId);
   if (!tokenHash) {
-    return <InviteBootstrap publicId={publicId} />;
+    return (
+      <InviteBootstrap
+        authenticatedNavigation={authenticatedNavigation}
+        publicId={publicId}
+      />
+    );
   }
 
-  const supabase = await createClient();
   const result = await resolveInvite(supabase, publicId, tokenHash);
 
   if (result.status !== "found") {
-    return <InviteBootstrap publicId={publicId} />;
+    return (
+      <InviteBootstrap
+        authenticatedNavigation={authenticatedNavigation}
+        publicId={publicId}
+      />
+    );
   }
 
   const resolution = result.data;

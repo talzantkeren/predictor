@@ -191,6 +191,22 @@ async function assertInviteSkipTarget(page: Page) {
   await expect(mainTarget).toBeFocused();
 }
 
+async function assertUnavailableInviteNavigation(
+  page: Page,
+  authenticated: boolean,
+) {
+  await expect(
+    page.getByRole("link", { name: "חזרה לעמוד הראשי" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "הליגות שלי" })).toHaveCount(
+    authenticated ? 1 : 0,
+  );
+  await expect(page.getByRole("button", { name: "התנתקות" })).toHaveCount(
+    authenticated ? 1 : 0,
+  );
+  await assertInviteSkipTarget(page);
+}
+
 async function navigateToInvite(page: Page, url: string) {
   const rawTokenMatch = new URL(url).hash.match(
     /^#invite=([A-Za-z0-9_-]{43})$/,
@@ -355,6 +371,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     const leagueName = `ליגת תפוגה ${suffix}`;
     let managerContext: BrowserContext | undefined;
     let requesterContext: BrowserContext | undefined;
+    let expiredGuestContext: BrowserContext | undefined;
     let cleanupPublicId: string | undefined;
     let primaryFailure: unknown;
 
@@ -436,6 +453,16 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       );
 
       expireInviteInDisposableLocalDatabase(cleanupPublicId);
+      expiredGuestContext = await browser.newContext(secondaryContextOptions);
+      const expiredGuestPage = await expiredGuestContext.newPage();
+      await navigateToInvite(expiredGuestPage, invite);
+      await assertVisible(
+        expiredGuestPage.getByRole("heading", {
+          name: "קישור ההזמנה אינו זמין",
+        }),
+      );
+      await assertUnavailableInviteNavigation(expiredGuestPage, false);
+
       await requester.page
         .getByRole("button", { name: "פתיחת בקשת הצטרפות" })
         .click();
@@ -448,6 +475,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
           name: "קישור ההזמנה אינו זמין",
         }),
       );
+      await assertUnavailableInviteNavigation(requester.page, true);
 
       await manager.page.reload();
       await assertVisible(manager.page.getByText("פג תוקף", { exact: true }));
@@ -469,6 +497,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       }
 
       await Promise.allSettled([
+        expiredGuestContext?.close(),
         requesterContext?.close(),
         managerContext?.close(),
       ]);
@@ -523,6 +552,17 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     manager.page.on("pageerror", () => {
       managerConsoleErrorCount += 1;
     });
+    await page.goto("/invite/not-a-valid-public-id");
+    await assertVisible(
+      page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
+    );
+    await assertUnavailableInviteNavigation(page, false);
+    await manager.page.goto("/invite/not-a-valid-public-id");
+    await assertVisible(
+      manager.page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
+    );
+    await assertUnavailableInviteNavigation(manager.page, true);
+
     const leagueId = await createLeague(manager.page, leagueName);
     cleanupLeagueId = leagueId;
     const managerAccessToken = await signInForDataApi(
@@ -665,7 +705,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
-    await assertInviteSkipTarget(page);
+    await assertUnavailableInviteNavigation(page, false);
     const requesterRegistrationContext = await browser.newContext(
       secondaryContextOptions,
     );
@@ -888,7 +928,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       outsider.page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
-    await assertInviteSkipTarget(outsider.page);
+    await assertUnavailableInviteNavigation(outsider.page, true);
 
     const otherManager = await registerConfirmedUser({
       browser,

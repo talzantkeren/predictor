@@ -1,11 +1,16 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 
-export function UnavailableInvite() {
+export function UnavailableInvite({
+  authenticatedNavigation,
+}: {
+  authenticatedNavigation?: ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <SkipToMainLink />
+      {authenticatedNavigation ?? <SkipToMainLink />}
       <main
         id="main-content"
         tabIndex={-1}
