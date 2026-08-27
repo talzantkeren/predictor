@@ -28,6 +28,7 @@
     "submission:evidence:check": "node scripts/check-final-submission-evidence.mjs",
     "presentation:check": "node scripts/check-presentation-artifacts.mjs",
     "hardening:check": "node scripts/check-final-hardening.mjs",
+    "owner-runbooks:check": "node scripts/check-slice9-owner-runbooks.mjs",
     "scale:plans": "tsx scripts/check-scale-plans.ts",
     "sports:secret-boundaries": "node scripts/check-sports-secret-boundaries.mjs",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",

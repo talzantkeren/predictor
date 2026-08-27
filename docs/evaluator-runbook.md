@@ -85,7 +85,7 @@ npm run presentation:check
 
 | שער | פעולה מדויקת | ראיה מותרת |
 | --- | --- | --- |
-| Hosted Email | להגדיר delivery מאושר/custom SMTP ולבצע confirmation+recovery עם נמען disposable מורשה | תאריך, origin, outcome וקוד בטוח; ללא recipient או credential |
+| Hosted Email | לבצע את `docs/runbooks/slice-9-def-004-hosted-auth.md` כפעולה רציפה אחת עם delivery מאושר ונמען disposable מורשה | למלא את `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; ללא recipient או credential |
 | Hosted Cron | לפרוס candidate ולוודא response סופי יחיד, run סופי יחיד ו־lease משוחרר תחת budget | SHA, timestamps, status/counters מסוננים |
 | Vercel Sports secret | להסיר Preview scope ולהשאיר `SPORTS_API_KEY` Sensitive Production-only | שמות משתנים ו־scopes בלבד |
 | native zoom | Chrome Zoom=200% על candidate, keyboard ו־viewport מייצג | viewport, zoom, מסך, PASS/FAIL |

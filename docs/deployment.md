@@ -58,4 +58,5 @@ npx vitest run src/features/auth/auth-rules.test.ts
 הבדיקה הראשונה דורשת את ה־origins המדויקים, את הסיווג הנוכחי של Preview ואת
 היעדרם של callback wildcards/הבטחות stale. השנייה מאמתת התאמה מדויקת ומניעת
 open redirect בקוד. בדיקת Hosted מלאה נשארת ראיה ידנית לפי
-`docs/evidence/slice-9/w2/S9-DEF-004.md`.
+`docs/runbooks/slice-9-def-004-hosted-auth.md`; את התוצאה ממלאים רק לאחר הרצה
+ב־`docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`.
