@@ -29,6 +29,7 @@
     "presentation:check": "node scripts/check-presentation-artifacts.mjs",
     "hardening:check": "node scripts/check-final-hardening.mjs",
     "scale:plans": "tsx scripts/check-scale-plans.ts",
+    "sports:secret-boundaries": "node scripts/check-sports-secret-boundaries.mjs",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run test:e2e"
   },
