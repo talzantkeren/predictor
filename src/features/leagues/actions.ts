@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import {
@@ -13,6 +14,7 @@ import {
 import { getLeagueSettingsAuthorization } from "@/features/leagues/settings-query";
 import {
   createLeague,
+  startLeague,
   updateLeagueSettings,
 } from "@/features/leagues/service";
 
@@ -28,6 +30,11 @@ export type LeagueSettingsActionState = {
   fieldErrors?: LeagueFieldErrors;
   settingsVersion?: number;
   scoringVersion?: number;
+};
+
+export type LeagueLifecycleActionState = {
+  status: "idle" | "success" | "error";
+  message?: string;
 };
 
 function getPrizeInputs(formData: FormData) {
@@ -151,5 +158,41 @@ export async function updateLeagueSettingsAction(
       : "ההגדרות כבר מעודכנות; לא נוצר שינוי נוסף.",
     settingsVersion: result.settingsVersion,
     scoringVersion: result.scoringVersion,
+  };
+}
+
+export async function startLeagueAction(
+  leagueId: string,
+  _previousState: LeagueLifecycleActionState,
+  _formData: FormData,
+): Promise<LeagueLifecycleActionState> {
+  void _previousState;
+  void _formData;
+  const parsedLeagueId = z.string().uuid().safeParse(leagueId);
+  if (!parsedLeagueId.success) {
+    return { status: "error", message: "לא ניתן להפעיל את הליגה." };
+  }
+
+  const { supabase } = await requireAuthenticatedUser(
+    `/leagues/${parsedLeagueId.data}`,
+  );
+  const result = await startLeague(supabase, parsedLeagueId.data);
+
+  if (!result.ok) {
+    return { status: "error", message: result.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/leagues/${parsedLeagueId.data}`);
+  revalidatePath(`/leagues/${parsedLeagueId.data}/settings`);
+
+  return {
+    status: "success",
+    message:
+      result.code === "ACTIVATION_PERSIST_LATE"
+        ? "הליגה הופעלה. נרשם איחור תפעולי ביחס לשריקת הפתיחה הראשונה."
+        : result.changed
+          ? "הליגה הופעלה וחוקי התחרות ננעלו."
+          : "הליגה כבר פעילה.",
   };
 }

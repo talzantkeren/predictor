@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
+import { StartLeagueForm } from "@/features/leagues/components/start-league-form";
 import {
   formatDemoAmount,
   formatPrizePercentage,
@@ -209,6 +210,11 @@ export default async function LeagueSummaryPage({
               <h2 id="management-title" className="text-xl font-black text-ink">
                 כלים לניהול הליגה
               </h2>
+              {league.status === "open" ? (
+                <div className="mt-4">
+                  <StartLeagueForm leagueId={league.id} />
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3">
                 <Link
                   href={`/leagues/${league.id}/members`}

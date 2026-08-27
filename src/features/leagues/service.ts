@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   getSafeLeagueErrorMessage,
+  getSafeLeagueLifecycleErrorMessage,
   getSafeLeagueSettingsErrorMessage,
 } from "@/features/leagues/errors";
 import type {
@@ -99,5 +100,58 @@ export async function updateLeagueSettings(
     settingsVersion: result.settings_version,
     scoringVersion: result.scoring_version,
     changed: result.changed,
+  };
+}
+
+const leagueActivationCodes = [
+  "MANUAL_ACTIVATION",
+  "ACTIVATION_PERSIST_LATE",
+  "ALREADY_ACTIVE",
+] as const;
+
+type LeagueActivationCode = (typeof leagueActivationCodes)[number];
+
+function isLeagueActivationCode(value: unknown): value is LeagueActivationCode {
+  return (
+    typeof value === "string" &&
+    (leagueActivationCodes as readonly string[]).includes(value)
+  );
+}
+
+type StartLeagueResult =
+  | {
+      ok: true;
+      changed: boolean;
+      code: LeagueActivationCode;
+    }
+  | { ok: false; message: string };
+
+export async function startLeague(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+): Promise<StartLeagueResult> {
+  const { data, error } = await supabase.rpc("start_league", {
+    p_league_id: leagueId,
+  });
+  const result = data?.[0];
+
+  if (
+    error ||
+    !result ||
+    result.result_league_id !== leagueId ||
+    result.result_status !== "active" ||
+    typeof result.result_changed !== "boolean" ||
+    !isLeagueActivationCode(result.result_code)
+  ) {
+    return {
+      ok: false,
+      message: getSafeLeagueLifecycleErrorMessage(error),
+    };
+  }
+
+  return {
+    ok: true,
+    changed: result.result_changed,
+    code: result.result_code,
   };
 }

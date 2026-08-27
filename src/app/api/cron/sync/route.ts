@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 
 import { getSyncError, SyncError } from "@/features/sync/errors";
 import { runSportsSync } from "@/features/sync/orchestrator";
-import { getCronEnv } from "@/lib/env";
+import { activateDueLeagues } from "@/features/sync/private-sync-gateway";
+import { getCronEnv, getSportsSyncEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,10 +104,22 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Lifecycle activation is the first authenticated business write in the
+    // existing Cron. It commits independently before provider configuration,
+    // branching, claiming, or I/O, so a provider failure cannot roll it back.
+    await activateDueLeagues(cronEnv.SYNC_SYSTEM_ACTOR_ID);
+
+    let sportsEnv: ReturnType<typeof getSportsSyncEnv>;
+    try {
+      sportsEnv = getSportsSyncEnv();
+    } catch (error) {
+      throw new SyncError("SYNC_NOT_CONFIGURED", 503, { cause: error });
+    }
+
     const attempt = await runSportsSync({
       systemActorId: cronEnv.SYNC_SYSTEM_ACTOR_ID,
-      provider: cronEnv.SPORTS_API_PROVIDER,
-      apiKey: cronEnv.SPORTS_API_KEY,
+      provider: sportsEnv.SPORTS_API_PROVIDER,
+      apiKey: sportsEnv.SPORTS_API_KEY,
       force: false,
     });
 

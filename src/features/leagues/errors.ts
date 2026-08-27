@@ -55,3 +55,23 @@ export function getSafeLeagueSettingsErrorMessage(error: unknown) {
 
   return "לא ניתן לשמור את הגדרות הליגה כרגע. יש לנסות שוב.";
 }
+
+const safeLeagueLifecycleErrors: Record<string, string> = {
+  UNAUTHENTICATED: "פג תוקף ההתחברות. יש להתחבר מחדש.",
+  LEAGUE_NOT_STARTABLE: "אפשר להפעיל רק ליגה פתוחה שטרם הופעלה.",
+};
+
+export function getSafeLeagueLifecycleErrorMessage(error: unknown) {
+  const message = getDatabaseErrorValue(error, "message");
+
+  if (message && safeLeagueLifecycleErrors[message]) {
+    return safeLeagueLifecycleErrors[message];
+  }
+
+  // Missing and foreign league IDs deliberately share an opaque response.
+  if (message === "LEAGUE_NOT_FOUND") {
+    return "לא ניתן להפעיל את הליגה.";
+  }
+
+  return "לא ניתן להפעיל את הליגה כרגע. יש לנסות שוב.";
+}

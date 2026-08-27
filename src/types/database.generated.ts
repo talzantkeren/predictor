@@ -376,6 +376,7 @@ export type Database = {
       }
       leagues: {
         Row: {
+          activated_at: string | null
           allow_late_join: boolean
           created_at: string
           demo_entry_fee_agorot: number
@@ -391,6 +392,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           allow_late_join?: boolean
           created_at?: string
           demo_entry_fee_agorot?: number
@@ -406,6 +408,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           allow_late_join?: boolean
           created_at?: string
           demo_entry_fee_agorot?: number
@@ -1058,6 +1061,14 @@ export type Database = {
       }
     }
     Functions: {
+      activate_due_leagues: {
+        Args: never
+        Returns: {
+          activated_count: number
+          late_count: number
+          recorded_at: string
+        }[]
+      }
       apply_api_football_sync_batch: {
         Args: {
           p_generation: number
@@ -1473,6 +1484,17 @@ export type Database = {
           result_match_id: string
           result_status: Database["public"]["Enums"]["match_status"]
           result_version: number
+        }[]
+      }
+      start_league: {
+        Args: { p_league_id: string }
+        Returns: {
+          result_activated_at: string
+          result_changed: boolean
+          result_code: string
+          result_league_id: string
+          result_recorded_at: string
+          result_status: Database["public"]["Enums"]["league_status"]
         }[]
       }
       submit_join_request: {

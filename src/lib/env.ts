@@ -58,7 +58,7 @@ const cronEnvSchema = z.object({
     canonicalUuidPattern,
     "SYNC_SYSTEM_ACTOR_ID must be a canonical UUID",
   ),
-}).and(sportsSyncEnvSchema);
+});
 
 const adminEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -122,8 +122,6 @@ export function parseCronEnv(input: EnvironmentInput) {
   return cronEnvSchema.parse({
     CRON_SECRET: optionalValue(input.CRON_SECRET),
     SYNC_SYSTEM_ACTOR_ID: optionalValue(input.SYNC_SYSTEM_ACTOR_ID),
-    SPORTS_API_PROVIDER: input.SPORTS_API_PROVIDER,
-    SPORTS_API_KEY: optionalValue(input.SPORTS_API_KEY),
   });
 }
 
@@ -201,8 +199,6 @@ export function getCronEnv() {
   return parseCronEnv({
     CRON_SECRET: process.env.CRON_SECRET,
     SYNC_SYSTEM_ACTOR_ID: process.env.SYNC_SYSTEM_ACTOR_ID,
-    SPORTS_API_PROVIDER: process.env.SPORTS_API_PROVIDER,
-    SPORTS_API_KEY: process.env.SPORTS_API_KEY,
   });
 }
 

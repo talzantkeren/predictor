@@ -13,6 +13,32 @@ import type {
 import { createSystemActorAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database.generated";
 
+const activationSummarySchema = z
+  .object({
+    activated_count: z.number().int().nonnegative(),
+    late_count: z.number().int().nonnegative(),
+    recorded_at: z.string().datetime({ offset: true }),
+  })
+  .refine((summary) => summary.late_count <= summary.activated_count)
+  .transform((summary) => ({
+    activatedCount: summary.activated_count,
+    lateCount: summary.late_count,
+    recordedAt: summary.recorded_at,
+  }));
+
+export async function activateDueLeagues(systemActorId: string) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const { data, error } = await admin.rpc("activate_due_leagues");
+
+  if (error) throw getDatabaseSyncError(error);
+
+  const parsed = activationSummarySchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed.success) throw new SyncError("SYNC_UNAVAILABLE", 503);
+  return parsed.data;
+}
+
 const manualCatalogApplicationSchema = z
   .object({
     result_run_id: z.string().uuid(),
