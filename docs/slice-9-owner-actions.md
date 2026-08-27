@@ -8,30 +8,16 @@ Status: `OWNER_ACTION_REQUIRED`.
 #14. אין לפתוח, להעתיק, לצלם או לשמור secret, כתובת נמען, זהות evaluator,
 סיסמה, cookie, signed URL או payload של provider.
 
-## 1. S9-DEF-025 — להסיר Preview scope מ־Sports secret
+## 1. S9-DEF-025 — נסגר
 
-**איפה:** Vercel → predictor → Settings → Environment Variables →
-`SPORTS_API_KEY` → Edit.
+`VERIFIED` ב־28 באוגוסט 2026. רשומת ה־Sensitive הקיימת צומצמה ל־Production
+בלבד באמצעות עדכון target בלבד, בלי לקרוא, להדפיס, למשוך או להזין מחדש את
+הערך. Preview חדש הגיע ל־READY ועבר smoke במצב Manual ללא key; סריקות bundle
+ולוגים עברו, ונצפתה המשכיות Cron ב־Production בקריאה בלבד. המטריצה המסוננת
+נמצאת ב־`docs/evidence/slice-9/w5/S9-DEF-025-environment-scope-matrix.md`.
 
-**פעולה יחידה:** לבטל את Preview, להשאיר Production מסומן ולשמור בלי Reveal או
-Copy ובלי לפתוח את הערך. אם הממשק דורש להקליד מחדש את הערך, לעצור ולהשתמש
-ישירות במנהל הסודות המאושר; אין להעביר אותו למסוף או לראיה.
-
-**ראיה לשמור:** צילום מצונזר שמראה רק name, Sensitive ו־Production scope
-בחבילת owner בשם `S9-DEF-025/01-production-only-scope.png`. לעדכן names/scopes
-בלבד ב־`docs/evidence/slice-9/w5/S9-DEF-025.md` ובמטריצה
-`docs/evidence/slice-9/w5/S9-DEF-025-environment-scope-matrix.md`; עמודת Value
-נשארת ריקה.
-
-**אימות לאחר הפעולה:** לסנן כל listing לפני שמירה ולוודא שאין ערכים.
-
-```powershell
-vercel env ls preview
-vercel env ls production
-npm.cmd run sports:secret-boundaries
-```
-
-ה־Preview listing חייב להיות ללא השם; ב־Production תופיע שורת Sensitive אחת.
+אין פעולת owner שנותרה לרשומה זו. אין להריץ listing גולמי שעלול לכלול עמודת
+value.
 
 ## 2. S9-DEF-022 — Chrome native 200%
 

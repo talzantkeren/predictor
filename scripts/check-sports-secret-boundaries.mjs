@@ -22,11 +22,24 @@ async function sourceFiles(directory) {
   return nested.flat();
 }
 
-const [workflow, example, matrix, files] = await Promise.all([
+const [
+  workflow,
+  example,
+  matrix,
+  files,
+  apiFootballClientTest,
+  providerFactoryTest,
+  providerPoc,
+  syncE2e,
+] = await Promise.all([
   readFile(workflowPath, "utf8"),
   readFile(examplePath, "utf8"),
   readFile(matrixPath, "utf8").catch(() => undefined),
   sourceFiles("src"),
+  readFile("src/features/sports/api-football-client.test.ts", "utf8"),
+  readFile("src/features/sports/provider-factory.test.ts", "utf8"),
+  readFile("scripts/sports-provider-poc.ts", "utf8"),
+  readFile("e2e/sync.spec.ts", "utf8"),
 ]);
 
 invariant(
@@ -63,25 +76,37 @@ for (const path of files.filter((candidate) =>
 }
 
 invariant(matrix, `Missing sanitized environment matrix: ${matrixPath}`);
+invariant(matrix.includes("Status: `VERIFIED`"), "Environment matrix is not VERIFIED.");
+const header = matrix
+  .split(/\r?\n/u)
+  .find((line) => line.startsWith("| Variable name |"));
+invariant(header, "Environment matrix is missing its names/scopes header.");
+invariant(!/\|\s*Value\s*\|/iu.test(header), "Environment matrix has a value column.");
+const variableRows = matrix
+  .split(/\r?\n/u)
+  .filter((line) => /^\| `SPORTS_API_(?:KEY|PROVIDER)` \|/u.test(line));
+invariant(variableRows.length === 8, `Expected eight scope rows, found ${variableRows.length}.`);
 for (const environment of ["Production", "Preview", "Local", "CI"]) {
-  const row = matrix
-    .split(/\r?\n/u)
-    .find((line) => line.startsWith(`| ${environment} |`));
-  invariant(row, `Environment matrix is missing: ${environment}`);
-  const cells = row.split("|").map((cell) => cell.trim());
-  invariant(
-    cells.at(-2) === "",
-    `The ${environment} value cell must remain blank.`,
-  );
+  for (const name of ["SPORTS_API_KEY", "SPORTS_API_PROVIDER"]) {
+    invariant(
+      variableRows.some((line) => line.startsWith(`| \`${name}\` | ${environment} |`)),
+      `Environment matrix is missing ${name}/${environment}.`,
+    );
+  }
 }
 for (const expected of [
-  "Preview",
-  "Local",
-  "CI",
-  "OWNER_ACTION_REQUIRED",
-  "uncheck Preview",
+  "Production only",
+  "Sensitive",
+  "No Preview or branch-specific association",
+  "Not present",
 ]) {
   invariant(matrix.includes(expected), `Environment matrix is missing: ${expected}`);
+}
+for (const stale of ["OWNER_ACTION_REQUIRED", "uncheck Preview", "Preview+Production"]) {
+  invariant(
+    !variableRows.some((line) => line.includes(stale)),
+    `Environment matrix scope rows contain stale state: ${stale}`,
+  );
 }
 invariant(
   !/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(matrix),
@@ -92,7 +117,25 @@ invariant(
   "Environment matrix contains a secret assignment.",
 );
 
-console.log(
-  "Sports secret boundaries verified: CI/Local are Manual, client modules have no credential path, and four matrix values are blank.",
+invariant(
+  apiFootballClientTest.includes("clientWithTransport") &&
+    apiFootballClientTest.includes("transport,"),
+  "API-Football client tests must inject a fake transport.",
+);
+invariant(
+  providerFactoryTest.includes("transport: async"),
+  "Provider-factory tests must inject a fake transport.",
+);
+invariant(
+  providerPoc.includes("new ManualSportsProvider"),
+  "The Sports POC must remain on the Manual provider.",
+);
+invariant(
+  syncE2e.includes("browserProviderRequests") &&
+    syncE2e.includes("expect(browserProviderRequests).toEqual([])"),
+  "The sync E2E must assert zero browser traffic to the live provider.",
 );
 
+console.log(
+  "Sports secret boundaries verified: Production-only Sensitive scope is recorded without values; Preview/Local/CI remain keyless Manual paths and tests use fixtures/fake transports.",
+);

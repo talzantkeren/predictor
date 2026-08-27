@@ -1,38 +1,24 @@
 # S9-DEF-025 — sanitized environment/scope matrix
 
-Status: `OWNER_ACTION_REQUIRED`
+Status: `VERIFIED`
 
-This matrix records names, providers and scopes only. Every value cell is
-intentionally blank and must remain blank in committed evidence.
+Observed 2026-08-28. This matrix contains variable names, environments,
+classification and scope only. It contains no value column, value, hash,
+length, prefix, suffix or other fragment of a value.
 
-| Environment | Expected provider | Repository/CI observation | Expected `SPORTS_API_KEY` scope | Hosted scope observation | Value |
-| --- | --- | --- | --- | --- | --- |
-| Production | `api-football` | Server-only Production contract | Present, Sensitive, Production-only | Read-only listing previously showed the key includes Production | |
-| Preview | `manual` | `manual` | Absent | Read-only listing and owner-provided state show Preview is still selected | |
-| Local | `manual` | `manual` in `.env.example`; key blank | Absent | Not applicable | |
-| CI | `manual` | `manual` in workflow and runs `33097585902` / `33097590476`; no key name in sanitized logs | Absent | Not applicable | |
+| Variable name | Environment | Classification | Scope observation |
+| --- | --- | --- | --- |
+| `SPORTS_API_KEY` | Production | Sensitive | One record; Production only; all branches |
+| `SPORTS_API_KEY` | Preview | Not present | No Preview or branch-specific association |
+| `SPORTS_API_KEY` | Local | Not present | `.env.local` sanitized check: no nonblank key |
+| `SPORTS_API_KEY` | CI | Not present | Workflow has no key entry |
+| `SPORTS_API_PROVIDER` | Production | Sensitive | One record; Production only; all branches |
+| `SPORTS_API_PROVIDER` | Preview | Not present | No Preview or branch-specific association |
+| `SPORTS_API_PROVIDER` | Local | Local configuration | Local scope only |
+| `SPORTS_API_PROVIDER` | CI | Workflow configuration | CI scope only |
 
-## Single remaining owner action
-
-In Vercel, open **Project → Settings → Environment Variables → SPORTS_API_KEY →
-Edit**, uncheck Preview, leave Production selected, and save without using the
-reveal/copy controls and without opening the value. If the UI requires replacing
-the variable rather than editing its targets, stop and use the approved secrets
-manager directly; never paste the value into evidence.
-
-Save a screenshot to the owner evidence bundle showing only the variable name,
-Sensitive classification and Production scope. Keep the Value column above
-blank.
-
-Afterward verify without reading a value:
-
-```powershell
-vercel env ls preview
-vercel env ls production
-npm.cmd run sports:secret-boundaries
-```
-
-The sanitized listings must show no `SPORTS_API_KEY` row in Preview and one
-Sensitive Production row. Record only names/scopes and the checker result in
-`docs/evidence/slice-9/w5/S9-DEF-025.md`.
-
+Vercel evidence came from `/v10/projects/<linked-project>/env?decrypt=false`,
+captured in memory and projected to the four columns above. Raw `vercel env ls`
+was not used because its table can contain a value column. The key's combined
+Preview+Production record was narrowed with one target-only PATCH whose body
+contained only `target=[production]`; no value field was read or sent.
