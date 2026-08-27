@@ -591,6 +591,14 @@ DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך
 indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב־Desktop וב־Pixel 5.
 בדיקת native 200% מתועדת בנפרד בראיית S9-DEF-022 ואינה מוחלפת ב־CSS zoom.
 
+רגרסיית `e2e/accessibility-matrix.spec.ts` מריצה בנוסף את דפי הכניסה הציבוריים
+`/`, ‏`/login`, ‏`/register` ו־`/forgot-password` בכל אחד מהרוחבים
+360/390/768/1024/1440, בשני פרויקטי Chromium. בכל שילוב נבדקים axe WCAG
+A/AA כולל contrast, סדר מקלדת ו־focus indicator בכל תחנה, 44×44 ליעדי פעולה
+שאינם קישורי טקסט inline, ‏RTL, overflow ו־reduced motion. הרגרסיה חשפה תחילה
+שדות Auth בגובה 42px וקישור שחזור בגובה 20px; לאחר התיקון עברה 10/10 והפיקה
+40 screenshots מקומיים מסוננים תחת `tmp/final-accessibility`.
+
 ### Slice 9 W6 — WebServer error signal
 
 `scripts/run-e2e.ts` מעביר את פלט Playwright המקומי כרגיל אך מכשיל run שבו

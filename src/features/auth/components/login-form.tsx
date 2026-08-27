@@ -42,7 +42,7 @@ export function LoginForm({
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>
@@ -54,7 +54,7 @@ export function LoginForm({
           </label>
           <Link
             href="/forgot-password"
-            className="text-sm font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
+            className="inline-flex min-h-11 items-center text-sm font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
           >
             שכחתי סיסמה
           </Link>
@@ -68,7 +68,7 @@ export function LoginForm({
           minLength={8}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="password-error" messages={fieldErrors.password} />
       </div>
