@@ -56,6 +56,31 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-REQ-003 | P1 | W8 | ראיית הגשה סופית וגישת evaluator | OWNER_ACTION_REQUIRED | §11, `S9-REQ-003` | `docs/evidence/slice-9/w8/S9-REQ-003.md` | `1e3b9968c54edca78bab72ffefa491cbd2e0454f`, `450ece51b5cfd4f051e745b46c4bfde0aa9bd6b2` | Billing נפתר: run ‏33090719466 attempt 2 חשף כשל stream אמיתי על e791f36; אחרי התיקון שני runs ‏33097585902/33097590476 עברו בכל 3 jobs על 223de65. runbook מדויק, template ריק ושני checkers עברו. פעולה יחידה: owner מבצע final Production/evaluator closeout רציף על SHA סופי אחד, כולל Hosted parity ו־incognito. |
 | S9-REQ-005 | P2 | W8 | hardening וראיית בדיקה סופית | OWNER_ACTION_REQUIRED | §11, `S9-REQ-005` | `docs/evidence/slice-9/w8/S9-REQ-005.md` | `a0610df0c0dad8634cbf512f9ff0b74b1bde728b`, `a6b45d12a0cc96361e540ef603339a01990127bd` | local+exact clean-clone עברו: 631 Vitest, ‏1443 DB, ‏38 E2E, build/lint/types/audit/reset/scale/5-width UI ושלוש חזרות; checker דורש disposition ו־owner row יחיד. פעולה יחידה: owner מבצע read-only Hosted password policy + Security/Performance Advisor export/dispositions באותו session. |
 
+## Final closeout — agent-observed checkpoint
+
+Checkpoint `4ee7bedbb096c8dcd1112324bf9b317ba5cf4712` נבדק ב־27.8.2026 לאחר
+השלמת `docs/slice-9-owner-actions.md`, ‏`docs/slice-9-review-packet.md` וסנכרון
+ספר הפרויקט. כל התוצאות להלן נצפו בפועל מול Local Supabase בלבד:
+
+| Gate | תוצאה נצפית |
+| --- | --- |
+| `npm.cmd ci` | PASS — ‏427 packages נוספו, 428 נסרקו, 0 vulnerabilities |
+| `npm.cmd run verify` | PASS — lint; strict typecheck; ‏49/631 Vitest; ‏30/1443 pgTAP; types current; build; 52-artifact client scan; ‏38/38 Playwright ב־6.4m וללא `[WebServer] Error` |
+| standalone build + synthetic client scan | PASS — Next.js 16.3.0 production build; sentinel סינתטי נעדר מ־52 artifacts |
+| `npm.cmd audit --audit-level=low` | PASS — 0 vulnerabilities |
+| local DB lint | PASS — public/private, ‏`results=[]` |
+| local forward reset | PASS — exit 0, כל 36 migrations עד `20260827180000`, seed ו־restart |
+| generated types | PASS — current אחרי ה־reset |
+| scale plans | PASS — ארבעה plans תחומים; 0.166/0.188/3.271/1.797ms; rows ‏51/51/51/26 |
+| viewport/accessibility | PASS — ‏10/10; ‏360/390/768/1024/1440 בשני פרויקטי Chromium; axe/keyboard/focus/contrast/touch/RTL/overflow |
+| S9-DEF-024 repeats | PASS — prediction-lock Desktop+Mobile ‏2/2 ב־27.1s, ‏2/2 ב־26.8s, ‏2/2 ב־27.1s; ללא server error |
+| submission contracts | PASS — hardening, sports secret boundary, presentation, owner runbooks, final evidence, 15-document/34-local-link/5-external-link online check |
+| project book | PASS — regeneration דטרמיניסטית; 5/5 pages הומרו read-only דרך Word 16 + Poppler ונבדקו חזותית ללא clipping/overlap/table/glyph/header/footer defect; ה־LibreOffice renderer המועדף לא היה זמין מקומית |
+
+בדיקת native Chrome 200%, ‏Hosted/Production, delivery, evaluator והרצה אנושית
+לא הוסקו מן המטריצה ונשארים בשבע פעולות owner, אחת לכל רשומה פתוחה. מצב
+המסירה נשאר 18 `VERIFIED` ו־7 `OWNER_ACTION_REQUIRED`.
+
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
 רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
