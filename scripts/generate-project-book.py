@@ -331,7 +331,7 @@ def configure_section(document: Document) -> None:
     footer_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     add_rich_text(
         footer_paragraph,
-        "Predictor1 | RUNI 2026 | v1.2 | 27.8.2026 | page ",
+        "Predictor1 | RUNI 2026 | v1.3 | 27.8.2026 | page ",
         size=9,
         color=RGBColor(0x5B, 0x64, 0x70),
     )

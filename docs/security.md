@@ -660,3 +660,21 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | שתי השלמות יוצרות snapshot/audit כפול | league lock + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
 | provider עוקף review במירוץ | advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
 | תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |
+
+## סיכונים שיוריים ופעולות owner למסירה
+
+הגבולות המקומיים והאוטומטיים אינם הופכים פעולה Hosted או אנושית ל־PASS. נכון
+ל־27 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
+
+- להגדיר delivery מאושר או custom SMTP ולבצע confirmation/recovery עם נמען
+  disposable מורשה; Production URL לבדו אינו ראיית Email.
+- לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
+  ומשחרר lease תחת תקציב 120 השניות.
+- להסיר את `SPORTS_API_KEY` מ־Preview, להשאירו Sensitive ו־Production-only,
+  ולתעד רק שמות משתנים ו־scopes.
+- לבצע Chrome native 200% על candidate SHA ולתעד תוצאה; CSS zoom אינו תחליף.
+- לבצע חזרה אנושית 10–15 דקות ולמסור גישת evaluator מחוץ ל־repository.
+
+הוראות owner המדויקות וקובצי המסירה מרוכזים ב־
+[`evaluator-runbook.md`](./evaluator-runbook.md). עד להשלמתן הן נשארות
+`OWNER_ACTION_REQUIRED`; הן אינן מצדיקות החלשת RLS, בדיקות או מצב Demo.

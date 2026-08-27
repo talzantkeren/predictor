@@ -145,6 +145,17 @@ async function capturePresentationFallback(
   });
 }
 
+async function settleResponseStreamsBeforeCleanup(pages: Page[]) {
+  // The last report navigation streams an RSC response. Let both authenticated
+  // pages finish before closing their contexts so teardown cannot abort the
+  // destination stream after the assertions have already passed.
+  await Promise.all(
+    pages.map((candidate) =>
+      candidate.waitForLoadState("networkidle", { timeout: 10_000 }),
+    ),
+  );
+}
+
 async function expectReportPoints({
   page,
   displayName,
@@ -479,6 +490,7 @@ test.describe("Slice 9 product lifecycle", () => {
     expect(layout.dir).toBe("rtl");
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
 
+    await settleResponseStreamsBeforeCleanup([manager.page, member.page]);
     await Promise.all([manager.context.close(), member.context.close()]);
   });
 });

@@ -12,7 +12,8 @@ const packageJson = JSON.parse(
 
 describe("derived project book contract", () => {
   it("uses rerun counts and the current Slice 8/9 state", () => {
-    expect(source).toContain("624/624");
+    expect(source).toContain("גרסה 1.3");
+    expect(source).toContain("627/627 ב־48 קבצים");
     expect(source).toContain("1443/1443");
     expect(source).toContain("28/28");
     expect(source).toContain("Slice 9 היא הפרוסה הנוכחית");
@@ -27,6 +28,8 @@ describe("derived project book contract", () => {
     expect(source).toContain("[אפיון המוצר](product.md)");
     expect(source).toContain("[ארכיטקטורה ואבטחה](architecture.md)");
     expect(source).toContain("[תכנית טכנית וסדר בדיקות](technical-plan.md)");
+    expect(source).toContain("[הוראות evaluator](evaluator-runbook.md)");
+    expect(source).toContain("[חבילת המצגת](../presentation/README.md)");
   });
 
   it("exposes deterministic generation and drift-check commands", () => {

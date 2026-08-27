@@ -71,6 +71,12 @@ trigger ידני של מנהל יכול לעקוף due-window בלבד: `backoff
 - לא נוסף index עבור DEF-008: clear פונה למשחק יחיד לפי PK ומאתר את ליגות
   העונה דרך ה־index הקיים על `leagues.season_id`. ה־critical section משנה דגל
   אחד ואודיט אחד בלבד; אין scan של predictions ואין הצדקה ל־cache או queue.
+- רשימת החברים הפעילים של Slice 9 משתמשת ב־keyset יציב של 25 שורות ומבקשת 26
+  כדי לזהות עמוד נוסף. היא מחזירה DTO מצומצם ואינה טוענת join requests או
+  proofs עבור חבר רגיל.
+- completion נועלת ליגה אחת וילדים בסדר קנוני, מקפיאה snapshot רק למשחקי אותה
+  עונה וסוגרת בקשות פתוחות באותה transaction. זהו critical section תחום
+  לליגה; אין leaderboard גלובלי או scan בין ליגות.
 
 ## גבולות ורמזי הרחבה
 
@@ -87,6 +93,9 @@ trigger ידני של מנהל יכול לעקוף due-window בלבד: `backoff
   מוסיף proxy או service נוסף מראש.
 - אלפי משתתפים בליגה עשויים להצדיק materialized leaderboard; מאות משתמשים
   נשארים בטווח query רגיל עם indexes והניקוד השמור.
+- התאמת timeout של Hosted Cron לתקציב 120 שניות אומתה מקומית. קישור response
+  סופי יחיד ושחרור lease בפריסת Vercel נשארים פעולת owner מתועדת; אין להסיק
+  מן המודל המקומי SLA של Hosted לפני הראיה הזאת.
 
 ## מדדים תפעוליים
 

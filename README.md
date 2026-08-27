@@ -15,9 +15,11 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 והרצת ראיה חדשה. החוזה המלא נמצא ב־
 [`docs/deployment.md`](./docs/deployment.md).
 
-מצב נוכחי: Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. השלב הבא
-הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה. ראיות ה־Canary
-המסוננות נמצאות ב־
+מצב נוכחי: מימוש Slice 9 כולל lifecycle מלא, hardening וחבילת הצגה. ענף
+ה־candidate עדיין עובר את שערי המסירה הסופיים; פעולות owner שלא ניתנות
+לאוטומציה נשארות מסומנות ואינן מוצגות כ־PASS. הוראות evaluator בטוחות נמצאות
+ב־[`docs/evaluator-runbook.md`](./docs/evaluator-runbook.md), וראיות ה־Canary
+ההיסטוריות והמסוננות נמצאות ב־
 [`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
 
 בדיקת Preview מ־15 באוגוסט 2026 היא ראיה היסטורית בלבד ואינה מתארת את ה־Preview
@@ -190,10 +192,10 @@ API-Football המאוחרת אינה משנה את השורות האלה, ולא
 
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
 Slice 7 הוסיף observability ו־Cron ידני. Slice 7b הוסיף קטלוג API-Football
-provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c מוסיף
-שפה חזותית אחידה ומיישם אותה בדשבורד, בתקציר הליגה, במשחקים ובדירוג בלי לשנות
-נתיבים או התנהגות עסקית; דוח מנהל לא־כספי הוא Slice 8 והקשחה, מסמכים והצגה
-הם Slice 9.
+provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c הוסיף
+שפה חזותית אחידה לדשבורד, לתקציר הליגה, למשחקים ולדירוג. Slice 8 הוסיף דוח
+מנהל לא־כספי; Slice 9 השלים את מחזור החיים, ההקשחה וחבילת ההצגה בלי לשנות את
+גבול ה־Demo.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 
@@ -350,8 +352,8 @@ readonly, accent סמנטי לקישור הזמנה ומצבי focus/disabled ה
 שינוי בנתונים, בהרשאות או בהתנהגות העסקית. `viewerIsManager` הוא ערך תצוגה
 שנגזר בשרת לצורך tabs בלבד ואינו מחליף הרשאה על המשאב.
 ה־Preview של Slice 7c עבר בדיקות רספונסיביות ואישור חזותי ב־25 באוגוסט 2026.
-Slice 8 — דוח מנהל לא־כספי — הושלם; Slice 9 סוגר את lifecycle וממשיך
-ל־Hardening ולמסמכי ההגשה.
+היסטוריית העיצוב נשמרת כאן; מצב ה־candidate העדכני כולל גם את Slice 8 ואת
+מחזור החיים המוצרי של Slice 9 המתואר להלן.
 
 ## Slice 8: דוח מנהל לא־כספי
 
@@ -366,16 +368,30 @@ Slice 8 — דוח מנהל לא־כספי — הושלם; Slice 9 סוגר את
 מקבלים not-found אטום גם אם הם מנחשים את ה־URL. tab "דוחות" מוצג למנהל בלבד,
 אך האכיפה נעשית מחדש בשרת ותחת RLS.
 
-Slice 8 קורא את סטטוס הליגה ואינו משנה אותו. זרימות המוצר שמקדמות ליגה
-מ־`open` ל־`active` ומ־`active` ל־`completed` מתוכננות ל־Slice 9; בדיקת המצב
-הסופי ב־Slice 8 היא fixture מקומי לבדיקת rendering ולא תחליף ל־Action הזה.
+הדוח עצמו נשאר query-only ואינו משנה את סטטוס הליגה. Slice 9 הוסיף את פעולות
+המוצר שמקדמות ליגה מ־`open` ל־`active` ומ־`active` ל־`completed`; תרחיש
+Playwright מלא מגיע אל "דירוג נוכחי" ו־"דירוג סופי" דרך אותן פעולות UI.
 
 הדוח הוא מידע בלבד. אין בו AI, דמי השתתפות, קופה, תשלום או עיבוד תשלום, פרס
 כספי, אחוזי פרס, payout מדומה, currency symbol או payment link. הוא query-only,
 משתמש ב־Supabase user client וב־`getLeagueStandings` הקיים, ואינו מוסיף
 migration, RPC, Action, dependency או שימוש ב־admin client.
 
-## Slice 9: עריכת הגדרות ליגה
+## Slice 9: lifecycle והגדרות ליגה
+
+מנהל/ת הליגה יכול/ה להפעיל ליגה פתוחה לפני המשחק הראשון. בתחילת כל tick של
+Cron הסנכרון הקיים מתבצע גם fallback אטומי ואידמפוטנטי להפעלה לפי kickoff,
+לפני בחירת provider או I/O חיצוני. כשל ספק אינו מונע הפעלה; persistence מאוחר
+נרשם בנפרד ואינו מוצג כאילו עמד ב־deadline.
+
+השלמת ליגה מותרת רק כשכל המשחקים terminal, אין review פתוח והניקוד בגרסה
+הנוכחית. באותה transaction מוקפא snapshot וניסגרות שתי בקשות ההצטרפות הפתוחות
+בסיבת `LEAGUE_COMPLETED`; הוכחות, חברות, היסטוריה ו־audit נשמרים. תיקון תוצאה
+אחרי השלמה יוצר reconciliation מפורש ואינו משכתב את הדירוג הסופי בשקט.
+
+`/leagues/[leagueId]/members` מציג למנהל/ת או לחבר/ה פעיל/ה רשימת חברים פעילים
+בלבד, ב־keyset pagination, ללא Email, מזהה Auth או נתוני proof. אין במסך פעולה
+להסרה או להפעלה מחדש.
 
 `/leagues/[leagueId]/settings` מאפשר למנהל/ת הליגה לערוך את הפרטים המותרים,
 מועד סגירת ההצטרפות, חוקי הניקוד וחלוקת פרסי ה־Demo. מנהל/ת מערכת מורשה/ית
@@ -454,6 +470,8 @@ npm run verify
 
 פירוט מטריצת הבדיקות נמצא ב־[`docs/testing.md`](./docs/testing.md), וגבולות
 האבטחה של Auth, פרופילים וליגות ב־[`docs/security.md`](./docs/security.md).
+חבילת ההצגה נמצאת ב־[`presentation/README.md`](./presentation/README.md), וספר
+הפרויקט הנגזר נמצא ב־[`docs/project-book.docx`](./docs/project-book.docx).
 
 ## פריסה
 

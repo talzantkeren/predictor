@@ -1,0 +1,169 @@
+import { access, readFile } from "node:fs/promises";
+import path from "node:path";
+
+const online = process.argv.includes("--online");
+const repositoryRoot = process.cwd();
+const documentPaths = [
+  "README.md",
+  "docs/testing.md",
+  "docs/security.md",
+  "docs/scale.md",
+  "docs/deployment.md",
+  "docs/project-book-source.md",
+  "docs/project-book-workflow.md",
+  "docs/course-source.md",
+  "docs/evaluator-runbook.md",
+  "presentation/README.md",
+  "presentation/demo-script.md",
+  "presentation/rehearsal-log.md",
+];
+const privateRepositoryUrl = "https://github.com/talzantkeren/predictor";
+
+function invariant(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+async function readRequired(relativePath) {
+  const content = await readFile(path.join(repositoryRoot, relativePath), "utf8").catch(
+    () => undefined,
+  );
+  invariant(content, `Missing submission document: ${relativePath}`);
+  return content;
+}
+
+function extractMarkdownTargets(markdown) {
+  return [...markdown.matchAll(/\[[^\]]*\]\(([^)]+)\)/gu)].map((match) =>
+    match[1].trim().replace(/^<|>$/gu, ""),
+  );
+}
+
+function stripFragmentAndQuery(target) {
+  return target.split("#", 1)[0].split("?", 1)[0];
+}
+
+async function checkExternalUrl(url) {
+  if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/u.test(url)) {
+    return { url, status: "LOCAL_ONLY" };
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    redirect: "follow",
+    signal: AbortSignal.timeout(20_000),
+    headers: { "user-agent": "Predictor1-submission-link-check/1.0" },
+  });
+
+  if (response.ok) {
+    await response.body?.cancel();
+    return { url, status: response.status };
+  }
+
+  if (url === privateRepositoryUrl && response.status === 404) {
+    await response.body?.cancel();
+    return { url, status: "PRIVATE_AUTH_REQUIRED" };
+  }
+
+  await response.body?.cancel();
+  throw new Error(`External submission link failed: ${url} (${response.status})`);
+}
+
+const documents = new Map(
+  await Promise.all(documentPaths.map(async (relativePath) => [relativePath, await readRequired(relativePath)])),
+);
+const localLinks = [];
+const externalLinks = new Set();
+
+for (const [sourcePath, markdown] of documents) {
+  for (const target of extractMarkdownTargets(markdown)) {
+    if (/^https?:\/\//u.test(target)) {
+      externalLinks.add(stripFragmentAndQuery(target));
+      continue;
+    }
+    if (target.startsWith("#") || target.startsWith("mailto:")) continue;
+    const relativeTarget = decodeURIComponent(stripFragmentAndQuery(target));
+    if (!relativeTarget) continue;
+    const resolved = path.resolve(repositoryRoot, path.dirname(sourcePath), relativeTarget);
+    invariant(
+      resolved === repositoryRoot || resolved.startsWith(`${repositoryRoot}${path.sep}`),
+      `Submission link escapes the repository: ${sourcePath} -> ${target}`,
+    );
+    await access(resolved).catch(() => {
+      throw new Error(`Broken local submission link: ${sourcePath} -> ${target}`);
+    });
+    localLinks.push(`${sourcePath} -> ${target}`);
+  }
+}
+
+const readme = documents.get("README.md");
+const testing = documents.get("docs/testing.md");
+const security = documents.get("docs/security.md");
+const scale = documents.get("docs/scale.md");
+const projectBookSource = documents.get("docs/project-book-source.md");
+const evaluator = documents.get("docs/evaluator-runbook.md");
+const courseSource = documents.get("docs/course-source.md");
+
+invariant(!readme.includes("מצב נוכחי: Slice 8"), "README still describes Slice 8 as current.");
+invariant(!readme.includes("מתוכננות ל־Slice 9"), "README still describes lifecycle as future work.");
+for (const forbidden of ["Slice 10", "RELEASE_READY", "דוח פיננסי אמיתי"]) {
+  invariant(
+    ![readme, testing, projectBookSource, evaluator].some((value) => value.includes(forbidden)),
+    `Submission docs contain forbidden delivery claim: ${forbidden}`,
+  );
+}
+
+for (const expected of [
+  "גרסה 1.3",
+  "627/627 ב־48 קבצים",
+  "1443/1443 ב־30 קבצים",
+  "28/28",
+  "evaluator-runbook.md",
+]) {
+  invariant(projectBookSource.includes(expected), `Project-book source is missing: ${expected}`);
+}
+for (const expected of ["## Snapshot מסירה — S9-REQ-004", "627/627", "1443/1443", "28/28"]) {
+  invariant(testing.includes(expected), `Testing snapshot is missing: ${expected}`);
+}
+for (const expected of ["OWNER_ACTION_REQUIRED", "custom SMTP", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
+  invariant(evaluator.includes(expected), `Evaluator runbook is missing owner guidance: ${expected}`);
+}
+for (const expected of ["git clone", "git checkout --detach <candidate-sha>", "npm ci", "supabase start"]) {
+  invariant(evaluator.includes(expected), `Evaluator runbook is missing clean-clone step: ${expected}`);
+}
+for (const expected of ["סיכונים שיוריים ופעולות owner למסירה", "OWNER_ACTION_REQUIRED"]) {
+  invariant(security.includes(expected), `Security residual-risk section is missing: ${expected}`);
+}
+for (const expected of ["keyset יציב של 25", "תקציב 120 שניות"]) {
+  invariant(scale.includes(expected), `Scale contract is missing: ${expected}`);
+}
+for (const expected of [
+  "מספר עמודים | `9`",
+  "19b5dabc8e3f359d69b82bd0a0674740ba8704273b80602d3d7a25706557f39c",
+]) {
+  invariant(courseSource.includes(expected), `Course-source manifest drifted: ${expected}`);
+}
+await access(path.join(repositoryRoot, "Internet Technologies.pdf")).then(
+  () => {
+    throw new Error("The access-controlled course PDF must not be tracked in the repository root.");
+  },
+  () => undefined,
+);
+
+const submissionText = [...documents.values()].join("\n");
+invariant(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(submissionText), "Submission docs resemble a JWT.");
+invariant(
+  !/(?:SUPABASE_SECRET_KEY|CRON_SECRET|SPORTS_API_KEY)\s*=\s*\S+/u.test(submissionText),
+  "Submission docs contain a server-secret assignment.",
+);
+
+const externalResults = online
+  ? await Promise.all([...externalLinks].sort().map((url) => checkExternalUrl(url)))
+  : [];
+
+console.log(
+  `Submission docs verified: ${documentPaths.length} documents, ${localLinks.length} local links, ${externalLinks.size} external links${online ? " checked online" : " inventoried"}.`,
+);
+for (const result of externalResults) {
+  console.log(`${result.status} ${result.url}`);
+}

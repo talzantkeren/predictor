@@ -7,7 +7,7 @@ DOCX with scripts/generate-project-book.py.
 
 # ספר פרויקט — Predictor1
 
-> אפליקציית Web בעברית וב־RTL לניהול ליגות פרטיות של חיזוי תוצאות כדורגל. גרסה 1.2, עודכן ב־27 באוגוסט 2026.
+> אפליקציית Web בעברית וב־RTL לניהול ליגות פרטיות של חיזוי תוצאות כדורגל. גרסה 1.3, עודכן ב־27 באוגוסט 2026.
 
 ## מיקוד גרסת הקורס
 
@@ -58,7 +58,7 @@ Predictor1 הוא פרויקט הגמר בקורס טכנולוגיות אינט
 
 ## מצב המימוש
 
-Slice 9 היא הפרוסה הנוכחית: מימוש הליבה הושלם, והשלב הבא הוא סגירת שערי המסירה הסופיים בלי להרחיב את היקף המוצר.
+Slice 9 היא הפרוסה הנוכחית: מחזור החיים, ההקשחה וחבילת ההצגה מומשו. שערי מסירה אנושיים ו־Hosted שאינם ניתנים לאוטומציה נשארים מפורשים ואינם מוצגים כ־PASS.
 
 | שלב | תוצר | מצב ב־27.8.2026 |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Slice 9 היא הפרוסה הנוכחית: מימוש הליבה הושלם, ו
 
 | שכבה | תוצאה | מה היא מוכיחה |
 | --- | --- | --- |
-| Vitest | 624/624 ב־47 קבצים | validators, חוקים, adapters, אבטחת client וה־test harness |
+| Vitest | 627/627 ב־48 קבצים | validators, חוקים, adapters, אבטחת client, מסמכי ההגשה וה־test harness |
 | pgTAP | 1443/1443 ב־30 קבצים | constraints, RLS, grants, atomicity, זמן, ניקוד ומרוצי lifecycle |
 | Playwright | 28/28 | 14 תרחישים ב־Desktop Chrome וב־Pixel 5, כולל lifecycle מלא והרשאות צולבות |
 | Build | עבר; 52 artifacts נסרקו | TypeScript production build וסריקה לא־ריקה להיעדר סודות בדפדפן |
@@ -116,7 +116,13 @@ Slice 9 היא הפרוסה הנוכחית: מימוש הליבה הושלם, ו
 - [אפיון המוצר](product.md)
 - [ארכיטקטורה ואבטחה](architecture.md)
 - [תכנית טכנית וסדר בדיקות](technical-plan.md)
+- [מטריצת בדיקות](testing.md)
+- [גבולות אבטחה](security.md)
+- [קנה מידה](scale.md)
+- [פריסה ו־callbacks](deployment.md)
+- [הוראות evaluator](evaluator-runbook.md)
 - [הוראות הרצה והדגמה](../README.md)
+- [חבילת המצגת](../presentation/README.md)
 - [מאגר הקוד](https://github.com/talzantkeren/predictor)
 - [פריסת Production](https://predictor-swart.vercel.app)
 

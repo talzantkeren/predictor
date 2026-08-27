@@ -16,6 +16,8 @@
 5. מריצים `npm run docs:book:check` ואת
    `npx vitest run src/lib/project-book-contract.test.ts`. בדיקת drift מייצרת
    עותק זמני ודורשת התאמה byte-for-byte לקובץ שב־Git.
+6. מריצים `npm run docs:submission:check -- --online` כדי לוודא את חבילת
+   הקישורים, ה־counts, הוראות ה־clean clone והיעדר drift בין מסמכי ההגשה.
 
 ## Render ובדיקה חזותית
 
