@@ -60,7 +60,7 @@ npm run dev
 | `CRON_SECRET` | server-only; סוד Bearer נפרד ל־`POST /api/cron/sync` |
 | `SYNC_SYSTEM_ACTOR_ID` | UUID server-only של principal לא־אינטראקטיבי ב־`system_admins` |
 | `SPORTS_API_PROVIDER=manual` | `manual` או `api-football`; ברירת המחדל וה־rollback הם manual |
-| `SPORTS_API_KEY` | server-only; נדרש רק ל־`api-football`, נשמר ב־Vercel ולא ב־Supabase Vault |
+| `SPORTS_API_KEY` | server-only ו־Production-only; נדרש רק ל־`api-football`, נשמר כ־Sensitive ב־Vercel ולא ב־Preview/Local/CI או ב־Supabase Vault |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
 `SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
@@ -282,8 +282,10 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 1. לאשר את Draft PR ולמזג רק לאחר review ו־CI ירוק.
 2. להחיל את ה־migration forward-only על Hosted Supabase; אין לערוך migration
    קודמת ואין להריץ `supabase db reset --linked`.
-3. להגדיר ב־Vercel Sensitive Environment Variable את `SPORTS_API_KEY`, ולהגדיר
-   `SPORTS_API_PROVIDER=api-football`. אין להדפיס את המפתח ואין לשמור אותו ב־Vault.
+3. להגדיר ב־Vercel Production בלבד Sensitive Environment Variable בשם
+   `SPORTS_API_KEY`, ולהגדיר ב־Production בלבד
+   `SPORTS_API_PROVIDER=api-football`. ‏Preview/Local/CI נשארים `manual` ללא key
+   וללא live canary. אין להדפיס את המפתח ואין לשמור אותו ב־Vault.
 4. להשאיר `CRON_SECRET` ו־`SYNC_SYSTEM_ACTOR_ID` הקיימים. `CRON_SECRET` נשאר
    גם ב־Supabase Vault; ה־Sports key אינו נכנס ל־Cron SQL.
 5. לבצע deploy ולאמת שאין Sports key ב־HTML, client bundle או runtime response.

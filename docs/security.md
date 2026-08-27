@@ -462,7 +462,8 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ## API-Football Sync ו־fencing ב־Slice 7b
 
-- `SPORTS_API_KEY` הוא secret שרת בלבד. הוא אינו `NEXT_PUBLIC_*`, אינו נשמר
+- `SPORTS_API_KEY` הוא secret שרת בלבד ו־Production-only ב־Vercel. הוא אינו
+  מוזרק ל־Preview/Local/CI, אינו `NEXT_PUBLIC_*`, אינו נשמר
   ב־Supabase/Vault/DB/fixtures/logs ואינו מוחזר ללקוח. URL הייצור קבוע במודול
   `server-only`, ורק חמש צורות GET allowlisted קיימות; אין URL/league/season
   שרירותיים מקלט משתמש ולכן אין SSRF boundary חדש.
