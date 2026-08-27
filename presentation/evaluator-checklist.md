@@ -1,57 +1,88 @@
-# Evaluator checklist
+# Checklist לבוחן ולחזרה האנושית
 
-Status: `OWNER_ACTION_REQUIRED` until the human rehearsal row is completed on
-the exact candidate SHA. This checklist contains no credentials or personal
-data; evaluator account delivery happens out of band.
+סטטוס: `OWNER_ACTION_REQUIRED` עד להשלמת שורת החזרה האנושית על ה־SHA המדויק
+שמוגש. אין בקובץ credentials או מידע אישי; פרטי חשבונות נמסרים מחוץ ל־Git.
 
-## Before the timer
+## לפני הפעלת הטיימר
 
-- [ ] `git rev-parse HEAD` equals `<candidate-sha>` recorded in the rehearsal log.
-- [ ] The PPTX opens and all **9/9** rendered slides match it visually.
-- [ ] Production opens in Chrome; GitHub opens for the authorized evaluator.
-- [ ] Two authorized Demo sessions are ready without exposing passwords on screen.
-- [ ] The three sanitized fallback PNGs are open in their numbered order.
+- [ ] `git rev-parse HEAD` שווה ל־`<candidate-sha>` שנרשם ביומן החזרה.
+- [ ] `npm.cmd run presentation:build` יצר את ה־PPTX ממקור העריכה
+  `scripts/generate-presentation.mjs`; ה־PPTX לא נערך ביד.
+- [ ] כל **13/13** השקפים וכל **13/13** קובצי הרינדור נפתחו ונבדקו חזותית.
+- [ ] בכל שורה עברית סדר המילים והפיסוק טבעיים; טקסט מעורב כגון Next.js 16,
+  Supabase, PostgreSQL, Demo ו־RTL נקרא נכון.
+- [ ] אין clipping, overlap או contrast חלש, והטקסט קריא ממרחק הקרנה.
+- [ ] Supabase מקומי disposable והיישום המקומי מוכנים; ספק Sports מוגדר
+  `manual` וללא credential.
+- [ ] שתי sessions מקומיות מורשות מוכנות בלי להציג סיסמה.
+- [ ] חמש תמונות הגיבוי פתוחות לפי הסדר הנכון.
+- [ ] Production והמאגר ייפתחו רק כקישורים נפרדים בשקף 13.
 
-## Product narrative
+## הסיפור המוצרי
 
-- [ ] The presenter explains manager/member/system roles and treats draw as a
-  first-class outcome.
-- [ ] Invite, join request, Demo proof, approval and active-member privacy are
-  shown or explicitly replaced by the named outage evidence.
-- [ ] Activation, prediction lock, deterministic scoring, completion and final
-  ranking are connected as one lifecycle.
-- [ ] No direct database mutation fakes a user-visible step.
-- [ ] A late correction is explained as versioned review/reconciliation, not an
-  automatic rewrite of a completed league.
+- [ ] מוסברים הבעיה, קהל היעד והצורך במקור אמת אחד.
+- [ ] מוסברים אורח, מבקש הצטרפות, חבר פעיל, מנהל ליגה ומנהל מערכת.
+- [ ] ההפרדה בין הרשאת תפקיד לבין הרשאה לליגה מסוימת נאמרת במפורש.
+- [ ] המחזור `open` → `active` → `completed` מחובר לדמו המקומי.
+- [ ] הזמנה, בקשה, תמונת Demo, אישור ורשימת חברים פרטית מוצגים דרך ה־UI או
+  מוחלפים במפורש ב־`01-open-league.png` וב־`02-open-approved-members.png`.
+- [ ] הפעלה, ניחוש 2:1, תוצאה 2:1 ודירוג נוכחי עם 3 נקודות מוצגים דרך ה־UI או
+  מוחלפים במפורש ב־`03-active-current-report.png`.
+- [ ] השלמה ודירוג סופי קפוא עם 3 נקודות מוצגים דרך ה־UI או מוחלפים במפורש
+  ב־`04-completed-final-frozen.png`.
+- [ ] תיקון מאוחר ל־1:1 מוצג כ־reconciliation מפורש; לאחר ההחלה הדירוג נשאר
+  סופי ומציג 0 נקודות, או שמוצגת `05-completed-final-reconciled.png`.
+- [ ] שום mutation ישיר במסד אינו מזייף שלב שנראה למשתמש.
 
-## Architecture, security and engineering
+## ארכיטקטורה, נתונים ואבטחה
 
-- [ ] The presenter identifies Next.js 16 Server Components, Server Actions,
-  Route Handlers and shared feature services.
-- [ ] The presenter explains server resource authorization plus RLS, least-
-  privilege grants, database time, private Storage and the bounded secret client.
-- [ ] The presenter distinguishes RULES/Vitest, DATA/pgTAP and FLOWS/Playwright
-  without quoting an obsolete test count.
-- [ ] The presenter explains pagination, bounded synchronization, indexes and
-  why the current modular monolith is the smaller reliable architecture.
-- [ ] Demo-only is explicit: no real financial operation, verified receipt,
-  live-provider claim or runtime generative AI in the MVP.
+- [ ] מוסברים Next.js 16, ‏Server Components, ‏Server Actions ו־Route Handlers.
+- [ ] מוסבר מה PostgreSQL מחזיק: constraints, ‏RLS, זמן מסד, transactions
+  וניקוד set-based.
+- [ ] מודל הנתונים מפריד בין `join_requests`, ‏`payment_proofs` ו־
+  `league_members`, ובין review, ‏snapshot ו־reconciliation.
+- [ ] מוסברת הרשאת משאב נפרדת ממגבלת רשימה ומ־pagination.
+- [ ] מוסברים RLS, ‏least-privilege grants ומשמעת SECURITY DEFINER.
+- [ ] מוסבר מסלול ה־proof הפרטי: אימות, WebP חדש, bucket פרטי ו־signed URL רק
+  לאחר הרשאה.
+- [ ] מוסבר ש־`clock_timestamp()` נקרא לאחר רכישת הנעילות ושה־countdown אינו
+  מקור סמכות.
+- [ ] מוסבר ש־completion מקפיא snapshot וסוגר בקשות פתוחות באותה transaction,
+  ותיקון מאוחר אינו משכתב דוח סופי בשקט.
 
-## Resilience and close
+## בדיקות, סקייל וגבולות
 
-- [ ] The outage handoff reaches the correct fallback image within 20 seconds.
-- [ ] The presenter says which live step was not observed and does not claim it passed.
-- [ ] Production and GitHub links are opened at the end.
-- [ ] Total measured duration is between 10:00 and 15:00.
-- [ ] Questions on components, libraries, security, scale and tradeoffs can be
-  answered from the deck and repository evidence.
+- [ ] מוסבר ההבדל בין Vitest, ‏pgTAP ו־Playwright.
+- [ ] כל ספירת בדיקות שמופיעה בשקף 10 תואמת לפלט שנצפה על ה־SHA הסופי.
+- [ ] כל צומת Function Scan ומספר שורות בשקף 11 תואמים לפלט
+  `npm run scale:plans` שנצפה על ה־SHA הסופי.
+- [ ] מוסברים keyset pagination, שאילתות תחומות, אינדקסים ו־Sync מוגבל.
+- [ ] נאמר במפורש: Demo בלבד; אין כסף אמיתי או מסמך פיננסי אמיתי.
+- [ ] נאמר במפורש: אין generative AI בזמן ריצה ב־MVP.
+- [ ] נאמר במפורש: ב־Local, ‏Preview ו־CI משתמשים רק ב־Manual adapter,
+  recorded fixtures ו־fake transport; אין ספק Sports חי.
+- [ ] סיכוני SMTP, מגבלות ספק ופעולות Hosted/Production מוצגים כראיות נפרדות,
+  לא כבדיקות שכבר עברו.
 
-## Human evidence row
+## עמידות וסיום
 
-| Candidate SHA | Start/end (Asia/Jerusalem) | Duration | 9/9 slides | Production | GitHub | outage | evaluator explanations | Result / sanitized note |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `<candidate-sha>` | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | OWNER_ACTION_REQUIRED |
+- [ ] תקלה מקומית מעבירה בתוך 20 שניות לתמונה המתאימה.
+- [ ] נאמר המשפט: “השלב החי לא נצפה. אמשיך מצילום גיבוי שנלכד מאותו תרחיש
+  Playwright מקומי; הצילום אינו הופך את השלב שלא נצפה ל־PASS.”
+- [ ] המציג אומר איזה שלב חי לא נצפה ואינו טוען שהוא עבר.
+- [ ] בשקף 13 נפתחים קישור Production הציבורי וקישור המאגר בלשוניות נפרדות.
+- [ ] ב־Production מוצג עמוד Demo ציבורי בלבד; אין login או mutation.
+- [ ] future work מופרד מן ה־MVP ומוצמד לטריגר מדיד או לאישור היקף.
+- [ ] משך ההצגה שנמדד הוא בין 10:00 ל־15:00.
+- [ ] ניתן לענות על שאלות בנושאי רכיבים, אבטחה, סקייל ו־tradeoffs מן המצגת
+  ומראיות המאגר.
 
-Only the human presenter/evaluator may replace this row. Any failed checkbox
-keeps the record open and must name the precise correction; it must never be
-hidden by changing a test, workflow or checklist.
+## שורת ראיה אנושית
+
+| Candidate SHA | התחלה/סיום (Asia/Jerusalem) | משך | 13/13 שקפים | UI מקומי | חמש תמונות גיבוי | Production | GitHub | הסברי בוחן | תוצאה/הערה מסוננת |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `<candidate-sha>` | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | OWNER_ACTION_REQUIRED |
+
+רק המציג והבוחן האנושיים רשאים להחליף את השורה. checkbox שנכשל משאיר את
+הרשומה פתוחה ומחייב לציין את הפעולה המדויקת שחסרה; אין להסתיר כשל באמצעות
+שינוי בדיקה, workflow, מצגת או checklist.

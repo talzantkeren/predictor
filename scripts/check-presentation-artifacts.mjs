@@ -1,7 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { inflateRawSync } from "node:zlib";
 
-const expectedSlideCount = 9;
+const minimumSlideCount = 10;
+const maximumSlideCount = 14;
+const expectedSlideCount = 13;
 const presentationRoot = "presentation";
 const deckPath = `${presentationRoot}/predictor1-final-project.pptx`;
 const renderedRoot = `${presentationRoot}/predictor1-final-project`;
@@ -101,12 +103,117 @@ function requireText(value, fragments, path) {
   }
 }
 
+function decodeXmlEntities(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/giu, (_, codePoint) =>
+      String.fromCodePoint(Number.parseInt(codePoint, 16)),
+    )
+    .replace(/&#([0-9]+);/gu, (_, codePoint) =>
+      String.fromCodePoint(Number.parseInt(codePoint, 10)),
+    )
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&amp;", "&");
+}
+
+function drawingText(xml) {
+  return [...xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/gu)]
+    .map((match) => decodeXmlEntities(match[1].replace(/<[^>]+>/gu, "")))
+    .join("");
+}
+
+function hasXmlAttribute(tag, name, value) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(
+    `(?:^|\\s)${escapedName}\\s*=\\s*(?:"${escapedValue}"|'${escapedValue}')`,
+    "u",
+  ).test(tag);
+}
+
+function inspectHebrewParagraphs(xml, path, { visible }) {
+  const hebrewPattern = /[\u0590-\u05ff]/u;
+  const asciiLatinPattern = /[A-Za-z]/u;
+  let count = 0;
+
+  for (const paragraphMatch of xml.matchAll(
+    /<a:p(?:\s[^>]*)?>[\s\S]*?<\/a:p>/gu,
+  )) {
+    const paragraph = paragraphMatch[0];
+    const paragraphText = drawingText(paragraph);
+    if (!hebrewPattern.test(paragraphText)) {
+      continue;
+    }
+
+    count += 1;
+    const paragraphProperties = paragraph.match(/<a:pPr\b[^>]*>/u)?.[0];
+    invariant(
+      paragraphProperties,
+      `Hebrew paragraph ${count} lacks a:pPr in ${path}.`,
+    );
+    invariant(
+      hasXmlAttribute(paragraphProperties, "rtl", "1"),
+      `Hebrew paragraph ${count} lacks rtl="1" in ${path}.`,
+    );
+    invariant(
+      hasXmlAttribute(paragraphProperties, "algn", "r"),
+      `Hebrew paragraph ${count} lacks algn="r" in ${path}.`,
+    );
+
+    const defaultRunProperties = paragraph.match(/<a:defRPr\b[^>]*>/u)?.[0];
+    invariant(
+      defaultRunProperties && hasXmlAttribute(defaultRunProperties, "lang", "he-IL"),
+      `Hebrew paragraph ${count} lacks a:defRPr lang="he-IL" in ${path}.`,
+    );
+
+    let runIndex = 0;
+    for (const runMatch of paragraph.matchAll(
+      /<a:(r|fld)(?:\s[^>]*)?>[\s\S]*?<\/a:\1>/gu,
+    )) {
+      const run = runMatch[0];
+      const runText = drawingText(run);
+      if (runText.length === 0) {
+        continue;
+      }
+
+      runIndex += 1;
+      const hasHebrew = hebrewPattern.test(runText);
+      const hasAsciiLatin = asciiLatinPattern.test(runText);
+      invariant(
+        !(visible && hasHebrew && hasAsciiLatin),
+        `Visible run ${runIndex} mixes Hebrew and ASCII Latin in ${path}; split it into language-specific logical runs.`,
+      );
+
+      const runProperties = run.match(/<a:rPr\b[^>]*>/u)?.[0];
+      if (hasHebrew) {
+        invariant(
+          runProperties && hasXmlAttribute(runProperties, "lang", "he-IL"),
+          `Hebrew run ${runIndex} lacks lang="he-IL" in ${path}.`,
+        );
+      } else if (hasAsciiLatin) {
+        invariant(
+          runProperties && hasXmlAttribute(runProperties, "lang", "en-US"),
+          `Latin run ${runIndex} inside a Hebrew paragraph lacks lang="en-US" in ${path}.`,
+        );
+      }
+    }
+  }
+
+  return count;
+}
+
 const deck = await requiredFile(deckPath, 50_000);
 invariant(deck.subarray(0, 2).toString("ascii") === "PK", "The deck is not a PPTX archive.");
 const entries = readZipEntries(deck);
 
 const slideEntries = [...entries.keys()].filter((name) => /^ppt\/slides\/slide\d+\.xml$/u.test(name));
 const notesEntries = [...entries.keys()].filter((name) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/u.test(name));
+invariant(
+  slideEntries.length >= minimumSlideCount && slideEntries.length <= maximumSlideCount,
+  `Expected between ${minimumSlideCount} and ${maximumSlideCount} editable slides.`,
+);
 invariant(slideEntries.length === expectedSlideCount, `Expected ${expectedSlideCount} editable slides.`);
 invariant(notesEntries.length === expectedSlideCount, `Expected notes on all ${expectedSlideCount} slides.`);
 
@@ -123,23 +230,40 @@ for (const obsolete of [
 ]) {
   invariant(!slideXml.includes(obsolete), `The deck contains an obsolete test count/date: ${obsolete}`);
 }
-for (const stableLabel of ["Final-SHA evidence only", "RULES", "DATA", "FLOWS"]) {
-  invariant(slideXml.includes(stableLabel), `Slide 7 is missing its stable label: ${stableLabel}`);
-}
 
+const logicalCoverSentence = "ליגה פרטית. חיזוי הוגן. דירוג סופי שנשאר סופי.";
+const reversedCoverSentence = "סופי. שנשאר סופי דירוג הוגן. חיזוי פרטית. ליגה";
+const coverXml = entries.get("ppt/slides/slide1.xml")?.toString("utf8") ?? "";
+invariant(
+  drawingText(coverXml).includes(logicalCoverSentence),
+  `The cover must store the logical Hebrew sentence: ${logicalCoverSentence}`,
+);
+invariant(
+  !drawingText(coverXml).includes(reversedCoverSentence),
+  "The cover still contains the manually reversed Hebrew sentence.",
+);
+
+let hebrewParagraphCount = 0;
 for (let index = 1; index <= expectedSlideCount; index += 1) {
-  invariant(entries.has(`ppt/slides/slide${index}.xml`), `Missing editable slide ${index}.`);
-  const notes = entries.get(`ppt/notesSlides/notesSlide${index}.xml`)?.toString("utf8") ?? "";
+  const slidePath = `ppt/slides/slide${index}.xml`;
+  const notesPath = `ppt/notesSlides/notesSlide${index}.xml`;
+  invariant(entries.has(slidePath), `Missing editable slide ${index}.`);
+  invariant(entries.has(notesPath), `Missing speaker notes for slide ${index}.`);
+  const slide = entries.get(slidePath)?.toString("utf8") ?? "";
+  const notes = entries.get(notesPath)?.toString("utf8") ?? "";
+  hebrewParagraphCount += inspectHebrewParagraphs(slide, slidePath, { visible: true });
+  hebrewParagraphCount += inspectHebrewParagraphs(notes, notesPath, { visible: false });
   requireText(notes, ["[Sources]", "[/Sources]"], `speaker notes for slide ${index}`);
 }
+invariant(hebrewParagraphCount > 0, "The deck must contain at least one Hebrew paragraph.");
 
 const closingRelationships = entries
-  .get("ppt/slides/_rels/slide9.xml.rels")
+  .get("ppt/slides/_rels/slide13.xml.rels")
   ?.toString("utf8") ?? "";
 requireText(
   closingRelationships,
   ["https://predictor-swart.vercel.app", "https://github.com/talzantkeren/predictor"],
-  "slide 9 links",
+  "slide 13 links",
 );
 invariant(
   [...entries.keys()].filter((name) => name.startsWith("ppt/media/")).length >= 2,
@@ -147,6 +271,12 @@ invariant(
 );
 
 const renderedDimensions = new Set();
+const renderedFiles = (await readdir(renderedRoot).catch(() => []))
+  .filter((name) => /^slide-\d+\.png$/u.test(name));
+invariant(
+  renderedFiles.length === expectedSlideCount,
+  `Expected exactly ${expectedSlideCount} rendered slide PNGs.`,
+);
 for (let index = 1; index <= expectedSlideCount; index += 1) {
   const path = `${renderedRoot}/slide-${index}.png`;
   const dimensions = pngDimensions(await requiredFile(path, 10_000), path);
@@ -156,9 +286,18 @@ invariant(renderedDimensions.size === 1, "Rendered slides do not share one 16:9 
 
 const fallbackFiles = [
   "01-open-league.png",
-  "02-active-current-report.png",
-  "03-completed-final-report.png",
+  "02-open-approved-members.png",
+  "03-active-current-report.png",
+  "04-completed-final-frozen.png",
+  "05-completed-final-reconciled.png",
 ];
+const actualFallbackFiles = (await readdir(fallbackRoot).catch(() => []))
+  .filter((name) => name.endsWith(".png"))
+  .sort();
+invariant(
+  JSON.stringify(actualFallbackFiles) === JSON.stringify([...fallbackFiles].sort()),
+  `Expected exactly these fallback PNGs: ${fallbackFiles.join(", ")}.`,
+);
 for (const filename of fallbackFiles) {
   const path = `${fallbackRoot}/${filename}`;
   pngDimensions(await requiredFile(path, 10_000), path);
@@ -223,17 +362,16 @@ requireText(
 requireText(
   deckSource.toString("utf8"),
   [
-    "authoritative editable source",
-    "## Slide 1",
-    "## Slide 9",
-    "Final-SHA evidence only",
+    "מקור העריכה הסמכותי",
+    "## שקף 1",
+    "## שקף 13",
     "[Sources]",
   ],
   deckSourcePath,
 );
 requireText(
   timingGuide.toString("utf8"),
-  ["10:00–15:00", "00:00", "11:30", "20 seconds", "hard stop"],
+  ["10:00–15:00", "00:00", "13:10", "20 שניות", "hard stop"],
   timingGuidePath,
 );
 requireText(
@@ -241,11 +379,11 @@ requireText(
   [
     "OWNER_ACTION_REQUIRED",
     "<candidate-sha>",
-    "9/9",
+    "13/13",
     "Production",
     "GitHub",
-    "outage",
-    "Demo-only",
+    "תקלה",
+    "Demo בלבד",
   ],
   evaluatorChecklistPath,
 );

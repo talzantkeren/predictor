@@ -127,7 +127,7 @@ async function capturePresentationFallback(
   page: Page,
   testInfo: { project: { name: string } },
   filename: string,
-  mask: Locator[] = [],
+  focus?: Locator,
 ) {
   if (
     process.env.CAPTURE_PRESENTATION_ASSETS !== "true" ||
@@ -138,12 +138,11 @@ async function capturePresentationFallback(
 
   const outputDirectory = join(process.cwd(), "presentation", "fallback");
   mkdirSync(outputDirectory, { recursive: true });
+  await focus?.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: join(outputDirectory, filename),
-    fullPage: true,
+    fullPage: false,
     animations: "disabled",
-    mask,
-    maskColor: "#D0EDFA",
   });
 }
 
@@ -192,13 +191,12 @@ test.describe("Slice 9 product lifecycle", () => {
     test.setTimeout(300_000);
     page.setDefaultTimeout(15_000);
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const shortSuffix = suffix.slice(-6);
     const password = `Aa1!${crypto.randomUUID()}`;
     const managerEmail = `lifecycle-manager-${suffix}@example.com`;
     const memberEmail = `lifecycle-member-${suffix}@example.com`;
-    const managerName = `מנהלת מחזור ${shortSuffix}`;
-    const memberName = `חברת מחזור ${shortSuffix}`;
-    const leagueName = `ליגת Lifecycle ${suffix}`;
+    const managerName = "מנהלת ההדגמה";
+    const memberName = "חברת ההדגמה";
+    const leagueName = "ליגת ההדגמה";
     const contextOptions = getContextOptions(testInfo.project.name);
     const ids: LifecycleCatalogFixtureIds = {
       competitionId: crypto.randomUUID(),
@@ -238,7 +236,7 @@ test.describe("Slice 9 product lifecycle", () => {
       manager.page,
       testInfo,
       "01-open-league.png",
-      [manager.page.getByRole("heading", { name: leagueName })],
+      manager.page.getByRole("heading", { name: leagueName }),
     );
 
     const member = await registerConfirmedUser({
@@ -296,6 +294,12 @@ test.describe("Slice 9 product lifecycle", () => {
     await expect(activeMembers.getByText(memberName, { exact: true })).toBeVisible();
     await expect(activeMembers).not.toContainText(managerEmail);
     await expect(activeMembers).not.toContainText(memberEmail);
+    await capturePresentationFallback(
+      manager.page,
+      testInfo,
+      "02-open-approved-members.png",
+      activeMembers,
+    );
 
     const kickoff = nextSafeUtcMinute();
     await manager.page.goto("/admin/matches");
@@ -380,8 +384,8 @@ test.describe("Slice 9 product lifecycle", () => {
     await capturePresentationFallback(
       manager.page,
       testInfo,
-      "02-active-current-report.png",
-      [manager.page.getByText(memberName, { exact: true })],
+      "03-active-current-report.png",
+      manager.page.getByRole("heading", { name: "דירוג נוכחי" }),
     );
 
     await manager.page.goto(`/leagues/${leagueId}`);
@@ -417,6 +421,12 @@ test.describe("Slice 9 product lifecycle", () => {
       points: 3,
       mobile: testInfo.project.name.startsWith("mobile-"),
     });
+    await capturePresentationFallback(
+      manager.page,
+      testInfo,
+      "04-completed-final-frozen.png",
+      manager.page.getByRole("heading", { name: "דירוג סופי" }),
+    );
 
     await manager.page.goto(`/admin/matches?season=${ids.seasonId}`);
     const completedCard = manager.page.locator("article").filter({
@@ -469,8 +479,8 @@ test.describe("Slice 9 product lifecycle", () => {
     await capturePresentationFallback(
       manager.page,
       testInfo,
-      "03-completed-final-report.png",
-      [manager.page.getByText(memberName, { exact: true })],
+      "05-completed-final-reconciled.png",
+      manager.page.getByRole("heading", { name: "דירוג סופי" }),
     );
 
     const layout = await member.page.evaluate(() => ({

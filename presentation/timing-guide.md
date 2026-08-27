@@ -1,37 +1,53 @@
-# Timing guide — 10–15 minute demonstration
+# מדריך תזמון — הדגמה של 10–15 דקות
 
-The deterministic target is **11:30**. A valid human rehearsal must finish in
-**10:00–15:00**. Start the timer only after the deck, two authorized Demo
-sessions, Production page and three fallback screenshots are open.
+יעד החזרה הדטרמיניסטי הוא **13:10**. חזרה אנושית תקפה חייבת להסתיים בטווח
+**10:00–15:00**. מפעילים את הטיימר רק לאחר שהמצגת, Supabase המקומי disposable,
+שתי sessions מקומיות וחמש תמונות הגיבוי מוכנים. Production והמאגר נפתחים
+כקישורים נפרדים רק בשקף 13 ואינם משתתפים במסלול החי.
 
-| Clock | Target | Slides/UI | Evidence of completion | Cut/fallback rule |
+| שעון | משך יעד | שקפים/ממשק | ראיה שהמקטע הושלם | כלל קיצור או גיבוי |
 | --- | ---: | --- | --- | --- |
-| 00:00–00:40 | 0:40 | Slide 1 | One-sentence product thesis and Demo-only boundary | Do not add an agenda |
-| 00:40–01:40 | 1:00 | Slide 2 | Roles, draw, league scoring and trust problem | Keep one example only |
-| 01:40–04:20 | 2:40 | Slide 3 + UI | League, invite, request, sanitized Demo proof, approval and privacy-safe member list | After **20 seconds** of unavailable UI, show `01-open-league.png` |
-| 04:20–06:20 | 2:00 | UI | Manual fixture, activation and saved 2:1 prediction before DB lock | Use the fixed 2:1 score; never alter the DB directly |
-| 06:20–07:40 | 1:20 | UI | Final 2:1 result and current ranking | After 20 seconds, show `02-active-current-report.png` |
-| 07:40–08:50 | 1:10 | Slide 6 + UI | Completed state and final ranking; explain atomic snapshot/join-request closure | After 20 seconds, show `03-completed-final-report.png` |
-| 08:50–09:50 | 1:00 | Slide 6 | Explain late 1:1 review/reconciliation and explicit apply | Explanation is sufficient if time is tight |
-| 09:50–10:50 | 1:00 | Slides 4–7 | Architecture, RLS/resource authorization, private proof path and three test layers | Never quote a count not measured on the final SHA |
-| 10:50–11:30 | 0:40 | Slides 8–9 | Scale boundary, no runtime AI/financial operation, Production/GitHub links | Stop at 11:30 before questions |
+| 00:00–00:25 | 0:25 | שקף 1 | תזת המוצר וגבול Demo בלבד | משפט פתיחה אחד; אין להוסיף agenda |
+| 00:25–01:10 | 0:45 | שקף 2 | הבעיה, קהל היעד ושלוש שאלות האמון | דוגמה אחת בלבד |
+| 01:10–01:50 | 0:40 | שקף 3 | תפקידים והפרדה בין ליגות | אין להקריא מטריצת הרשאות |
+| 01:50–02:25 | 0:35 | שקף 4 | `open` → `active` → `completed` כמפת הדמו | לציין שכל שינוי נראה יעבור דרך ה־UI |
+| 02:25–03:05 | 0:40 | שקף 5 | גבולות Next.js 16, ‏Supabase ו־PostgreSQL | להסביר רק את הכלל “מרוץ מוכרע במסד” |
+| 03:05–03:45 | 0:40 | שקף 6 | הפרדת בקשה, אסמכתה, חברות, review, snapshot ו־reconciliation | להתמקד ביחסים שמונעים overwrite |
+| 03:45–04:35 | 0:50 | שקף 7 | הרשאת משאב, RLS/grants ומסלול proof פרטי | אין להרחיב על כל policy |
+| 04:35–05:15 | 0:40 | שקף 8 | נעילה אחרי רכישת locks ולפי `clock_timestamp()` | ה־countdown הוא עזר UX בלבד |
+| 05:15–06:45 | 1:30 | UI מקומי | ליגה פתוחה, בקשת Demo, אישור וחבר ברשימה הפרטית | אחרי 20 שניות לעבור ל־`01-open-league.png` או `02-open-approved-members.png` |
+| 06:45–08:15 | 1:30 | UI מקומי | הפעלה, ניחוש 2:1, תוצאה 2:1 ודירוג נוכחי עם 3 נקודות | אחרי 20 שניות לעבור ל־`03-active-current-report.png` |
+| 08:15–09:50 | 1:35 | שקף 9 + UI מקומי | השלמה ודירוג סופי קפוא עם 3 נקודות; תיקון 1:1 מפורש ודירוג סופי עם 0 נקודות | להשתמש לפי הצורך ב־`04-completed-final-frozen.png` וב־`05-completed-final-reconciled.png` |
+| 09:50–10:30 | 0:40 | שקף 10 | שלוש שכבות בדיקה וסכומים שנמדדו על ה־SHA הסופי | אין לצטט מספר שאינו מופיע בשקף הסופי |
+| 10:30–11:15 | 0:45 | שקף 11 | ארבעה query plans, צומת Function Scan ומספרי שורות שנמדדו | אין להוסיף תחזית סקייל שלא נמדדה |
+| 11:15–12:05 | 0:50 | שקף 12 | tradeoffs, סיכונים וגבולות Demo/AI/Sports | לקרוא את ארבעת הגבולות במפורש |
+| 12:05–13:10 | 1:05 | שקף 13 | הפרדת future work, פתיחת Production והמאגר, משפט סיום | Production ציבורי בלבד; אין login או mutation |
 
-## Pace controls
+## בקרת קצב
 
-- At 04:20 or later: omit descriptive UI narration; keep only visible state
-  transitions and their security meaning.
-- At 08:50 or later: explain reconciliation without performing it live.
-- At 10:30: move to slide 9 regardless of unfinished optional detail.
-- At 14:30: **hard stop** the walkthrough, state any unobserved item explicitly,
-  open the final links, and reserve the remaining 30 seconds for closure.
-- Finishing before 10:00 is not a pass; add the evaluator explanations from the
-  script without inventing a result. Crossing 15:00 is not a pass.
+- ב־05:15 עוברים לממשק המקומי גם אם נותר פרט ארכיטקטוני שלא נאמר.
+- כל פעולה מקומית שאינה מגיבה בתוך 20 שניות מוחלפת מיד בתמונה המתאימה. אומרים:
+  “השלב החי לא נצפה. אמשיך מצילום גיבוי שנלכד מאותו תרחיש Playwright מקומי;
+  הצילום אינו הופך את השלב שלא נצפה ל־PASS.”
+- ב־09:50 עוברים לשקף 10. אם ה־reconciliation החי לא הושלם, מציגים את שתי
+  תמונות ה־completed, אומרים מה לא נצפה וממשיכים.
+- ב־12:05 עוברים לשקף 13 גם אם נותר פירוט אופציונלי.
+- ב־14:30 מבצעים hard stop: אומרים אילו פריטים לא נצפו, פותחים את שני
+  הקישורים, מסיימים את משפט הסיכום ועוצרים את הטיימר.
+- סיום לפני 10:00 אינו PASS; מוסיפים את תשובות הבוחן מן התסריט בלי להמציא
+  תוצאה. חריגה מ־15:00 אינה PASS.
 
-## Deterministic data and outage behavior
+## נתונים דטרמיניסטיים ונוהל תקלה
 
-Use only authorized Demo accounts supplied outside Git. The score sequence is
-prediction `2:1` → first final result `2:1` → optional late correction `1:1`.
-All visible state changes use the UI. If any live step is unavailable for 20
-seconds, say that it was not observed, switch to the named sanitized screenshot,
-and continue the same narrative. An outage fallback keeps the presentation
-moving but does not convert a failed link or mutation into PASS.
+רצף התוצאה קבוע: ניחוש `2:1` → תוצאה ראשונה `2:1` → תיקון מאוחר `1:1`.
+כל שינוי משתמש מתבצע דרך ה־UI המקומי. חמש תמונות הגיבוי הן ראיות מסוננות של
+אותו תרחיש Playwright, לפי הסדר:
+
+1. `01-open-league.png` — פתוחה.
+2. `02-open-approved-members.png` — פתוחה עם חבר מאושר.
+3. `03-active-current-report.png` — פעילה, דירוג נוכחי, 3 נקודות.
+4. `04-completed-final-frozen.png` — הושלמה, דירוג סופי קפוא, 3 נקודות.
+5. `05-completed-final-reconciled.png` — הושלמה לאחר reconciliation, דירוג סופי, 0 נקודות.
+
+המעבר לתמונה שומר על קצב המצגת אך אינו הופך mutation, קישור או סביבת Production
+שלא נצפו ל־PASS.
