@@ -87,6 +87,14 @@ async function createLeague(page: Page, leagueName: string) {
 }
 
 test.describe("editable league settings", () => {
+  let leagueStatusCleanupId: string | undefined;
+
+  test.afterEach(() => {
+    if (!leagueStatusCleanupId) return;
+    setLeagueStatusInDisposableLocalDatabase(leagueStatusCleanupId, "open");
+    leagueStatusCleanupId = undefined;
+  });
+
   test("saves versioned settings, isolates roles, and reflects lock states in RTL", async ({
     browser,
     page,
@@ -116,6 +124,7 @@ test.describe("editable league settings", () => {
       contextOptions,
     });
     const leagueId = await createLeague(manager.page, originalName);
+    leagueStatusCleanupId = leagueId;
 
     await manager.page.goto(`/leagues/${leagueId}/settings`);
     await expect(

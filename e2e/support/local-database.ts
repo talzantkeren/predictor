@@ -206,7 +206,7 @@ export function seedManagerReportStatusesInDisposableLocalDatabase({
 
 export function setLeagueStatusInDisposableLocalDatabase(
   leagueId: string,
-  status: "active" | "completed",
+  status: "open" | "active" | "completed",
 ) {
   assertCanonicalUuid(leagueId, "report league");
   assertDisposableLocalDatabaseIsRunning();
