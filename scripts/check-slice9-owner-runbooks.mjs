@@ -66,6 +66,40 @@ const artifacts = [
       "promotion condition",
     ],
   },
+  {
+    path: "docs/runbooks/slice-9-req-003-final-production-review.md",
+    required: [
+      "S9-REQ-003",
+      "single owner action",
+      "gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,jobs,url",
+      "gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url",
+      "Supabase Dashboard → SQL Editor → New query",
+      "supabase_migrations.schema_migrations",
+      "Vercel → predictor → Deployments → Production",
+      "immutable URL",
+      "incognito",
+      "evaluator",
+      "S9-REQ-003-owner-template.md",
+      "npm.cmd run submission:evidence:check",
+    ],
+  },
+  {
+    path: "docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md",
+    required: [
+      "Status: `NOT_RUN`",
+      "<final-sha>",
+      "<final-run-id>",
+      "NOT_CAPTURED",
+      "NOT_RUN",
+      "PR #14 remains Draft",
+      "Hosted migration parity",
+      "immutable URL",
+      "Production alias",
+      "evaluator repository access",
+      "incognito",
+      "Demo-only",
+    ],
+  },
 ];
 
 function invariant(condition, message) {
@@ -94,5 +128,5 @@ invariant(
 );
 
 console.log(
-  "Owner runbooks verified: S9-DEF-004 and S9-DEF-012 each have one exact Hosted action and an empty sanitized evidence template.",
+  "Owner runbooks verified: S9-DEF-004, S9-DEF-012 and S9-REQ-003 each have one exact Hosted action and an empty sanitized evidence template.",
 );

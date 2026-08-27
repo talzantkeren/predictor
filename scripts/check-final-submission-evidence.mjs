@@ -10,38 +10,47 @@ function invariant(condition, message) {
 invariant(evidence, `Missing final-submission evidence register: ${evidencePath}`);
 for (const expected of [
   "Status: `OWNER_ACTION_REQUIRED`",
-  "`<final-candidate-sha>`",
-  "`<final-production-sha>`",
+  "`<final-sha>`",
+  "<final-run-id>",
   "Draft PR #14",
+  "33090719466",
+  "e791f361444eb524099eddebdea1c92d6a3a0cc3",
+  "The destination stream closed early",
+  "33097585902",
+  "33097590476",
+  "223de65f083fcbf954c082c6e83c6df2ed14bdca",
+  "Lint, typecheck, unit tests and build",
+  "Supabase database tests",
+  "Playwright core flows",
   "dpl_Cjza13KogKyyLMbZr972AU5DmbY3",
   "predictor-mew7uo1y9-tals-projects-19902e47.vercel.app",
   "dpl_VtykjW3xjXJcjmpCjH25wZTBP3xn",
   "predictor-2r75rqica-tals-projects-19902e47.vercel.app",
-  "recent account payments have failed or your spending limit needs to be increased",
+  "Billing/spending blocker: RESOLVED",
   "SPORTS_API_KEY",
   "preview,production",
   "20260827180000",
   "Evaluator access",
   "Hosted migration parity",
+  "Final Production and evaluator closeout",
+  "slice-9-req-003-final-production-review.md",
+  "S9-REQ-003-owner-template.md",
 ]) {
   invariant(evidence.includes(expected), `Final-submission evidence is missing: ${expected}`);
 }
 
-const ownerRows = [
-  "GitHub Actions / billing",
-  "Final candidate and CI",
-  "Vercel final deployment",
-  "Vercel environment cleanup",
-  "Hosted migration parity",
-  "Evaluator access",
-  "Incognito final demo",
-];
+const ownerRows = ["Final Production and evaluator closeout"];
 for (const row of ownerRows) {
   const pattern = new RegExp(`\\| ${row.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")} \\|[^\\n]+\\| OWNER_ACTION_REQUIRED \\|`, "u");
   invariant(pattern.test(evidence), `Owner gate is not explicitly OAR: ${row}`);
 }
 
-invariant(!/\| (?:GitHub Actions \/ billing|Final candidate and CI|Vercel final deployment|Vercel environment cleanup|Hosted migration parity|Evaluator access|Incognito final demo) \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence), "An external final gate was marked complete without owner evidence.");
+const oarRows = evidence.match(/^\|[^\n]+\|[^\n]+\| OWNER_ACTION_REQUIRED \|$/gmu) ?? [];
+invariant(oarRows.length === 1, `Expected exactly one owner-action row, found ${oarRows.length}.`);
+invariant(
+  !/\| Final Production and evaluator closeout \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence),
+  "The external final gate was marked complete without owner evidence.",
+);
 invariant(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(evidence), "Final-submission evidence resembles a JWT.");
 invariant(
   !/(?:SUPABASE_SECRET_KEY|CRON_SECRET|SPORTS_API_KEY)\s*=\s*\S+/u.test(evidence),
@@ -49,5 +58,5 @@ invariant(
 );
 
 console.log(
-  "Final-submission register verified: current read-only facts are separated from seven owner-only final gates.",
+  "Final-submission register verified: observed CI is recorded and one consolidated Production/evaluator owner action remains.",
 );
