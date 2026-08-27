@@ -216,11 +216,6 @@ test.describe("automated accessibility viewport matrix", () => {
 test("emulated 200% reflow approximation at a 1440x900 physical raster", async ({
   browser,
 }, testInfo) => {
-  test.skip(
-    testInfo.project.name !== "desktop-chromium",
-    "Run the one emulated reflow context once.",
-  );
-
   const viewport = { height: 450, width: 720 };
   const context = await browser.newContext({
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
@@ -240,7 +235,7 @@ test("emulated 200% reflow approximation at a 1440x900 physical raster", async (
     process.cwd(),
     "tmp",
     "final-accessibility",
-    "emulated-200-percent",
+    `emulated-200-percent-${testInfo.project.name}`,
   );
   mkdirSync(outputDirectory, { recursive: true });
 
