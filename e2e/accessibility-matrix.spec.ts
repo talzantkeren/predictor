@@ -1,9 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { expect, test } from "./support/stream-safe-test";
+import { expect, test, type Page } from "./support/stream-safe-test";
 
 const viewports = [
   { width: 360, height: 800 },
