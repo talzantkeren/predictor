@@ -89,6 +89,14 @@ async function createLeague(page: Page, leagueName: string) {
 }
 
 test.describe("manager-only non-monetary reports", () => {
+  let leagueStatusCleanupId: string | undefined;
+
+  test.afterEach(() => {
+    if (!leagueStatusCleanupId) return;
+    setLeagueStatusInDisposableLocalDatabase(leagueStatusCleanupId, "open");
+    leagueStatusCleanupId = undefined;
+  });
+
   test("renders exact counts and isolated current/final fixtures only to the exact manager", async ({
     browser,
     page,
@@ -114,6 +122,7 @@ test.describe("manager-only non-monetary reports", () => {
       contextOptions,
     });
     const leagueId = await createLeague(manager.page, targetLeagueName);
+    leagueStatusCleanupId = leagueId;
     const managerId = await getUserId(managerEmail, password);
 
     const member = await registerConfirmedUser({
