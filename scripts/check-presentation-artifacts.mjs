@@ -227,8 +227,18 @@ for (const obsolete of [
   "48 קבצים",
   "30 קבצים",
   "27.8.2026",
+  "50 / 639",
+  "31 / 1,496",
+  "639 בדיקות",
+  "1,496 בדיקות",
 ]) {
   invariant(!slideXml.includes(obsolete), `The deck contains an obsolete test count/date: ${obsolete}`);
+}
+for (const measuredCount of ["50 / 641", "32 / 1,502", "38 / 38"]) {
+  invariant(
+    slideXml.includes(measuredCount),
+    `The deck is missing its final measured count: ${measuredCount}`,
+  );
 }
 
 const logicalCoverSentence = "ליגה פרטית. חיזוי הוגן. דירוג סופי שנשאר סופי.";

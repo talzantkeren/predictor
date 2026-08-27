@@ -704,8 +704,8 @@ async function buildSlides(deck) {
   // 10 — tests
   addStandardHeader(s[9], 10, "כל שכבת בדיקה מוכיחה אמת אחרת", "ראיות שנמדדו");
   const testColumns = [
-    { x: 80, value: "50 / 639", title: "Vitest", body: "קבצים / בדיקות\nחוקים, schemas, מתאמים וחישובים" },
-    { x: 445, value: "31 / 1,496", title: "pgTAP", body: "קבצים / בדיקות\nconstraints, RLS, grants, אטומיות ומרוצים" },
+    { x: 80, value: "50 / 641", title: "Vitest", body: "קבצים / בדיקות\nחוקים, schemas, מתאמים וחישובים" },
+    { x: 445, value: "32 / 1,502", title: "pgTAP", body: "קבצים / בדיקות\nconstraints, RLS, grants, אטומיות ומרוצים" },
     { x: 810, value: "38 / 38", title: "Playwright", body: "בדיקות שעברו\nזרימות משתמש, הרשאות, נגישות ו־RTL" },
   ];
   testColumns.forEach((column, i) => {
@@ -748,7 +748,7 @@ async function buildSlides(deck) {
   setNotes(
     s[9],
     "כל סיכון נבדק בשכבה שבה הוא באמת קורה; ירוק קיים לבדו אינו ראיית סגירה.",
-    "50 קובצי Vitest עם 639 בדיקות, 31 קובצי pgTAP עם 1,496 בדיקות ו־38 בדיקות Playwright נצפו בהרצה הסופית.",
+    "50 קובצי Vitest עם 641 בדיקות, 32 קובצי pgTAP עם 1,502 בדיקות ו־38 בדיקות Playwright נצפו על מועמד המסירה.",
     [
       "docs/testing.md",
       "docs/technical-plan.md §14",
