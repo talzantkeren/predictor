@@ -7,9 +7,13 @@
 
 - `predictor1-final-project.pptx` — מצגת 16:9 עריכה, 9 שקפים, speaker notes
   ומקורות בכל שקף.
+- `deck-source.md` — חוזה תוכן אנושי לכל תשעת השקפים; ה־PPTX נשאר המקור
+  העריך הסמכותי.
 - `predictor1-final-project/slide-1.png` עד `slide-9.png` — render סופי לבדיקת
   פריסה ולפתיחה גם בלי PowerPoint.
 - `demo-script.md` — תסריט חי של 10–15 דקות, כולל שאלות evaluator ונוהל outage.
+- `timing-guide.md` — חלוקת זמן דטרמיניסטית, כללי קיצור ו־hard stop.
+- `evaluator-checklist.md` — checklist מסונן של המוצר, ההסבר, הקישורים וה־outage.
 - `fallback/` — שלושה צילומי מוצר שנלכדו רק אחרי שה־UI הגיע למצבי open,
   active/current ו־completed/final.
 - `rehearsal-log.md` — שער החזרה האנושית; אין לסמן אותו PASS בלי חזרה שנמדדה.
@@ -55,6 +59,7 @@ npm.cmd run test:e2e:run -- e2e/lifecycle.spec.ts --project=desktop-chromium
 | קנה מידה | 8 | pagination, batch sync, caps ו־measurement-first |
 | tradeoffs ומגבלות | 8–9 | modular monolith, Manual fallback, Demo-only וללא AI |
 
-לפני מסירה יש לפתוח את כל תשעת ה־renders, ללחוץ על שני הקישורים בשקף 9 ולמלא
-את `rehearsal-log.md` מול אותו candidate SHA. אין להסיק מהצלחת Production
-שה־Preview Auth או SMTP עובדים.
+לפני מסירה יש לפתוח את כל תשעת ה־renders, לעבוד לפי `timing-guide.md`, למלא את
+`evaluator-checklist.md`, ללחוץ על שני הקישורים בשקף 9 ולמלא את
+`rehearsal-log.md` מול אותו candidate SHA. אין להסיק מהצלחת Production שה־
+Preview Auth או SMTP עובדים.

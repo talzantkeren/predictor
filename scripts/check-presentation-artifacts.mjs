@@ -6,6 +6,9 @@ const presentationRoot = "presentation";
 const deckPath = `${presentationRoot}/predictor1-final-project.pptx`;
 const renderedRoot = `${presentationRoot}/predictor1-final-project`;
 const fallbackRoot = `${presentationRoot}/fallback`;
+const deckSourcePath = `${presentationRoot}/deck-source.md`;
+const timingGuidePath = `${presentationRoot}/timing-guide.md`;
+const evaluatorChecklistPath = `${presentationRoot}/evaluator-checklist.md`;
 
 function invariant(condition, message) {
   if (!condition) {
@@ -107,6 +110,23 @@ const notesEntries = [...entries.keys()].filter((name) => /^ppt\/notesSlides\/no
 invariant(slideEntries.length === expectedSlideCount, `Expected ${expectedSlideCount} editable slides.`);
 invariant(notesEntries.length === expectedSlideCount, `Expected notes on all ${expectedSlideCount} slides.`);
 
+const slideXml = slideEntries
+  .map((name) => entries.get(name)?.toString("utf8") ?? "")
+  .join("\n");
+for (const obsolete of [
+  "627/627",
+  "1443/1443",
+  "28/28",
+  "48 קבצים",
+  "30 קבצים",
+  "27.8.2026",
+]) {
+  invariant(!slideXml.includes(obsolete), `The deck contains an obsolete test count/date: ${obsolete}`);
+}
+for (const stableLabel of ["Final-SHA evidence only", "RULES", "DATA", "FLOWS"]) {
+  invariant(slideXml.includes(stableLabel), `Slide 7 is missing its stable label: ${stableLabel}`);
+}
+
 for (let index = 1; index <= expectedSlideCount; index += 1) {
   invariant(entries.has(`ppt/slides/slide${index}.xml`), `Missing editable slide ${index}.`);
   const notes = entries.get(`ppt/notesSlides/notesSlide${index}.xml`)?.toString("utf8") ?? "";
@@ -148,11 +168,22 @@ const demoScriptPath = `${presentationRoot}/demo-script.md`;
 const presenterReadmePath = `${presentationRoot}/README.md`;
 const rehearsalLogPath = `${presentationRoot}/rehearsal-log.md`;
 const lifecycleSpecPath = "e2e/lifecycle.spec.ts";
-const [demoScript, presenterReadme, rehearsalLog, lifecycleSpec] = await Promise.all([
+const [
+  demoScript,
+  presenterReadme,
+  rehearsalLog,
+  lifecycleSpec,
+  deckSource,
+  timingGuide,
+  evaluatorChecklist,
+] = await Promise.all([
   requiredFile(demoScriptPath, 2_000),
   requiredFile(presenterReadmePath, 1_000),
   requiredFile(rehearsalLogPath, 1_000),
   requiredFile(lifecycleSpecPath, 1_000),
+  requiredFile(deckSourcePath, 1_500),
+  requiredFile(timingGuidePath, 1_500),
+  requiredFile(evaluatorChecklistPath, 1_500),
 ]);
 
 requireText(
@@ -189,8 +220,44 @@ requireText(
   ["CAPTURE_PRESENTATION_ASSETS", ...fallbackFiles],
   lifecycleSpecPath,
 );
+requireText(
+  deckSource.toString("utf8"),
+  [
+    "authoritative editable source",
+    "## Slide 1",
+    "## Slide 9",
+    "Final-SHA evidence only",
+    "[Sources]",
+  ],
+  deckSourcePath,
+);
+requireText(
+  timingGuide.toString("utf8"),
+  ["10:00–15:00", "00:00", "11:30", "20 seconds", "hard stop"],
+  timingGuidePath,
+);
+requireText(
+  evaluatorChecklist.toString("utf8"),
+  [
+    "OWNER_ACTION_REQUIRED",
+    "<candidate-sha>",
+    "9/9",
+    "Production",
+    "GitHub",
+    "outage",
+    "Demo-only",
+  ],
+  evaluatorChecklistPath,
+);
 
-const trackedPresentationText = Buffer.concat([demoScript, presenterReadme, rehearsalLog]).toString("utf8");
+const trackedPresentationText = Buffer.concat([
+  demoScript,
+  presenterReadme,
+  rehearsalLog,
+  deckSource,
+  timingGuide,
+  evaluatorChecklist,
+]).toString("utf8");
 invariant(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(trackedPresentationText), "Presentation text resembles a JWT.");
 invariant(
   !/(?:SUPABASE_SECRET_KEY|CRON_SECRET|SPORTS_API_KEY)\s*=\s*\S+/u.test(trackedPresentationText),
@@ -198,5 +265,5 @@ invariant(
 );
 
 console.log(
-  `Presentation artifacts verified: ${expectedSlideCount} editable/rendered slides, ${fallbackFiles.length} fallback images, notes, public links and presenter runbook.`,
+  `Presentation artifacts verified: ${expectedSlideCount} editable/rendered slides, ${fallbackFiles.length} fallback images, notes, deck source, timing guide, evaluator checklist and public links.`,
 );
