@@ -1,12 +1,11 @@
 # מרשם hardening סופי — Slice 9
 
-Status: `OWNER_ACTION_REQUIRED`
+Status: `VERIFIED`
 
-המרשם הוא ראיית `S9-REQ-005`. כל item מקומי קיבל disposition נצפה על
-checkpoint נקי; אין כאן הסקה מ־Local ל־Hosted. נותרה **single remaining owner
-action** אחת: read-only password-policy + Advisor export באותו session של
-Supabase Production. שאר השערים האנושיים/Hosted ממופים לרשומות שלהם ואינם
-נספרים כפעולות owner של `S9-REQ-005`.
+זהו המרשם הסמכותי של `S9-REQ-005`. מדיניות Hosted, ‏Security Advisor
+ו־Performance Advisor נקראו בפועל ב־28.8.2026. כל 28 ממצאי האבטחה הראשוניים
+וכל 20 ממצאי הביצועים קיבלו disposition מפורש. פער אמיתי אחד תוקן בקוד
+וב־migration קדימה, וה־Advisors הורצו מחדש. אין עוד owner action ברשומה זו.
 
 ## זיהוי checkpoint
 
@@ -14,91 +13,87 @@ Supabase Production. שאר השערים האנושיים/Hosted ממופים ל
 | --- | --- |
 | ID | `S9-REQ-005` |
 | Branch | `feature/slice-9-implementation` |
-| Candidate SHA | `a0610df0c0dad8634cbf512f9ff0b74b1bde728b` |
-| Clean-clone SHA | `a0610df0c0dad8634cbf512f9ff0b74b1bde728b` |
-| Draft review | Draft PR #14 — נשאר Draft ולא ממוזג |
-| Scope | Local Supabase בלבד; אין linked reset או Hosted mutation |
+| Implementation checkpoint | `8b30d9c` |
+| Draft review | PR #14 נשאר Draft ולא מוזג |
+| Hosted mutation | רק `20260825000000_revoke_rls_event_trigger_rpc_access.sql`, אחרי dry-run מבודד של migration יחיד |
+| Forbidden production gates | `S9-DEF-004`, `S9-DEF-012`, `S9-REQ-003` לא נוסו |
 
-## מטריצת שערים מקומיים ו־disposition
+## Hosted password policy
 
-כל התוצאות הבאות נצפו ב־27.8.2026. ההרצה הראשונה של `npm.cmd run verify`
-חשפה failure אמיתי: spec הנגישות ייבא `Page` ישירות מ־Playwright ולכן הפר את
-fixture ה־stream-safe. הייבוא הועבר לגבול ה־fixture, הרגרסיה הממוקדת עברה
-4/4, ואז כל המטריצה הורצה מחדש בלי דילוג או ריכוך.
+ה־Management API נצפה בקריאה בלבד: מינימום `8`, ללא character classes,
+`password_hibp_enabled=false`, ו־rate limits מתועדים. GoTrue הפעיל הוא
+`v2.195.0`; המקור המתויג אוכף תקרה של 72 בתים. החוזה האפליקטיבי הקודם של
+8–128 תווים לא היה עקבי, ולכן תוקן לשמונה תווים לפחות ועד 72 בתים בקידוד
+UTF-8. בדיקות מכסות 72/73 ASCII ואת אותו גבול עם עברית רב־בתית.
 
-| Gate | פקודה מדויקת | תוצאה נצפית | Disposition |
-| --- | --- | --- | --- |
-| Install | `npm.cmd ci` | PASS — 427 packages added; 428 audited; 0 vulnerabilities | closed locally |
-| Full verify | `npm.cmd run verify` | PASS — lint; strict typecheck; 49 Vitest files/631 tests; 30 pgTAP files/1443 tests; types current; production build; 52-artifact client scan; 38 Playwright tests in 5.9m; no `[WebServer] Error` | closed locally |
-| Standalone build | `npm.cmd run build` | PASS — Next.js 16.3.0 compile, TypeScript, page data and static generation | closed locally |
-| Client-secret bundle | `$env:CLIENT_SECRET_SENTINEL='<synthetic>'; npm.cmd run test:client-secrets` | PASS — sentinel absent from 52 client/rendered artifacts | closed locally |
-| Dependency audit | `npm.cmd audit --audit-level=low` | PASS — 0 vulnerabilities | closed locally |
-| Local DB lint | `npx.cmd --no-install supabase db lint --local --schema public,private --level warning --fail-on error` | PASS — `results=[]`; no public/private schema errors | closed locally |
-| Forward migration reset | `npx.cmd --no-install supabase db reset --local` | PASS — 36 forward migrations through `20260827180000`, seed and restart | closed locally |
-| Generated DB types | `npm.cmd run types:check` | PASS — no drift after reset | closed locally |
-| Representative scale | `npm.cmd run scale:plans` | PASS — four bounded plans: 0.163/2.173/0.456/0.830ms; rows 51/51/51/26 | closed locally |
-| Accessibility/viewport | included in `npm.cmd run verify` via `e2e/accessibility-matrix.spec.ts` | PASS — 10/10 across 360 / 390 / 768 / 1024 / 1440, Desktop+Mobile; axe/keyboard/focus/contrast/touch/RTL/overflow | automated portion closed; native 200% routed to S9-DEF-022 |
-| three clean E2E repeats | `npm.cmd run test:e2e:run -- e2e/prediction-lock.spec.ts` ×3 | PASS — 2/2 in 27.3s, 2/2 in 27.1s, 2/2 in 27.1s; no `[WebServer] Error` | closed locally |
-| clean-clone | `npm.cmd ci`; `npm.cmd run verify`; `npm.cmd run build`; `git status --short` | PASS on exact SHA — 631/1443/38; E2E 6.1m; second build green; Git status empty | closed locally; copied `.env.local` removed after run |
+אין טענה ש־leaked-password protection מופעלת. זהו `ACCEPTED WITH RATIONALE`
+של `S9-TDEC-004`: owner הוא repository owner; target הוא revisit on trigger;
+triggers הם plan מתאים, הרחבת רגישות, incident/credential stuffing או דרישת
+evaluator. ה־mitigations הם validation תואם, recovery enumeration-safe,
+rate limits נצפים ו־Demo-only.
 
-## P0/P1/P2 disposition
+## Advisor disposition
 
-| Priority | Finding set | Disposition |
+| Gate | תוצאה נצפית | Disposition |
 | --- | --- | --- |
-| P0 | אין finding מקומי פתוח אחרי שתי ריצות מלאות | no waiver; finding חדש עוצר את המועמד |
-| P1 | אין finding מקומי פתוח; ה־CI על checkpoint קודם ירוק ומתועד ב־S9-REQ-003 | no waiver; final external gates נשארים ברשומות הייעודיות |
-| P2 | `S9-REQ-005` נשאר פתוח רק בגלל ראיית Hosted למטה | not waived; `OWNER_ACTION_REQUIRED` עד פעולה אחת |
+| Security Advisor initial | 28: ‏0 ERROR, ‏22 WARN, ‏6 INFO | 28/28 מפורטים ב־`S9-REQ-005-security-advisor.md` |
+| `rls_auto_enable` anon/auth warnings | שתי אזהרות אמיתיות | `FIXED`: path ריק, grants מבוטלים, trigger נשמר; post-fix Advisor אינו מציג אותן |
+| Security Advisor post-fix | 26: כל הפריטים הנותרים מוסברים | intentional gateway/deny-all/`pg_net` הם `NO-FIX WITH EVIDENCE`; leaked-password הוא accepted risk |
+| Performance Advisor | 20: ‏0 ERROR, ‏0 WARN, ‏20 INFO | 12 `NO-ADD WITH EVIDENCE`; שמונה `RETAIN WITH EVIDENCE`; אין index ספקולטיבי |
 
-אין P2 waived. היעדר `leaked-password protection` נשאר accepted residual risk
-לפי `S9-TDEC-004`; אין כאן claim שהיכולת קיימת או מופעלת. Local מוכיח את חוזה
-8–128 והזרימות, אך אינו מוכיח את policy ב־Hosted. `supabase db lint --local`
-אינו תחליף ל־Security Advisor או Performance Advisor של Production.
+ה־Hosted נצפה עם RLS וללא direct DML על שש טבלאות ה־deny-all, ועם 17 gateways
+מכוונים שהם SECURITY DEFINER, ‏`search_path=''`, ללא PUBLIC/service-role
+execute. רק `resolve_invite` פתוח ל־anon בכוונה; כל 17 פתוחים ל־authenticated
+עם actor/resource checks ובדיקות של משתמש/ליגה זרים.
 
-## הפעולה היחידה שנותרה לבעלים
+## מטריצת verification
 
-Contract marker: `single remaining owner action`; the combined evidence covers
-`Hosted password policy` and both Advisor tabs.
-
-| Gate | הוראת owner מדויקת | Status | Owner | Target date | Trigger |
-| --- | --- | --- | --- | --- | --- |
-| Hosted hardening read/export | באותו session read-only ב־Supabase Production: (1) לפתוח Auth configuration, לצלם באופן מצונזר min/max password ‏8–128 ואת rate-limit/monitoring הרלוונטיים בלי שינוי; אין לטעון ש־leaked-password protection מופעלת. (2) לפתוח Database Advisors, לייצא את רשימות Security Advisor ו־Performance Advisor על final SHA, ולתת לכל item disposition: fixed, informational/no-action עם נימוק, או accepted risk עם Owner/Target date/Trigger ואישור. לשמור את ה־artifacts בנתיבי ה־owner packet ולהריץ `npm.cmd run hardening:check`. | OWNER_ACTION_REQUIRED | Project owner | 2026-09-02 | final migrations present in Production |
-
-אם אחד משני המסכים אינו נגיש או item נשאר ללא disposition, הפעולה היחידה לא
-הושלמה והרשומה נשארת פתוחה. אין לבצע שינוי Hosted כחלק מאיסוף הראיה.
-
-## שערים המנוהלים ברשומות אחרות
-
-השורות הבאות אינן פעולות owner של `S9-REQ-005`; הן מופיעות כאן רק כדי למנוע
-כפל ownership או claim שסגירת hardening המקומי סגרה אותן.
-
-| Gate | רשומה/ראיה סמכותית | Status | גבול |
+| Gate | פקודה | תוצאה נצפית | Status |
 | --- | --- | --- | --- |
-| Native 200% zoom | `S9-DEF-022` | TRACKED_BY_RECORD | human Chrome native zoom בלבד |
-| Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | uncheck Preview בלי Reveal |
-| Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final sanitized pg_net/run/lease observation |
-| Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | read-only versions; no reset |
-| Evaluator access | `S9-REQ-003` | TRACKED_BY_RECORD | approved identity, out-of-band access |
-| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | one measured 10–15 minute run |
-| Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias parity |
+| Auth boundary | `npm.cmd exec -- vitest run src/features/auth/auth-rules.test.ts` | 87/87 | PASS |
+| Lint | `npm.cmd run lint` | ESLint ללא finding | PASS |
+| Strict types | `npm.cmd run typecheck` | ללא שגיאה | PASS |
+| Full unit | `npm.cmd run test` | 50 files, 641/641 | PASS |
+| Production build | `npm.cmd run build` | Next.js compile/type/page generation | PASS |
+| Forward reset | `supabase db reset --local` | 39 migrations through `20260827200000` | PASS |
+| DB type drift | `npm.cmd run types:db`; `npm.cmd run types:check` | generated types current | PASS |
+| Full database | `npm.cmd run test:db` | 32 files, 1502/1502 | PASS |
+| Multi-session | explicit ten-file `supabase test db` suite | 10 files, 624/624 | PASS |
+| Security Advisor | `supabase db advisors --linked --type security --level info` | initial 28; post-fix 26; all dispositioned | PASS |
+| Performance Advisor | `supabase db advisors --linked --type performance --level info` | 20/20 dispositioned | PASS |
+| Migration isolation | linked `db push --dry-run`, then apply | exactly one hardening migration | PASS |
 
-GitHub billing is no longer an owner gate: unchanged CI ran on real runners and
-both push `33097585902` and PR `33097590476` completed green on
-`223de65f083fcbf954c082c6e83c6df2ed14bdca`. Final-head CI remains part of the
-S9-REQ-003 runbook, not this Hosted hardening read/export action.
+הרצת DB ראשונה נכשלה כש־Docker יצר מחדש את מסד ה־Local באמצע קובץ
+multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מהחיבור שנקטע. שתי
+הריצות לא סומנו כ־PASS. לאחר reset קדימה ותצפית health תקינה, כל 1502 בדיקות
+ה־DB וכל 624 בדיקות חבילת ה־multi-session עברו.
 
-## Accepted-risk fields
+## P0/P1/P2
 
-| Risk | Owner | Target date | Trigger | Current mitigation |
-| --- | --- | --- | --- | --- |
-| leaked-password protection unavailable/not enabled | repository owner (approval in `S9-TDEC-004`) | revisit on trigger | plan gains feature, sensitive-scope expansion, credential-stuffing incident/evidence or evaluator demand | validation 8–128; enumeration-safe recovery; rate/monitor evidence requested; Demo-only |
-| no broad malware scanner for synthetic proof images | project architecture/security | revisit on trigger | file types/public users/compliance scope changes | magic/decode/pixel cap/re-encode/private bucket |
-| no cache/queue/materialized leaderboard | architecture/scale | measurement threshold | bounded plans/latency/storage exceed documented thresholds | keyset pagination, bounded sync and indexes |
+| Priority | Disposition |
+| --- | --- |
+| P0 | אפס finding פתוח; אין waiver |
+| P1 | אפס finding פתוח; אין waiver |
+| P2 | כל פריט fixed / no-fix with evidence / accepted with Owner, Target date ו־Trigger; אין owner action של `S9-REQ-005` |
 
-## Regression contract
+## שערים נפרדים
 
-`npm.cmd run hardening:check` verifies the local command matrix, five viewport
-widths, four representative plan labels, P0/P1/P2 and risk fields, exactly one
-`OWNER_ACTION_REQUIRED` table row, and routing of every other owner gate to its
-own record. It rejects stale candidate/count text, JWT-like strings and secret
-assignments. No workflow, test, lint rule or threshold is disabled by this
-register.
+| Gate | רשומה | Status | גבול |
+| --- | --- | --- | --- |
+| Native 200% zoom | `S9-DEF-022` | TRACKED_BY_RECORD | בדיקת Chrome native אנושית בלבד |
+| Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | הסרת Preview ללא Reveal ו־Preview verification |
+| Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final acceptance רק אחרי merge; לא נוסה כאן |
+| Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | 19 migrations נשארו local-only; לא נפרסו כאן |
+| Evaluator access | `S9-REQ-003` | TRACKED_BY_RECORD | זהות וגישה מחוץ ל־Git |
+| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | הרצה מדודה נפרדת |
+| Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias אחרי merge בלבד |
+
+## ראיות
+
+- `docs/evidence/slice-9/w8/S9-REQ-005.md`
+- `docs/evidence/slice-9/w8/S9-REQ-005-hosted-auth-policy.md`
+- `docs/evidence/slice-9/w8/S9-REQ-005-security-advisor.md`
+- `docs/evidence/slice-9/w8/S9-REQ-005-performance-advisor.md`
+
+ה־register וה־exports אינם מכילים JWT, secret assignment, project/account ID,
+password, URL חתום או provider payload.

@@ -267,7 +267,7 @@ artifact הביקורת ואת manifest ה־provenance.
 | `docs/project-book.docx` | derived/course deliverable | text + 4/4 pages | Slice 8 next, 460/20, תוכן כספי ופריסת עמודים: S9-DEF-013 |
 | `docs/prompts/slice-6-implementation-prompt.md` | historical prompt | נקרא במלואו | אינו contract נוכחי |
 | `docs/scale.md` | ניתוח קנוני תומך | נקרא במלואו | advisor/query-scale disposition ב־S9-REQ-005 |
-| `docs/security.md` | ניתוח קנוני תומך | נקרא במלואו | TDEC-004 ו־mitigations תועדו; Hosted Auth/password-policy evidence נשאר פתוח בלי claim של configuration שהושלם |
+| `docs/security.md` | ניתוח קנוני תומך | נקרא במלואו | TDEC-004 ו־mitigations תועדו; Hosted Auth/password-policy ו־Advisor evidence נסגרו ב־S9-REQ-005 ב־28.8.2026 ללא claim של leaked-password protection |
 | `docs/slice-9-preflight-audit.md` | audit artifact חדש | נכתב ונקרא במלואו; diff/staged review לפני commit | source durable לכל finding; decision closure אינו משנה runtime/Hosted |
 | `docs/sports-provider-poc.md` | החלטה/תכנית POC | נקרא במלואו | API-Football נבחר; Manual/recorded fallbacks נשארים |
 | `docs/technical-plan.md` | Markdown קנוני | נקרא במלואו | סעיף Slice 9 עודכן לקישור ול־register זה |
@@ -522,10 +522,10 @@ order by provider;
 
 | פריטים | disposition |
 | --- | --- |
-| `pg_net` ב־`public` | ה־job הנוכחי תלוי ב־`pg_net`; לא הוכח שמיקום `public` עצמו נדרש. יש לאמת schema/dependencies נתמכים לפני כל move ב־S9-REQ-005 |
+| `pg_net` ב־`public` | `NO-FIX WITH EVIDENCE`: Hosted 0.20.4 הוא non-relocatable, ה־objects תחת `net`, ו־PostgREST OpenAPI לא פרסם נתיב/definition של `net`; recreation ספקולטיבי יסכן Cron |
 | advisor role-entries ל־`SECURITY DEFINER`: `resolve_invite`, `approve_join_request`, `authorize_payment_proof_access`, `consume_proof_upload_rate_limit`, `create_league`, `create_or_rotate_invite`, `finalize_payment_proof`, `get_join_request_upload_context`, `get_league_invite_metadata`, `get_manager_join_requests`, `get_my_join_requests`, `get_my_join_requests_v2`, `is_system_admin`, `reject_join_request`, `revoke_invite`, `save_prediction`, `submit_join_request` | gateways מכוונים, `search_path=''`, grants מצומצמים ו־pgTAP. לשמור disposition function-by-function; אין warning אוטומטי שהוא bypass |
-| `rls_auto_enable` ל־anon/authenticated | אינו קיים ב־local migrations אך הופיע ב־Hosted Advisor; owner/definition/grants חייבים להיבדק ולהיות מוסברים או מבוטלים לפני release |
-| leaked password protection disabled | `S9-TDEC-004` נסגר כ־accepted residual risk: אין upgrade רק עבור היכולת ואין client-side lookup. `S9-REQ-005` עדיין מאמת read-only את התאמת מדיניות password ‏8–128 ואת בקרות rate/monitoring לפני final evidence |
+| `rls_auto_enable` ל־anon/authenticated | `FIXED`: definition/owner/ACL/trigger נבדקו, migration `20260825000000` קבע `search_path=''`, ביטל direct execute ושמר את `ensure_rls`; שתי האזהרות נעלמו בריצה חוזרת |
+| leaked password protection disabled | `ACCEPTED WITH RATIONALE` תחת `S9-TDEC-004`; נצפה כבוי. חוזה היישום תוקן לשמונה תווים לפחות ועד 72 בתים, ו־rate/monitoring תועדו ללא שינוי Hosted Auth |
 | שש טבלאות RLS ללא policies: `audit_logs`, `invite_links`, `rate_limit_events`, `sports_provider_rounds`, `sync_leases`, `system_admins` | deny-all מכוון עם gateway/RPC; לשמר tests של no direct grant |
 
 ### 7.2 Performance Advisor — 0 errors, 0 warnings, 20 info
@@ -1573,30 +1573,29 @@ waiver ל־P2 דורש owner, נימוק, mitigation ותאריך בכתב. אי
 - Source: Slice 9 plan, internal release standard, WCAG/OWASP/official checklists.
 - Environment/SHA/roles/data: maintainers/evaluator; local/Hosted/manual final
   candidate, כל routes/tables/config.
-- Preconditions/reproduction/current evidence: verify/advisors/plans/viewports
-  עברו על base, אך regressions
-  של findings, scale shape מייצג, native 200%, contrast/keyboard מלא ו־Hosted
-  post-fix evidence חסרים.
-- Expected/actual/root cause: final candidate אחד מוכח end-to-end; בפועל קיים
-  רק base audit לפני fixes ולכן gate מתוכנן פתוח.
-- Minimal boundary: fix register בלבד, בלי dependency/infrastructure לא מוכחים.
+- Preconditions/reproduction/current evidence: Hosted Auth ושני ה־Advisors
+  נקראו בפועל; 48 items קיבלו disposition; פער 128/72 ותפקציית event-trigger
+  חשופה תוקנו ונבדקו. native zoom נשאר אך ורק ב־S9-DEF-022.
+- Expected/actual/root cause: hardening evidence נדרש להיות נצפה ולא מוסק;
+  ה־CLI/Management API סיפקו את הראיה וה־post-fix rerun.
+- Minimal boundary: validation + migration הרשאות אחת + evidence/checker;
+  ללא indexes ספקולטיביים וללא פריסת 19 migrations של feature.
 - Acceptance: zero open P0/P1 and no unwaived P2; every advisor item disposition;
-  representative hundreds-user plans; exact authz negative לכל שינוי; all
-  multi-session/scoring/state cases; 360–1440 + native 200% + keyboard/contrast/
-  touch; `npm run verify`, lint DB, type parity, audit, clean clone all green.
+  exact authz negative לכל שינוי; all multi-session/scoring/state cases;
+  lint/type/build, type parity ו־Advisor rerun ירוקים. Accessibility/native 200%
+  נשארים acceptance נפרד של S9-DEF-022.
 - Required evidence: command logs/counts/durations, Playwright artifacts sanitized,
   Preview/Production manual gates, accepted-risk owner/date/trigger.
 - Required migration/RLS/grant/config/doc changes: לפי כל finding בלבד; כל Advisor
   מקבל add/no-add/waive disposition, אין שינוי schema עיוור. leaked-password
-  protection נסגר כ־accepted residual risk דרך S9-TDEC-004; acceptance שנותר
-  הוא ראיית read-only שמדיניות Hosted תואמת ל־8–128 ותיעוד rate/monitoring,
-  ללא claim שהיכולת הופעלה. גם DEF-025 דורש scope matrix/secret scan/Cron
-  evidence אחרי שינוי Vercel.
+  protection נסגר כ־accepted residual risk דרך S9-TDEC-004 ונצפה כבוי;
+  מדיניות Hosted תועדה ותקרת היישום יושרה ל־72 UTF-8 bytes. ‏DEF-025 נשאר
+  רשומה נפרדת ל־scope matrix/secret scan/Cron continuity.
 - Regression: full canonical verify פעם אחת + targeted reruns לפי failure;
   real multi-session, clean clone, Hosted/manual matrix על exact final SHA.
 - Dependencies/order: אחרי כל fixes ואחרי acceptance ה־Hosted/manual שנותר
   מהחלטות S9-TDEC-002/004, לפני REQ-003; כל ארבע ההחלטות עצמן כבר סגורות.
-  Waiver: none; Status: `Open`.
+  Waiver: none; Status: `VERIFIED` ב־28.8.2026.
 
 ## 12. בדיקה מחדש של regressions היסטוריים
 
@@ -1632,7 +1631,7 @@ branch control כ־accepted risk אינה מחליפה את ביצוע ה־contr
 | Preview Auth callback/private-flow | `OPEN — INTERNAL ONLY` | DEF-014 מיישר docs/policy; אם נשמר מסלול Preview, child Hosted alignment + E2E נסגרים ב־DEF-004. אינו course blocker ישיר |
 | Cron slow path | `OPEN` | DEF-011 fake + DEF-012 controlled slow path ו־sanitized Hosted run; DEF-012 מקודם רק בתנאי המוגדר |
 | Production sports credential scope | `OPEN` | TDEC-002 הכריעה Production-only, אך DEF-025 דורש הסרה מ־Preview, Sensitive ב־Production ככל שנתמך, matrix ללא values, scan, Manual CI ו־Production Cron proof |
-| Hosted password-policy/control evidence | `OPEN — INTERNAL ONLY` | TDEC-004 קיבלה את היעדר leaked-password protection; REQ-005 עדיין דורש read-only proof של התאמת 8–128 ו־rate/monitor controls, ללא שינוי Auth ב־PR זה |
+| Hosted password-policy/control evidence | `VERIFIED — INTERNAL ONLY` | REQ-005 קרא Auth/Advisors, יישר את היישום לשמונה תווים/72 בתים, תיעד rate controls והשאיר leaked-password כבוי כ־accepted risk |
 | final deployment SHA | `OPEN` | Slice 9 טרם מומש; REQ-003 |
 | evaluator private GitHub access | `OPEN` | זהות evaluator אינה ידועה; confirmation out-of-band תחת REQ-003 |
 | native 200%/contrast/full keyboard | `OPEN` | smoke אינו manual audit מלא; REQ-005 manual matrix |
@@ -1653,7 +1652,7 @@ branch control כ־accepted risk אינה מחליפה את ביצוע ה־contr
 | אין retention job/materialized leaderboard/cache | scale document | bounded history ו־small private leagues | plans/latency/storage חוצים thresholds מתועדים |
 | Hosted `NS→live→FT` observation opportunistic | canary plan | recorded fixtures + Manual path + fail-closed review | חלון משחק חוקי זמין ללא בזבוז quota |
 | אין platform-enforced protection על `main` | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-001 | private repo; no direct push; merge reviewed PR בלבד; exact candidate SHA + שלושת checks הנקובים + Production commit/immutable URL/alias | collaborator/visibility/plan משתנים, direct-push attempt, control failure או דרישת evaluator |
-| leaked-password protection אינה זמינה/מופעלת | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-004 | validation ‏8–128; Hosted policy consistency evidence תחת REQ-005; rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only; אין client-side breached-password lookup | plan כולל את היכולת מסיבה אחרת, הרחבה לנתונים רגישים מהותית, incident/credential-stuffing evidence או דרישת evaluator |
+| leaked-password protection אינה זמינה/מופעלת | repository owner `talzantkeren`, 26.8.2026; S9-TDEC-004 | validation של שמונה תווים לפחות/72 UTF-8 bytes; Hosted policy evidence אומתה ב־REQ-005; rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only; אין client-side breached-password lookup | plan כולל את היכולת מסיבה אחרת, הרחבה לנתונים רגישים מהותית, incident/credential-stuffing evidence או דרישת evaluator |
 
 אין waiver חדש ל־P2 בביקורת זו. P4/post-MVP בלבד: export/charts/BI, malware
 scanning רחב, materialized leaderboard/Redis/queue לפי מדידה, ושילוב model
@@ -1680,9 +1679,9 @@ generative רק לאחר submission ואישור scope. Real-money/payment/prize
 7. לסגור RTL/invite/accessibility: DEF-015/016/020/022 ו־native 200% matrix.
 8. לסנכרן README/docs/project book וליצור deck/demo/rehearsal: DEF-013/014,
    REQ-002/004; manifest ה־provenance שכבר נסגר נכלל ב־link/hash check.
-9. תחת REQ-005 להשלים את acceptance של TDEC-004: ראיית read-only שמדיניות
-   Hosted תואמת ל־8–128, תיעוד rate/monitor controls ואימות Demo accounts;
-   אין plan upgrade, client lookup או claim שה־leaked-password feature הופעלה.
+9. `COMPLETED` תחת REQ-005: מדיניות Hosted ו־rate controls נצפו, validation
+   יושר לשמונה תווים/72 UTF-8 bytes, ואין plan upgrade, client lookup או claim
+   שה־leaked-password feature הופעלה.
 10. לפתור כל P3 או לתעד defer מפורש, ואז להריץ REQ-005 full verification,
     Advisors, plans ו־clean clone על candidate נקי.
 11. לפרוס אותו SHA ל־Preview/Production לפי המדיניות המאושרת, לאמת evaluator

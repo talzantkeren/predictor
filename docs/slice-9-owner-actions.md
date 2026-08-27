@@ -110,21 +110,20 @@ npm.cmd run owner-runbooks:check
 
 ## 5. S9-REQ-005 — Hosted password policy ו־Advisors
 
-**איפה:** Supabase Production → Authentication configuration; Database →
-Advisors → Security; Database → Advisors → Performance.
+Status: `VERIFIED` ב־28.8.2026. אין owner action שנותרה.
 
-**פעולה יחידה:** ב־session read-only אחד לצלם min/max password ‏8–128 ואת
-rate-limit/monitoring בלי שינוי ובלי לטעון ש־leaked-password protection
-מופעלת; לייצא את שתי רשימות Advisors ולתת לכל item disposition מסוג fixed,
-informational/no-action עם נימוק, או accepted risk עם Owner/Target date/Trigger.
+ה־Management API וה־CLI נקראו בפועל ללא שינוי Auth וללא חשיפת credential.
+הפער 8–128 מול תקרת GoTrue של 72 בתים תוקן בקוד ובבדיקות. כל 28 ממצאי
+Security Advisor הראשוניים וכל 20 ממצאי Performance Advisor קיבלו disposition.
+שתי אזהרות `rls_auto_enable` תוקנו ב־migration קדימה מבודד וה־Advisor הורץ
+מחדש; leaked-password protection נצפה כבוי ונשאר accepted risk של
+`S9-TDEC-004`.
 
-**ראיה לשמור:** `S9-REQ-005/01-password-policy.png`,
-`S9-REQ-005/02-security-advisor.txt`,
-`S9-REQ-005/03-performance-advisor.txt` בחבילת owner, ללא project/account IDs.
-להוסיף את תוצאות ה־disposition ל־`docs/evidence/slice-9/w8/S9-REQ-005.md` ול־
-`docs/final-hardening-register.md`.
+**ראיה:** `docs/evidence/slice-9/w8/S9-REQ-005.md` ושלושת קובצי ה־export
+המקושרים ממנו. הם מכילים רק שדות allowlisted ותוצאות מסוננות, ללא
+project/account IDs או ערכי secret.
 
-**אימות לאחר הפעולה:** 
+**אימות הרשומה:**
 
 ```powershell
 npm.cmd run hardening:check

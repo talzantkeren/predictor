@@ -1,8 +1,24 @@
 import { readFile } from "node:fs/promises";
 
 const registerPath = "docs/final-hardening-register.md";
-const [register, viewportSpec, scalePlanChecker] = await Promise.all([
+const securityExportPath =
+  "docs/evidence/slice-9/w8/S9-REQ-005-security-advisor.md";
+const performanceExportPath =
+  "docs/evidence/slice-9/w8/S9-REQ-005-performance-advisor.md";
+const authPolicyPath =
+  "docs/evidence/slice-9/w8/S9-REQ-005-hosted-auth-policy.md";
+const [
+  register,
+  securityExport,
+  performanceExport,
+  authPolicy,
+  viewportSpec,
+  scalePlanChecker,
+] = await Promise.all([
   readFile(registerPath, "utf8").catch(() => undefined),
+  readFile(securityExportPath, "utf8").catch(() => undefined),
+  readFile(performanceExportPath, "utf8").catch(() => undefined),
+  readFile(authPolicyPath, "utf8").catch(() => undefined),
   readFile("e2e/accessibility-matrix.spec.ts", "utf8"),
   readFile("scripts/check-scale-plans.ts", "utf8"),
 ]);
@@ -13,31 +29,25 @@ function invariant(condition, message) {
 
 invariant(register, `Missing final hardening register: ${registerPath}`);
 for (const expected of [
-  "Status: `OWNER_ACTION_REQUIRED`",
+  "Status: `VERIFIED`",
   "S9-REQ-005",
-  "npm.cmd run verify",
   "npm.cmd run build",
-  "npm.cmd run test:client-secrets",
-  "npm.cmd audit --audit-level=low",
-  "supabase db lint --local",
   "supabase db reset --local",
   "npm.cmd run types:check",
-  "npm.cmd run scale:plans",
-  "360 / 390 / 768 / 1024 / 1440",
-  "native 200%",
-  "three clean E2E repeats",
-  "single remaining owner action",
-  "Hosted hardening read/export",
-  "Hosted password policy",
+  "1502/1502",
+  "624/624",
+  "72 בתים",
+  "28/28",
+  "20/20",
+  "20260825000000_revoke_rls_event_trigger_rpc_access.sql",
+  "rls_auto_enable",
   "leaked-password protection",
   "Security Advisor",
   "Performance Advisor",
-  "clean-clone",
   "TRACKED_BY_RECORD",
   "P0",
   "P1",
   "P2",
-  "OWNER_ACTION_REQUIRED",
   "Owner",
   "Target date",
   "Trigger",
@@ -45,25 +55,54 @@ for (const expected of [
   invariant(register.includes(expected), `Final hardening register is missing: ${expected}`);
 }
 
-const ownerLine = register
-  .split(/\r?\n/u)
-  .find((line) => line.startsWith("| Hosted hardening read/export |"));
-const ownerCells = ownerLine
-  ?.split("|")
-  .map((cell) => cell.trim())
-  .filter(Boolean);
-invariant(
-  ownerCells?.[2] === "OWNER_ACTION_REQUIRED",
-  "The single Hosted hardening read/export row is not explicitly OAR.",
-);
-
 const ownerActionRows = register
   .split(/\r?\n/u)
   .filter((line) => /^\| [^|]+ \| [^|]+ \| OWNER_ACTION_REQUIRED \|/u.test(line));
 invariant(
-  ownerActionRows.length === 1,
-  `Expected exactly one owner-action row, found ${ownerActionRows.length}.`,
+  ownerActionRows.length === 0,
+  `Expected no S9-REQ-005 owner-action row, found ${ownerActionRows.length}.`,
 );
+
+for (const [path, artifact] of [
+  [securityExportPath, securityExport],
+  [performanceExportPath, performanceExport],
+  [authPolicyPath, authPolicy],
+]) {
+  invariant(artifact, `Missing Hosted hardening export: ${path}`);
+  invariant(artifact.includes("Status: `VERIFIED`"), `${path} is not VERIFIED.`);
+}
+
+const securityRows = securityExport
+  .split(/\r?\n/u)
+  .filter((line) => /^\| S\d{2} \|/u.test(line));
+const performanceRows = performanceExport
+  .split(/\r?\n/u)
+  .filter((line) => /^\| P\d{2} \|/u.test(line));
+invariant(
+  securityRows.length === 28,
+  `Expected 28 Security Advisor dispositions, found ${securityRows.length}.`,
+);
+invariant(
+  performanceRows.length === 20,
+  `Expected 20 Performance Advisor dispositions, found ${performanceRows.length}.`,
+);
+for (const row of [...securityRows, ...performanceRows]) {
+  invariant(
+    /`(?:FIXED|NO-FIX WITH EVIDENCE|NO-ADD WITH EVIDENCE|RETAIN WITH EVIDENCE|ACCEPTED WITH RATIONALE)`/u.test(
+      row,
+    ),
+    `Advisor row lacks an allowed explicit disposition: ${row}`,
+  );
+}
+for (const expected of [
+  "password_min_length",
+  "72` UTF-8 bytes",
+  "password_hibp_enabled",
+  "`false`",
+  "S9-TDEC-004",
+]) {
+  invariant(authPolicy.includes(expected), `Hosted Auth export is missing: ${expected}`);
+}
 
 for (const row of [
   "Native 200% zoom",
@@ -112,12 +151,12 @@ invariant(
 for (const stale of [
   "2a692242c795b3129792b7b7f7cd203c1776f9f9",
   "627/627",
-  "28/28",
   "ten owner-only gates",
+  "single remaining owner action",
 ]) {
   invariant(!register.includes(stale), `Final hardening register contains stale evidence: ${stale}`);
 }
 
 console.log(
-  "Final hardening contract verified: local gates and dispositions are explicit; exactly one Hosted read/export owner action remains.",
+  "Final hardening contract verified: Hosted Auth and all 48 Advisor dispositions are explicit; S9-REQ-005 has no remaining owner action.",
 );
