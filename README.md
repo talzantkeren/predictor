@@ -5,22 +5,24 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
+- Preview smoke (Auth לא נתמך): [https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app)
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
-קישורי Preview ישנים הם ראיה היסטורית בלבד ואינם endpoints נתמכים. Preview
-נוכחי משמש smoke ציבורי; זרימות Auth בו הן יכולת QA פנימית אופציונלית ורק
-לאחר allowlist מפורש ל־callback המדויק. אין להסיק מעצם קיום Preview שאישור או
-שחזור Email הוגדרו בו.
+קישורי Preview ישנים הם ראיה היסטורית בלבד ואינם endpoints נתמכים. ה־Preview
+שנוצר לכל PR משמש smoke ציבורי בלבד; Auth ב־Preview מסווג כרגע `לא נתמך / לא
+מאומת`. הפעלתו ל־QA פנימי דורשת allowlist זמני של callback מדויק, ללא wildcard,
+והרצת ראיה חדשה. החוזה המלא נמצא ב־
+[`docs/deployment.md`](./docs/deployment.md).
 
 מצב נוכחי: Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. השלב הבא
 הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה. ראיות ה־Canary
 המסוננות נמצאות ב־
 [`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
 
-זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
-הקשר ההזמנה לאחר אישור ורענון. השלמת החלטת המנהל נדרשת להיבדק ידנית שוב לאחר כל
-שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slices 3–4.
+בדיקת Preview מ־15 באוגוסט 2026 היא ראיה היסטורית בלבד ואינה מתארת את ה־Preview
+הנוכחי. קישור פריסה לבדו אינו מוכיח Email confirmation, שחזור סיסמה או callback
+של הזמנה.
 
 ## דרישות
 
@@ -402,21 +404,19 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 
 ## הגדרות Redirect ב־Supabase hosted
 
-החוזה הנתמך מוגדר ללא wildcard רחב:
+| סביבה | origin שהאפליקציה מקבלת | callback ב־Supabase | יכולת נוכחית |
+| --- | --- | --- | --- |
+| Production | `https://predictor-swart.vercel.app` | `https://predictor-swart.vercel.app/auth/confirm` | חוזה ההגשה הציבורי |
+| Local | `http://localhost:3000` | `http://localhost:3000/auth/confirm` | נתמך ב־Supabase המקומי וב־Mailpit |
+| Local חלופי | `http://127.0.0.1:3000` | `http://127.0.0.1:3000/auth/confirm` | רק כשה־loopback הזה נבחר במפורש |
+| Preview של PR #14 | `https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app` | אינו רשום כ־callback | smoke ציבורי; Auth לא נתמך ולא מאומת |
 
-- Production origin / Site URL: `https://predictor-swart.vercel.app`
-- Production callback: `https://predictor-swart.vercel.app/auth/confirm`
-- Local origin: `http://localhost:3000`
-- Local callback: `http://localhost:3000/auth/confirm`
-- Local alternate for an explicitly selected loopback origin:
-  `http://127.0.0.1:3000/auth/confirm`
-
-טפסי ההרשמה והשחזור משתמשים רק ב־origin בטוח מתוך ה־allowlist האפליקטיבי.
-ב־Hosted יש להשאיר את `Site URL` ב־Production, לשמור את שני ה־callbacks
-הנתמכים במדויק, ולהסיר aliases היסטוריים/wildcards לאחר בדיקת owner שאין להם
-צרכן. אם owner בוחר להפעיל Auth ב־Preview לצורכי QA פנימי, יש להוסיף רק את
-ה־callback המדויק של branch alias הפעיל ולבדוק אותו בנפרד; זו אינה דרישת
-הקורס ואינה חלק מ־smoke ה־Preview הציבורי.
+ה־allowlist האפליקטיבי וה־Redirect URLs של Supabase הם שני גבולות נפרדים:
+הראשון מונע בחירת Host שרירותי, אך אינו הופך Preview ל־callback מורשה אצל
+Supabase. אין callback עם `/**`, אין alias ישן שנתמך, ואין הבטחה ש־Auth עובד
+ב־Preview. הוראות configuration, ניקוי וריצת QA מפורטות ב־
+[`docs/deployment.md`](./docs/deployment.md); ראיית Production/local Hosted
+התלויה במסירת Email נשארת תחת `S9-DEF-004` ואינה נסגרת בסעיף תיעודי זה.
 
 ## Migrations וטיפוסים
 
