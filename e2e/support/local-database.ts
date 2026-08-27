@@ -367,6 +367,160 @@ export type ScoringMatchFixtureIds = {
   matchId: string;
 };
 
+export function readManualMatchBoundaryPersistenceInDisposableLocalDatabase({
+  attackerMatchId,
+  awayTeamId,
+  capturedMatchId,
+  homeTeamId,
+}: {
+  attackerMatchId: string;
+  awayTeamId: string;
+  capturedMatchId: string;
+  homeTeamId: string;
+}) {
+  for (const [label, value] of Object.entries({
+    attackerMatchId,
+    awayTeamId,
+    capturedMatchId,
+    homeTeamId,
+  })) {
+    assertCanonicalUuid(value, label);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--field-separator=|",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select count(*) filter (where match.id = '${capturedMatchId}'::uuid), count(*) filter (where match.id = '${capturedMatchId}'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '${homeTeamId}'::uuid and match.away_team_id = '${awayTeamId}'::uuid and match.kickoff_at = '2099-10-17T16:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null), count(*) filter (where match.id = '${attackerMatchId}'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 98 and match.home_team_id = '${homeTeamId}'::uuid and match.away_team_id = '${awayTeamId}'::uuid and match.kickoff_at < clock_timestamp() and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) from public.matches as match where match.id in ('${capturedMatchId}'::uuid, '${attackerMatchId}'::uuid);`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const values = result.stdout.trim().split("|").map(Number);
+  const [capturedMatchCount, capturedPayloadMatchCount, attackerDefinitionMatchCount] =
+    values;
+  if (
+    result.status !== 0 ||
+    values.length !== 3 ||
+    capturedMatchCount === undefined ||
+    capturedPayloadMatchCount === undefined ||
+    attackerDefinitionMatchCount === undefined ||
+    values.some((value) => !Number.isSafeInteger(value) || value < 0)
+  ) {
+    throw new Error("Local Manual match boundary could not be verified.");
+  }
+
+  return {
+    attackerDefinitionMatchCount,
+    capturedMatchCount,
+    capturedPayloadMatchCount,
+  };
+}
+
+export function attachApiFootballIdentityToScoringMatchInDisposableLocalDatabase(
+  matchId: string,
+) {
+  assertCanonicalUuid(matchId, "scoring match");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const externalId = String(
+    Number.parseInt(matchId.replaceAll("-", "").slice(0, 12), 16) + 1,
+  );
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `update public.matches as match set external_provider = 'api-football', external_id = '${externalId}', provider_status = 'NS' where match.id = '${matchId}'::uuid and match.external_provider is null and match.external_id is null and match.provider_status is null and not match.is_manually_overridden;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (fixture.status !== 0 || fixture.stdout.trim() !== "UPDATE 1") {
+    throw new Error("Local API-Football scoring identity could not be attached.");
+  }
+  return externalId;
+}
+
+export function readManualOverrideClearPersistenceInDisposableLocalDatabase({
+  externalId,
+  forgedMatchId,
+  matchId,
+}: {
+  externalId: string;
+  forgedMatchId: string;
+  matchId: string;
+}) {
+  assertCanonicalUuid(forgedMatchId, "forged clear match");
+  assertCanonicalUuid(matchId, "cleared scoring match");
+  if (!/^[1-9][0-9]{0,19}$/.test(externalId)) {
+    throw new Error("Local API-Football fixture ID was invalid.");
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--field-separator=|",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select count(*) filter (where match.id = '${matchId}'::uuid and match.status = 'finished' and match.home_score = 2 and match.away_score = 1 and match.result_version = 1 and not match.is_manually_overridden and match.predictions_locked_at is not null and match.external_provider = 'api-football' and match.external_id = '${externalId}' and match.provider_status = 'NS'), count(*) filter (where match.id = '${forgedMatchId}'::uuid and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null), (select count(*) from public.predictions as prediction where prediction.match_id = '${matchId}'::uuid and prediction.points = 3 and prediction.is_exact and prediction.is_correct_outcome and prediction.scored_result_version = 1 and prediction.scored_rule_version = 1), (select count(*) from public.predictions as prediction where prediction.match_id = '${matchId}'::uuid and prediction.points = 0 and not prediction.is_exact and not prediction.is_correct_outcome and prediction.scored_result_version = 1 and prediction.scored_rule_version = 1), (select count(*) from public.audit_logs as audit where audit.entity_id = '${matchId}'::uuid and audit.action = 'match_manual_override_cleared'), (select count(*) from public.audit_logs as audit where audit.entity_id = '${forgedMatchId}'::uuid and audit.action = 'match_manual_override_cleared') from public.matches as match where match.id in ('${matchId}'::uuid, '${forgedMatchId}'::uuid);`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const values = result.stdout.trim().split("|").map(Number);
+  const [
+    clearedMatchCount,
+    forgedMatchCount,
+    exactPredictionCount,
+    wrongPredictionCount,
+    clearAuditCount,
+    forgedClearAuditCount,
+  ] = values;
+  if (
+    result.status !== 0 ||
+    values.length !== 6 ||
+    values.some((value) => !Number.isSafeInteger(value) || value < 0)
+  ) {
+    throw new Error("Local Manual override handoff could not be verified.");
+  }
+
+  return {
+    clearAuditCount,
+    clearedMatchCount,
+    exactPredictionCount,
+    forgedClearAuditCount,
+    forgedMatchCount,
+    wrongPredictionCount,
+  };
+}
+
 export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
   assertCanonicalUuid(userId, "system administrator");
   assertDisposableLocalDatabaseIsRunning();
@@ -425,10 +579,118 @@ export function countSyncRunsInDisposableLocalDatabase() {
   return count;
 }
 
+export function removeManualCatalogLeafFromDisposableLocalDatabase() {
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      "begin; delete from public.matches where id = '26000000-0000-4000-8000-000000000203'::uuid; delete from public.teams where id = '26000000-0000-4000-8000-000000000106'::uuid; commit;",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "DELETE 1" ||
+    output[2] !== "DELETE 1" ||
+    output[3] !== "COMMIT"
+  ) {
+    throw new Error("Local Manual catalog leaf could not be removed safely.");
+  }
+}
+
+export function restoreManualCatalogLeafInDisposableLocalDatabase() {
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      "begin; insert into public.teams (id, name, short_name) values ('26000000-0000-4000-8000-000000000106'::uuid, 'הפועל באר שבע', 'באר שבע') on conflict (id) do nothing; insert into public.matches (id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status) values ('26000000-0000-4000-8000-000000000203'::uuid, '26000000-0000-4000-8000-000000000027'::uuid, 1, '26000000-0000-4000-8000-000000000105'::uuid, '26000000-0000-4000-8000-000000000106'::uuid, '2026-10-18T17:00:00Z'::timestamptz, 'scheduled') on conflict (id) do nothing; do $restore$ begin if not exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid and team.name = 'הפועל באר שבע' and team.short_name = 'באר שבע' and team.logo_url is null and team.external_provider is null and team.external_id is null) or not exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '26000000-0000-4000-8000-000000000105'::uuid and match.away_team_id = '26000000-0000-4000-8000-000000000106'::uuid and match.kickoff_at = '2026-10-18T17:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.provider_round_label is null and match.provider_status is null and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) then raise exception 'Manual catalog leaf restore conflict'; end if; end $restore$; commit;",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    !/^INSERT 0 [01]$/.test(output[1] ?? "") ||
+    !/^INSERT 0 [01]$/.test(output[2] ?? "") ||
+    output[3] !== "DO" ||
+    output[4] !== "COMMIT"
+  ) {
+    throw new Error("Local Manual catalog leaf could not be restored safely.");
+  }
+}
+
+export function manualCatalogAttemptIsPersistedInDisposableLocalDatabase({
+  outcome,
+  runId,
+  systemActorId,
+}: {
+  outcome: "applied" | "conflict";
+  runId: string;
+  systemActorId: string;
+}) {
+  assertCanonicalUuid(runId, "Manual catalog sync run");
+  assertCanonicalUuid(systemActorId, "Manual catalog system actor");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const expectedPersistence =
+    outcome === "applied"
+      ? `run.status = 'succeeded' and run.rows_inserted = 2 and run.teams_changed = 1 and run.matches_changed = 1 and run.error_code is null and exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid and team.name = 'הפועל באר שבע' and team.short_name = 'באר שבע' and team.logo_url is null and team.external_provider is null and team.external_id is null) and exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '26000000-0000-4000-8000-000000000105'::uuid and match.away_team_id = '26000000-0000-4000-8000-000000000106'::uuid and match.kickoff_at = '2026-10-18T17:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.provider_round_label is null and match.provider_status is null and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) and (select count(*) from public.audit_logs as audit where audit.actor_id = '${systemActorId}'::uuid and audit.action = 'manual_catalog_applied') = 1`
+      : `run.status = 'failed' and run.rows_inserted = 0 and run.teams_changed = 0 and run.matches_changed = 0 and run.error_code = 'MANUAL_CATALOG_CONFLICT' and not exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid) and not exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid) and (select count(*) from public.audit_logs as audit where audit.actor_id = '${systemActorId}'::uuid and audit.action = 'manual_catalog_applied') = 0`;
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select (${expectedPersistence} and run.provider = 'manual' and run.sync_kind = 'manual' and run.finished_at is not null)::text from public.sync_runs as run where run.id = '${runId}'::uuid;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (result.status !== 0) {
+    throw new Error("Local Manual catalog persistence could not be verified.");
+  }
+
+  return result.stdout.trim() === "true";
+}
+
 export function removeSyncFixturesFromDisposableLocalDatabase({
+  auditActorId,
+  manualCatalogAuditCount,
   runIds,
   systemAdminUserId,
 }: {
+  auditActorId: string;
+  manualCatalogAuditCount: 0 | 1;
   runIds: string[];
   systemAdminUserId: string;
 }) {
@@ -436,6 +698,7 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
     throw new Error("Local sync cleanup requires one to ten run IDs.");
   }
   for (const runId of runIds) assertCanonicalUuid(runId, "sync run");
+  assertCanonicalUuid(auditActorId, "sync audit actor");
   assertCanonicalUuid(systemAdminUserId, "system administrator");
   assertDisposableLocalDatabaseIsRunning();
   const sqlRunIds = runIds.map((runId) => `'${runId}'::uuid`).join(",");
@@ -451,7 +714,7 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
       "--username=postgres",
       "--dbname=postgres",
       "--command",
-      `begin; delete from public.sync_runs where id in (${sqlRunIds}); delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
+      `begin; delete from public.audit_logs where actor_id = '${auditActorId}'::uuid and action = 'manual_catalog_applied'; delete from public.sync_runs where id in (${sqlRunIds}); delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
     ],
     { encoding: "utf8", windowsHide: true },
   );
@@ -460,9 +723,10 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
   if (
     cleanup.status !== 0 ||
     output[0] !== "BEGIN" ||
-    output[1] !== `DELETE ${runIds.length}` ||
-    output[2] !== "DELETE 1" ||
-    output[3] !== "COMMIT"
+    output[1] !== `DELETE ${manualCatalogAuditCount}` ||
+    output[2] !== `DELETE ${runIds.length}` ||
+    output[3] !== "DELETE 1" ||
+    output[4] !== "COMMIT"
   ) {
     throw new Error("Local sync fixtures could not be removed safely.");
   }
@@ -624,15 +888,18 @@ export function seedScoringMatchInDisposableLocalDatabase(
 
 export function removeScoringFixturesFromDisposableLocalDatabase({
   ids,
+  manualMatchId,
   systemAdminUserId,
 }: {
   ids: ScoringMatchFixtureIds;
+  manualMatchId?: string;
   systemAdminUserId: string;
 }) {
   for (const [label, value] of Object.entries(ids)) {
     assertCanonicalUuid(value, label);
   }
   assertCanonicalUuid(systemAdminUserId, "system administrator");
+  if (manualMatchId) assertCanonicalUuid(manualMatchId, "Manual match");
   assertDisposableLocalDatabaseIsRunning();
 
   const cleanup = spawnSync(
@@ -646,7 +913,7 @@ export function removeScoringFixturesFromDisposableLocalDatabase({
       "--username=postgres",
       "--dbname=postgres",
       "--command",
-      `begin; delete from public.audit_logs where entity_type = 'match_result' and entity_id = '${ids.matchId}'::uuid; delete from public.predictions where match_id = '${ids.matchId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; delete from public.matches where id = '${ids.matchId}'::uuid; delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
+      `begin; delete from public.audit_logs where entity_id in ('${ids.matchId}'::uuid${manualMatchId ? `, '${manualMatchId}'::uuid` : ""}); delete from public.predictions where match_id = '${ids.matchId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; delete from public.matches where id in ('${ids.matchId}'::uuid${manualMatchId ? `, '${manualMatchId}'::uuid` : ""}); delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
     ],
     { encoding: "utf8", windowsHide: true },
   );
@@ -658,7 +925,7 @@ export function removeScoringFixturesFromDisposableLocalDatabase({
     cleanup.status !== 0 ||
     output[0] !== "BEGIN" ||
     !matchDelete ||
-    Number(matchDelete[1]) !== 1 ||
+    Number(matchDelete[1]) !== (manualMatchId ? 2 : 1) ||
     !teamDelete ||
     Number(teamDelete[1]) !== 2 ||
     output[6] !== "COMMIT"

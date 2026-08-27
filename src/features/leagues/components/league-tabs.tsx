@@ -20,16 +20,24 @@ const managerItems: { key: LeagueSection; label: string; suffix: string }[] = [
   { key: "settings", label: "הגדרות", suffix: "/settings" },
 ];
 
+const settingsItem = managerItems[managerItems.length - 1];
+
 export function LeagueTabs({
   leagueId,
   active,
   isManager,
+  canManageSettings = isManager,
 }: {
   leagueId: string;
   active: LeagueSection;
   isManager: boolean;
+  canManageSettings?: boolean;
 }) {
-  const items = isManager ? [...commonItems, ...managerItems] : commonItems;
+  const items = isManager
+    ? [...commonItems, ...managerItems]
+    : canManageSettings && settingsItem
+      ? [settingsItem]
+      : commonItems;
 
   return (
     <div className="relative border-b border-line bg-white">

@@ -29,3 +29,29 @@ export function getSafeLeagueErrorMessage(error: unknown) {
 
   return "לא ניתן ליצור את הליגה כרגע. יש לנסות שוב.";
 }
+
+const safeLeagueSettingsErrors: Record<string, string> = {
+  UNAUTHENTICATED: "פג תוקף ההתחברות. יש להתחבר מחדש.",
+  INVALID_LEAGUE_SETTINGS: "פרטי הליגה אינם תקינים. יש לבדוק את השדות ולנסות שוב.",
+  INVALID_SCORING_RULES: "חוקי הניקוד אינם תקינים.",
+  INVALID_PRIZE_RULES: "חלוקת הפרסים אינה תקינה וחייבת להסתכם ב־100%.",
+  SETTINGS_STALE: "ההגדרות השתנו מאז טעינת העמוד. יש לרענן ולנסות שוב.",
+  LEAGUE_RULES_LOCKED: "חוקי הניקוד ופרסי ה־Demo כבר נעולים ואינם ניתנים לשינוי.",
+  LEAGUE_SETTINGS_LOCKED: "ליגה שהושלמה או הועברה לארכיון היא לקריאה בלבד.",
+};
+
+export function getSafeLeagueSettingsErrorMessage(error: unknown) {
+  const message = getDatabaseErrorValue(error, "message");
+
+  if (message && safeLeagueSettingsErrors[message]) {
+    return safeLeagueSettingsErrors[message];
+  }
+
+  // Missing and unauthorized resources deliberately share the same opaque
+  // response, and unknown database/provider details never reach the browser.
+  if (message === "LEAGUE_SETTINGS_NOT_FOUND") {
+    return "לא ניתן לעדכן את הגדרות הליגה.";
+  }
+
+  return "לא ניתן לשמור את הגדרות הליגה כרגע. יש לנסות שוב.";
+}

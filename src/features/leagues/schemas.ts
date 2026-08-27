@@ -106,6 +106,68 @@ export const demoEntryFeeAgorotSchema = integerString(
   "יש להזין סכום Demo שלם ולא־שלילי באגורות.",
 );
 
+const demoPaymentInstructionsSchema = optionalTrimmedText(
+  500,
+  "הוראות ה־Demo יכולות לכלול עד 500 תווים.",
+)
+  .refine(
+    (value) => value === undefined || !paymentLinkPattern.test(value),
+    "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
+  )
+  .refine(
+    (value) =>
+      value === undefined || !multilineControlCharactersPattern.test(value),
+    "הוראות ה־Demo מכילות תווי בקרה שאינם מותרים.",
+  );
+
+const utcDateTimeSchema = z.string().trim().transform((value, context) => {
+  if (value.length === 0) {
+    return null;
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
+      value,
+    );
+
+  if (!match) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "יש להזין מועד UTC תקין או להשאיר את השדה ריק.",
+    });
+    return z.NEVER;
+  }
+
+  const [, year, month, day, hour, minute, second = "00", fraction = ""] =
+    match;
+  const milliseconds = fraction.slice(0, 3).padEnd(3, "0");
+  const parsed = new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.${milliseconds}Z`,
+  );
+  const componentsMatch =
+    Number(year) >= 1 &&
+    Number.isFinite(parsed.getTime()) &&
+    parsed.getUTCFullYear() === Number(year) &&
+    parsed.getUTCMonth() + 1 === Number(month) &&
+    parsed.getUTCDate() === Number(day) &&
+    parsed.getUTCHours() === Number(hour) &&
+    parsed.getUTCMinutes() === Number(minute) &&
+    parsed.getUTCSeconds() === Number(second) &&
+    parsed.getUTCMilliseconds() === Number(milliseconds);
+
+  if (!componentsMatch) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "יש להזין מועד UTC תקין או להשאיר את השדה ריק.",
+    });
+    return z.NEVER;
+  }
+
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}${
+    fraction.length > 0 ? `.${fraction}` : ""
+  }Z`;
+});
+
 export const scoringRulesSchema = z
   .object({
     exactPoints: integerString(
@@ -196,25 +258,34 @@ export const createLeagueSchema = z.object({
   description: leagueDescriptionSchema,
   seasonId: z.string().uuid("יש לבחור עונה תקינה."),
   demoEntryFeeAgorot: demoEntryFeeAgorotSchema,
-  demoPaymentInstructions: optionalTrimmedText(
-    500,
-    "הוראות ה־Demo יכולות לכלול עד 500 תווים.",
-  )
-    .refine(
-      (value) => value === undefined || !paymentLinkPattern.test(value),
-      "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
-    )
-    .refine(
-      (value) =>
-        value === undefined || !multilineControlCharactersPattern.test(value),
-      "הוראות ה־Demo מכילות תווי בקרה שאינם מותרים.",
-    ),
+  demoPaymentInstructions: demoPaymentInstructionsSchema,
   allowLateJoin: z.boolean(),
   scoring: scoringRulesSchema,
   prizes: prizeRulesSchema,
 });
 
 export type CreateLeagueInput = z.infer<typeof createLeagueSchema>;
+
+export const updateLeagueSettingsSchema = z.object({
+  leagueId: z.string().uuid("מזהה הליגה אינו תקין."),
+  expectedSettingsVersion: integerString(
+    1,
+    MAX_DATABASE_INTEGER,
+    "גרסת ההגדרות אינה תקינה. יש לרענן את העמוד.",
+  ),
+  name: leagueNameSchema,
+  description: leagueDescriptionSchema,
+  demoEntryFeeAgorot: demoEntryFeeAgorotSchema,
+  demoPaymentInstructions: demoPaymentInstructionsSchema,
+  joinsCloseAt: utcDateTimeSchema,
+  allowLateJoin: z.boolean(),
+  scoring: scoringRulesSchema,
+  prizes: prizeRulesSchema,
+});
+
+export type UpdateLeagueSettingsInput = z.infer<
+  typeof updateLeagueSettingsSchema
+>;
 
 export type LeagueFieldErrors = Record<string, string[] | undefined>;
 

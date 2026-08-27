@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { getSeasonSourceLabel } from "@/features/leagues/display";
-import { getSafeLeagueErrorMessage } from "@/features/leagues/errors";
+import {
+  getSafeLeagueErrorMessage,
+  getSafeLeagueSettingsErrorMessage,
+} from "@/features/leagues/errors";
 import {
   createLeagueSchema,
   demoEntryFeeAgorotSchema,
@@ -10,7 +13,13 @@ import {
   percentageToBps,
   prizeRulesSchema,
   scoringRulesSchema,
+  updateLeagueSettingsSchema,
 } from "@/features/leagues/schemas";
+import {
+  areLeagueRulesEffectivelyLocked,
+  formatUtcDateTimeLocalValue,
+  type EditableLeagueSettings,
+} from "@/features/leagues/settings-types";
 
 const validLeagueInput = {
   name: "ליגת החברים",
@@ -18,6 +27,23 @@ const validLeagueInput = {
   seasonId: "26000000-0000-4000-8000-000000000027",
   demoEntryFeeAgorot: "2500",
   demoPaymentInstructions: "סימון ידני לצורכי הדגמה",
+  allowLateJoin: true,
+  scoring: {
+    exactPoints: "3",
+    correctOutcomePoints: "1",
+    incorrectPoints: "0",
+  },
+  prizes: [{ position: "1", percentageBps: "100" }],
+};
+
+const validSettingsInput = {
+  leagueId: "26000000-0000-4000-8000-000000000028",
+  expectedSettingsVersion: "2",
+  name: "ליגת החברים",
+  description: "עונת הבכורה",
+  demoEntryFeeAgorot: "2500",
+  demoPaymentInstructions: "סימון ידני לצורכי הדגמה",
+  joinsCloseAt: "2026-08-30T17:45:12.123456",
   allowLateJoin: true,
   scoring: {
     exactPoints: "3",
@@ -251,6 +277,75 @@ describe("Demo prize rules", () => {
   });
 });
 
+describe("editable league settings", () => {
+  it("normalizes an explicit UTC control value without losing microseconds", () => {
+    const parsed = updateLeagueSettingsSchema.parse(validSettingsInput);
+
+    expect(parsed.joinsCloseAt).toBe("2026-08-30T17:45:12.123456Z");
+    expect(parsed.expectedSettingsVersion).toBe(2);
+  });
+
+  it.each([
+    "0000-08-30T17:45",
+    "2026-02-30T17:45",
+    "2026-08-30T24:00",
+    "infinity",
+    "-infinity",
+    "2026-08-30T17:45:12.1234567",
+  ])("rejects an invalid or non-finite UTC deadline: %s", (joinsCloseAt) => {
+    expect(
+      updateLeagueSettingsSchema.safeParse({
+        ...validSettingsInput,
+        joinsCloseAt,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts an empty UTC deadline as null", () => {
+    expect(
+      updateLeagueSettingsSchema.parse({
+        ...validSettingsInput,
+        joinsCloseAt: "",
+      }).joinsCloseAt,
+    ).toBeNull();
+  });
+
+  it("preserves the full PostgreSQL UTC precision in the form control", () => {
+    expect(
+      formatUtcDateTimeLocalValue("2026-08-30T17:45:12.123456+00:00"),
+    ).toBe("2026-08-30T17:45:12.123456");
+  });
+
+  it("uses the database lock decision instead of the browser clock", () => {
+    const settings = {
+      rulesLocked: true,
+    } as EditableLeagueSettings;
+
+    expect(areLeagueRulesEffectivelyLocked(settings)).toBe(true);
+  });
+
+  it("rejects stale or negative settings inputs at the app boundary", () => {
+    expect(
+      updateLeagueSettingsSchema.safeParse({
+        ...validSettingsInput,
+        expectedSettingsVersion: "0",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateLeagueSettingsSchema.safeParse({
+        ...validSettingsInput,
+        scoring: { ...validSettingsInput.scoring, exactPoints: "-1" },
+      }).success,
+    ).toBe(false);
+    expect(
+      updateLeagueSettingsSchema.safeParse({
+        ...validSettingsInput,
+        prizes: [{ position: "1", percentageBps: "99.99" }],
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("safe league errors", () => {
   it("maps known stable database errors", () => {
     expect(getSafeLeagueErrorMessage({ message: "INVALID_PRIZE_RULES" })).toBe(
@@ -271,5 +366,19 @@ describe("safe league errors", () => {
     expect(safeMessage).toBe("לא ניתן ליצור את הליגה כרגע. יש לנסות שוב.");
     expect(safeMessage).not.toContain("secret_table");
     expect(safeMessage).not.toContain("stack");
+  });
+
+  it("maps locked and stale settings errors without exposing SQL", () => {
+    expect(
+      getSafeLeagueSettingsErrorMessage({ message: "LEAGUE_RULES_LOCKED" }),
+    ).toContain("נעולים");
+    expect(
+      getSafeLeagueSettingsErrorMessage({ message: "SETTINGS_STALE" }),
+    ).toContain("רענן");
+    expect(
+      getSafeLeagueSettingsErrorMessage({
+        message: "select * from private.secret_settings",
+      }),
+    ).not.toContain("secret_settings");
   });
 });
