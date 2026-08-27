@@ -131,7 +131,7 @@ export function ManualMatchForm({
             className="mt-1 block w-full rounded-lg border border-control-border bg-white px-3 py-2.5 focus:border-focus focus:outline-none focus:ring-2 focus:ring-navy-200"
           >
             {catalog.seasons.map((season) => (
-              <option key={season.id} value={season.id}>
+              <option key={season.id} value={season.id} dir="auto">
                 {season.competitionName} — {season.name}
               </option>
             ))}

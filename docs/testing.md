@@ -570,6 +570,18 @@ system-admin ואינו מזייף אף שלב גלוי. התרחיש עבר 1/1
 המלאה עברה 573/573 Vitest ו־1400/1400 pgTAP ב־27 קבצים, וה־client scan עבר על
 52 artifacts שנבנו עם sentinel סינתטי.
 
+### Slice 9 W6 — S9-DEF-015 bidi hardening
+
+| שכבה | כיסוי ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| Vitest ממוקד | 193/193: כל 12 תווי `Bidi_Control` המסוכנים, RLO/LRE/RLI/PDI בגבולות display/league/provider, טקסט ארוך ומעורב עברית/ערבית/Latin, ו־DOM מדויק של `<bdi dir="auto">` |
+| pgTAP ממוקד | 16/16 בקובץ החדש; יחד עם exact-contract של membership עברו 114/114. ‏11 constraints validated, טקסט מעורב נשמר וכל עמודת תצוגה דוחה controls |
+| Playwright | `e2e/leagues.spec.ts` עבר 2/2 ב־Desktop Chrome וב־Pixel 5: RLO נדחה דרך Server Action, ושם mixed תקין עטוף ב־`bdi dir="auto"` בסיכום וב־Dashboard ללא overflow |
+| Gates | reset קדימה מקומי, types:db/types:check, ‏lint, typecheck ו־build עברו; Vitest מלא 617/617 ו־pgTAP מלא 1443/1443 |
+
+DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך לכלול findings ידועים
+של פונקציות pgTAP תחת schema ‏`extensions`, ואינו מייחס אותם למיגרציית המוצר.
+
 פקודות ההרצה והפלטים המצונזרים נשמרים ב־
 `docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים
 בנפרד ב־checkpoint 7; הצלחת הבדיקות האטומיות כאן אינה מוצגת כראיית race.

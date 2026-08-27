@@ -345,6 +345,18 @@ describe("membership RPC response validation", () => {
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "לא תקין" }).success).toBe(true);
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "x" }).success).toBe(false);
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "שורה\nנוספת" }).success).toBe(false);
+    expect(
+      rejectJoinRequestInputSchema.safeParse({
+        ...base,
+        reason: "סיבה \u202ehidden",
+      }).success,
+    ).toBe(false);
+    expect(
+      rejectJoinRequestInputSchema.safeParse({
+        ...base,
+        reason: "סיבת Demo mixed 2026",
+      }).success,
+    ).toBe(true);
   });
 });
 

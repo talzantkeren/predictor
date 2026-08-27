@@ -191,6 +191,7 @@ select results_eq(
     ('invite_links', 'invite_links_lifecycle_check'),
     ('invite_links', 'invite_links_token_hash_check'),
     ('join_requests', 'join_requests_decision_lifecycle_check'),
+    ('join_requests', 'join_requests_rejection_reason_bidi_controls_check'),
     ('payment_proofs', 'payment_proofs_deleted_at_check'),
     ('payment_proofs', 'payment_proofs_mime_type_check'),
     ('payment_proofs', 'payment_proofs_sha256_check'),

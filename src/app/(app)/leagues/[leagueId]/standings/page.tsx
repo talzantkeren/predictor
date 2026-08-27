@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
@@ -53,7 +54,7 @@ export default async function LeagueStandingsPage({
           </span>
           <div className="min-w-0">
             <p className="break-words text-sm font-bold text-ink-muted">
-              {league.name}
+              <IsolatedText>{league.name}</IsolatedText>
             </p>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-4xl">
               טבלת דירוג
@@ -116,7 +117,7 @@ export default async function LeagueStandingsPage({
                         ) : null}
                       </div>
                       <p className="mt-1 break-words text-lg font-black text-ink">
-                        {standing.displayName}
+                        <IsolatedText>{standing.displayName}</IsolatedText>
                       </p>
                     </div>
                     <p className="tabular-nums shrink-0 text-3xl font-black text-ink">
@@ -205,7 +206,7 @@ export default async function LeagueStandingsPage({
                       >
                         <span className="flex min-w-0 flex-wrap items-center gap-2">
                           <span className="min-w-0 break-words">
-                            {standing.displayName}
+                            <IsolatedText>{standing.displayName}</IsolatedText>
                           </span>
                           {isTied ? (
                             <StatusBadge tone="neutral" symbol="=">

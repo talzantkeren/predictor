@@ -5,6 +5,7 @@ import {
   INVITE_TOKEN_HASH_PATTERN,
   INVITE_TOKEN_PATTERN,
 } from "@/features/membership/invite-token";
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
 
 const timestampSchema = z.string().datetime({ offset: true });
 const nullableTimestampSchema = timestampSchema.nullable().optional().default(null);
@@ -50,6 +51,9 @@ export const rejectJoinRequestInputSchema = approveJoinRequestInputSchema.extend
     .max(300, "סיבת הדחייה יכולה להכיל עד 300 תווים.")
     .refine((value) => !/[\p{Cc}\p{Zl}\p{Zp}]/u.test(value), {
       message: "סיבת הדחייה חייבת להיכתב בשורה אחת.",
+    })
+    .refine((value) => !containsDangerousBidiControl(value), {
+      message: "סיבת הדחייה מכילה תווי כיווניות בלתי־נראים שאינם מותרים.",
     }),
 });
 

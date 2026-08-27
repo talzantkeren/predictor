@@ -699,6 +699,7 @@ Services מחזירים error codes יציבים כגון:
 | שינוי מועד פותח ניחושים אחרי live/ביטול | `predictions_locked_at` בלתי־הפיך, זמן טרי תחת match lock, ושני גבולות kickoff ב־reactivation | ביטול/השעיה לפני ואחרי kickoff, reschedule לעתיד וניסיון שמירה/חשיפה |
 | worker ישן כותב אחרי reclaim | fencing נבדק בתחילת ובסוף apply/finalize תחת row lock | generation/token/provider שגויים ו־lease שפג |
 | עקיפה דרך Supabase Data API | RLS ו־grants לכל טבלה | קריאות ישירות עם publishable key |
+| bidi spoofing בשם משתמש/ליגה/ספק | Zod/provider normalization ו־DB checks דוחים Unicode `Bidi_Control`; רכיב תצוגה יחיד משתמש ב־`bdi dir="auto"` | Vitest לכל controls וטקסט מעורב, pgTAP לכל עמודות השם, Playwright ב־Desktop/Mobile |
 
 ## 19. סקייל בסיסי
 

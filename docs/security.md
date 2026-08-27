@@ -104,8 +104,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   ו־constraint) דוחות קישורים מפורשים — `http://`, `https://` או `www.` — וטקסט
   חופשי אחר אינו הופך לקישור בעמוד. השארית המקובלת: טקסט חופשי יכול לתאר העברה
   ידנית, וגילוי ה־Demo הקבוע מבהיר שמדובר בסימולציה בלבד.
-- שדות הטקסט של הליגה דוחים תווי בקרה ב־Zod וב־check constraints: שם הליגה הוא
-  חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים רק tab ומעברי שורה.
+- שדות הטקסט של הליגה דוחים תווי בקרה ו־Unicode `Bidi_Control` ב־Zod וב־check
+  constraints: שם הליגה הוא חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים
+  רק tab ומעברי שורה. טקסט עברי/Latin מעורב רגיל אינו נדחה.
 - allowlist ההפניות לאחר התחברות מקבל בדיוק את `/dashboard`, `/profile`,
   `/update-password`, `/leagues/new`, נתיב סיכום/הגדרות/משחקים/דירוג/דוחות של
   ליגה עם UUID תקין ונתיב `/matches/[matchId]` עם UUID תקין. query string של
@@ -609,14 +610,28 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   UPDATE חדש על `league_members`. פעולות removal/reactivation אינן קיימות
   ב־RPC, ב־query או במסך.
 - תור הבקשות וה־proof history נטענים רק אחרי שהשרת קבע שהצופה הוא המנהל.
-  חבר פעיל רואה את הספרייה בלבד. שמות נעטפים ב־`bdi dir="auto"`, בעוד כללי
-  rejection/isolation המלאים של שמות לא־מהימנים נשארים ברשומת S9-DEF-015.
+  חבר פעיל רואה את הספרייה בלבד. כל שמות התצוגה נעטפים דרך רכיב משותף שמפיק
+  `bdi dir="auto"`; application+DB דוחים controls בלתי־נראים.
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
 | IDOR בין ליגות | RLS league read + resource check חוזר ב־RPC | manager/member מורשים ו־foreign manager נדחה ב־pgTAP וב־Playwright |
 | דליפת PII או proof | return shape ו־Zod strict allowlist | catalog shape, rejection של extra fields והיעדר email/manager UI בדפדפן |
 | הסרה/הפעלה מחדש דרך מסך הקריאה | אין mutation RPC/action/grant | UPDATE ישיר של authenticated נדחה; אין control ב־UI |
+
+## Slice 9 — בידוד טקסט לא־מהימן
+
+- `containsDangerousBidiControl` דוחה במפורש U+061C, ‏U+200E/U+200F,
+  U+202A–U+202E ו־U+2066–U+2069. Display name, שם/תיאור/הוראות ליגה וסיבת
+  דחייה נאכפים בגבול ה־Server Action; שמות team ו־round label נאכפים גם בנרמול
+  API-Football. הודעת הספק נשארת generic ואינה דולפת את הטקסט הבעייתי.
+- המיגרציה `20260827180000_slice9_bidi_text_hardening.sql` מוסיפה checks
+  validated ל־profiles, leagues, join_requests, competitions, seasons, teams,
+  sports_provider_rounds ו־matches. אין שינוי RLS/grant ואין ניקוי שקט של row
+  קיים: migration נכשלת סגור אם כבר נשמר control מסוכן.
+- `IsolatedText` הוא גבול התצוגה היחיד לשמות סביב rank, score, status ופעולות,
+  ומפיק `<bdi dir="auto">`. טקסט ארוך או מעורב עברית/ערבית/Latin נשאר חוקי;
+  controls בלתי־נראים אינם משמשים פתרון כיווניות.
 
 ## Slice 9 — סדר נעילות lifecycle ומרוצי completion
 

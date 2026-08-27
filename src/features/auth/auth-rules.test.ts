@@ -77,11 +77,24 @@ describe("display-name validation", () => {
 
   it("accepts exactly fifty characters", () => {
     expect(displayNameSchema.safeParse("א".repeat(50)).success).toBe(true);
+    expect(
+      displayNameSchema.safeParse("Tal כהן Academy".padEnd(50, "א")).success,
+    ).toBe(true);
   });
 
   it("rejects more than fifty characters", () => {
     expect(displayNameSchema.safeParse("א".repeat(51)).success).toBe(false);
   });
+
+  it.each(["\u202a", "\u202e", "\u2067", "\u2069"])(
+    "rejects invisible bidi control %j while keeping legitimate mixed scripts",
+    (control) => {
+      expect(
+        displayNameSchema.safeParse(`Tal ${control}כהן`).success,
+      ).toBe(false);
+      expect(displayNameSchema.safeParse("Tal כהן 2026").success).toBe(true);
+    },
+  );
 });
 
 describe("safe authentication redirects", () => {

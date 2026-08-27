@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FormMessage } from "@/features/auth/components/form-message";
 import {
@@ -57,7 +58,7 @@ export function ManagerJoinRequestCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="break-words text-lg font-black text-ink">
-            {request.requesterDisplayName}
+            <IsolatedText>{request.requesterDisplayName}</IsolatedText>
           </h2>
           <p className="mt-1 text-sm text-ink-muted">
             נפתחה ב־
@@ -84,7 +85,7 @@ export function ManagerJoinRequestCard({
       {request.status === "rejected" && request.rejectionReason ? (
         <p className="mt-4 rounded-xl border border-error-200 bg-error-50 p-3 text-sm leading-6 text-error-900">
           <span className="font-extrabold">סיבת הדחייה: </span>
-          {request.rejectionReason}
+          <IsolatedText>{request.rejectionReason}</IsolatedText>
         </p>
       ) : null}
 

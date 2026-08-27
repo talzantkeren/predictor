@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
@@ -102,13 +103,14 @@ export default async function LeagueMatchesPage({
             </span>
             <div className="min-w-0">
               <p className="break-words text-sm font-bold text-ink-muted">
-                {data.league.competitionName} · <bdi>{data.league.seasonName}</bdi>
+                <IsolatedText>{data.league.competitionName}</IsolatedText> ·{" "}
+                <IsolatedText>{data.league.seasonName}</IsolatedText>
               </p>
               <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-4xl">
                 משחקים וניחושים
               </h1>
               <p className="mt-2 break-words text-ink-secondary">
-                {data.league.name}
+                <IsolatedText>{data.league.name}</IsolatedText>
               </p>
             </div>
           </div>

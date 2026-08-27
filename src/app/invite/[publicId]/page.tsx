@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { AppHeader } from "@/features/auth/components/app-header";
 import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
 import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
@@ -244,7 +245,7 @@ export default async function InvitePage({
         >
           <p className="text-sm font-semibold text-blue-700">הזמנה לליגה פרטית</p>
           <h1 id="invite-title" className="mt-2 break-words text-3xl font-bold tracking-tight">
-            {resolution.leagueName}
+            <IsolatedText>{resolution.leagueName}</IsolatedText>
           </h1>
           <dl className="mt-5 grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
             <div>
@@ -270,7 +271,7 @@ export default async function InvitePage({
             <div className="mt-5">
               <h2 className="font-bold">הוראות Demo</h2>
               <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-700">
-                {resolution.demoPaymentInstructions}
+                <IsolatedText>{resolution.demoPaymentInstructions}</IsolatedText>
               </p>
             </div>
           ) : null}

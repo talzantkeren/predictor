@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LocalDateTime } from "@/features/predictions/components/local-date-time";
 import { LockCountdown } from "@/features/predictions/components/lock-countdown";
@@ -101,11 +102,15 @@ export function MatchRow({
           className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-center text-base font-black text-ink sm:text-lg"
           dir="rtl"
         >
-          <bdi className="min-w-0 break-words">{match.homeTeam.name}</bdi>
+          <IsolatedText className="min-w-0 break-words">
+            {match.homeTeam.name}
+          </IsolatedText>
           <span aria-hidden="true" className="text-ink-muted">
             –
           </span>
-          <bdi className="min-w-0 break-words">{match.awayTeam.name}</bdi>
+          <IsolatedText className="min-w-0 break-words">
+            {match.awayTeam.name}
+          </IsolatedText>
         </h3>
 
         <div className="mt-3 flex flex-wrap items-center justify-center gap-3">

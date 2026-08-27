@@ -68,6 +68,8 @@ npm run dev
 `system_admins`. מסלול ה־Sync משתמש ב־principal נפרד וב־gateway מצומצם.
 `SPORTS_API_KEY` לעולם אינו נשלח לדפדפן, ל־Supabase או ללוג; בדיקות ו־CI
 משתמשים ב־recorded fixtures וב־fake transport ללא credential.
+שמות וטקסט תצוגה לא־מהימנים דוחים Unicode bidi controls ביישום ובמסד, ומוצגים
+בגבול `<bdi dir="auto">`; עברית/ערבית/Latin מעורבות רגילות נשארות חוקיות.
 
 ## זרימת Auth ופרופיל
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueCard } from "@/features/leagues/components/league-card";
@@ -72,7 +73,7 @@ export default async function DashboardPage({
         <div className="min-w-0">
           <p className="text-sm font-extrabold text-action">לוח אישי</p>
           <h1 className="mt-1 break-words text-4xl font-black tracking-tight text-ink sm:text-5xl">
-            שלום {displayName}
+            שלום <IsolatedText>{displayName}</IsolatedText>
           </h1>
           <p className="mt-2 max-w-2xl text-base leading-7 text-ink-secondary">
             הליגות, בקשות ההצטרפות והפעולות שכבר פתוחות עבורך במקום אחד.

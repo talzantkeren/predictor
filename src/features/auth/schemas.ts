@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
+
 const emailSchema = z
   .string()
   .trim()
@@ -19,6 +21,10 @@ export const displayNameSchema = z
       .string()
       .min(2, "שם התצוגה חייב לכלול לפחות 2 תווים.")
       .max(50, "שם התצוגה יכול לכלול עד 50 תווים."),
+  )
+  .refine(
+    (value) => !containsDangerousBidiControl(value),
+    "שם התצוגה מכיל תווי כיווניות בלתי־נראים שאינם מותרים.",
   );
 
 export const loginSchema = z.object({

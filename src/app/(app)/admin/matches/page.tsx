@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LocalDateTime } from "@/features/predictions/components/local-date-time";
@@ -162,7 +163,8 @@ export default async function SystemMatchesPage({
                   {reconciliation.homeTeamName} — {reconciliation.awayTeamName}
                 </h3>
                 <p className="mt-1 break-words text-sm leading-6 text-slate-600">
-                  ליגה <bdi>{reconciliation.leagueId}</bdi> · גרסת תוצאה {reconciliation.resultVersion}
+                  ליגה <IsolatedText>{reconciliation.leagueId}</IsolatedText> · גרסת תוצאה{" "}
+                  {reconciliation.resultVersion}
                   {reconciliation.candidateStatus === "canceled"
                     ? " · ביטול"
                     : ` · ${reconciliation.candidateHomeScore}–${reconciliation.candidateAwayScore}`}
@@ -227,7 +229,7 @@ export default async function SystemMatchesPage({
           <datalist id="system-season-options">
             {catalogResult.status === "found"
               ? catalogResult.catalog.seasons.map((season) => (
-                  <option key={season.id} value={season.id}>
+                  <option key={season.id} value={season.id} dir="auto">
                     {season.name} · {season.competitionName}
                   </option>
                 ))
@@ -345,10 +347,13 @@ export default async function SystemMatchesPage({
                   </dd>
                 </dl>
               </div>
-              {match.requiresReview && match.reviewResultVersion !== null ? (
+              {match.requiresReview &&
+              match.reviewCode !== null &&
+              match.reviewResultVersion !== null ? (
                 <div className="mt-4">
                   <p className="text-sm font-semibold text-amber-950">
-                    בדיקה נדרשת: <bdi>{match.reviewCode}</bdi> · גרסה {match.reviewResultVersion}
+                    בדיקה נדרשת: <IsolatedText>{match.reviewCode}</IsolatedText> · גרסה{" "}
+                    {match.reviewResultVersion}
                   </p>
                   <ResultReviewBoundary
                     matchId={match.id}

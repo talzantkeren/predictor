@@ -66,6 +66,9 @@ describe("league fields", () => {
   it("accepts league-name boundaries", () => {
     expect(leagueNameSchema.safeParse("אבג").success).toBe(true);
     expect(leagueNameSchema.safeParse("א".repeat(80)).success).toBe(true);
+    expect(
+      leagueNameSchema.safeParse("Predictor ליגה 2026".padEnd(80, "א")).success,
+    ).toBe(true);
   });
 
   it("rejects league names outside the boundaries", () => {
@@ -105,8 +108,28 @@ describe("league fields", () => {
     expect(leagueNameSchema.safeParse("שם\u2029רב־שורתי").success).toBe(false);
   });
 
-  it("keeps directional marks while rejecting control characters", () => {
-    expect(leagueNameSchema.safeParse("ליגה \u200f2026").success).toBe(true);
+  it.each(["\u200f", "\u202a", "\u202e", "\u2067", "\u2069"])(
+    "rejects invisible bidi control %j while keeping mixed Hebrew and Latin",
+    (control) => {
+      expect(
+        leagueNameSchema.safeParse(`ליגת ${control}Predictor`).success,
+      ).toBe(false);
+      expect(
+        leagueNameSchema.safeParse("ליגת Predictor FC 2026").success,
+      ).toBe(true);
+    },
+  );
+
+  it("rejects bidi controls in multiline league fields", () => {
+    expect(
+      leagueDescriptionSchema.safeParse("תיאור \u2066private\u2069").success,
+    ).toBe(false);
+    expect(
+      createLeagueSchema.safeParse({
+        ...validLeagueInput,
+        demoPaymentInstructions: "Demo \u202einstructions",
+      }).success,
+    ).toBe(false);
   });
 
   it("allows line breaks but not other control characters in multiline fields", () => {

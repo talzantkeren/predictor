@@ -4,6 +4,7 @@ import { z } from "zod";
 import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
@@ -117,7 +118,7 @@ export default async function LeagueMembersPage({
           </span>
           <div className="min-w-0">
             <p className="break-words text-sm font-bold text-ink-muted">
-              {directory.league.name}
+              <IsolatedText>{directory.league.name}</IsolatedText>
             </p>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-4xl">
               חברי הליגה
@@ -168,7 +169,7 @@ export default async function LeagueMembersPage({
                   className="min-w-0 rounded-xl border border-line bg-surface-subtle p-4"
                 >
                   <p className="break-words font-extrabold text-ink">
-                    <bdi dir="auto">{member.displayName}</bdi>
+                    <IsolatedText>{member.displayName}</IsolatedText>
                   </p>
                   <p className="mt-1 text-sm text-ink-secondary">
                     הצטרפות: {approvedAtFormatter.format(new Date(member.approvedAt))}

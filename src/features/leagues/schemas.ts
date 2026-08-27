@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
+
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 const paymentLinkPattern = /(?:https?:\/\/|www\.)/i;
 // League names are single-line: C0/C1 controls and Unicode line/paragraph
@@ -88,16 +90,21 @@ export const leagueNameSchema = trimmedText(3, 80, {
   minimum: "שם הליגה חייב לכלול לפחות 3 תווים.",
   maximum: "שם הליגה יכול לכלול עד 80 תווים.",
 }).refine(
-  (value) => !singleLineControlCharactersPattern.test(value),
-  "שם הליגה מכיל תווי בקרה או מפרידי שורה שאינם מותרים.",
+  (value) =>
+    !singleLineControlCharactersPattern.test(value) &&
+    !containsDangerousBidiControl(value),
+  "שם הליגה מכיל תווי בקרה, כיווניות או מפרידי שורה שאינם מותרים.",
 );
 
 export const leagueDescriptionSchema = optionalTrimmedText(
   500,
   "התיאור יכול לכלול עד 500 תווים.",
 ).refine(
-  (value) => value === undefined || !multilineControlCharactersPattern.test(value),
-  "התיאור מכיל תווי בקרה שאינם מותרים.",
+  (value) =>
+    value === undefined ||
+    (!multilineControlCharactersPattern.test(value) &&
+      !containsDangerousBidiControl(value)),
+  "התיאור מכיל תווי בקרה או כיווניות שאינם מותרים.",
 );
 
 export const demoEntryFeeAgorotSchema = integerString(
@@ -116,8 +123,10 @@ const demoPaymentInstructionsSchema = optionalTrimmedText(
   )
   .refine(
     (value) =>
-      value === undefined || !multilineControlCharactersPattern.test(value),
-    "הוראות ה־Demo מכילות תווי בקרה שאינם מותרים.",
+      value === undefined ||
+      (!multilineControlCharactersPattern.test(value) &&
+        !containsDangerousBidiControl(value)),
+    "הוראות ה־Demo מכילות תווי בקרה או כיווניות שאינם מותרים.",
   );
 
 const utcDateTimeSchema = z.string().trim().transform((value, context) => {

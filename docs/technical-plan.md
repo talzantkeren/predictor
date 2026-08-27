@@ -253,6 +253,7 @@ DEMO_MODE=true
 | 014 `slice9_full_sync_lease_duration` | מפריד ב־claim בין דגימת decision שלאחר lock לבין issuance לאחר תכנון העבודה | `sync_runs.started_at` הוא זמן ההנפקה ו־`locked_until = started_at + 120 seconds` גם לאחר המתנה |
 | 017 `slice9_clear_manual_override` | RPC forward-only, service-only ואידמפוטנטי שמסיר ownership ידני רק ממשחק API-Football ומוסיף audit יחיד | result/provenance/latch/predictions נשמרים; ordinary user נדחה; provider apply רשאי להתחדש לאחר clear |
 | 024 `slice9_sync_cron_budget` | מתקינה `pg_cron`, מסירה Data API schema usage ומיישרת אטומית את ה־job הקיים לשם provider-neutral ול־45s בלי לקרוא/להחזיר command | local reset; job חסר הוא no-op, כפול/לא־מוכר נכשל סגור, ו־schedule/active/target נשמרים |
+| 025 `slice9_bidi_text_hardening` | checks קדימה על שמות וטקסט תצוגה של user/league/provider; אין טבלה או grant חדשים | Unicode bidi controls נדחים במסד, טקסט עברי/Latin מעורב נשמר, ו־UI מבודד ב־`bdi dir="auto"` |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -821,6 +822,9 @@ Zod נותן UX ושגיאות מוקדמות. PostgreSQL checks, unique/FK cons
 ### 12.3 UX מרכזי
 
 - `lang="he" dir="rtl"` ב־root layout.
+- טקסט תצוגה לא־מהימן עטוף דרך `IsolatedText` שמפיק `bdi dir="auto"`.
+  Unicode `Bidi_Control` בלתי־נראה נדחה ב־Zod, בנרמול הספק וב־check constraints;
+  טקסט עברי/ערבי/Latin מעורב רגיל נשאר מותר.
 - Mobile-first; טבלאות גדולות הופכות לכרטיסים או scroll נגיש.
 - labels אמיתיים, focus states, keyboard navigation ו־ARIA רק כשנדרש.
 - countdown מציג גם שעה מוחלטת, timezone וסטטוס נעילה.

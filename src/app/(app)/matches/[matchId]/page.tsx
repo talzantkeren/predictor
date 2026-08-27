@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
@@ -105,9 +106,9 @@ export default async function MatchDetailPage({
         <section className="rounded-2xl border border-line bg-white p-5 shadow-card sm:p-8">
           <p className="text-sm font-bold text-navy-700">מחזור {result.match.roundNumber}</p>
           <h1 className="mt-2 text-2xl font-black text-ink" dir="rtl">
-            <bdi>{result.match.homeTeam.name}</bdi>{" "}
+            <IsolatedText>{result.match.homeTeam.name}</IsolatedText>{" "}
             <span aria-hidden="true">–</span>{" "}
-            <bdi>{result.match.awayTeam.name}</bdi>
+            <IsolatedText>{result.match.awayTeam.name}</IsolatedText>
           </h1>
           <h2 className="mt-6 text-lg font-black text-ink">בחירת ליגה לניחוש</h2>
           <p className="mt-2 text-ink-secondary">
@@ -125,7 +126,7 @@ export default async function MatchDetailPage({
                   href={`/matches/${matchId}?league=${league.id}`}
                   className="block min-h-11 rounded-lg border border-line px-4 py-3 font-extrabold text-navy-700 hover:bg-navy-100"
                 >
-                  {league.name}
+                  <IsolatedText>{league.name}</IsolatedText>
                 </Link>
               </li>
             ))}
@@ -177,14 +178,17 @@ export default async function MatchDetailPage({
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-bold text-navy-700">{data.league.name} · מחזור {data.match.roundNumber}</p>
+          <p className="text-sm font-bold text-navy-700">
+            <IsolatedText>{data.league.name}</IsolatedText> · מחזור{" "}
+            {data.match.roundNumber}
+          </p>
           <h1
             className="mt-2 text-3xl font-black tracking-tight text-ink"
             dir="rtl"
           >
-            <bdi>{data.match.homeTeam.name}</bdi>{" "}
+            <IsolatedText>{data.match.homeTeam.name}</IsolatedText>{" "}
             <span aria-hidden="true">–</span>{" "}
-            <bdi>{data.match.awayTeam.name}</bdi>
+            <IsolatedText>{data.match.awayTeam.name}</IsolatedText>
           </h1>
         </div>
         <Link
@@ -209,7 +213,7 @@ export default async function MatchDetailPage({
                   : "border border-line bg-white text-navy-700"
               }`}
             >
-              {league.name}
+              <IsolatedText>{league.name}</IsolatedText>
             </Link>
           ))}
         </nav>
@@ -241,7 +245,9 @@ export default async function MatchDetailPage({
           </StatusBadge>
         </div>
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 text-center">
-          <span className="break-words text-xl font-black text-ink">{data.match.homeTeam.name}</span>
+          <IsolatedText className="break-words text-xl font-black text-ink">
+            {data.match.homeTeam.name}
+          </IsolatedText>
           {officialResult ? (
             <ScorePair
               homeScore={officialResult.homeScore}
@@ -258,7 +264,9 @@ export default async function MatchDetailPage({
               –
             </span>
           )}
-          <span className="break-words text-xl font-black text-ink">{data.match.awayTeam.name}</span>
+          <IsolatedText className="break-words text-xl font-black text-ink">
+            {data.match.awayTeam.name}
+          </IsolatedText>
         </div>
         <dl className="mt-6 grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
           <div>
@@ -366,7 +374,8 @@ export default async function MatchDetailPage({
             {data.revealedPredictions.items.map((prediction) => (
               <li key={prediction.id} className="flex items-center justify-between gap-4 rounded-xl bg-surface-subtle p-4">
                 <span className="min-w-0 break-words font-bold text-ink">
-                  {prediction.displayName}{prediction.isViewer ? " (אני)" : ""}
+                  <IsolatedText>{prediction.displayName}</IsolatedText>
+                  {prediction.isViewer ? " (אני)" : ""}
                 </span>
                 <ScorePair
                   homeScore={prediction.predictedHomeScore}
