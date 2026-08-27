@@ -528,12 +528,13 @@ def build_document(source_path: Path, output_path: Path) -> None:
         with zipfile.ZipFile(raw_path, "r") as source_zip, zipfile.ZipFile(
             output_path,
             "w",
-            compression=zipfile.ZIP_DEFLATED,
-            compresslevel=9,
+            compression=zipfile.ZIP_STORED,
         ) as output_zip:
             for info in sorted(source_zip.infolist(), key=lambda item: item.filename):
                 normalized = zipfile.ZipInfo(info.filename, ZIP_TIME)
-                normalized.compress_type = zipfile.ZIP_DEFLATED
+                # Stored entries avoid zlib-version-specific DEFLATE bytes while
+                # remaining valid OPC/Word packages across supported runtimes.
+                normalized.compress_type = zipfile.ZIP_STORED
                 normalized.external_attr = info.external_attr
                 normalized.create_system = 0
                 output_zip.writestr(normalized, source_zip.read(info.filename))

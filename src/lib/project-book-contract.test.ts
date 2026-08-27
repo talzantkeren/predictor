@@ -6,6 +6,10 @@ const source = readFileSync(
   resolve(process.cwd(), "docs/project-book-source.md"),
   "utf8",
 );
+const generator = readFileSync(
+  resolve(process.cwd(), "scripts/generate-project-book.py"),
+  "utf8",
+);
 const packageJson = JSON.parse(
   readFileSync(resolve(process.cwd(), "package.json"), "utf8"),
 ) as { scripts?: Record<string, unknown> };
@@ -40,5 +44,13 @@ describe("derived project book contract", () => {
     expect(packageJson.scripts?.["docs:book:check"]).toBe(
       "python scripts/generate-project-book.py --check",
     );
+  });
+
+  it("does not let the host zlib version change generated book bytes", () => {
+    expect(generator).toContain("compression=zipfile.ZIP_STORED");
+    expect(generator).toContain(
+      "normalized.compress_type = zipfile.ZIP_STORED",
+    );
+    expect(generator).not.toContain("zipfile.ZIP_DEFLATED");
   });
 });
