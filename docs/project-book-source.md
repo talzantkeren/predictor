@@ -72,10 +72,10 @@ Slice 9 היא הפרוסה הנוכחית: מחזור החיים, ההקשחה 
 
 | שכבה | תוצאה | מה היא מוכיחה |
 | --- | --- | --- |
-| Vitest | 627/627 ב־48 קבצים | validators, חוקים, adapters, אבטחת client, מסמכי ההגשה וה־test harness |
-| pgTAP | 1443/1443 ב־30 קבצים | constraints, RLS, grants, atomicity, זמן, ניקוד ומרוצי lifecycle |
-| Playwright | 28/28 | 14 תרחישים ב־Desktop Chrome וב־Pixel 5, כולל lifecycle מלא והרשאות צולבות |
-| Build | עבר; 52 artifacts נסרקו | TypeScript production build וסריקה לא־ריקה להיעדר סודות בדפדפן |
+| Vitest | PASS — מטריצת RULES מלאה | validators, חוקים, adapters, אבטחת client, מסמכי ההגשה וה־test harness |
+| pgTAP | PASS — מטריצת DATA מלאה | constraints, RLS, grants, atomicity, זמן, ניקוד ומרוצי lifecycle |
+| Playwright | PASS — מטריצת FLOWS מלאה | Desktop Chrome ו־Mobile Chromium, כולל lifecycle מלא והרשאות צולבות |
+| Build | PASS — production build וסריקת client לא־ריקה | TypeScript production build והיעדר סודות בדפדפן |
 
 ## RTL, responsive ונגישות
 

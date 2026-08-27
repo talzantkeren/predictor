@@ -613,17 +613,18 @@ error. תרחיש `prediction-lock` ממתין בסוף בלבד להשלמת re
 
 ## Snapshot מסירה — S9-REQ-004
 
-הספירות הבאות נמדדו מחדש ב־27 באוגוסט 2026 מול Supabase מקומי בלבד, אחרי
-סנכרון מסמכי ההגשה. הן אינן משכתבות את תוצאות ה־checkpoints ההיסטוריים לעיל.
+המטריצה הבאה נמדדה מחדש ב־27 באוגוסט 2026 מול Supabase מקומי בלבד, אחרי
+סנכרון מסמכי ההגשה. ספירות checkpoint מדויקות נשמרות בראיות ההיסטוריות ואינן
+מוצגות כאן כטוטאל נוכחי, משום שה־suite ממשיך לגדול.
 
 | שכבה | תוצאה טרייה | הערה |
 | --- | --- | --- |
-| Vitest | 627/627 ב־48 קבצים | ללא רשת ספק וללא credential אמיתי |
-| pgTAP | 1443/1443 ב־30 קבצים | `Result: PASS`; מסד מקומי בלבד |
-| Playwright | 28/28 ב־Desktop Chrome וב־Pixel 5 | lifecycle מוצרי מלא; הריצה הסופית נקייה מ־`[WebServer] Error` |
+| Vitest | PASS — RULES suite מלאה | ללא רשת ספק וללא credential אמיתי |
+| pgTAP | PASS — DATA suite מלאה | `Result: PASS`; מסד מקומי בלבד |
+| Playwright | PASS — FLOWS matrix מלאה | Desktop Chrome ו־Mobile Chromium; lifecycle מוצרי מלא; הריצה נקייה מ־`[WebServer] Error` |
 
-ריצת Playwright קודמת סיימה 28/28 assertions אך נכשלה בצדק משום שה־runner
+ריצת Playwright קודמת סיימה את assertions המוצריים אך נכשלה בצדק משום שה־runner
 זיהה `The destination stream closed early`. ה־lifecycle המתין לאחר מכן לסיום
 שני RSC response streams לפני סגירת contexts. הרגרסיה הממוקדת עברה 2/2,
-והמטריצה המלאה החוזרת עברה 28/28 ללא אות server error. אין להציג את הספירה
+והמטריצה המלאה החוזרת עברה ללא אות server error. אין להציג את הספירה
 הראשונה כ־PASS.

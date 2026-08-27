@@ -14,6 +14,8 @@ const documentPaths = [
   "docs/course-source.md",
   "docs/evaluator-runbook.md",
   "docs/final-submission-evidence.md",
+  "docs/slice-9-owner-actions.md",
+  "docs/slice-9-review-packet.md",
   "presentation/README.md",
   "presentation/demo-script.md",
   "presentation/rehearsal-log.md",
@@ -104,6 +106,8 @@ const scale = documents.get("docs/scale.md");
 const projectBookSource = documents.get("docs/project-book-source.md");
 const evaluator = documents.get("docs/evaluator-runbook.md");
 const courseSource = documents.get("docs/course-source.md");
+const ownerActions = documents.get("docs/slice-9-owner-actions.md");
+const reviewPacket = documents.get("docs/slice-9-review-packet.md");
 
 invariant(!readme.includes("מצב נוכחי: Slice 8"), "README still describes Slice 8 as current.");
 invariant(!readme.includes("מתוכננות ל־Slice 9"), "README still describes lifecycle as future work.");
@@ -116,18 +120,66 @@ for (const forbidden of ["Slice 10", "RELEASE_READY", "דוח פיננסי אמ�
 
 for (const expected of [
   "גרסה 1.3",
-  "627/627 ב־48 קבצים",
-  "1443/1443 ב־30 קבצים",
-  "28/28",
+  "PASS — מטריצת RULES מלאה",
+  "PASS — מטריצת DATA מלאה",
+  "PASS — מטריצת FLOWS מלאה",
   "evaluator-runbook.md",
 ]) {
   invariant(projectBookSource.includes(expected), `Project-book source is missing: ${expected}`);
 }
-for (const expected of ["## Snapshot מסירה — S9-REQ-004", "627/627", "1443/1443", "28/28"]) {
+invariant(
+  !/627\/627|1443\/1443|28\/28/u.test(projectBookSource),
+  "Project-book source contains obsolete point-in-time test totals.",
+);
+for (const expected of [
+  "## Snapshot מסירה — S9-REQ-004",
+  "PASS — RULES suite מלאה",
+  "PASS — DATA suite מלאה",
+  "PASS — FLOWS matrix מלאה",
+]) {
   invariant(testing.includes(expected), `Testing snapshot is missing: ${expected}`);
 }
+const deliverySnapshot = testing.split("## Snapshot מסירה — S9-REQ-004", 2)[1]?.split("\n## ", 1)[0] ?? "";
+invariant(
+  !/627\/627|1443\/1443|28\/28/u.test(deliverySnapshot),
+  "Current testing snapshot contains obsolete point-in-time totals.",
+);
 for (const expected of ["OWNER_ACTION_REQUIRED", "custom SMTP", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
   invariant(evaluator.includes(expected), `Evaluator runbook is missing owner guidance: ${expected}`);
+}
+const openRecordIds = [
+  "S9-DEF-025",
+  "S9-DEF-022",
+  "S9-REQ-003",
+  "S9-DEF-012",
+  "S9-REQ-005",
+  "S9-DEF-004",
+  "S9-REQ-002",
+];
+for (const id of openRecordIds) {
+  invariant(ownerActions.includes(id), `Owner-actions document is missing: ${id}`);
+}
+for (const expected of ["בדיוק שבע פעולות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
+  invariant(ownerActions.includes(expected), `Owner-actions document is missing contract text: ${expected}`);
+}
+const deliveryRecordIds = [
+  "S9-DEF-002", "S9-DEF-001", "S9-DEF-004", "S9-DEF-003", "S9-DEF-007",
+  "S9-DEF-008", "S9-DEF-009", "S9-REQ-001", "S9-DEF-010", "S9-DEF-011",
+  "S9-DEF-012", "S9-DEF-018", "S9-DEF-019", "S9-DEF-025", "S9-DEF-015",
+  "S9-DEF-016", "S9-DEF-020", "S9-DEF-022", "S9-DEF-024", "S9-DEF-013",
+  "S9-DEF-014", "S9-REQ-002", "S9-REQ-004", "S9-REQ-003", "S9-REQ-005",
+];
+for (const id of deliveryRecordIds) {
+  invariant(reviewPacket.includes(`| ${id} |`), `Review packet is missing record row: ${id}`);
+}
+for (const expected of [
+  "Look here first",
+  "lifecycle completion atomicity",
+  "canonical lock ordering",
+  "RLS and least-privilege grants",
+  "reconciliation path",
+]) {
+  invariant(reviewPacket.includes(expected), `Review packet is missing reviewer guidance: ${expected}`);
 }
 for (const expected of ["git clone", "git checkout --detach <candidate-sha>", "npm ci", "supabase start"]) {
   invariant(evaluator.includes(expected), `Evaluator runbook is missing clean-clone step: ${expected}`);

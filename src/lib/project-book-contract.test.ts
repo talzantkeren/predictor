@@ -13,9 +13,10 @@ const packageJson = JSON.parse(
 describe("derived project book contract", () => {
   it("uses rerun counts and the current Slice 8/9 state", () => {
     expect(source).toContain("גרסה 1.3");
-    expect(source).toContain("627/627 ב־48 קבצים");
-    expect(source).toContain("1443/1443");
-    expect(source).toContain("28/28");
+    expect(source).toContain("PASS — מטריצת RULES מלאה");
+    expect(source).toContain("PASS — מטריצת DATA מלאה");
+    expect(source).toContain("PASS — מטריצת FLOWS מלאה");
+    expect(source).not.toMatch(/627\/627|1443\/1443|28\/28/u);
     expect(source).toContain("Slice 9 היא הפרוסה הנוכחית");
     expect(source).toMatch(/\| 8 \| דוח מנהל לא־כספי ומבודד \| הושלם \|/u);
     expect(source).not.toMatch(
