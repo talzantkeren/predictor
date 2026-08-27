@@ -22,15 +22,29 @@ const npmNeedsShell = !npmCliPath && process.platform === "win32";
 const skipBuild = process.argv.includes("--skip-build");
 const serveOnly = process.argv.includes("--serve-only");
 const externalSmoke = process.argv.includes("--external-smoke");
+const clientSecretCheckOnly = process.argv.includes(
+  "--client-secret-check-only",
+);
 const playwrightArguments = process.argv
   .slice(2)
   .filter(
     (argument) =>
       argument !== "--skip-build" &&
       argument !== "--serve-only" &&
-      argument !== "--external-smoke",
+      argument !== "--external-smoke" &&
+      argument !== "--client-secret-check-only",
   );
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+
+if (
+  clientSecretCheckOnly &&
+  (skipBuild || serveOnly || externalSmoke || externalBaseUrl)
+) {
+  console.error(
+    "The client-secret gate is a local build check and cannot be combined with E2E mode flags.",
+  );
+  process.exit(1);
+}
 
 if (externalBaseUrl && !externalSmoke) {
   console.error(
@@ -223,7 +237,11 @@ if (!skipBuild && !externalBaseUrl) {
     CLIENT_SECRET_SENTINEL: clientSecretSentinel,
   };
   run(["run", "build"], sentinelBuildEnvironment);
-  run(["run", "test:client-secrets"], sentinelBuildEnvironment);
+  run(["run", "test:client-secrets:scan"], sentinelBuildEnvironment);
+}
+
+if (clientSecretCheckOnly) {
+  process.exit(0);
 }
 
 if (serveOnly && !externalBaseUrl) {

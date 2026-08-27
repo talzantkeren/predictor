@@ -467,9 +467,11 @@ npm run test:e2e
   עקבי ל־`summary`, כפתור Auth ראשי ב־`action` ושדה Auth לבן עם
   `control-border`. בדיקות הזרימה המלאות נשארות אותן בדיקות ולא מוחלפות
   בבדיקות צבע.
-- `npm run test:e2e` כולל build עם sentinel server-only וסריקת
-  `test:client-secrets` לפני הפעלת השרת; אין צורך בהרצה נפרדת שאינה קשורה
-  לאותו build.
+- `npm run test:e2e` כולל build עם sentinel server-only וסריקת primitive
+  `test:client-secrets:scan` לפני הפעלת השרת. `npm run test:client-secrets`
+  הוא שער עצמאי שבונה וסורק בעצמו; `npm run verify` מריץ אותו במפורש ואז מפעיל
+  `test:e2e:run` מול אותו build. כך גם CI וגם verify אוכפים את הסריקה ישירות
+  בלי build כפול.
 
 ## Slice 8: דוח מנהל לא־כספי
 

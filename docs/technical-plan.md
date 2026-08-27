@@ -64,8 +64,12 @@ npx playwright install
 | `test:e2e` | production build ולאחריו `playwright test` |
 | `test:e2e:preview` | smoke ציבורי מפורש מול `PLAYWRIGHT_BASE_URL`; אינו מתחזה לזרימת Auth מלאה |
 | `test:e2e:run` | `playwright test` מקומי מול build קיים |
+| `test:client-secrets` | build עם sentinel סינתטי וסריקת artifacts; נכשל אם לא נסרק פלט |
+| `test:client-secrets:scan` | primitive פנימי שסורק build קיים ודורש sentinel |
 | `types:db` | יצירת `src/types/database.generated.ts` מה־DB המקומי |
-| `verify` | lint → typecheck → unit → DB → generated types drift → `test:e2e` שבונה production build ומריץ E2E |
+| `docs:book:check` | regeneration זמני והשוואת bytes ל־`docs/project-book.docx` |
+| `docs:submission:check` | בדיקת סנכרון וקישורי מסמכי ההגשה |
+| `verify` | lint → typecheck → unit → DB → generated types drift → שני שערי docs → build+client-secret scan → E2E מול אותו build |
 
 ## 3. מבנה תיקיות יעד
 

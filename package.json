@@ -18,7 +18,8 @@
     "test:e2e": "tsx scripts/run-e2e.ts",
     "test:e2e:preview": "tsx scripts/run-e2e.ts --external-smoke",
     "test:e2e:run": "tsx scripts/run-e2e.ts --skip-build",
-    "test:client-secrets": "tsx scripts/check-client-secret-absence.ts",
+    "test:client-secrets": "tsx scripts/run-e2e.ts --client-secret-check-only",
+    "test:client-secrets:scan": "tsx scripts/check-client-secret-absence.ts",
     "preview:local": "tsx scripts/run-e2e.ts --skip-build --serve-only",
     "types:db": "supabase gen types typescript --local > src/types/database.generated.ts",
     "types:check": "tsx scripts/check-database-types.ts",
@@ -32,7 +33,7 @@
     "scale:plans": "tsx scripts/check-scale-plans.ts",
     "sports:secret-boundaries": "node scripts/check-sports-secret-boundaries.mjs",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run test:e2e"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run docs:book:check && npm run docs:submission:check && npm run test:client-secrets && npm run test:e2e:run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
