@@ -630,8 +630,11 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 - ה־planner מגביל operator notes ל־100 עם marker מפורש של truncation ומאמת את
   `fixtures_seen` לפני apply, כך ש־validation של finalize אינו נכשל אחרי commit
   של batches. כשל finalize במסלול recovery ממופה לתוצאה typed ואינו דולף.
-- הצלחה מעדכנת את זמן ה־catalog/targeted/reconciliation המתאים. 429 מגדיר
-  `backoff_until` חסום; quota remaining נשמר כאיתות תפעולי בטוח.
+- הצלחה מעדכנת את זמן ה־catalog/targeted/reconciliation המתאים. 429 מסווג לפני
+  wait-budget: hint קצר יכול retry, ו־hint שאינו נכנס בתקציב מסיים מיד בלי
+  sleep כ־`PROVIDER_RATE_LIMITED`. רק `Retry-After` שלם ולא־שלילי החסום
+  ל־`0..3600` ו־quota remaining שלם ולא־שלילי עוברים ל־finalize; הוא שומר את
+  המכסה ומגדיר `backoff_until`, שנאכף גם ב־scheduled וגם ב־force.
 - token ישן, provider/run שגויים או finalize כפול נדחים ללא mutation.
 
 ## 8. CRUD ופעולות אפליקטיביות

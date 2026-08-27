@@ -1017,24 +1017,50 @@ select set_config(
 );
 create temp table slice7b_rate_claim as
 select * from public.claim_sports_sync('api-football', true);
+select throws_ok(
+  format(
+    'select public.finalize_sports_sync(%L, %L, %L, %L, %L, %L, %L, %L::text[], %L, %L)',
+    (select result_run_id from slice7b_rate_claim),
+    (select result_generation from slice7b_rate_claim),
+    (select result_token from slice7b_rate_claim),
+    'failed', 'PROVIDER_RATE_LIMITED',
+    'The sports provider rate limit was reached.',
+    0, '{}', 17, 3601
+  ),
+  'P0001', 'VALIDATION_ERROR',
+  'finalize rejects a retry hint above the durable 3600-second contract'
+);
+select throws_ok(
+  format(
+    'select public.finalize_sports_sync(%L, %L, %L, %L, %L, %L, %L, %L::text[], %L, %L)',
+    (select result_run_id from slice7b_rate_claim),
+    (select result_generation from slice7b_rate_claim),
+    (select result_token from slice7b_rate_claim),
+    'failed', 'PROVIDER_RATE_LIMITED',
+    'The sports provider rate limit was reached.',
+    0, '{}', -1, 120
+  ),
+  'P0001', 'VALIDATION_ERROR',
+  'finalize rejects negative provider quota metadata'
+);
 create temp table slice7b_rate_finalized as
 select finalized.* from slice7b_rate_claim as claim
 cross join lateral public.finalize_sports_sync(
   claim.result_run_id, claim.result_generation, claim.result_token,
   'failed', 'PROVIDER_RATE_LIMITED',
   'The sports provider rate limit was reached.',
-  0, array[]::text[], null, 30
+  0, array[]::text[], 17, 120
 ) as finalized;
 reset role;
 select results_eq(
-  $$select run.status::text, run.error_code,
-           lease.backoff_until > clock_timestamp()
+  $$select run.status::text, run.error_code, run.quota_remaining,
+           lease.backoff_until = run.finished_at + interval '120 seconds'
     from slice7b_rate_claim as claim
     join public.sync_runs as run on run.id = claim.result_run_id
     cross join public.sync_leases as lease
     where lease.provider = 'api-football'$$,
-  $$values ('failed'::text, 'PROVIDER_RATE_LIMITED'::text, true)$$,
-  'a finalized 429 failure stores a bounded provider backoff'
+  $$values ('failed'::text, 'PROVIDER_RATE_LIMITED'::text, 17, true)$$,
+  'a finalized 429 failure stores safe quota and the exact bounded provider backoff'
 );
 create temp table slice7b_backoff_run_count as
 select count(*)::bigint as count from public.sync_runs;

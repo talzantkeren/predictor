@@ -252,6 +252,7 @@ export async function finalizeApiFootballSync(
         errorCode: string;
         errorMessageSafe: string;
         retryAfterSeconds: number | null;
+        quotaRemaining: number | null;
         operatorNotes: string[];
       },
 ) {
@@ -275,7 +276,7 @@ export async function finalizeApiFootballSync(
     p_fixtures_seen: result.status === "succeeded" ? result.fixturesSeen : 0,
     p_operator_notes: result.operatorNotes,
     p_quota_remaining: nullableNumber(
-      result.status === "succeeded" ? result.quotaRemaining : null,
+      result.quotaRemaining,
     ),
     p_retry_after_seconds:
       result.status === "failed"

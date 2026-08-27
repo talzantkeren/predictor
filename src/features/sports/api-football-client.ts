@@ -170,15 +170,20 @@ const safeErrorMessages: Record<ApiFootballClientErrorCode, string> = {
 
 export class ApiFootballClientError extends Error {
   readonly code: ApiFootballClientErrorCode;
+  readonly quotaRemaining: number | null;
   readonly retryAfterSeconds: number | null;
 
   constructor(
     code: ApiFootballClientErrorCode,
-    options: { retryAfterSeconds?: number | null } = {},
+    options: {
+      quotaRemaining?: number | null;
+      retryAfterSeconds?: number | null;
+    } = {},
   ) {
     super(safeErrorMessages[code]);
     this.name = "ApiFootballClientError";
     this.code = code;
+    this.quotaRemaining = options.quotaRemaining ?? null;
     this.retryAfterSeconds = options.retryAfterSeconds ?? null;
   }
 }
@@ -196,6 +201,8 @@ interface ApiFootballClientOptions {
 }
 
 type AllowedPath = "/leagues" | "/teams" | "/fixtures/rounds" | "/fixtures";
+
+const MAX_DURABLE_RETRY_AFTER_SECONDS = 3_600;
 
 function parseHeaderInteger(headers: Headers, name: string) {
   const raw = headers.get(name);
@@ -219,10 +226,18 @@ function quotaFromHeaders(headers: Headers): ApiFootballQuota {
 function retryAfterSeconds(headers: Headers, now: number) {
   const raw = headers.get("retry-after");
   if (!raw) return null;
-  if (/^\d+$/.test(raw)) return Math.min(Number(raw), 30);
+  if (/^\d+$/.test(raw)) {
+    const value = Number(raw);
+    return Number.isFinite(value)
+      ? Math.min(value, MAX_DURABLE_RETRY_AFTER_SECONDS)
+      : MAX_DURABLE_RETRY_AFTER_SECONDS;
+  }
   const date = Date.parse(raw);
   if (!Number.isFinite(date)) return null;
-  return Math.min(30, Math.max(0, Math.ceil((date - now) / 1_000)));
+  return Math.min(
+    MAX_DURABLE_RETRY_AFTER_SECONDS,
+    Math.max(0, Math.ceil((date - now) / 1_000)),
+  );
 }
 
 async function readBoundedText(response: Response, limit: number) {
@@ -377,16 +392,25 @@ export class ApiFootballClient {
         if (response.status === 403) {
           throw new ApiFootballClientError("PROVIDER_AUTH_FAILED");
         }
+        const rateLimitError =
+          response.status === 429
+            ? new ApiFootballClientError("PROVIDER_RATE_LIMITED", {
+                quotaRemaining: quota.dailyRemaining,
+                retryAfterSeconds: lastRetryAfter,
+              })
+            : null;
         if (retryableStatus && attempt < this.maxAttempts) {
-          await this.waitBeforeRetry(attempt, lastRetryAfter, startedAt);
+          await this.waitBeforeRetry(
+            attempt,
+            lastRetryAfter,
+            startedAt,
+            rateLimitError,
+          );
           continue;
         }
+        if (rateLimitError) throw rateLimitError;
         throw new ApiFootballClientError(
-          response.status === 429
-            ? "PROVIDER_RATE_LIMITED"
-            : retryableStatus
-              ? "PROVIDER_UNAVAILABLE"
-              : "PROVIDER_BAD_RESPONSE",
+          retryableStatus ? "PROVIDER_UNAVAILABLE" : "PROVIDER_BAD_RESPONSE",
           { retryAfterSeconds: lastRetryAfter },
         );
       }
@@ -436,13 +460,14 @@ export class ApiFootballClient {
     attempt: number,
     retryAfter: number | null,
     startedAt: number,
+    budgetFailure?: ApiFootballClientError | null,
   ) {
     const exponential = 250 * 2 ** (attempt - 1);
     const jitter = Math.floor(this.random() * 100);
     const requested = retryAfter === null ? exponential + jitter : retryAfter * 1_000;
     const remaining = this.totalBudgetMs - (this.now() - startedAt);
     if (remaining <= 0 || requested >= remaining) {
-      throw new ApiFootballClientError("PROVIDER_TIMEOUT");
+      throw budgetFailure ?? new ApiFootballClientError("PROVIDER_TIMEOUT");
     }
     await this.sleep(requested);
   }

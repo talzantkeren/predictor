@@ -234,7 +234,9 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
   ואינו יוצר שורת run. claim מוצלח יוצר lease עמיד עם generation/token/expiry;
   provider HTTP מתבצע אחר כך ומחוץ לטרנזקציה.
 - ה־client server-only קורא רק league 383/season 2026 דרך endpoints allowlisted,
-  עם GET, timeout, body cap, Zod, paging, retries חסומים ו־quota headers.
+  עם GET, timeout, body cap, Zod, paging, retries חסומים ו־quota headers. תגובת
+  429 שה־`Retry-After` שלה אינו נכנס בתקציב מוחזרת מיד כ־rate limit, בלי שינה
+  ארוכה; hint עד 3,600 שניות ו־quota remaining תקין נשמרים לצורך backoff.
 - payload מנורמל בלבד עובר ב־batches ל־apply RPC. upsert נעשה לפי provider ID,
   `FT` בלבד עובר ל־`score_match` הקיימת, ו־manual override מדולג. apply/finalize
   דוחים token ישן או פג.

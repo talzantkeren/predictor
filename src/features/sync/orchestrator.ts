@@ -67,6 +67,8 @@ function failureDetails(error: unknown) {
       error instanceof ApiFootballClientError
         ? error.retryAfterSeconds
         : null,
+    quotaRemaining:
+      error instanceof ApiFootballClientError ? error.quotaRemaining : null,
   };
 }
 

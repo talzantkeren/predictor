@@ -273,17 +273,64 @@ describe("API-Football client contract", () => {
     },
   );
 
-  it("returns a bounded Retry-After when the final 429 attempt is exhausted", async () => {
-    const client = clientWithTransport(
-      async () =>
-        jsonResponse({}, { status: 429, headers: { "Retry-After": "45" } }),
-      { maxAttempts: 1 },
+  it.each([
+    ["45 seconds", "45", 45],
+    ["120 seconds", "120", 120],
+    [
+      "an HTTP date",
+      new Date(Date.UTC(2026, 7, 27, 12, 0, 45)).toUTCString(),
+      45,
+    ],
+  ])(
+    "returns rate-limited immediately for %s on the default retry path",
+    async (_label, retryAfter, expectedSeconds) => {
+      const now = Date.UTC(2026, 7, 27, 12, 0, 0);
+      const sleep = vi.fn(async () => undefined);
+      const transport = vi.fn<ApiFootballTransport>(async () =>
+        jsonResponse({}, {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+            "x-ratelimit-requests-remaining": "17",
+          },
+        }),
+      );
+      const client = clientWithTransport(transport, { now: () => now, sleep });
+
+      await expect(client.getLeague()).rejects.toMatchObject({
+        code: "PROVIDER_RATE_LIMITED",
+        quotaRemaining: 17,
+        retryAfterSeconds: expectedSeconds,
+      });
+      expect(transport).toHaveBeenCalledOnce();
+      expect(sleep).not.toHaveBeenCalled();
+    },
+  );
+
+  it("bounds durable throttle metadata and drops invalid quota or raw headers", async () => {
+    const client = clientWithTransport(async () =>
+      jsonResponse({}, {
+        status: 429,
+        headers: {
+          "Retry-After": "7200",
+          "x-ratelimit-requests-remaining": "-1",
+          "x-provider-private-detail": "do-not-carry",
+        },
+      }),
     );
 
-    await expect(client.getLeague()).rejects.toMatchObject({
+    let caught: unknown;
+    try {
+      await client.getLeague();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({
       code: "PROVIDER_RATE_LIMITED",
-      retryAfterSeconds: 30,
+      quotaRemaining: null,
+      retryAfterSeconds: 3600,
     });
+    expect(JSON.stringify(caught)).not.toContain("do-not-carry");
   });
 
   it("validates targeted IDs and caps a request at 20", async () => {

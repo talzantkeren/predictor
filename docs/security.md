@@ -470,9 +470,11 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   `errors`, paging ו־Zod nested schemas, ודוחה IDs כפולים. errors נשמרים כקודים
   והודעות בטוחות; key, headers, URL מלא ו־payload אינם נכנסים ללוג או ל־DB.
 - 403 אינו retried. רק transport/timeout, 429, 499 ו־5xx של GET יכולים לקבל
-  עד שני retries נוספים בתוך תקציב wall-clock; `Retry-After` חסום ו־jitter
-  מונע herd. 429/`Retry-After` מפעיל backoff; quota headers נשמרים לתצפית בלי
-  להפעיל threshold שלא הוכח. Shared outbound
+  עד שני retries נוספים בתוך תקציב wall-clock; `Retry-After` קצר ו־jitter
+  מונעים herd. 429 עם hint שאינו נכנס בתקציב מסווג מיד כ־rate limit ואינו
+  מומר ל־timeout או לשינה ארוכה. רק hint שלם ולא־שלילי החסום ל־3,600 שניות
+  ו־quota remaining שלם ולא־שלילי נשמרים; headers גולמיים אינם עוברים את גבול
+  ה־client. ה־metadata מפעיל backoff ללא threshold מכסה שלא הוכח. Shared outbound
   IP של Vercel נשאר סיכון זמינות מתועד, לא סיבה לחשוף key או להוסיף proxy.
 - זהות provider נשענת רק על external ID. codes/names/venues אינם משמשים merge.
   התחרות, העונה, הקבוצות והמשחקים של API-Football נפרדים משורות Demo; payload

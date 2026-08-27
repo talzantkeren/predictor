@@ -158,6 +158,60 @@ describe("shared sports sync orchestration", () => {
     );
   });
 
+  it("finalizes a long provider throttle with durable bounded metadata", async () => {
+    const deps = dependencies();
+    const targetedClaim = {
+      ...claim,
+      syncKind: "targeted" as const,
+      fixtureIds: ["1900001"],
+    };
+    deps.claim.mockResolvedValueOnce(targetedClaim);
+    const transport = vi.fn(async () =>
+      new Response("{}", {
+        status: 429,
+        headers: {
+          "Retry-After": "120",
+          "x-ratelimit-requests-remaining": "9",
+          "x-provider-private-detail": "never-persist",
+        },
+      }),
+    );
+
+    await expect(
+      runSportsSync(
+        {
+          systemActorId: actorId,
+          provider: "api-football",
+          apiKey: "recorded-test-key",
+          force: true,
+          transport,
+        },
+        deps,
+      ),
+    ).resolves.toEqual({
+      runId,
+      status: "failed",
+      reason: "PROVIDER_RATE_LIMITED",
+    });
+    expect(transport).toHaveBeenCalledOnce();
+    expect(deps.apply).not.toHaveBeenCalled();
+    expect(deps.finalize).toHaveBeenCalledWith(
+      actorId,
+      targetedClaim,
+      {
+        status: "failed",
+        errorCode: "PROVIDER_RATE_LIMITED",
+        errorMessageSafe: "The sports provider rate limit was reached.",
+        retryAfterSeconds: 120,
+        quotaRemaining: 9,
+        operatorNotes: [],
+      },
+    );
+    expect(JSON.stringify(deps.finalize.mock.calls)).not.toContain(
+      "never-persist",
+    );
+  });
+
   it("returns a typed failure when failure finalization also fails", async () => {
     const deps = dependencies();
     deps.finalize.mockRejectedValueOnce(new Error("stale lease"));

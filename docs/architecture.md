@@ -575,9 +575,13 @@ validation לפני קריאת ה־RPC אינו invocation מסדי ולכן א�
   ואז נשמר סדר kickoff ו־external ID דטרמיניסטי במכסה של 20.
 - `provider_status` טרמינלי שאינו בר־ניקוד, ובפרט `AET`/`PEN`, הוא מקור review
   עמיד ואינו נשאר ב־targeted polling. הוא ממשיך להתגלות ב־reconciliation.
-- 429/`Retry-After` מעדכן `backoff_until`; quota headers נשמרים כאיתות תפעולי.
-  מדיניות threshold אוטומטית למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry
-  storm ואין polling כל 15 שניות.
+- 429 מסווג כ־`PROVIDER_RATE_LIMITED` לפני המתנה: `Retry-After` קצר יכול לקבל
+  retry בתוך תקציב ה־wall-clock, ואילו hint שאינו נכנס בתקציב מוחזר מיד בלי
+  שינה. רק מספר שניות שלם ולא־שלילי, חסום ל־`0..3600`, ו־quota remaining
+  שלם ולא־שלילי מועברים ל־finalize; headers גולמיים אינם נשמרים.
+  `backoff_until` נאכף גם ב־scheduled וגם ב־force. מדיניות threshold אוטומטית
+  למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry storm ואין polling כל 15
+  שניות.
 - ה־Base URL, league ID והעונה הם constants/configuration typed ולא קלט
   משתמש. ה־API key נשמר רק ב־Vercel עבור Next.js ואינו נשמר ב־Vault.
 

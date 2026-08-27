@@ -330,7 +330,7 @@ provider-owned שהוא מציג נזרעים ישירות במסד המקומי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After`, retry/backoff/jitter חסומים, `Accept`, ביטול body שלא נצרך, quota headers ו־redaction ללא key/URL |
+| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After` קצר שמבצע retry מוצלח ו־45/120/date שחוזרים מיד כ־rate limit, hint חסום ל־3,600, retry/backoff/jitter חסומים, `Accept`, ביטול body שלא נצרך, quota תקין בלבד ו־redaction ללא key/URL/header גולמי |
 | Vitest adapter | league 383, כל 14 team IDs והמיפוי העברי, codes כפולים, unknown team fallback, 26 round labels, future-stage review, NS/FT, כל status מתועד, live score→null, `score.fulltime`, score חסר, AET/PEN review ו־UTC consistency |
 | Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, fixturesSeen עד 1,000, operator notes עד 100 עם overflow marker, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion |
 | pgTAP | schema/RLS/grants; browser denial; actor validation; claim מקביל בשתי sessions אמיתיות; `NOT_DUE` ללא row; force cooldown/backoff; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; בידוד regression בתוך batch; ביטול מוקדם ללא חשיפת ניחוש; reactivation עם איפוס metadata/leaderboard; provider-ID upsert idempotent; Demo isolation; AET review והחרגה מ־targeted; FT/correction/retry דרך `score_match` ואודיט source |
@@ -342,6 +342,11 @@ S9-DEF-010 מוסיף pgTAP דטרמיניסטי עם 25 stale ומשחק live �
 מכסת 20, generation מונוטוני ו־tokens שונים, ולסיים דרך fencing הקיים.
 `NOT_DUE` ו־`PROVIDER_BACKOFF` אינם מוסיפים run; בדיקת orchestrator מאמתת שגם
 transport, apply ו־finalize אינם נקראים כאשר ה־claim מחזיר `NOT_DUE`.
+
+S9-DEF-011 מכסה את מסלול ברירת המחדל של שלושה ניסיונות ב־Vitest,
+orchestration/finalize ללא provider חי, ו־pgTAP שמוכיח שמירת quota, ‏backoff
+מדויק וחסימת scheduled/force. הפקודות והפלט המצונזר נמצאים ב־
+[`docs/evidence/slice-9/w5/S9-DEF-011.md`](./evidence/slice-9/w5/S9-DEF-011.md).
 
 ### Slice 9 W1 — serialization וזמן מסד
 
