@@ -282,10 +282,30 @@ regression רגיל. ההכרעה נעשית תחת נעילת שורת המשח
 
 פונקציית PostgreSQL אטומית מקבלת משחק ותוצאה מאומתת, נועלת את רשומת המשחק,
 מעלה `result_version` כאשר התוצאה השתנתה ומבצעת overwrite דטרמיניסטי לניחושים
-שהותר לנקד. בגבול ה־Manual הנוכחי, `create_or_correct_match` נועלת תחילה את כל
-הליגות של העונה ומסרבת לכל יצירה או תיקון שמשפיעים על עונה עם ליגה
-`completed`, בקוד `COMPLETED_RECONCILIATION_REQUIRED`. עד שמסלול review/
-reconciliation של Slice 9 יימסר, אין תיקון ידני שקט של נתון סופי.
+שהותר לנקד. הניקוד האוטומטי חל רק על ליגות שאינן `completed`: תוצאה חדשה או
+מתוקנת אינה רשאית לשכתב בשקט snapshot, ניקוד או דירוג סופי של ליגה שהושלמה.
+
+תוצאת ספק שאינה בטוחה לזמן החוקי נשמרת ב־`match_result_reviews` לפי
+`(match_id, result_version)`. הכרעת system admin נועלת match ואז review, מקבלת
+רק review ממתין של הגרסה הנוכחית, וכותבת אטומית תוצאה חוקית קנונית או ביטול.
+stale version, replay, actor זר או תיקון ספק מקביל נדחים ללא mutation. לאחר
+ההכרעה `score_match` מנקד מחדש רק ליגות שאינן `completed`; לכל ליגה שהושלמה
+ושאכן מכילה את המשחק ב־`league_match_snapshots` נוצרת רשומת
+`league_match_reconciliations` עמידה וייחודית לפי
+`(league_id, match_id, result_version)`.
+
+רק גבול system-admin צר של reconciliation רשאי להחיל שינוי על תוצאה סופית.
+הוא נועל league→match→snapshot→reconciliation לפי סדר הנעילות הגלובלי, מאמת
+שהגרסה pending ועדכנית ושה־snapshot הקפוא קיים, מעדכן את ה־snapshot ומבצע
+overwrite דטרמיניסטי לניחושי אותה ליגה בלבד. דחייה מסמנת את הרשומה
+`dismissed` בלי לשנות snapshot או ניקוד. משחק שנוסף לעונה אחרי completion אינו
+נכנס לסט הקפוא, אינו יוצר reconciliation ואינו משנה את הדוח הסופי. כל apply,
+dismiss ו־replay מתועדים; replay מוצלח הוא no-op ואינו מכפיל audit.
+
+בגבול ה־Manual, `create_or_correct_match` אינו מקבל status גנרי. יצירה או
+תיקון שמשפיעים על עונה עם ליגה `completed` חייבים לעבור באותו חוזה review/
+reconciliation; פעולה שאינה יכולה ליצור את הרשומות הגרסאיות הנדרשות נדחית
+בקוד `COMPLETED_RECONCILIATION_REQUIRED`.
 
 לאחר השגת נעילת המשחק הפונקציה דוגמת `clock_timestamp()` ודוחה מעבר ל־
 `finished` כאשר הדגימה מוקדמת מ־`kickoff_at`. ביטול לפני מועד המשחק נשאר חוקי ואינו
