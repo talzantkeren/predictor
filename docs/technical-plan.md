@@ -1339,9 +1339,14 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   ראשון, או ה־Cron הבא, מבצע reconciliation idempotent: `activated_at` נשמר
   כ־`first_kickoff_at`, `recorded_at` נשאר זמן הכתיבה, ונוסף code
   `ACTIVATION_PERSIST_LATE` שמסומן לכשל תפעולי/alert. recovery זה אינו PASS
-  ל־deadline ואינו backdating של האודיט. פעולה ידנית מוקדמת משתמשת בזמן DB
-  שלה. המירוץ manual/automatic יוצר transition ואירוע audit יחידים ונועל את
-  חוקי הניקוד; correctness אינו נשען על שעון הדפדפן או על tick מוצלח יחיד.
+  ל־deadline ואינו backdating של האודיט. ה־Cron המאומת קושר מראש בטבלה פרטית
+  את ה־system actor הלא־אינטראקטיבי; recovery שנחשף בגבול עסקי מייחס את אירוע
+  האודיט אליו ושומר את `auth.uid()` של החבר/מוזמן רק בתור
+  `metadata.triggering_actor_id`. חסרון binding נכשל סגור, actor אחר אינו מחליף
+  אותו בשקט והסרת שורת `system_admins` מסירה את הקישור. פעולה ידנית מוקדמת
+  משתמשת בזמן DB שלה. המירוץ manual/automatic יוצר transition ואירוע audit
+  יחידים ונועל את חוקי הניקוד; correctness אינו נשען על שעון הדפדפן או על tick
+  מוצלח יחיד.
 - `completeLeague` נועל את הליגה, מאמת את מטריצת terminal ואת גרסאות הניקוד,
   ודורש `requires_review=false` וללא review pending לגרסה הכלולה. `canceled`
   הוא resolved; `finished` resolved רק עם `provider_status='FT'` ותוצאת זמן

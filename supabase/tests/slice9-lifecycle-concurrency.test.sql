@@ -28,6 +28,24 @@ begin
 end;
 $$;
 
+create function pg_temp.wait_for_dblink_idle(p_connection text)
+returns boolean
+language plpgsql
+as $$
+declare
+  v_attempt integer := 0;
+begin
+  loop
+    if extensions.dblink_is_busy(p_connection) = 0 then
+      return true;
+    end if;
+    v_attempt := v_attempt + 1;
+    if v_attempt >= 300 then return false; end if;
+    perform pg_catalog.pg_sleep(0.01);
+  end loop;
+end;
+$$;
+
 select is(
   extensions.dblink_connect(
     'lifecycle_control',
@@ -130,7 +148,8 @@ select is(
       ('d9800000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000001', 'Lifecycle on time', '2026-01-01', '2026-12-31', false),
       ('d9800000-0000-4000-8000-000000000102', '26000000-0000-4000-8000-000000000001', 'Lifecycle delayed', '2026-01-01', '2026-12-31', false),
       ('d9800000-0000-4000-8000-000000000103', '26000000-0000-4000-8000-000000000001', 'Lifecycle boundary', '2026-01-01', '2026-12-31', false),
-      ('d9800000-0000-4000-8000-000000000104', '26000000-0000-4000-8000-000000000001', 'Lifecycle completion', '2026-01-01', '2026-12-31', false);
+      ('d9800000-0000-4000-8000-000000000104', '26000000-0000-4000-8000-000000000001', 'Lifecycle completion', '2026-01-01', '2026-12-31', false),
+      ('d9800000-0000-4000-8000-000000000105', '26000000-0000-4000-8000-000000000001', 'Lifecycle binding lock', '2026-01-01', '2026-12-31', false);
 
     insert into public.matches (
       id, season_id, round_number, home_team_id, away_team_id,
@@ -141,7 +160,9 @@ select is(
       ('d9800000-0000-4000-8000-000000000202', 'd9800000-0000-4000-8000-000000000102', 1, '26000000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000102', clock_timestamp() + interval '1 day', 'scheduled', 'NS', null, null, 0),
       ('d9800000-0000-4000-8000-000000000203', 'd9800000-0000-4000-8000-000000000103', 1, '26000000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000102', clock_timestamp() + interval '1 day', 'canceled', 'CANC', null, null, 0),
       ('d9800000-0000-4000-8000-000000000204', 'd9800000-0000-4000-8000-000000000103', 2, '26000000-0000-4000-8000-000000000103', '26000000-0000-4000-8000-000000000104', clock_timestamp() + interval '2 days', 'scheduled', 'NS', null, null, 0),
-      ('d9800000-0000-4000-8000-000000000205', 'd9800000-0000-4000-8000-000000000104', 1, '26000000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000102', clock_timestamp() - interval '2 hours', 'finished', 'FT', 1, 0, 1);
+      ('d9800000-0000-4000-8000-000000000205', 'd9800000-0000-4000-8000-000000000104', 1, '26000000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000102', clock_timestamp() - interval '2 hours', 'finished', 'FT', 1, 0, 1),
+      ('d9800000-0000-4000-8000-000000000206', 'd9800000-0000-4000-8000-000000000105', 1, '26000000-0000-4000-8000-000000000101', '26000000-0000-4000-8000-000000000102', clock_timestamp() + interval '1 day', 'canceled', 'CANC', null, null, 0),
+      ('d9800000-0000-4000-8000-000000000207', 'd9800000-0000-4000-8000-000000000105', 2, '26000000-0000-4000-8000-000000000103', '26000000-0000-4000-8000-000000000104', clock_timestamp() + interval '2 days', 'scheduled', 'NS', null, null, 0);
 
     insert into public.leagues (
       id, manager_id, season_id, name, status, activated_at
@@ -152,7 +173,8 @@ select is(
       ('d9800000-0000-4000-8000-000000000304', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000104', 'Finalize race', 'active', clock_timestamp() - interval '1 day'),
       ('d9800000-0000-4000-8000-000000000305', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000104', 'Approve race', 'active', clock_timestamp() - interval '1 day'),
       ('d9800000-0000-4000-8000-000000000306', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000104', 'Reject race', 'active', clock_timestamp() - interval '1 day'),
-      ('d9800000-0000-4000-8000-000000000307', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000104', 'Double complete race', 'active', clock_timestamp() - interval '1 day');
+      ('d9800000-0000-4000-8000-000000000307', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000104', 'Double complete race', 'active', clock_timestamp() - interval '1 day'),
+      ('d9800000-0000-4000-8000-000000000308', 'd9800000-0000-4000-8000-000000000001', 'd9800000-0000-4000-8000-000000000105', 'Binding lock race', 'open', null);
 
     insert into public.league_scoring_rules (league_id, locked_at)
     select league.id,
@@ -160,15 +182,21 @@ select is(
     from public.leagues as league
     where league.id between
       'd9800000-0000-4000-8000-000000000301' and
-      'd9800000-0000-4000-8000-000000000307';
+      'd9800000-0000-4000-8000-000000000308';
 
     insert into public.league_members (
       league_id, user_id, status, approved_by, approved_at
-    ) values (
-      'd9800000-0000-4000-8000-000000000303',
-      'd9800000-0000-4000-8000-000000000002', 'active',
-      'd9800000-0000-4000-8000-000000000001', clock_timestamp() - interval '1 day'
-    );
+    ) values
+      (
+        'd9800000-0000-4000-8000-000000000303',
+        'd9800000-0000-4000-8000-000000000002', 'active',
+        'd9800000-0000-4000-8000-000000000001', clock_timestamp() - interval '1 day'
+      ),
+      (
+        'd9800000-0000-4000-8000-000000000308',
+        'd9800000-0000-4000-8000-000000000002', 'active',
+        'd9800000-0000-4000-8000-000000000001', clock_timestamp() - interval '1 day'
+      );
 
     insert into public.join_requests (
       id, league_id, user_id, status, created_at, updated_at
@@ -216,6 +244,19 @@ select is(
       perform set_config('request.headers', '{"x-predictor-system-actor":"70000000-0000-4000-8000-000000000007"}', true);
       select * into v from public.activate_due_leagues();
       return 'SCHEDULED:' || v.activated_count || ':' || v.late_count;
+    exception when others then return 'ERROR:' || sqlstate || ':' || sqlerrm;
+    end $function$;
+    create function pg_temp.try_save(
+      p_league uuid,
+      p_match uuid,
+      p_actor uuid
+    ) returns text
+    language plpgsql as $function$
+    declare v record;
+    begin
+      perform pg_temp.as_actor(p_actor);
+      select * into v from public.save_prediction(p_league, p_match, 1, 1);
+      return 'SAVED:' || v.prediction_id::text;
     exception when others then return 'ERROR:' || sqlstate || ':' || sqlerrm;
     end $function$;
     create function pg_temp.try_complete(p_league uuid) returns text
@@ -450,14 +491,18 @@ select results_eq(
   $$select league.status::text,
            league.activated_at = match.kickoff_at,
            audit.metadata ->> 'code',
-           audit.created_at > league.activated_at
+           audit.created_at > league.activated_at,
+           audit.actor_id
     from public.leagues as league
     join public.matches as match on match.season_id = league.season_id
     join public.audit_logs as audit
       on audit.entity_id = league.id and audit.action = 'league_activated'
     where league.id = 'd9800000-0000-4000-8000-000000000302'$$,
-  $$values ('active'::text, true, 'ACTIVATION_PERSIST_LATE'::text, true)$$,
-  'delayed persistence records the real write time and cannot satisfy the deadline'
+  $$values (
+    'active'::text, true, 'ACTIVATION_PERSIST_LATE'::text, true,
+    '70000000-0000-4000-8000-000000000007'::uuid
+  )$$,
+  'delayed persistence records the real write time and the system actor'
 );
 
 select is(
@@ -500,7 +545,9 @@ select results_eq(
   $$select league.status::text,
            league.activated_at = first_match.kickoff_at,
            audit.metadata ->> 'origin',
-           audit.metadata ->> 'code'
+           audit.metadata ->> 'code',
+           audit.actor_id,
+           audit.metadata ->> 'triggering_actor_id'
     from public.leagues as league
     join public.matches as first_match
       on first_match.id = 'd9800000-0000-4000-8000-000000000203'
@@ -509,9 +556,84 @@ select results_eq(
     where league.id = 'd9800000-0000-4000-8000-000000000303'$$,
   $$values (
     'active'::text, true, 'business_boundary'::text,
-    'ACTIVATION_PERSIST_LATE'::text
+    'ACTIVATION_PERSIST_LATE'::text,
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'd9800000-0000-4000-8000-000000000002'::text
   )$$,
-  'the delayed business boundary persists one explicit late-recovery audit'
+  'the delayed business boundary attributes recovery to the system and preserves the triggering member in metadata'
+);
+
+-- Boundary reconciliation must not lock the private binding tuple after it
+-- owns the league. Otherwise the Cron's bind-before-league order can invert
+-- against league-before-binding business paths. A harmless owner update holds
+-- that tuple while an unrelated due boundary must still complete.
+select is(
+  extensions.dblink_exec('lifecycle_control', $remote$
+    update public.matches
+    set kickoff_at = clock_timestamp() - interval '1 hour'
+    where id = 'd9800000-0000-4000-8000-000000000206'
+  $remote$),
+  'UPDATE 1',
+  'the binding-lock fixture crosses its first kickoff in isolation'
+);
+select is(
+  extensions.dblink_exec('lifecycle_locker', $remote$
+    begin;
+    update private.slice9_system_actor_bindings
+    set bound_at = bound_at
+    where binding_name = 'business_boundary_activation'
+  $remote$),
+  'UPDATE 1',
+  'the private binding tuple is held without touching the system-admin row'
+);
+select is(
+  extensions.dblink_send_query(
+    'lifecycle_first',
+    $$select pg_temp.try_save(
+      'd9800000-0000-4000-8000-000000000308',
+      'd9800000-0000-4000-8000-000000000207',
+      'd9800000-0000-4000-8000-000000000002'
+    )$$
+  ),
+  1,
+  'a due business-boundary save starts while the binding tuple is held'
+);
+select ok(
+  pg_temp.wait_for_dblink_idle('lifecycle_first'),
+  'the boundary reads the committed actor without waiting on the binding tuple'
+);
+select is(
+  extensions.dblink_exec('lifecycle_locker', 'commit'),
+  'COMMIT',
+  'the private binding tuple is released'
+);
+create temp table binding_lock_result(value text);
+insert into binding_lock_result
+select value
+from extensions.dblink_get_result('lifecycle_first') as result(value text);
+select is(
+  (
+    select count(*)::integer
+    from extensions.dblink_get_result('lifecycle_first') as drained(value text)
+  ),
+  0,
+  'the binding-lock save result is fully drained'
+);
+select ok(
+  (select value like 'SAVED:%' from binding_lock_result),
+  'the binding-lock probe completes the requested prediction without an error'
+);
+select results_eq(
+  $$select audit.actor_id,
+           audit.metadata ->> 'triggering_actor_id'
+    from public.audit_logs as audit
+    where audit.entity_id = 'd9800000-0000-4000-8000-000000000308'
+      and audit.action = 'league_activated'$$,
+  $$values (
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'd9800000-0000-4000-8000-000000000002'::text
+  )$$,
+  'the nonblocking boundary still separates the system actor from the triggering member'
 );
 
 -- Completion is queued before a proof finalization that already obtained an

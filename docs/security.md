@@ -645,7 +645,13 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - wrappers זהים שומרים את effective-active guard בגבולות league-first של
   invite, submit ו־completion. helper פרטי ללא Data API grant מקבע transition
   מאוחר פעם אחת, נועל את חוקי הניקוד ב־first kickoff ושומר
-  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. כתיבת fixture מגשרת את כל
+  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. אירוע כזה משתמש ב־system
+  actor הלא־אינטראקטיבי שנקשר מראש על ידי `activate_due_leagues`; caller רגיל
+  נשמר רק ב־`metadata.triggering_actor_id`. טבלת ה־binding ושני helpers פרטיים
+  חסרי grant לכל Data API role. הקישור הראשון immutable כל עוד ה־actor מורשה,
+  mismatch נכשל סגור והסרת `system_admins` מוחקת אותו ב־cascade; lookup נועל
+  רק את שורת ה־administrator ולא את tuple הקישור, כדי לא להפוך את סדר
+  bind→league של Cron מול league→actor של boundary. כתיבת fixture מגשרת את כל
   מפתחות הליגות המושפעות, ולכן aggregate ה־first kickoff אינו משתנה באמצע
   ההכרעה. כותבי catalog שיכולים להוסיף fixture לוקחים קודם מחסום registry
   גלובלי צר; `create_league` מחזיקה אותו במצב shared עד commit. הסדר הוא תמיד
@@ -665,6 +671,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | שתי השלמות יוצרות snapshot/audit כפול | per-league advisory + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
 | provider עוקף review במירוץ | affected-league advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
 | ליגה לא קשורה נתקעת מאחורי save/completion | key נפרד לכל league; global registry רק ל־catalog | save ו־completion בליגה B מסתיימים בעוד transaction בליגה A פתוחה |
+| חבר/מוזמן מיוחס בטעות כמי שביצע activation אוטומטי | private immutable system-actor binding; caller רק ב־metadata; fail-closed לפני bootstrap | actor מדויק, mismatch/revocation/rotation ו־binding-tuple race ב־pgTAP |
 | תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |
 
 ## סיכונים שיוריים ופעולות owner למסירה

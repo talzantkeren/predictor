@@ -563,6 +563,14 @@ completion. השנייה עברה 35/35 ומכסה provider FT מול review, re
 Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
 finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
 
+תיקון attribution של הביקורת מוסיף binding פרטי ל־system actor. בדיקת
+activation מאמתת ACL, actor קבוע, דחיית replacement שקט, cascade בעת revocation
+ו־rotation מפורש. בדיקת ה־lifecycle מאמתת שב־scheduled וב־business-boundary
+ה־`audit_logs.actor_id` הוא principal המערכת, בעוד החבר המפעיל נשמר רק ב־
+`metadata.triggering_actor_id`. probe מרובה־חיבורים מחזיק את tuple ה־binding
+ומחייב boundary בליגה אחרת להסתיים לפני שחרורו; כך חזרה לנעילת binding אחרי
+league תיכשל ולא תוכל להחזיר את היפוך הסדר מול Cron.
+
 תיקון הביקורת המאוחר מוסיף את
 `supabase/tests/slice9-league-lock-scope.test.sql`. הוא מחזיק transaction של
 `save_prediction` ושל completion אידמפוטנטי בליגה A, מוכיח שפעולה באותה ליגה

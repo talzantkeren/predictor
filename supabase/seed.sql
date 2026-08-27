@@ -33,3 +33,12 @@ values (
   '70000000-0000-4000-8000-000000000007'
 )
 on conflict (user_id) do nothing;
+
+insert into private.slice9_system_actor_bindings (
+  binding_name,
+  actor_id
+) values (
+  'business_boundary_activation',
+  '70000000-0000-4000-8000-000000000007'
+)
+on conflict (binding_name) do nothing;

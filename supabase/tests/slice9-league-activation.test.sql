@@ -406,14 +406,98 @@ select throws_ok(
 );
 select set_config(
   'request.headers',
-  '{"x-predictor-system-actor":"db000000-0000-4000-8000-000000000003"}',
+  '{"x-predictor-system-actor":"70000000-0000-4000-8000-000000000007"}',
   true
 );
 select lives_ok(
   $$select * from public.activate_due_leagues()$$,
   'the existing-Cron gateway accepts the fixed system actor without provider input'
 );
+select set_config(
+  'request.headers',
+  '{"x-predictor-system-actor":"db000000-0000-4000-8000-000000000003"}',
+  true
+);
+select throws_ok(
+  $$select * from public.activate_due_leagues()$$,
+  'P0001', 'SYSTEM_ACTOR_MISMATCH',
+  'a different system administrator cannot silently replace the bound automation actor'
+);
 reset role;
+
+select results_eq(
+  $$select binding.actor_id
+    from private.slice9_system_actor_bindings as binding
+    where binding.binding_name = 'business_boundary_activation'$$,
+  $$values ('70000000-0000-4000-8000-000000000007'::uuid)$$,
+  'the Cron gateway retains the configured noninteractive actor after a mismatched call'
+);
+select ok(
+  not has_table_privilege(
+    'authenticated',
+    'private.slice9_system_actor_bindings',
+    'SELECT,INSERT,UPDATE,DELETE'
+  )
+  and not has_table_privilege(
+    'service_role',
+    'private.slice9_system_actor_bindings',
+    'SELECT,INSERT,UPDATE,DELETE'
+  ),
+  'Data API roles have no direct access to the private actor binding'
+);
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    'private.slice9_business_boundary_system_actor()',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_business_boundary_system_actor()',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'private.slice9_bind_business_boundary_system_actor(uuid)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_bind_business_boundary_system_actor(uuid)',
+    'EXECUTE'
+  ),
+  'the private actor-binding helpers have no Data API grants'
+);
+
+delete from public.system_admins
+where user_id = '70000000-0000-4000-8000-000000000007';
+select is(
+  (
+    select count(*)::integer
+    from private.slice9_system_actor_bindings
+    where binding_name = 'business_boundary_activation'
+  ),
+  0,
+  'revoking the configured system administrator removes its boundary binding'
+);
+set local role service_role;
+select set_config(
+  'request.headers',
+  '{"x-predictor-system-actor":"db000000-0000-4000-8000-000000000003"}',
+  true
+);
+select lives_ok(
+  $$select * from public.activate_due_leagues()$$,
+  'the next valid Cron call binds an explicitly rotated system actor'
+);
+reset role;
+select results_eq(
+  $$select binding.actor_id
+    from private.slice9_system_actor_bindings as binding
+    where binding.binding_name = 'business_boundary_activation'$$,
+  $$values ('db000000-0000-4000-8000-000000000003'::uuid)$$,
+  'system-actor rotation is explicit and observable after revocation'
+);
 
 select * from finish();
 rollback;

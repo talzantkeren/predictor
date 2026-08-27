@@ -279,7 +279,12 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
    ב־SQL, ב־Git או בלוגים. שם ה־job היחיד הוא `predictor-sports-sync`.
-5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
+5. מיד לאחר migration מריצים tick מאומת אחד לפני פתיחת תעבורת משתמשים. ה־tick
+   קושר את actor הקבוע להפעלות גבול; עד אז reconciliation מאוחר נכשל סגור עם
+   `SYSTEM_ACTOR_UNAVAILABLE`. החלפת actor מחייבת קודם הסרת שורת
+   `system_admins` הישנה ורק אז tick עם ה־UUID החדש; actor שני אינו מחליף קישור
+   קיים בשקט.
+6. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
    העברית שהקטלוג הוחל או שכבר היה מעודכן, ובמסך `/admin/sync` מוודאים שורת
    `succeeded/manual` סופית. קודי `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` מוחזרים
    לפעולה ואינם נשמרים ב־`error_code`, שנשאר `null` בהצלחה. זהו import של
@@ -384,7 +389,10 @@ migration, RPC, Action, dependency או שימוש ב־admin client.
 מנהל/ת הליגה יכול/ה להפעיל ליגה פתוחה לפני המשחק הראשון. בתחילת כל tick של
 Cron הסנכרון הקיים מתבצע גם fallback אטומי ואידמפוטנטי להפעלה לפי kickoff,
 לפני בחירת provider או I/O חיצוני. כשל ספק אינו מונע הפעלה; persistence מאוחר
-נרשם בנפרד ואינו מוצג כאילו עמד ב־deadline.
+נרשם בנפרד ואינו מוצג כאילו עמד ב־deadline. ה־tick המאומת קושר בטבלה פרטית
+את ה־principal הלא־אינטראקטיבי הקבוע. אם גבול עסקי של חבר/ה או מוזמן/ת מגלה
+איחור, `audit_logs.actor_id` נשאר אותו system actor והמשתמש/ת המפעיל/ה נשמר/ת
+רק ב־`metadata.triggering_actor_id`; אין ייחוס אוטומציה למשתמש רגיל.
 
 השלמת ליגה מותרת רק כשכל המשחקים terminal, אין review פתוח והניקוד בגרסה
 הנוכחית. באותה transaction מוקפא snapshot וניסגרות שתי בקשות ההצטרפות הפתוחות
