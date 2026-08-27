@@ -315,6 +315,15 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 response מתוזמן עם `runId` לשורת `sync_runs` סופית ול־lease משוחרר. שאילתת
 הראיה המסוננת נמצאת ב־`docs/evidence/slice-9/w5/S9-DEF-012.md`.
 
+ב־`/admin/sync` יש לפרש את קודי הכשל לפי השלב: `PROVIDER_*` מצביע על transport,
+authentication, rate limit או חוזה response; ‏`SYNC_PLAN_FAILED` מצביע על
+snapshot מנורמל שאינו עקבי; ‏`SYNC_APPLY_FAILED` מצביע על batch מסדי שנדחה;
+ו־`SYNC_FINALIZE_FAILED` מצביע על כשל בסגירת ה־run. בשני האחרונים אין לנסות
+לתקן payload מתוך הלוגים או להריץ SQL ידני: ממתינים ל־lease expiry/reclaim,
+בודקים את ה־run הבא ואת בריאות ה־DB, ורק אז מפעילים retry מורשה. `fixtures_seen`
+הוא 0 בכשל provider/planner; בכשל apply הוא מספר ה־fixtures בתכנית המאומתת.
+לעולם אין להעתיק לראיה exception, payload, headers, key או שמות לא־מהימנים.
+
 ## Slice 7c: Design System ורענון UI
 
 הכיוון שיושם הוא Sports Command Center בהיר עם טיפוגרפיה עברית חזקה,

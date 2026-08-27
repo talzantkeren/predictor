@@ -595,6 +595,13 @@ validation לפני קריאת ה־RPC אינו invocation מסדי ולכן א�
 - force נוסף בתוך דקת ה־cooldown חוזר מה־RPC כ־
   `NOT_DUE/FORCE_COOLDOWN`. החוזה הזה הוא skip ניטרלי לכל אורך DB → gateway →
   orchestration → Route/Action; אין provider I/O, ‏finalize או שורת run חדשה.
+- ה־orchestration מפרידה גבולות כשל: קודי `PROVIDER_*` נוצרים רק בשלב קריאת
+  הספק, `SYNC_PLAN_FAILED` בתכנון snapshot מנורמל, `SYNC_APPLY_FAILED` בכתיבת
+  batch ו־`SYNC_FINALIZE_FAILED` רק כאשר ה־finalizer עצמו נכשל. פרטי exception,
+  payload ושמות אינם עוברים ל־DB או לתוצאה. כשל provider/planner שומר
+  `fixtures_seen=0`; כשל apply שומר רק את `fixtures_seen`, המכסה וההערות שכבר
+  אומתו בתכנית. כשל finalizer אינו מפעיל finalizer שני, ולכן lease/run נשארים
+  לגידור ול־reclaim הקיים במקום לנסות mutation לא־מגודר.
 - ה־Base URL, league ID והעונה הם constants/configuration typed ולא קלט
   משתמש. ה־API key נשמר רק ב־Vercel עבור Next.js ואינו נשמר ב־Vault.
 

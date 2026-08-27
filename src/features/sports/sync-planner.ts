@@ -11,6 +11,15 @@ export const API_FOOTBALL_APPLY_BATCH_SIZE = 50;
 export const API_FOOTBALL_MAX_FIXTURES_SEEN = 1_000;
 export const API_FOOTBALL_MAX_OPERATOR_NOTES = 100;
 
+export class SyncPlannerError extends Error {
+  readonly code = "SYNC_PLAN_FAILED";
+
+  constructor() {
+    super("The normalized provider snapshot could not be planned safely.");
+    this.name = "SyncPlannerError";
+  }
+}
+
 export interface ApiFootballApplyTeam {
   externalId: string;
   name: string;
@@ -85,7 +94,7 @@ export function batchTargetFixtureIds(fixtureIds: readonly string[]) {
     fixtureIds.some((id) => !/^[1-9]\d*$/.test(id)) ||
     new Set(fixtureIds).size !== fixtureIds.length
   ) {
-    throw new Error("Target fixture IDs must be unique positive integers");
+    throw new SyncPlannerError();
   }
   return chunk(fixtureIds, API_FOOTBALL_TARGET_BATCH_SIZE);
 }
@@ -94,10 +103,10 @@ export function buildApiFootballApplyPlan(
   snapshot: SportsSyncSnapshot,
 ): PlannedApiFootballApply {
   if (snapshot.provider !== "api-football") {
-    throw new Error("API-Football apply planning requires its provider snapshot");
+    throw new SyncPlannerError();
   }
   if (snapshot.fixtures.length > API_FOOTBALL_MAX_FIXTURES_SEEN) {
-    throw new Error("API-Football snapshots may contain at most 1000 fixtures");
+    throw new SyncPlannerError();
   }
 
   const operatorNotes = new Set<string>();
@@ -114,7 +123,7 @@ export function buildApiFootballApplyPlan(
       (existing.name !== plannedTeam.name ||
         existing.shortName !== plannedTeam.shortName)
     ) {
-      throw new Error("Snapshot team IDs must have consistent metadata");
+      throw new SyncPlannerError();
     }
     teamsById.set(team.teamId, plannedTeam);
     if (team.isNameMapped === false) {
@@ -123,7 +132,7 @@ export function buildApiFootballApplyPlan(
   };
   for (const team of snapshot.teams) {
     if (teamsById.has(team.teamId)) {
-      throw new Error("Snapshot team IDs must be unique");
+      throw new SyncPlannerError();
     }
     addTeam(team);
   }
@@ -132,7 +141,7 @@ export function buildApiFootballApplyPlan(
   const applicableFixtures: ApiFootballApplyFixture[] = [];
   for (const fixture of snapshot.fixtures) {
     if (fixtureIds.has(fixture.matchId)) {
-      throw new Error("Snapshot fixture IDs must be unique");
+      throw new SyncPlannerError();
     }
     fixtureIds.add(fixture.matchId);
     addTeam(fixture.homeTeam);
@@ -286,7 +295,7 @@ function uniqueExternalMatches(matches: readonly StoredMatchSnapshot[]) {
   for (const match of matches) {
     if (match.externalId === null) continue;
     if (byExternalId.has(match.externalId)) {
-      throw new Error("Stored match snapshots require unique external IDs");
+      throw new SyncPlannerError();
     }
     byExternalId.set(match.externalId, match);
   }
@@ -319,7 +328,7 @@ export function planSyncResults(
 
   for (const providerMatch of providerSnapshot) {
     if (seenProviderIds.has(providerMatch.matchId)) {
-      throw new Error("Provider snapshots require unique match IDs");
+      throw new SyncPlannerError();
     }
     seenProviderIds.add(providerMatch.matchId);
 

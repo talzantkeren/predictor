@@ -7,7 +7,6 @@ import leagueEnvelope from "@/features/sports/__fixtures__/api-football/league-3
 import providerErrorEnvelope from "@/features/sports/__fixtures__/api-football/provider-error.json";
 import roundsEnvelope from "@/features/sports/__fixtures__/api-football/rounds-383-2026.json";
 import teamsEnvelope from "@/features/sports/__fixtures__/api-football/teams-383-2026.json";
-import { SyncError } from "@/features/sync/errors";
 import { runSportsSync } from "@/features/sync/orchestrator";
 import type { SportsSyncClaim } from "@/features/sync/types";
 
@@ -145,7 +144,9 @@ describe("shared sports sync orchestration", () => {
       status: "failed",
       reason: "PROVIDER_BAD_RESPONSE",
     });
-    expect(JSON.stringify(result)).not.toContain(secret);
+    expect(JSON.stringify([result, deps.finalize.mock.calls])).not.toContain(
+      secret,
+    );
     expect(deps.apply).not.toHaveBeenCalled();
     expect(deps.finalize).toHaveBeenCalledWith(
       actorId,
@@ -153,6 +154,7 @@ describe("shared sports sync orchestration", () => {
       expect.objectContaining({
         status: "failed",
         errorCode: "PROVIDER_BAD_RESPONSE",
+        fixturesSeen: 0,
         operatorNotes: [],
       }),
     );
@@ -202,6 +204,7 @@ describe("shared sports sync orchestration", () => {
         status: "failed",
         errorCode: "PROVIDER_RATE_LIMITED",
         errorMessageSafe: "The sports provider rate limit was reached.",
+        fixturesSeen: 0,
         retryAfterSeconds: 120,
         quotaRemaining: 9,
         operatorNotes: [],
@@ -209,6 +212,48 @@ describe("shared sports sync orchestration", () => {
     );
     expect(JSON.stringify(deps.finalize.mock.calls)).not.toContain(
       "never-persist",
+    );
+  });
+
+  it("classifies a normalized snapshot planner failure without leaking team metadata", async () => {
+    const deps = dependencies();
+    const plannerSecret = "private-planner-team";
+    const conflictingFixtures = structuredClone(fixturesEnvelope);
+    conflictingFixtures.response[0].teams.home.id = 999001;
+    conflictingFixtures.response[0].teams.home.name = `${plannerSecret}-a`;
+    conflictingFixtures.response[1].teams.home.id = 999001;
+    conflictingFixtures.response[1].teams.home.name = `${plannerSecret}-b`;
+
+    const result = await runSportsSync(
+      {
+        systemActorId: actorId,
+        provider: "api-football",
+        apiKey: "recorded-test-key",
+        force: true,
+        transport: recordedTransport(false, conflictingFixtures),
+      },
+      deps,
+    );
+
+    expect(result).toEqual({
+      runId,
+      status: "failed",
+      reason: "SYNC_PLAN_FAILED",
+    });
+    expect(deps.apply).not.toHaveBeenCalled();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+    expect(deps.finalize).toHaveBeenCalledWith(actorId, claim, {
+      status: "failed",
+      errorCode: "SYNC_PLAN_FAILED",
+      errorMessageSafe:
+        "The normalized provider snapshot could not be planned safely.",
+      fixturesSeen: 0,
+      quotaRemaining: null,
+      retryAfterSeconds: null,
+      operatorNotes: [],
+    });
+    expect(JSON.stringify([result, deps.finalize.mock.calls])).not.toContain(
+      plannerSecret,
     );
   });
 
@@ -258,6 +303,7 @@ describe("shared sports sync orchestration", () => {
         expect.objectContaining({
           status: "failed",
           errorCode: "PROVIDER_UNAVAILABLE",
+          fixturesSeen: 0,
         }),
       );
     } finally {
@@ -285,11 +331,39 @@ describe("shared sports sync orchestration", () => {
       status: "failed",
       reason: "SYNC_FINALIZE_FAILED",
     });
+    expect(deps.finalize).toHaveBeenCalledOnce();
+  });
+
+  it("does not re-finalize when the success finalizer fails", async () => {
+    const deps = dependencies();
+    const finalizeSecret = "private-finalizer-detail";
+    deps.finalize.mockRejectedValueOnce(new Error(finalizeSecret));
+
+    const result = await runSportsSync(
+      {
+        systemActorId: actorId,
+        provider: "api-football",
+        apiKey: "recorded-test-key",
+        force: true,
+        transport: recordedTransport(),
+      },
+      deps,
+    );
+
+    expect(result).toEqual({
+      runId,
+      status: "failed",
+      reason: "SYNC_FINALIZE_FAILED",
+    });
+    expect(deps.apply).toHaveBeenCalledOnce();
+    expect(deps.finalize).toHaveBeenCalledOnce();
+    expect(JSON.stringify(result)).not.toContain(finalizeSecret);
   });
 
   it("retains safe review notes when a later apply batch fails", async () => {
     const deps = dependencies();
-    deps.apply.mockRejectedValueOnce(new SyncError("SYNC_UNAVAILABLE", 503));
+    const applySecret = "private-sql-apply-detail";
+    deps.apply.mockRejectedValueOnce(new Error(applySecret));
     const reviewFixtures = structuredClone(fixturesEnvelope);
     reviewFixtures.response[0].fixture.status.short = "AET";
     reviewFixtures.response[0].fixture.status.long = "Match Finished After Extra Time";
@@ -315,9 +389,13 @@ describe("shared sports sync orchestration", () => {
       claim,
       expect.objectContaining({
         status: "failed",
+        errorCode: "SYNC_APPLY_FAILED",
+        fixturesSeen: 2,
         operatorNotes: ["AET_REQUIRES_REVIEW:1900001"],
       }),
     );
+    expect(deps.finalize).toHaveBeenCalledOnce();
+    expect(JSON.stringify(deps.finalize.mock.calls)).not.toContain(applySecret);
   });
 
   it("does not contact the provider when the due planner declines the claim", async () => {

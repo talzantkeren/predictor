@@ -1,3 +1,4 @@
+import type { ApiFootballClientErrorCode } from "@/features/sports/api-football-client";
 import type { Database } from "@/types/database.generated";
 
 export type SyncStatus = Database["public"]["Enums"]["sync_status"];
@@ -69,6 +70,13 @@ export type SportsSyncClaim =
       reason: "CONCURRENT_ATTEMPT";
     };
 
+export type SyncFailureCode =
+  | ApiFootballClientErrorCode
+  | "MANUAL_CATALOG_CONFLICT"
+  | "SYNC_APPLY_FAILED"
+  | "SYNC_FINALIZE_FAILED"
+  | "SYNC_PLAN_FAILED";
+
 export type SyncInvocationResult =
   | {
       runId: string;
@@ -78,7 +86,7 @@ export type SyncInvocationResult =
   | {
       runId: string;
       status: "failed";
-      reason: string;
+      reason: SyncFailureCode;
     }
   | {
       runId: string | null;

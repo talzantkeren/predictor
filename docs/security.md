@@ -493,6 +493,11 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   וקוראת ל־`score_match` בתוך אותה transaction עבור `FT` עם `score.fulltime`
   תקין או עבור reactivation צר שמאפס scoring metadata. fixture עם regression
   לא־בטוח מבודד, שומר provider status והערת מפעיל חסומה ואינו מבטל peers.
+- provider/planner/apply/finalize מוקפים בגבולות catch נפרדים עם קודים
+  allowlisted. הודעת exception, SQL, stack, payload ושם קבוצה אינם נשמרים או
+  מוחזרים. planner לא־תקין אינו נחשב fixtures שנצפו; apply שומר רק metadata
+  שכבר עבר validation. כשל finalizer מוחזר כ־`SYNC_FINALIZE_FAILED` בלי ניסיון
+  finalization שני שעלול לעקוף fencing או להכפיל mutation.
 - `predictions_locked_at` הוא latch שאינו ניתן לאיפוס על ידי provider apply.
   `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/FT/AET/PEN ואחריהם
   reschedule עתידי נשארים נעולים. CANC/ABD/AWD/WO נועלים רק אם DB time הגיע

@@ -633,6 +633,11 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 - ה־planner מגביל operator notes ל־100 עם marker מפורש של truncation ומאמת את
   `fixtures_seen` לפני apply, כך ש־validation של finalize אינו נכשל אחרי commit
   של batches. כשל finalize במסלול recovery ממופה לתוצאה typed ואינו דולף.
+- קודי הכשל typed לפי גבול: `PROVIDER_*`, ‏`SYNC_PLAN_FAILED`,
+  `SYNC_APPLY_FAILED` ו־`SYNC_FINALIZE_FAILED`. provider/planner מסיימים עם
+  `fixtures_seen=0`; apply רשאי לשמור רק counters/quota/operator notes שכבר
+  עברו validation בתכנית. אם finalizer נכשל, אין קריאת recovery נוספת לאותו
+  finalizer ואין raw exception בתוצאה; fencing/reclaim מסיימים את ה־run בהמשך.
 - הצלחה מעדכנת את זמן ה־catalog/targeted/reconciliation המתאים. 429 מסווג לפני
   wait-budget: hint קצר יכול retry, ו־hint שאינו נכנס בתקציב מסיים מיד בלי
   sleep כ־`PROVIDER_RATE_LIMITED`. רק `Retry-After` שלם ולא־שלילי החסום
