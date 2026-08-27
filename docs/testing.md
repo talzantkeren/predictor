@@ -648,3 +648,9 @@ error. תרחיש `prediction-lock` ממתין בסוף בלבד להשלמת re
 שני RSC response streams לפני סגירת contexts. הרגרסיה הממוקדת עברה 2/2,
 והמטריצה המלאה החוזרת עברה ללא אות server error. אין להציג את הספירה
 הראשונה כ־PASS.
+
+בדיקת `repository-path-hygiene.test.ts` עוברת על כל קובץ טקסט tracked ומכשילה
+נתיבי home/workspace מוחלטים של macOS, Linux, WSL ו־Windows עם דיווח
+`file:line`. דוגמאות הבדיקה מורכבות בזמן ריצה כדי שה־guard יסרוק גם את המקור
+של עצמו בלי allowlist. פלטים היסטוריים משתמשים ב־`<repo>` או ב־placeholder של
+runtime מקומי ואינם מפרסמים את פרופיל המפתח.

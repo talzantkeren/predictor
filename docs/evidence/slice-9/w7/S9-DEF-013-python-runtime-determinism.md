@@ -35,7 +35,7 @@ Exact commands run:
 ```powershell
 npm.cmd run docs:book
 npm.cmd run docs:book:check
-& 'C:\Users\Tal\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' scripts/generate-project-book.py --check
+& '<local Python executable>' scripts/generate-project-book.py --check
 npm.cmd run test -- src/lib/project-book-contract.test.ts
 ```
 
