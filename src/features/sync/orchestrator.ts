@@ -5,15 +5,16 @@ import {
   type ApiFootballTransport,
 } from "@/features/sports/api-football-client";
 import { getApiFootballSafeErrorCode } from "@/features/sports/api-football-provider";
+import { buildManualCatalogPayload } from "@/features/sports/manual-catalog";
 import { createSportsProvider } from "@/features/sports/provider-factory";
 import { buildApiFootballApplyPlan } from "@/features/sports/sync-planner";
 import type { SportsProviderId, SportsSyncPlan } from "@/features/sports/types";
 import { SyncError } from "@/features/sync/errors";
 import {
   applyApiFootballSyncBatch,
+  applyManualFixtureCatalog,
   claimApiFootballSync,
   finalizeApiFootballSync,
-  recordManualSyncAttempt,
 } from "@/features/sync/private-sync-gateway";
 import type {
   ClaimedSportsSync,
@@ -21,14 +22,14 @@ import type {
 } from "@/features/sync/types";
 
 type SyncDependencies = {
-  recordManual: typeof recordManualSyncAttempt;
+  applyManual: typeof applyManualFixtureCatalog;
   claim: typeof claimApiFootballSync;
   apply: typeof applyApiFootballSyncBatch;
   finalize: typeof finalizeApiFootballSync;
 };
 
 const defaultDependencies: SyncDependencies = {
-  recordManual: recordManualSyncAttempt,
+  applyManual: applyManualFixtureCatalog,
   claim: claimApiFootballSync,
   apply: applyApiFootballSyncBatch,
   finalize: finalizeApiFootballSync,
@@ -80,12 +81,21 @@ export async function runSportsSync(
   dependencies: SyncDependencies = defaultDependencies,
 ): Promise<SyncInvocationResult> {
   if (input.provider === "manual") {
-    const attempt = await dependencies.recordManual(input.systemActorId);
-    return {
-      runId: attempt.id,
-      status: "skipped",
-      reason: attempt.reason,
-    };
+    const provider = createSportsProvider({ provider: "manual" });
+    const snapshot = await provider.getSyncSnapshot({ kind: "catalog" });
+    const payload = buildManualCatalogPayload(snapshot);
+    const attempt = await dependencies.applyManual(input.systemActorId, payload);
+    return attempt.status === "failed"
+      ? {
+          runId: attempt.runId,
+          status: "failed",
+          reason: attempt.reason,
+        }
+      : {
+          runId: attempt.runId,
+          status: "succeeded",
+          reason: attempt.reason,
+        };
   }
 
   const claim = await dependencies.claim(input.systemActorId, input.force);

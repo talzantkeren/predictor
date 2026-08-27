@@ -226,3 +226,27 @@ Slice 7b extends rather than relabels the delivered manual Slice 7:
   product decision and recorded contract establish the correct 90-minute field.
 - Recorded sanitized fixtures and fake transport cover the client and adapter;
   CI and browser tests never make live API-Football requests.
+
+## Slice 9 Manual fallback note — 26 August 2026
+
+The Slice 7b bullets above are retained as the historical integration decision.
+S9-DEF-003 supersedes only the current `manual` runtime behavior: it no longer
+returns `skipped/MANUAL_PROVIDER`. The server-only Manual adapter now applies the
+exact bounded `manual-catalog-v1` manifest through one idempotent database RPC,
+returning `MANUAL_APPLIED`, `MANUAL_NO_CHANGE`, or a terminal
+`MANUAL_CATALOG_CONFLICT`. It still performs no provider HTTP request and never
+merges synthetic rows by display name or assigns provider identity. The public
+payload-only RPC delegates to a revoked owner-only full transaction core; no
+granted function accepts actor or clock. Production samples fresh database time
+after its locks and rejects a missing canonical fixture once its kickoff has
+arrived, while an exact already-present replay remains safe.
+
+S9-DEF-008 adds the inverse handoff only for a provider-owned match whose
+provider is exactly `api-football` and whose external ID is a valid positive
+numeric API-Football identifier. A confirmed system administrator can clear the
+Manual-ownership flag through a service-only RPC. The handoff preserves the
+current status, scores, result version, provider provenance, prediction-lock
+latch, predictions and scoring; it records one audit on the first change and is
+an unaudited no-op on replay. A later fenced, validated provider snapshot may
+then resume the ordinary apply path. Manual Demo rows remain providerless and
+cannot use this handoff.

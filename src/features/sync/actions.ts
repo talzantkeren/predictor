@@ -51,7 +51,12 @@ export async function triggerSportsSyncAction(
     if (result.status === "succeeded") {
       return {
         status: "success",
-        message: "הסנכרון הושלם. יומן הריצות עודכן.",
+        message:
+          result.reason === "MANUAL_APPLIED"
+            ? "קטלוג ההדגמה הידני נשמר. יומן הריצות עודכן."
+            : result.reason === "MANUAL_NO_CHANGE"
+              ? "קטלוג ההדגמה הידני כבר מעודכן. יומן הריצות עודכן."
+              : "הסנכרון הושלם. יומן הריצות עודכן.",
         runId: result.runId,
       };
     }
@@ -61,9 +66,7 @@ export async function triggerSportsSyncAction(
         message:
           result.reason === "CONCURRENT_ATTEMPT"
             ? "ריצה אחרת כבר פעילה; לא נשלחה קריאה נוספת לספק."
-            : result.reason === "MANUAL_PROVIDER"
-              ? "המערכת מוגדרת לספק ידני ולכן לא נשלחה קריאת רשת."
-              : "לא הייתה עבודה שמועד ביצועה הגיע.",
+            : "לא הייתה עבודה שמועד ביצועה הגיע.",
         ...(result.runId ? { runId: result.runId } : {}),
       };
     }

@@ -1,17 +1,28 @@
 import type { Database } from "@/types/database.generated";
 
 export type SyncStatus = Database["public"]["Enums"]["sync_status"];
-export type SyncSkipReason = "CONCURRENT_ATTEMPT" | "MANUAL_PROVIDER";
 export type LiveSyncKind = "catalog" | "targeted" | "reconciliation";
 
-export interface RecordedSyncAttempt {
-  id: string;
-  provider: "manual";
-  status: "skipped";
+type ManualCatalogApplicationDetails = {
+  runId: string;
   startedAt: string;
   finishedAt: string;
-  reason: SyncSkipReason;
-}
+  rowsInserted: number;
+  teamsChanged: number;
+  matchesChanged: number;
+};
+
+export type ManualCatalogApplication = ManualCatalogApplicationDetails &
+  (
+    | {
+        status: "succeeded";
+        reason: "MANUAL_APPLIED" | "MANUAL_NO_CHANGE";
+      }
+    | {
+        status: "failed";
+        reason: "MANUAL_CATALOG_CONFLICT";
+      }
+  );
 
 export interface SyncRunItem {
   id: string;
@@ -62,7 +73,7 @@ export type SyncInvocationResult =
   | {
       runId: string;
       status: "succeeded";
-      reason: "SUCCEEDED";
+      reason: "SUCCEEDED" | "MANUAL_APPLIED" | "MANUAL_NO_CHANGE";
     }
   | {
       runId: string;
@@ -74,7 +85,6 @@ export type SyncInvocationResult =
       status: "skipped";
       reason:
         | "CONCURRENT_ATTEMPT"
-        | "MANUAL_PROVIDER"
         | "NOT_DUE"
         | "PROVIDER_BACKOFF";
     };

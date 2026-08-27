@@ -58,8 +58,8 @@ describe("POST /api/cron/sync", () => {
     });
     mocks.runSportsSync.mockResolvedValue({
       runId,
-      status: "skipped",
-      reason: "MANUAL_PROVIDER",
+      status: "succeeded",
+      reason: "MANUAL_NO_CHANGE",
     });
   });
 
@@ -103,7 +103,7 @@ describe("POST /api/cron/sync", () => {
     expect(mocks.runSportsSync).not.toHaveBeenCalled();
   });
 
-  it("records exactly one manual attempt and returns a neutral skipped result", async () => {
+  it("runs the bounded Manual replay once and returns its terminal result", async () => {
     const response = await POST(
       syncRequest({
         authorization: `Bearer ${cronSecret}`,
@@ -115,8 +115,8 @@ describe("POST /api/cron/sync", () => {
     expect(await response.json()).toEqual({
       data: {
         runId,
-        status: "skipped",
-        reason: "MANUAL_PROVIDER",
+        status: "succeeded",
+        reason: "MANUAL_NO_CHANGE",
       },
     });
     expect(mocks.runSportsSync).toHaveBeenCalledTimes(1);

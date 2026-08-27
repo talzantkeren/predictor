@@ -4,49 +4,82 @@ import { z } from "zod";
 
 import { getDatabaseSyncError, SyncError } from "@/features/sync/errors";
 import type { ApiFootballApplyBatch } from "@/features/sports/sync-planner";
+import type { ManualCatalogPayload } from "@/features/sports";
 import type {
   ClaimedSportsSync,
-  RecordedSyncAttempt,
+  ManualCatalogApplication,
   SportsSyncClaim,
 } from "@/features/sync/types";
 import { createSystemActorAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database.generated";
 
-const recordedAttemptSchema = z
+const manualCatalogApplicationSchema = z
   .object({
-    result_id: z.string().uuid(),
-    result_provider: z.literal("manual"),
-    result_status: z.literal("skipped"),
+    result_run_id: z.string().uuid(),
+    result_status: z.enum(["succeeded", "failed"]),
+    result_code: z.enum([
+      "MANUAL_APPLIED",
+      "MANUAL_NO_CHANGE",
+      "MANUAL_CATALOG_CONFLICT",
+    ]),
     result_started_at: z.string().datetime({ offset: true }),
     result_finished_at: z.string().datetime({ offset: true }),
-    result_code: z.enum(["CONCURRENT_ATTEMPT", "MANUAL_PROVIDER"]),
+    result_rows_inserted: z.number().int().nonnegative(),
+    result_teams_changed: z.number().int().nonnegative(),
+    result_matches_changed: z.number().int().nonnegative(),
   })
-  .transform(
-    (row): RecordedSyncAttempt => ({
-      id: row.result_id,
-      provider: row.result_provider,
-      status: row.result_status,
+  .superRefine((row, context) => {
+    const validOutcome =
+      (row.result_status === "succeeded" &&
+        row.result_code !== "MANUAL_CATALOG_CONFLICT") ||
+      (row.result_status === "failed" &&
+        row.result_code === "MANUAL_CATALOG_CONFLICT");
+    if (!validOutcome) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Manual catalog status and result code disagree.",
+      });
+    }
+  })
+  .transform((row): ManualCatalogApplication => {
+    const details = {
+      runId: row.result_run_id,
       startedAt: row.result_started_at,
       finishedAt: row.result_finished_at,
-      reason: row.result_code,
-    }),
-  );
+      rowsInserted: row.result_rows_inserted,
+      teamsChanged: row.result_teams_changed,
+      matchesChanged: row.result_matches_changed,
+    };
+    return row.result_status === "failed"
+      ? {
+          ...details,
+          status: "failed",
+          reason: "MANUAL_CATALOG_CONFLICT",
+        }
+      : {
+          ...details,
+          status: "succeeded",
+          reason:
+            row.result_code === "MANUAL_APPLIED"
+              ? "MANUAL_APPLIED"
+              : "MANUAL_NO_CHANGE",
+        };
+  });
 
-export async function recordManualSyncAttempt(systemActorId: string) {
+export async function applyManualFixtureCatalog(
+  systemActorId: string,
+  payload: ManualCatalogPayload,
+) {
   const admin = createSystemActorAdminClient(systemActorId);
-  const { data, error } = await admin.rpc("record_sync_attempt");
+  const { data, error } = await admin.rpc("apply_manual_fixture_catalog", {
+    p_payload: JSON.parse(JSON.stringify(payload)) as Json,
+  });
+  if (error) throw getDatabaseSyncError(error);
 
-  if (error) {
-    throw getDatabaseSyncError(error);
-  }
-
-  const parsed = recordedAttemptSchema.safeParse(
+  const parsed = manualCatalogApplicationSchema.safeParse(
     Array.isArray(data) && data.length === 1 ? data[0] : null,
   );
-  if (!parsed.success) {
-    throw new SyncError("SYNC_UNAVAILABLE", 503);
-  }
-
+  if (!parsed.success) throw new SyncError("SYNC_UNAVAILABLE", 503);
   return parsed.data;
 }
 

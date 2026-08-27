@@ -26,13 +26,15 @@ const claim = {
 
 function dependencies() {
   return {
-    recordManual: vi.fn(async () => ({
-      id: runId,
-      provider: "manual" as const,
-      status: "skipped" as const,
+    applyManual: vi.fn(async () => ({
+      runId,
+      status: "succeeded" as const,
       startedAt: "2026-08-23T18:00:00.000Z",
       finishedAt: "2026-08-23T18:00:00.000Z",
-      reason: "MANUAL_PROVIDER" as const,
+      reason: "MANUAL_NO_CHANGE" as const,
+      rowsInserted: 0,
+      teamsChanged: 0,
+      matchesChanged: 0,
     })),
     claim: vi.fn<
       (_actorId: string, _force: boolean) => Promise<SportsSyncClaim>
@@ -69,20 +71,36 @@ function recordedTransport(
 }
 
 describe("shared sports sync orchestration", () => {
-  it("retains the manual path without creating a live lease", async () => {
+  it("persists the bounded Manual adapter catalog without creating a live lease or HTTP request", async () => {
     const deps = dependencies();
+    const unavailableProviderTransport = vi.fn(async () => {
+      throw new Error("Provider outage");
+    });
     await expect(
       runSportsSync(
-        { systemActorId: actorId, provider: "manual", force: false },
+        {
+          systemActorId: actorId,
+          provider: "manual",
+          force: false,
+          transport: unavailableProviderTransport,
+        },
         deps,
       ),
     ).resolves.toEqual({
       runId,
-      status: "skipped",
-      reason: "MANUAL_PROVIDER",
+      status: "succeeded",
+      reason: "MANUAL_NO_CHANGE",
     });
-    expect(deps.recordManual).toHaveBeenCalledWith(actorId);
+    expect(deps.applyManual).toHaveBeenCalledWith(
+      actorId,
+      expect.objectContaining({
+        catalogId: "manual-catalog-v1",
+        teams: expect.any(Array),
+        matches: expect.any(Array),
+      }),
+    );
     expect(deps.claim).not.toHaveBeenCalled();
+    expect(unavailableProviderTransport).not.toHaveBeenCalled();
   });
 
   it("claims, performs recorded HTTP outside the gateway, applies, and finalizes", async () => {

@@ -19,37 +19,19 @@ describe("ManualSportsProvider normalization", () => {
 
     expect(fixtures.map((fixture) => fixture.status)).toEqual([
       "scheduled",
-      "live",
-      "finished",
+      "scheduled",
+      "scheduled",
       "postponed",
       "canceled",
     ]);
   });
 
-  it("keeps scores only for a finished official result", async () => {
+  it("keeps the deterministic catalog free of invented results", async () => {
     const fixtures = await provider.getFixtures();
-    const byStatus = new Map(fixtures.map((fixture) => [fixture.status, fixture]));
 
-    expect(byStatus.get("scheduled")).toMatchObject({
-      homeScore: null,
-      awayScore: null,
-    });
-    expect(byStatus.get("live")).toMatchObject({
-      homeScore: null,
-      awayScore: null,
-    });
-    expect(byStatus.get("finished")).toMatchObject({
-      homeScore: 1,
-      awayScore: 1,
-    });
-    expect(byStatus.get("postponed")).toMatchObject({
-      homeScore: null,
-      awayScore: null,
-    });
-    expect(byStatus.get("canceled")).toMatchObject({
-      homeScore: null,
-      awayScore: null,
-    });
+    expect(fixtures).toHaveLength(5);
+    expect(fixtures.every((fixture) => fixture.homeScore === null)).toBe(true);
+    expect(fixtures.every((fixture) => fixture.awayScore === null)).toBe(true);
   });
 
   it("rejects an unknown provider status", () => {
@@ -80,7 +62,7 @@ describe("ManualSportsProvider normalization", () => {
 
   it("filters fixtures and returns only official results", async () => {
     await expect(provider.getFixtures({ round: 2 })).resolves.toHaveLength(2);
-    await expect(provider.getResults()).resolves.toHaveLength(1);
+    await expect(provider.getResults()).resolves.toHaveLength(0);
   });
 
   it("normalizes common external aliases without changing the contract", () => {

@@ -66,7 +66,7 @@ export default async function SystemSyncPage() {
             href="/admin/matches"
             className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
           >
-            ניהול תוצאות
+            ניהול משחקים ותוצאות
           </Link>
           <Link
             href="/dashboard"
