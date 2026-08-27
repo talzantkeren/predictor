@@ -13,6 +13,7 @@ const documentPaths = [
   "docs/project-book-workflow.md",
   "docs/course-source.md",
   "docs/evaluator-runbook.md",
+  "docs/final-submission-evidence.md",
   "presentation/README.md",
   "presentation/demo-script.md",
   "presentation/rehearsal-log.md",

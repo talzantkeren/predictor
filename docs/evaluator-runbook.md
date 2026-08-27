@@ -9,6 +9,7 @@ credential ואינו מרחיב את היקף המוצר. הפריסה הציב
 - Preview smoke של Draft PR #14: [https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-9-imp-51f991-tals-projects-19902e47.vercel.app)
 - מאגר: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - [ספר הפרויקט](project-book.docx)
+- [פנקס ראיית הגשה סופית](final-submission-evidence.md)
 - [מצגת ותסריט](../presentation/README.md)
 - [מטריצת בדיקות](testing.md), [אבטחה](security.md), [קנה מידה](scale.md)
   ו־[פריסה](deployment.md)
