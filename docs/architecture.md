@@ -280,7 +280,12 @@ regression רגיל. ההכרעה נעשית תחת נעילת שורת המשח
 
 ### 10.2 `score_match`
 
-פונקציית PostgreSQL אטומית מקבלת משחק ותוצאה מאומתת, נועלת את רשומת המשחק, מעלה `result_version` כאשר התוצאה השתנתה ומבצעת `UPDATE ... FROM` לכל הניחושים של המשחק בכל הליגות.
+פונקציית PostgreSQL אטומית מקבלת משחק ותוצאה מאומתת, נועלת את רשומת המשחק,
+מעלה `result_version` כאשר התוצאה השתנתה ומבצעת overwrite דטרמיניסטי לניחושים
+שהותר לנקד. בגבול ה־Manual הנוכחי, `create_or_correct_match` נועלת תחילה את כל
+הליגות של העונה ומסרבת לכל יצירה או תיקון שמשפיעים על עונה עם ליגה
+`completed`, בקוד `COMPLETED_RECONCILIATION_REQUIRED`. עד שמסלול review/
+reconciliation של Slice 9 יימסר, אין תיקון ידני שקט של נתון סופי.
 
 לאחר השגת נעילת המשחק הפונקציה דוגמת `clock_timestamp()` ודוחה מעבר ל־
 `finished` כאשר הדגימה מוקדמת מ־`kickoff_at`. ביטול לפני מועד המשחק נשאר חוקי ואינו
@@ -295,6 +300,19 @@ regression רגיל. ההכרעה נעשית תחת נעילת שורת המשח
 הפונקציה **אינה** עושה `points = points + x`. לכן ריצה כפולה, retry או תיקון תוצאה אינם מכפילים ניקוד.
 
 תוצאה ידנית ותוצאה מספק עוברות באותו חוזה. `is_manually_overridden = true` מונע מ־Sync עתידי לדרוס תיקון עד שמנהל מערכת מסיר את הדגל.
+
+הסרת הדגל עוברת בגבול נפרד וצר: `ManualOverrideClearBoundary` לוכד את UUID
+המשחק שנקרא מהמסד ואינו מקבל מזהה authoritative מהטופס; לאחר session,
+confirmation והרשאת משאב, gateway מסוג `server-only` קורא ל־
+`clear_manual_match_override` באמצעות actor קבוע מ־header שרתי. ה־RPC זמינה
+רק ל־`service_role`, מאמתת מחדש את ה־actor, מקבלת רק שורת API-Football עם
+external ID מספרי תקין, נועלת את ליגות העונה בסדר UUID ואז את המשחק ומוודאת
+שהעונה לא השתנתה. מעבר ownership ממשי בעונה `completed`/`archived` נדחה עד
+מסלול reconciliation של W4. הפעולה משנה רק `is_manually_overridden` ו־
+`updated_at` ומוסיפה audit יחיד; היא אינה משנה status, scores, result version,
+provider provenance, prediction-lock latch או predictions. replay לאחר הסרה
+מחזיר no-op typed ואינו מזיז timestamp או מכפיל audit, וה־snapshot הבא של
+הספק רשאי לחזור למסלול apply הרגיל.
 
 הרחבה צרה של אותו חוזה מטפלת ב־reactivation מצד `api-football`: רק משחק
 `canceled` ללא latch, עם מועד עתידי מאומת ויעד `scheduled`/`postponed`, רשאי
@@ -370,7 +388,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `profiles` | ב־Slice 1 המשתמש קורא ומעדכן רק את הרשומה שלו; לאחר יצירת מודל החברות תתווסף קריאה לפרופילים של משתמשים בעלי זיקת ליגה מותרת |
 | `system_admins` | ללא גישת משתמש רגיל; ניהול שרת/DB בלבד |
 | ספורט גלובלי | authenticated read; כתיבה למנהל מערכת/secret בלבד |
-| `leagues`, חוקים ופרסים | חברים רואים; רק מנהל הליגה משנה ובכפוף לסטטוס |
+| `leagues`, חוקים ופרסים | חברים רואים; מנהל הליגה או מנהל מערכת דרך RPC צר לליגה מבוקשת משנים שדות מותרים ובכפוף לנעילה; אין למנהל מערכת policy רוחבי |
 | `invite_links` | אין גישה ישירה; מנהל מקבל metadata בטוח, ופתרון דורש public ID ו־hash תואמים דרך RPC מצומצם |
 | `join_requests` | המשתמש רואה את שלו; מנהל רואה בקשות של הליגה שלו |
 | `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
@@ -498,9 +516,28 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
 הוא תקין, provider-owned ואידמפוטנטי, והריצה הבאה משלימה אותו. תוצאה וניקוד של
 כל משחק נשארים אטומיים באותו batch.
 
-במצב `manual`, הזרימה הקיימת נשארת סופית וללא I/O: `record_sync_attempt()`
-כותבת `skipped/MANUAL_PROVIDER` או `skipped/CONCURRENT_ATTEMPT` ואינה משנה
-משחקים. בקשה לא מורשית אינה כותבת `sync_runs` או `audit_logs` בשני המצבים.
+במצב `manual`, הזרימה נשארת ללא HTTP לספק אך אינה עוד short-circuit. ה־adapter
+בונה את `manual-catalog-v1` הדטרמיניסטי והחסום, וה־gateway קורא פעם אחת ל־
+`apply_manual_fixture_catalog()`. זהו wrapper צר `SECURITY DEFINER` שמקבל payload
+בלבד, גוזר actor קבוע מה־gateway ומעביר אותו ל־core פרטי ללא הרשאת Data API.
+ה־core מאמת ונועל מחדש את ה־actor, נועל תחילה את כל הליגות של העונה בסדר UUID,
+אחר כך teams ו־matches בסדר קבוע, מאמת parity מלא וזהויות provider ריקות,
+ומכניס רק שורות חסרות לפי UUID. drift בשדות הקבועים, שורת provider-owned,
+latch על משחק catalog או השלמת catalog חסר בעונה שיש בה ליגה `completed` או
+`archived` נכשלים אטומית ואינם נדרסים. מיד לפני insert חסר ה־core דוגם זמן DB
+טרי; fixture חסר שהגיע למועדו אינו משוחזר כמשחק היסטורי לא־נעול. prediction
+כשלעצמו אינו מפריע ל־replay זהה;
+בגבול `create_or_correct_match`, שינוי זהות season/teams נחסם כאשר קיימים
+prediction או latch.
+
+כל קריאה תקינה שהגיעה ל־RPC אחרי בניית ה־payload השרתית יוצרת בדיוק שורת
+`sync_runs` סופית אחת. שינוי ממשי מחזיר `MANUAL_APPLIED`, replay זהה מחזיר
+`MANUAL_NO_CHANGE`, ו־conflict מחזיר `MANUAL_CATALOG_CONFLICT`; קודי ההצלחה
+מוחזרים מתוצאת ה־RPC ואינם נשמרים ב־`error_code`, שנשאר `null` כאשר
+`status='succeeded'`. רק mutation ראשון יוצר business audit. כשל config או
+validation לפני קריאת ה־RPC אינו invocation מסדי ולכן אינו מבטיח שורת run.
+`record_sync_attempt()` הוסר כדי שלא יישאר גבול Manual חלופי. בקשה לא מורשית
+אינה כותבת `sync_runs` או `audit_logs` בשני מסלולי הספק.
 
 ### 14.4 Due planner ומדיניות מכסה
 

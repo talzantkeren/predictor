@@ -3,24 +3,65 @@ import Link from "next/link";
 import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueCard } from "@/features/leagues/components/league-card";
 import { getDashboardLeagues } from "@/features/leagues/queries";
 import { JoinRequestCard } from "@/features/membership/components/join-request-card";
 import { getMyJoinRequests } from "@/features/membership/queries";
+import { parseOptionalKeysetCursor } from "@/lib/keyset-pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+function getDashboardHref({
+  leagueCursor,
+  requestCursor,
+}: {
+  leagueCursor?: string | null;
+  requestCursor?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (leagueCursor) params.set("leagueCursor", leagueCursor);
+  if (requestCursor) params.set("requestCursor", requestCursor);
+  const query = params.toString();
+  return query ? `/dashboard?${query}` : "/dashboard";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    leagueCursor?: string | string[];
+    requestCursor?: string | string[];
+  }>;
+}) {
+  const query = await searchParams;
+  const leagueCursor = parseOptionalKeysetCursor(query.leagueCursor);
+  const requestCursor = parseOptionalKeysetCursor(query.requestCursor);
   const { supabase, user } = await requireAuthenticatedUser("/dashboard");
+
+  if (!leagueCursor.success || !requestCursor.success) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+        <ErrorState>קישור העמוד אינו תקין.</ErrorState>
+        <Link
+          href="/dashboard"
+          className="mt-4 inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-navy-700 underline-offset-4 hover:underline"
+        >
+          חזרה לעמוד הראשון
+        </Link>
+      </main>
+    );
+  }
+
   const [profileResult, leagues, joinRequests] = await Promise.all([
     supabase
       .from("profiles")
       .select("display_name")
       .eq("id", user.id)
       .maybeSingle(),
-    getDashboardLeagues(supabase, user.id),
-    getMyJoinRequests(supabase),
+    getDashboardLeagues(supabase, leagueCursor.data),
+    getMyJoinRequests(supabase, requestCursor.data),
   ]);
 
   const displayName = profileResult.data?.display_name ?? "משתמש";
@@ -67,7 +108,11 @@ export default async function DashboardPage() {
               לא ניתן לטעון את רשימת הליגות כרגע. יש לרענן ולנסות שוב.
             </ErrorState>
           </div>
-        ) : leagues.data.length === 0 ? (
+        ) : leagues.data.items.length === 0 && leagueCursor.data ? (
+          <p className="mt-5 rounded-2xl border border-dashed border-line bg-white p-6 text-center text-sm leading-6 text-ink-secondary">
+            אין ליגות נוספות בעמוד זה. אפשר לחזור לעמוד הראשון.
+          </p>
+        ) : leagues.data.items.length === 0 ? (
           <div className="mt-5">
             <EmptyState
               title="עדיין אין לך ליגות"
@@ -85,13 +130,30 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <ul className="mt-5 grid gap-5 md:grid-cols-2">
-            {leagues.data.map((league) => (
+            {leagues.data.items.map((league) => (
               <li key={league.id} className="min-w-0">
                 <LeagueCard league={league} />
               </li>
             ))}
           </ul>
         )}
+        {leagues.ok ? (
+          <KeysetPagination
+            ariaLabel="דפדוף בליגות שלי"
+            firstHref={getDashboardHref({
+              requestCursor: query.requestCursor as string | undefined,
+            })}
+            nextHref={
+              leagues.data.nextCursor
+                ? getDashboardHref({
+                    leagueCursor: leagues.data.nextCursor,
+                    requestCursor: query.requestCursor as string | undefined,
+                  })
+                : null
+            }
+            hasCurrentCursor={leagueCursor.data !== undefined}
+          />
+        ) : null}
       </section>
 
       <section aria-labelledby="my-join-requests-title" className="mt-12">
@@ -119,17 +181,38 @@ export default async function DashboardPage() {
               לא ניתן לטעון את בקשות ההצטרפות כרגע. יש לרענן ולנסות שוב.
             </ErrorState>
           </div>
-        ) : joinRequests.data.length === 0 ? (
+        ) : joinRequests.data.items.length === 0 && requestCursor.data ? (
+          <p className="mt-5 rounded-2xl border border-dashed border-line bg-white p-6 text-center text-sm leading-6 text-ink-secondary">
+            אין בקשות נוספות בעמוד זה. אפשר לחזור לעמוד הראשון.
+          </p>
+        ) : joinRequests.data.items.length === 0 ? (
           <p className="mt-5 rounded-2xl border border-dashed border-line bg-white p-6 text-center text-sm leading-6 text-ink-secondary">
             עדיין לא פתחת בקשת הצטרפות לליגה אחרת.
           </p>
         ) : (
           <div className="mt-5 grid gap-5">
-            {joinRequests.data.map((request) => (
+            {joinRequests.data.items.map((request) => (
               <JoinRequestCard key={request.requestId} request={request} />
             ))}
           </div>
         )}
+        {joinRequests.ok ? (
+          <KeysetPagination
+            ariaLabel="דפדוף בבקשות ההצטרפות שלי"
+            firstHref={getDashboardHref({
+              leagueCursor: query.leagueCursor as string | undefined,
+            })}
+            nextHref={
+              joinRequests.data.nextCursor
+                ? getDashboardHref({
+                    leagueCursor: query.leagueCursor as string | undefined,
+                    requestCursor: joinRequests.data.nextCursor,
+                  })
+                : null
+            }
+            hasCurrentCursor={requestCursor.data !== undefined}
+          />
+        ) : null}
       </section>
     </main>
   );

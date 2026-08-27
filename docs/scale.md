@@ -52,6 +52,20 @@ trigger ידני של מנהל יכול לעקוף due-window בלבד: `backoff
   משרתים את due planner ואת upsert. `sync_runs (started_at desc)` משרת את מסך
   100 הריצות האחרונות.
 - scoring נשאר set-based ב־`score_match`; אין לולאת point updates ב־Next.js.
+- קריאת הגדרות מקבלת league UUID אחד ומחזירה מסמך יחיד: ליגה/חוק יחידים,
+  עד 100 שורות פרס ו־aggregate של matches בעונה קבועה. אין dashboard scan או
+  admin-wide list במסלול הזה.
+- שינוי פרטי ליגה בלבד נועל את שורת הליגה ואינו נוגע ב־season/matches; בדיקת
+  dblink מוכיחה שהוא מסתיים גם כאשר match נעול. רק שינוי scoring/prizes נועל
+  season יחידה ואחריה את משחקי העונה בסדר UUID, כדי לסדר insert מתחרה בלי
+  להרחיב את ה־critical section של עריכה רגילה.
+- לא נוסף index עבור DEF-007: lookup הליגה והעונה הם לפי PK, חוק הניקוד לפי
+  unique league key, וה־aggregate משתמש ב־`matches (season_id, kickoff_at)`
+  הקיים. מטריצת 131 בדיקות pgTAP/dblink מוכיחה bounded payload, fast path וסדר
+  נעילות; index חדש יישקל רק אם plan מייצג יראה regression מדיד.
+- לא נוסף index עבור DEF-008: clear פונה למשחק יחיד לפי PK ומאתר את ליגות
+  העונה דרך ה־index הקיים על `leagues.season_id`. ה־critical section משנה דגל
+  אחד ואודיט אחד בלבד; אין scan של predictions ואין הצדקה ל־cache או queue.
 
 ## גבולות ורמזי הרחבה
 

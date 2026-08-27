@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { KeysetPagination } from "@/components/ui/keyset-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
@@ -12,6 +13,7 @@ import { RoundCard } from "@/features/predictions/components/round-card";
 import { getLeagueMatchList } from "@/features/predictions/queries";
 import { groupMatchesByRound } from "@/features/predictions/round-groups";
 import { parseMatchListFilter } from "@/features/predictions/schemas";
+import { parseOptionalKeysetCursor } from "@/lib/keyset-pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -20,21 +22,42 @@ export default async function LeagueMatchesPage({
   searchParams,
 }: {
   params: Promise<{ leagueId: string }>;
-  searchParams: Promise<{ round?: string | string[]; date?: string | string[] }>;
+  searchParams: Promise<{
+    round?: string | string[];
+    date?: string | string[];
+    cursor?: string | string[];
+  }>;
 }) {
   const { leagueId } = await params;
   if (!z.string().uuid().safeParse(leagueId).success) notFound();
 
   const query = await searchParams;
   const filter = parseMatchListFilter(query);
+  const cursor = parseOptionalKeysetCursor(query.cursor);
   const { supabase, user } = await requireAuthenticatedUser(
     `/leagues/${leagueId}/matches`,
   );
+
+  if (!filter.success || !cursor.success) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+        <ErrorState>מסנן המשחקים או קישור העמוד אינו תקין.</ErrorState>
+        <Link
+          href={`/leagues/${leagueId}/matches`}
+          className="mt-4 inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-navy-700 underline-offset-4 hover:underline"
+        >
+          הצגת כל המשחקים
+        </Link>
+      </main>
+    );
+  }
+
   const result = await getLeagueMatchList(
     supabase,
     leagueId,
     user.id,
-    filter.success ? filter.data : undefined,
+    filter.data,
+    cursor.data,
   );
 
   if (result.status === "not-found") notFound();
@@ -48,23 +71,23 @@ export default async function LeagueMatchesPage({
     );
   }
 
-  if (!filter.success) {
-    return (
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-        <ErrorState>מסנן המחזור או התאריך אינו תקין.</ErrorState>
-        <Link
-          href={`/leagues/${leagueId}/matches`}
-          className="mt-4 inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-navy-700 underline-offset-4 hover:underline"
-        >
-          הצגת כל המשחקים
-        </Link>
-      </main>
-    );
-  }
-
   const data = result.data;
-  const roundGroups = groupMatchesByRound(data.matches);
+  const roundGroups = groupMatchesByRound(data.matches.items);
   const monogram = data.league.name.trim().slice(0, 2) || "P1";
+  const filterParams = new URLSearchParams();
+  if (filter.data?.kind === "round") {
+    filterParams.set("round", String(filter.data.round));
+  } else if (filter.data?.kind === "date") {
+    filterParams.set("date", filter.data.date);
+  }
+  const firstPageQuery = filterParams.toString();
+  const firstPageHref = firstPageQuery
+    ? `/leagues/${leagueId}/matches?${firstPageQuery}`
+    : `/leagues/${leagueId}/matches`;
+  const nextParams = new URLSearchParams(filterParams);
+  if (data.matches.nextCursor) {
+    nextParams.set("cursor", data.matches.nextCursor);
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
@@ -112,23 +135,18 @@ export default async function LeagueMatchesPage({
             <label htmlFor="round-filter" className="block text-sm font-bold text-ink">
               מחזור
             </label>
-            <select
+            <input
               id="round-filter"
               name="round"
+              type="number"
+              min="1"
+              max="100"
+              inputMode="numeric"
               defaultValue={
                 filter.data?.kind === "round" ? String(filter.data.round) : ""
               }
               className="mt-1 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2.5 text-ink outline-none focus:border-focus"
-            >
-              <option value="" disabled>
-                בחירת מחזור
-              </option>
-              {data.roundOptions.map((round) => (
-                <option key={round} value={round}>
-                  מחזור {round}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <button
             type="submit"
@@ -179,8 +197,20 @@ export default async function LeagueMatchesPage({
 
       {roundGroups.length === 0 ? (
         <div className="mt-6">
-          <EmptyState title="אין משחקים">
-            לא נמצאו משחקים שמתאימים למסנן שנבחר.
+          <EmptyState
+            title={
+              cursor.data
+                ? "אין משחקים נוספים בעמוד זה"
+                : filter.data
+                  ? "אין משחקים שמתאימים למסנן"
+                  : "עדיין אין משחקים בליגה"
+            }
+          >
+            {cursor.data
+              ? "אפשר לחזור לעמוד הראשון בלי לשנות את המסנן."
+              : filter.data
+                ? "אפשר לשנות או לנקות את מסנן המחזור או התאריך."
+                : "משחקים יופיעו כאן לאחר טעינת קטלוג העונה."}
           </EmptyState>
         </div>
       ) : (
@@ -193,11 +223,21 @@ export default async function LeagueMatchesPage({
               group={group}
               databaseNow={data.databaseNow}
               viewerIsActiveMember={data.viewerIsActiveMember}
-              progressScope={filter.data?.kind === "date" ? "visible" : "round"}
+              progressScope="visible"
             />
           ))}
         </div>
       )}
+      <KeysetPagination
+        ariaLabel="דפדוף במשחקי הליגה"
+        firstHref={firstPageHref}
+        nextHref={
+          data.matches.nextCursor
+            ? `/leagues/${leagueId}/matches?${nextParams.toString()}`
+            : null
+        }
+        hasCurrentCursor={cursor.data !== undefined}
+      />
     </main>
   );
 }

@@ -288,6 +288,7 @@ export type Database = {
           manager_id: string
           name: string
           season_id: string
+          settings_version: number
           status: Database["public"]["Enums"]["league_status"]
           updated_at: string
         }
@@ -302,6 +303,7 @@ export type Database = {
           manager_id: string
           name: string
           season_id: string
+          settings_version?: number
           status?: Database["public"]["Enums"]["league_status"]
           updated_at?: string
         }
@@ -316,6 +318,7 @@ export type Database = {
           manager_id?: string
           name?: string
           season_id?: string
+          settings_version?: number
           status?: Database["public"]["Enums"]["league_status"]
           updated_at?: string
         }
@@ -907,6 +910,19 @@ export type Database = {
           result_teams_changed: number
         }[]
       }
+      apply_manual_fixture_catalog: {
+        Args: { p_payload: Json }
+        Returns: {
+          result_code: string
+          result_finished_at: string
+          result_matches_changed: number
+          result_rows_inserted: number
+          result_run_id: string
+          result_started_at: string
+          result_status: Database["public"]["Enums"]["sync_status"]
+          result_teams_changed: number
+        }[]
+      }
       approve_join_request: {
         Args: { p_request_id: string }
         Returns: {
@@ -939,6 +955,19 @@ export type Database = {
           result_token: string
         }[]
       }
+      clear_manual_match_override: {
+        Args: { p_match_id: string }
+        Returns: {
+          result_away_score: number
+          result_cleared: boolean
+          result_external_provider: string
+          result_home_score: number
+          result_manual_override: boolean
+          result_match_id: string
+          result_status: Database["public"]["Enums"]["match_status"]
+          result_version: number
+        }[]
+      }
       consume_proof_upload_rate_limit: {
         Args: { p_request_id: string }
         Returns: {
@@ -961,6 +990,30 @@ export type Database = {
           p_season_id: string
         }
         Returns: string
+      }
+      create_or_correct_match: {
+        Args: {
+          p_away_score: number
+          p_away_team_id: string
+          p_home_score: number
+          p_home_team_id: string
+          p_kickoff_at: string
+          p_match_id: string
+          p_operation: string
+          p_round_number: number
+          p_season_id: string
+          p_status: Database["public"]["Enums"]["match_status"]
+        }
+        Returns: {
+          result_away_score: number
+          result_changed: boolean
+          result_created: boolean
+          result_home_score: number
+          result_manual_override: boolean
+          result_match_id: string
+          result_status: Database["public"]["Enums"]["match_status"]
+          result_version: number
+        }[]
       }
       create_or_rotate_invite: {
         Args: { p_league_id: string }
@@ -1009,12 +1062,115 @@ export type Database = {
           result_status: Database["public"]["Enums"]["sync_status"]
         }[]
       }
+      get_dashboard_leagues_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_league_id?: string
+          p_page_size?: number
+        }
+        Returns: {
+          league_created_at: string
+          league_id: string
+          league_name: string
+          league_status: Database["public"]["Enums"]["league_status"]
+          season_name: string
+          viewer_role: string
+        }[]
+      }
+      get_editable_league_settings: {
+        Args: { p_league_id: string }
+        Returns: {
+          allow_late_join: boolean
+          correct_outcome_points: number
+          database_time: string
+          demo_entry_fee_agorot: number
+          demo_payment_instructions: string
+          description: string
+          editor_role: string
+          exact_points: number
+          first_kickoff_at: string
+          has_started_or_latched: boolean
+          incorrect_points: number
+          joins_close_at: string
+          league_id: string
+          name: string
+          prizes: Json
+          rules_locked: boolean
+          scoring_locked_at: string
+          scoring_version: number
+          settings_version: number
+          status: Database["public"]["Enums"]["league_status"]
+        }[]
+      }
       get_join_request_upload_context: {
         Args: { p_request_id: string }
         Returns: {
           league_id: string
           request_id: string
           status: Database["public"]["Enums"]["join_request_status"]
+        }[]
+      }
+      get_match_detail_context: {
+        Args: { p_league_id: string; p_match_id: string }
+        Returns: {
+          away_score: number
+          away_team_id: string
+          away_team_name: string
+          away_team_short_name: string
+          database_time: string
+          home_score: number
+          home_team_id: string
+          home_team_name: string
+          home_team_short_name: string
+          kickoff_at: string
+          league_id: string
+          league_name: string
+          league_status: Database["public"]["Enums"]["league_status"]
+          match_id: string
+          match_status: Database["public"]["Enums"]["match_status"]
+          own_predicted_away_score: number
+          own_predicted_home_score: number
+          own_predicted_outcome: Database["public"]["Enums"]["outcome"]
+          own_prediction_created_at: string
+          own_prediction_id: string
+          own_prediction_updated_at: string
+          predictions_locked_at: string
+          provider_status: string
+          round_number: number
+        }[]
+      }
+      get_match_eligible_leagues_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_league_id?: string
+          p_match_id: string
+          p_page_size?: number
+        }
+        Returns: {
+          league_created_at: string
+          league_id: string
+          league_name: string
+          league_status: Database["public"]["Enums"]["league_status"]
+        }[]
+      }
+      get_match_selection_context: {
+        Args: { p_match_id: string }
+        Returns: {
+          away_score: number
+          away_team_id: string
+          away_team_name: string
+          away_team_short_name: string
+          database_time: string
+          home_score: number
+          home_team_id: string
+          home_team_name: string
+          home_team_short_name: string
+          kickoff_at: string
+          match_id: string
+          match_status: Database["public"]["Enums"]["match_status"]
+          predictions_locked_at: string
+          provider_status: string
+          round_number: number
         }[]
       }
       get_league_invite_metadata: {
@@ -1028,8 +1184,14 @@ export type Database = {
           status: Database["public"]["Enums"]["invite_status"]
         }[]
       }
-      get_manager_join_requests: {
-        Args: { p_league_id: string }
+      get_manager_join_requests_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_request_id?: string
+          p_league_id: string
+          p_page_size?: number
+          p_status?: Database["public"]["Enums"]["join_request_status"]
+        }
         Returns: {
           created_at: string
           decided_at: string
@@ -1041,19 +1203,12 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_my_join_requests: {
-        Args: never
-        Returns: {
-          created_at: string
-          league_name: string
-          proofs: Json
-          request_id: string
-          status: Database["public"]["Enums"]["join_request_status"]
-          updated_at: string
-        }[]
-      }
-      get_my_join_requests_v2: {
-        Args: never
+      get_my_join_requests_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_request_id?: string
+          p_page_size?: number
+        }
         Returns: {
           created_at: string
           league_name: string
@@ -1065,18 +1220,26 @@ export type Database = {
         }[]
       }
       get_prediction_database_time: { Args: never; Returns: string }
-      is_system_admin: { Args: never; Returns: boolean }
-      record_sync_attempt: {
-        Args: never
+      get_revealed_predictions_page: {
+        Args: {
+          p_cursor_created_at?: string
+          p_cursor_prediction_id?: string
+          p_league_id: string
+          p_match_id: string
+          p_page_size?: number
+        }
         Returns: {
-          result_code: string
-          result_finished_at: string
-          result_id: string
-          result_provider: string
-          result_started_at: string
-          result_status: Database["public"]["Enums"]["sync_status"]
+          created_at: string
+          display_name: string
+          predicted_away_score: number
+          predicted_home_score: number
+          predicted_outcome: Database["public"]["Enums"]["outcome"]
+          prediction_id: string
+          updated_at: string
+          user_id: string
         }[]
       }
+      is_system_admin: { Args: never; Returns: boolean }
       reject_join_request: {
         Args: { p_reason: string; p_request_id: string }
         Returns: {
@@ -1156,6 +1319,28 @@ export type Database = {
           request_id: string
           status: Database["public"]["Enums"]["join_request_status"]
           updated_at: string
+        }[]
+      }
+      update_league_settings: {
+        Args: {
+          p_allow_late_join: boolean
+          p_correct_outcome_points: number
+          p_demo_entry_fee_agorot: number
+          p_demo_payment_instructions: string
+          p_description: string
+          p_exact_points: number
+          p_expected_settings_version: number
+          p_incorrect_points: number
+          p_joins_close_at: string
+          p_league_id: string
+          p_name: string
+          p_prizes: Json
+        }
+        Returns: {
+          changed: boolean
+          league_id: string
+          scoring_version: number
+          settings_version: number
         }[]
       }
     }
@@ -1316,4 +1501,3 @@ export const Constants = {
     },
   },
 } as const
-

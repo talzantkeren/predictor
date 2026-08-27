@@ -8,9 +8,8 @@ export type MembershipRpcName =
   | "resolve_invite"
   | "submit_join_request"
   | "get_league_invite_metadata"
-  | "get_my_join_requests"
-  | "get_my_join_requests_v2"
-  | "get_manager_join_requests"
+  | "get_my_join_requests_page"
+  | "get_manager_join_requests_page"
   | "approve_join_request"
   | "reject_join_request";
 

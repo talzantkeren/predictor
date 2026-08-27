@@ -1,19 +1,45 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 import { getSeasonSourceLabel } from "@/features/leagues/display";
 import type {
   LeagueDashboardItem,
+  LeagueDashboardPage,
   LeagueSummary,
   SeasonOption,
 } from "@/features/leagues/types";
+import {
+  buildKeysetPage,
+  type KeysetCursor,
+} from "@/lib/keyset-pagination";
 import type { Database } from "@/types/database.generated";
 
 type QueryResult<T> =
   | { ok: true; data: T }
   | { ok: false; data: T };
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DASHBOARD_LEAGUE_PAGE_SIZE = 20;
+
+const dashboardLeaguePageSchema = z
+  .array(
+    z
+      .object({
+        league_id: z.string().uuid(),
+        league_name: z.string().min(1).max(80),
+        league_status: z.enum([
+          "draft",
+          "open",
+          "active",
+          "completed",
+          "archived",
+        ]),
+        league_created_at: z.string().datetime({ offset: true }),
+        season_name: z.string().min(1).max(80),
+        viewer_role: z.enum(["manager", "member"]),
+      })
+      .strict(),
+  )
+  .max(DASHBOARD_LEAGUE_PAGE_SIZE + 1);
 
 export async function getSeasonOptions(
   supabase: SupabaseClient<Database>,
@@ -42,51 +68,44 @@ export async function getSeasonOptions(
 
 export async function getDashboardLeagues(
   supabase: SupabaseClient<Database>,
-  userId: string,
-): Promise<QueryResult<LeagueDashboardItem[]>> {
-  const { data: memberships, error: membershipsError } = await supabase
-    .from("league_members")
-    .select("league_id")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  cursor?: KeysetCursor,
+): Promise<QueryResult<LeagueDashboardPage>> {
+  const { data, error } = await supabase.rpc("get_dashboard_leagues_page", {
+    p_page_size: DASHBOARD_LEAGUE_PAGE_SIZE,
+    ...(cursor
+      ? {
+          p_cursor_created_at: cursor.at,
+          p_cursor_league_id: cursor.id,
+        }
+      : {}),
+  });
 
-  if (membershipsError || !memberships) {
-    return { ok: false, data: [] };
-  }
+  const parsed = dashboardLeaguePageSchema.safeParse(data);
 
-  // Defense in depth: these are uuid column values from our own database, but
-  // they are interpolated into the PostgREST or() filter string below.
-  const leagueIds = memberships
-    .map((membership) => membership.league_id)
-    .filter((leagueId) => UUID_PATTERN.test(leagueId));
-  let query = supabase
-    .from("leagues")
-    .select("id, name, status, manager_id, season:seasons!inner(name)")
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  query =
-    leagueIds.length > 0
-      ? query.or(`manager_id.eq.${userId},id.in.(${leagueIds.join(",")})`)
-      : query.eq("manager_id", userId);
-
-  const { data, error } = await query;
-
-  if (error || !data) {
-    return { ok: false, data: [] };
+  if (error || !parsed.success) {
+    return {
+      ok: false,
+      data: { items: [], hasMore: false, nextCursor: null },
+    };
   }
 
   return {
     ok: true,
-    data: data.map((league) => ({
-      id: league.id,
-      name: league.name,
-      seasonName: league.season.name,
-      status: league.status,
-      role: league.manager_id === userId ? "manager" : "member",
-    })),
+    data: buildKeysetPage(
+      parsed.data,
+      DASHBOARD_LEAGUE_PAGE_SIZE,
+      (league): LeagueDashboardItem => ({
+        id: league.league_id,
+        name: league.league_name,
+        seasonName: league.season_name,
+        status: league.league_status,
+        role: league.viewer_role,
+      }),
+      (league) => ({
+        at: league.league_created_at,
+        id: league.league_id,
+      }),
+    ),
   };
 }
 

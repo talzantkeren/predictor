@@ -3,11 +3,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   LeagueStanding,
   LeagueStandings,
+  SystemMatchFilters,
+  SystemMatchEditorCatalog,
   SystemMatchItem,
+  SystemMatchPage,
 } from "@/features/scoring/types";
+import {
+  buildKeysetPage,
+  getPostgrestKeysetFilter,
+  type KeysetCursor,
+} from "@/lib/keyset-pagination";
 import type { Database } from "@/types/database.generated";
 
-const MAX_SYSTEM_MATCHES = 200;
+const SYSTEM_MATCH_PAGE_SIZE = 25;
+const MAX_SYSTEM_MATCH_SEASONS = 100;
+const MAX_SYSTEM_MATCH_TEAMS = 500;
 const MAX_LEAGUE_MEMBERS = 500;
 
 export async function getSystemAdminAuthorization(
@@ -42,40 +52,120 @@ export async function getManualResultAuthorization(
 
 export async function getSystemMatchList(
   supabase: SupabaseClient<Database>,
+  filters: SystemMatchFilters = {},
+  cursor?: KeysetCursor,
 ): Promise<
-  | { status: "found"; matches: SystemMatchItem[] }
+  | { status: "found"; matches: SystemMatchPage }
   | { status: "denied" }
   | { status: "error" }
 > {
   const authorization = await getSystemAdminAuthorization(supabase);
   if (authorization.status !== "authorized") return authorization;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("matches")
     .select(
-      "id, round_number, kickoff_at, status, home_score, away_score, result_version, is_manually_overridden, home_team:teams!matches_home_team_id_fkey(name), away_team:teams!matches_away_team_id_fkey(name)",
+      "id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status, home_score, away_score, result_version, is_manually_overridden, external_provider, home_team:teams!matches_home_team_id_fkey(name), away_team:teams!matches_away_team_id_fkey(name)",
     )
     .order("kickoff_at", { ascending: false })
-    .limit(MAX_SYSTEM_MATCHES + 1);
+    .order("id", { ascending: false })
+    .limit(SYSTEM_MATCH_PAGE_SIZE + 1);
 
-  if (error || !data || data.length > MAX_SYSTEM_MATCHES) {
+  if (filters.seasonId) query = query.eq("season_id", filters.seasonId);
+  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.roundNumber) {
+    query = query.eq("round_number", filters.roundNumber);
+  }
+  if (cursor) {
+    query = query.or(
+      getPostgrestKeysetFilter("kickoff_at", "descending", cursor),
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) {
     return { status: "error" };
   }
 
   return {
     status: "found",
-    matches: data.map((match) => ({
-      id: match.id,
-      roundNumber: match.round_number,
-      kickoffAt: match.kickoff_at,
-      status: match.status,
-      homeScore: match.home_score,
-      awayScore: match.away_score,
-      resultVersion: match.result_version,
-      isManuallyOverridden: match.is_manually_overridden,
-      homeTeamName: match.home_team.name,
-      awayTeamName: match.away_team.name,
-    })),
+    matches: buildKeysetPage(
+      data,
+      SYSTEM_MATCH_PAGE_SIZE,
+      (match): SystemMatchItem => ({
+        id: match.id,
+        seasonId: match.season_id,
+        roundNumber: match.round_number,
+        homeTeamId: match.home_team_id,
+        awayTeamId: match.away_team_id,
+        kickoffAt: match.kickoff_at,
+        status: match.status,
+        homeScore: match.home_score,
+        awayScore: match.away_score,
+        resultVersion: match.result_version,
+        isManuallyOverridden: match.is_manually_overridden,
+        externalProvider: match.external_provider,
+        homeTeamName: match.home_team.name,
+        awayTeamName: match.away_team.name,
+      }),
+      (match) => ({ at: match.kickoff_at, id: match.id }),
+    ),
+  };
+}
+
+export async function getSystemMatchEditorCatalog(
+  supabase: SupabaseClient<Database>,
+): Promise<
+  | { status: "found"; catalog: SystemMatchEditorCatalog }
+  | { status: "denied" }
+  | { status: "error" }
+> {
+  const authorization = await getSystemAdminAuthorization(supabase);
+  if (authorization.status !== "authorized") return authorization;
+
+  const [seasonResult, teamResult] = await Promise.all([
+    supabase
+      .from("seasons")
+      .select(
+        "id, name, competition:competitions!seasons_competition_id_fkey(name)",
+      )
+      .order("starts_on", { ascending: false })
+      .order("id", { ascending: true })
+      .limit(MAX_SYSTEM_MATCH_SEASONS + 1),
+    supabase
+      .from("teams")
+      .select("id, name, short_name")
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(MAX_SYSTEM_MATCH_TEAMS + 1),
+  ]);
+
+  if (
+    seasonResult.error ||
+    teamResult.error ||
+    !seasonResult.data ||
+    !teamResult.data ||
+    seasonResult.data.length > MAX_SYSTEM_MATCH_SEASONS ||
+    teamResult.data.length > MAX_SYSTEM_MATCH_TEAMS
+  ) {
+    return { status: "error" };
+  }
+
+  return {
+    status: "found",
+    catalog: {
+      seasons: seasonResult.data.map((season) => ({
+        id: season.id,
+        name: season.name,
+        competitionName: season.competition.name,
+      })),
+      teams: teamResult.data.map((team) => ({
+        id: team.id,
+        name: team.name,
+        shortName: team.short_name,
+      })),
+    },
   };
 }
 

@@ -3,21 +3,37 @@ begin;
 select no_plan();
 
 select ok(
-  to_regprocedure('public.get_manager_join_requests(uuid)') is not null
-  and to_regprocedure('public.get_my_join_requests_v2()') is not null
+  to_regprocedure(
+    'public.get_manager_join_requests_page(uuid,public.join_request_status,timestamptz,uuid,integer)'
+  ) is not null
+  and to_regprocedure(
+    'public.get_my_join_requests_page(timestamptz,uuid,integer)'
+  ) is not null
   and to_regprocedure('public.approve_join_request(uuid)') is not null
   and to_regprocedure('public.reject_join_request(uuid,text)') is not null,
   'manager queue and decision RPCs exist'
 );
 
 select ok(
-  not has_function_privilege('anon', 'public.get_manager_join_requests(uuid)', 'EXECUTE')
+  not has_function_privilege(
+    'anon',
+    'public.get_manager_join_requests_page(uuid,public.join_request_status,timestamptz,uuid,integer)',
+    'EXECUTE'
+  )
   and not has_function_privilege('anon', 'public.approve_join_request(uuid)', 'EXECUTE')
   and not has_function_privilege('anon', 'public.reject_join_request(uuid,text)', 'EXECUTE')
-  and not has_function_privilege('service_role', 'public.get_manager_join_requests(uuid)', 'EXECUTE')
+  and not has_function_privilege(
+    'service_role',
+    'public.get_manager_join_requests_page(uuid,public.join_request_status,timestamptz,uuid,integer)',
+    'EXECUTE'
+  )
   and not has_function_privilege('service_role', 'public.approve_join_request(uuid)', 'EXECUTE')
   and not has_function_privilege('service_role', 'public.reject_join_request(uuid,text)', 'EXECUTE')
-  and has_function_privilege('authenticated', 'public.get_manager_join_requests(uuid)', 'EXECUTE')
+  and has_function_privilege(
+    'authenticated',
+    'public.get_manager_join_requests_page(uuid,public.join_request_status,timestamptz,uuid,integer)',
+    'EXECUTE'
+  )
   and has_function_privilege('authenticated', 'public.approve_join_request(uuid)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.reject_join_request(uuid,text)', 'EXECUTE'),
   'only authenticated callers can execute manager RPCs'
@@ -30,8 +46,8 @@ select ok(
     join pg_namespace on pg_namespace.oid = pg_proc.pronamespace
     where pg_namespace.nspname = 'public'
       and pg_proc.proname in (
-        'get_manager_join_requests',
-        'get_my_join_requests_v2',
+        'get_manager_join_requests_page',
+        'get_my_join_requests_page',
         'approve_join_request',
         'reject_join_request'
       )
@@ -126,7 +142,7 @@ $$;
 
 select pg_temp.set_actor('a1000000-0000-4000-8000-000000000001');
 select is(
-  (select count(*)::integer from public.get_manager_join_requests(
+  (select count(*)::integer from public.get_manager_join_requests_page(
     (select league_id from decision_fixture)
   )),
   2,
@@ -134,14 +150,14 @@ select is(
 );
 select is(
   (select sum(jsonb_array_length(queue.proofs))::integer
-   from public.get_manager_join_requests((select league_id from decision_fixture)) as queue),
+   from public.get_manager_join_requests_page((select league_id from decision_fixture)) as queue),
   2,
   'the manager queue includes proof summaries'
 );
 select ok(
   not exists (
     select 1
-    from public.get_manager_join_requests((select league_id from decision_fixture)) as queue
+    from public.get_manager_join_requests_page((select league_id from decision_fixture)) as queue
     where queue.proofs @? '$[*].storage_path'
   ),
   'proof summaries never disclose private object paths'
@@ -149,9 +165,9 @@ select ok(
 
 select pg_temp.set_actor('a4000000-0000-4000-8000-000000000004');
 select throws_ok(
-  format('select * from public.get_manager_join_requests(%L::uuid)',
+  format('select * from public.get_manager_join_requests_page(%L::uuid)',
     (select league_id from decision_fixture)),
-  'P0001', 'FORBIDDEN',
+  'P0001', 'NOT_FOUND',
   'another league manager cannot read the queue'
 );
 select throws_ok(
@@ -307,7 +323,7 @@ select results_eq(
 select pg_temp.set_actor('a3000000-0000-4000-8000-000000000003');
 select results_eq(
   $$select status::text, rejection_reason
-    from public.get_my_join_requests_v2()
+    from public.get_my_join_requests_page()
     where request_id = (select reject_request_id from decision_fixture)$$,
   $$values ('rejected'::text, 'ההוכחה אינה מתאימה להדגמה'::text)$$,
   'the requester can see the resulting rejection state and safe reason'

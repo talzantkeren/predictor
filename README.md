@@ -195,19 +195,29 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 
 הנתיבים החדשים מוגנים ודינמיים:
 
-- `/admin/matches` — זמין רק לזהות שמופיעה ב־`system_admins`; מאפשר להזין
-  תוצאה בתום הזמן החוקי או לבטל משחק. אין ממשק שמעניק הרשאת מנהל מערכת.
+- `/admin/matches` — זמין רק לזהות שמופיעה ב־`system_admins`; מאפשר ליצור או
+  לתקן משחק מתוך season ו־teams קיימים, כולל זמן UTC, סטטוס ותוצאה חוקית. אין
+  ממשק שמעניק הרשאת מנהל מערכת.
 - `/leagues/[leagueId]/standings` — זמין רק לחבר פעיל או למנהל הליגה ומציג
   נקודות, כיוונים נכונים, תוצאות מדויקות ומספר ניחושים. השוויון משתמש
   ב־competition ranking: מקומות 1,1,3 ולא `dense_rank`.
 
-`applyManualResult` מאמת session, קלט והרשאת מנהל מערכת בצד השרת, ואז קורא
-ל־`score_match` דרך gateway `server-only`. הפונקציה נועלת את המשחק בלבד,
-מעדכנת את התוצאה ואת ה־audit באותה transaction ומחליפה את שדות הניקוד של כל
-ניחוש לפי חוקי הליגה שלו. retry זהה אינו משנה נקודות או timestamps; תיקון
-מחשב מחדש; ביטול מאפס נקודות בלי למחוק ניחושים. `league_leaderboard` הוא
+`ManualMatchFormBoundary` לוכד בתוך Server Action מקומי את סוג הפעולה ואת UUID
+המשחק שהשרת הנפיק או טען. ה־Action קורא ל־`mutateManualMatch` המוגן ב־
+`server-only`, שמאמת session, Zod והרשאת מנהל מערכת ורק אז מפעיל RPC אטומי דרך
+gateway סגור. אין בטופס שדה authoritative של operation או match ID; replay עם
+אותו UUID הוא no-op. תיקון terminal משתמש בניקוד הקנוני, וביטול מאפס נקודות
+בלי למחוק ניחושים. עד מסירת reconciliation, כל יצירה או תיקון שמשפיעים על
+עונה עם ליגה `completed` או `archived` נכשלים סגור. `league_leaderboard` הוא
 `security_invoker` ונשען על RLS, ולכן זהות מערכת שאינה חברה בליגה אינה מקבלת
 גישה לדירוג רק מכוח תפקידה.
+
+במשחק שנושא זהות API-Football, מנהל מערכת יכול להחזיר ownership ידני לספק רק
+אחרי אישור מפורש. `ManualOverrideClearBoundary` לוכד בשרת את UUID המשחק, ולכן
+שדה `matchId` מוזרק מהדפדפן אינו קובע יעד. ההעברה מסירה רק את דגל ה־override:
+המצב, התוצאה, גרסתה, זהות/metadata הספק, latch הניחושים והניקוד נשמרים. ניסיון
+חוזר הוא no-op ללא audit נוסף, ורק snapshot ספק מאומת שמגיע לאחר מכן רשאי
+לעדכן את המשחק. משחק Demo ידני ללא provider identity אינו ניתן להעברה לספק.
 
 חלוקת פרסי Demo למקומות משותפים מחושבת במודול טהור ב־basis points. המערכת אינה
 מחלקת כסף, אינה מציגה פרסים כספיים אמיתיים ואינה פותחת את שער הציות.
@@ -217,8 +227,9 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 - `POST /api/cron/sync` מקבל JSON עם `Authorization: Bearer ...`, משווה את
   `CRON_SECRET` בזמן קבוע ומפעיל orchestration משותפת. ה־Route דק ואינו מכיל
   mapping, SQL או ניקוד.
-- `manual` שומר את התנהגות Slice 7: שורה סופית `MANUAL_PROVIDER` או
-  `CONCURRENT_ATTEMPT`, ללא ספק וללא שינוי משחקים.
+- `manual` אינו פונה לספק. הוא מחיל דרך RPC יחיד את חמשת המשחקים ושש הקבוצות
+  הקבועים של `manual-catalog-v1`: שינוי ראשון מחזיר `MANUAL_APPLIED`, replay
+  מחזיר `MANUAL_NO_CHANGE`, ו־conflict נכשל אטומית בלי merge לפי שם.
 - `api-football` מבצע claim due-aware ב־Data API. `NOT_DUE` אינו קורא לספק
   ואינו יוצר שורת run. claim מוצלח יוצר lease עמיד עם generation/token/expiry;
   provider HTTP מתבצע אחר כך ומחוץ לטרנזקציה.
@@ -257,8 +268,11 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
    ב־SQL, ב־Git או בלוגים.
-5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד ומוודאים במסך
-   `/admin/sync` שורת `MANUAL_PROVIDER`. אין לפרש אותה כסנכרון לוח ממשי.
+5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
+   העברית שהקטלוג הוחל או שכבר היה מעודכן, ובמסך `/admin/sync` מוודאים שורת
+   `succeeded/manual` סופית. קודי `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` מוחזרים
+   לפעולה ואינם נשמרים ב־`error_code`, שנשאר `null` בהצלחה. זהו import של
+   catalog ה־Demo הקבוע בלבד, לא סנכרון ספק חי.
 
 ### Checklist להפעלת API-Football ב־Hosted — לא להריץ לפני merge מאושר
 
@@ -335,6 +349,18 @@ Slice 8 קורא את סטטוס הליגה ואינו משנה אותו. זרי
 כספי, אחוזי פרס, payout מדומה, currency symbol או payment link. הוא query-only,
 משתמש ב־Supabase user client וב־`getLeagueStandings` הקיים, ואינו מוסיף
 migration, RPC, Action, dependency או שימוש ב־admin client.
+
+## Slice 9: עריכת הגדרות ליגה
+
+`/leagues/[leagueId]/settings` מאפשר למנהל/ת הליגה לערוך את הפרטים המותרים,
+מועד סגירת ההצטרפות, חוקי הניקוד וחלוקת פרסי ה־Demo. מנהל/ת מערכת מורשה/ית
+יכול/ה לפתוח רק את נתיב ההגדרות של ליגה שהתבקשה במפורש; גישה זו אינה מוסיפה
+את הליגה ל־Dashboard ואינה מציגה קישור הזמנה או כלי ניהול חברים.
+
+חוקי הניקוד ופרסי ה־Demo ננעלים יחד ובאופן בלתי הפיך עם תחילת התחרות לפי זמן
+מסד הנתונים, סטטוס הליגה או latch של משחק. פרטים שאינם תחרותיים נשארים ניתנים
+לעריכה עד `completed`; ליגה שהושלמה או אורכבה היא לקריאה בלבד. הסכומים
+והפרסים נשארים סימולציית Demo בלבד — אין במסך קישור תשלום, גבייה או העברת כסף.
 
 ### Mailpit
 

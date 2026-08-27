@@ -243,27 +243,68 @@ npm exec -- supabase test db supabase/tests/scoring.test.sql
 npm run test:e2e -- scoring.spec.ts
 ```
 
-## Slice 7: Cron ו־observability במסלול ידני
+### S9-DEF-008 — החזרת ownership ידני ל־API-Football
 
-סעיף זה מתעד את baseline הידני שנמסר לפני Slice 7b. בדיקות הרגרסיה שלו עדיין
-משתמשות רק ב־Manual provider וב־Supabase המקומי; המסלול החי וה־planner שנוסף
-לאחר מכן מתועדים בסעיף Slice 7b להלן.
+הגבול החדש אינו מקבל match ID סמכותי מהטופס. Server Component לוכד את ה־UUID
+שנטען מהמסד, ה־mutation דורשת confirmation ו־resource AuthZ, ורק RPC מצומצמת
+ל־service role משנה ownership. הבדיקות משמרות את התוצאה הנוכחית עד snapshot
+ספק מאומת עתידי; אין קריאת רשת חיה לספק.
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | confirmation literal מדויק; missing/null/blank/forged נדחים; קוד provider-ownership ממופה להודעה בטוחה |
+| pgTAP | חתימה, `SECURITY DEFINER`, `search_path`, grants ו־actor קבוע; ordinary user/actor חסר או מבוטל; API-Football בלבד; completed/archived fail-closed; result/status/version/provider metadata/latch/predictions נשמרים; clear ראשון typed+audit יחיד ו־replay typed ללא timestamp/audit נוסף |
+| dblink | sessions PostgreSQL אמיתיות עם timeouts חסומים מוכיחות duplicate clear יחיד, clear מול apply מגודר שלא מאבד תוצאה ומאפשר provider resume, ו־revocation מול clear ללא deadlock |
+| Playwright | Desktop Chrome ו־Pixel 5: checkbox confirmation, focus על שגיאה, יעד UUID שנלכד בשרת מול hidden `matchId` מזויף, direct-RPC denial למשתמש רגיל, תיקון provider-owned ואז clear, תוצאה/ניקוד/provenance/latch נשמרים, audit יחיד, RTL וללא overflow |
+
+הרצה ממוקדת בזמן פיתוח, על Supabase מקומי בלבד:
+
+```powershell
+npm run test -- src/features/scoring/schemas.test.ts src/features/scoring/errors.test.ts
+npm exec -- supabase test db supabase/tests/manual-override-clear.test.sql supabase/tests/manual-override-clear-concurrency.test.sql
+npm run test:e2e -- e2e/scoring.spec.ts
+```
+
+הרצה ממוקדת שנצפתה ב־27.8.2026 על schema שנבנה מחדש מקומית:
+
+```text
+manual-override-clear.test.sql + manual-override-clear-concurrency.test.sql:
+91/91 PASS
+scoring.test.sql + sync-api-football.test.sql: 148/148 PASS
+schemas.test.ts + errors.test.ts: 26/26 PASS
+e2e/scoring.spec.ts: Desktop Chrome 1/1, Pixel 5 1/1 PASS
+```
+
+גם generated DB types היו זהים ל־schema, `tsc --noEmit`, ESLint וה־production
+build הסתיימו ב־exit 0. הפירוט המדויק והכשלים הראשונים שתוקנו נשמרים ב־
+`docs/evidence/slice-9/w3/S9-DEF-008.md`.
+
+## Slice 7 baseline ו־S9-DEF-003: Cron במסלול ידני
+
+ה־baseline שנמסר ב־Slice 7 החזיר `skipped/MANUAL_PROVIDER`. S9-DEF-003 הסיר את
+ה־RPC הישן והחליף אותו ב־import מקומי, חסום ואידמפוטנטי של
+`manual-catalog-v1`. בדיקות הרגרסיה משתמשות רק ב־Manual provider וב־Supabase
+המקומי; המסלול החי וה־planner מתועדים בסעיף Slice 7b להלן.
 
 ### מטריצת כיסוי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | נרמול כל חמשת הסטטוסים, ניקוי score חי, דחיית status לא מוכר, תוצאה finished, cancel, תיקון ו־retry; החרגה מלאה וללא mutation של `is_manually_overridden`; זהויות provider כפולות; env חסר/malformed ו־manual בלבד; השוואת Route וסיווג שגיאות בטוח; `status` בלבד כמבחין כשל וקוד דילוג ניטרלי; מיפוי שורת query וגבול admin client `server-only` |
-| pgTAP | enum/table/columns/comments/checks/index; RLS/grants וקריאת admin לעומת משתמש רגיל; חתימת RPC, `SECURITY DEFINER`, `search_path` ו־EXECUTE service-only; actor חסר/malformed/שהוסר ללא כתיבת `sync_runs` או `audit_logs`; שורה סופית `MANUAL_PROVIDER` ללא שינוי matches/predictions; שתי sessions אמיתיות שמוכיחות `CONCURRENT_ATTEMPT`, אחריו `MANUAL_PROVIDER`, ושאין advisory lock דולף |
-| Route | method/content-type, secret חסר/שגוי, env חסר, actor שנדחה ושגיאת DB לא צפויה; אין קריאת gateway לפני הרשאה, קריאה אחת בלבד בהצלחה, HTTP 200 לדילוג ותגובות `private, no-store` ללא secret/actor/SQL |
-| Playwright | secret חסר ושגוי מחזירים 401 ומספר שורות DB אינו משתנה; secret נכון יוצר בדיוק שורה סופית אחת; מנהל רואה ב־`/admin/sync` את `MANUAL_PROVIDER` כסיבת דילוג, משתמש רגיל מקבל not-found; Desktop Chrome ו־Pixel 5, RTL וללא overflow |
+| Vitest | parity מדויק של 6 teams ו־5 matches בין adapter ל־manifest, rejection של catalog זר, payload יחיד ל־gateway ו־APPLIED/NO_CHANGE/CONFLICT; validator UTC דוחה תאריך קלנדרי בלתי אפשרי; Route נשאר מסונן ו־server-only |
+| pgTAP | הסרת ה־RPC הישן; wrapper payload-only מסוג `SECURITY DEFINER`; core מלא `SECURITY INVOKER` ללא grant ל־PUBLIC/anon/authenticated/service role; actor חסר/malformed/שהוסר ללא mutation; זמן owner-only מפורש מוכיח APPLIED לפני kickoff ו־conflict אחריו; parity לכל שדות הזהות וה־provider; APPLIED/replay/audit/run counts; conflict אטומי ל־provider-owned/drift/latch/completed/archived; prediction קיים אינו מפריע ל־catalog replay זהה; create/correct חוסם שינוי זהות עם prediction או latch |
+| dblink | שתי sessions אמיתיות מוכיחות שסדר `leagues → matches` חוסם completion-vs-create ו־completion-vs-catalog. מרוץ ה־catalog קורא ל־core המלא בזמן בטוח קבוע, ולכן lifecycle guard ולא תאריך ההרצה מסביר את ה־conflict ואת שורת ה־run הסופית |
+| Route | method/content-type, secret חסר/שגוי, env חסר, actor שנדחה ושגיאת DB לא צפויה; אין קריאת gateway לפני הרשאה, קריאה אחת בלבד בהצלחה ותגובות `private, no-store` ללא secret/actor/SQL |
+| Playwright | provider outage אינו משפיע על Manual; Cron משחזר leaf חסר, replay מהמסך מחזיר no-change, שתי שורות terminal נשמרות, אין browser request לספק; מסך מנהל יוצר match עם UUID יציב ו־replay אינו יוצר כפילות |
 
-בדיקת המקביליות ב־`supabase/tests/sync.test.sql` פותחת חיבור control, חיבור
-שמחזיק `pg_advisory_xact_lock` וחיבור service-role שקורא ל־RPC. היא פועלת רק
-מול מכולת PostgreSQL החד־פעמית של Supabase CLI, מתקינה ומסירה principal
-סינתטי ושתי שורות run committed, ואינה מורשית מול `--linked` או hosted. קריאת
-RPC רגילה בתוך transaction הבדיקה מתבצעת רק אחרי תרחיש המקביליות כדי שה־xact
-lock של pgTAP עצמו לא ישבש את שתי ה־sessions.
+קריאות ה־public RPC ב־pgTAP וב־Playwright משתמשות תמיד בזמן המסד האמיתי. מאחר
+שלאחר kickoff קטלוג חסר חייב להיכשל סגור, הבדיקות מקבלות רק אחד משני outcomes
+עקביים (`MANUAL_APPLIED` עם כל ה־rows וה־audit, או conflict אטומי) ואינן מסיקות
+את ההחלטה מ־`started_at`/`finished_at`. אין test header או clock override ציבורי.
+
+בדיקת המקביליות ב־`supabase/tests/manual-match-concurrency.test.sql` פותחת שתי
+sessions מקומיות דרך dblink ומסנכרנת אותן בעזרת advisory locks בדיקה. היא פועלת
+רק מול מכולת PostgreSQL החד־פעמית של Supabase CLI, מתקינה ומסירה נתוני בדיקה,
+ואינה מורשית מול `--linked` או hosted.
 
 ה־E2E runner מייצר `CRON_SECRET` אקראי בזיכרון לכל הרצה ומעביר אותו רק
 לתהליכי build, server ו־Playwright. actor מקומי קבוע נוצר ב־seed; הסוד, actor
@@ -274,8 +315,8 @@ header ו־admin key אינם נכתבים לדוח או ל־stdout. קריאת 
 
 ```powershell
 npm run test -- src/app/api/cron/sync/route.test.ts src/features/sports/sync-planner.test.ts src/features/sync/display.test.ts src/features/sync/errors.test.ts src/features/sync/queries.test.ts
-npm exec -- supabase test db supabase/tests/sync.test.sql
-npm run test:e2e -- e2e/sync.spec.ts
+npm exec -- supabase test db supabase/tests/sync.test.sql supabase/tests/manual-match-fallback.test.sql supabase/tests/manual-match-concurrency.test.sql
+npm run test:e2e -- e2e/sync.spec.ts e2e/scoring.spec.ts
 ```
 
 ## Slice 7b: API-Football Sync חי עם fixtures מוקלטים
@@ -449,3 +490,17 @@ npm run test:e2e -- e2e/reports.spec.ts
   בדסקטופ וב־Pixel 5, כולל AuthZ, current/final והיעדר overflow.
 - client-secret scan עבר על 50 build artifacts. לא בוצעה קריאת ספק חיה,
   mutation Hosted, deploy או merge.
+
+## Slice 9 — S9-DEF-007: עריכת הגדרות ליגה
+
+| שכבה | כיסוי ממוקד ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| Vitest | 45/45: validators, UTC עד microseconds, שנת אפס/זמן לא סופי, scoring/prizes, version/error adapters ו־lock helper |
+| pgTAP | 56/56: schema/check/ACL, ללא UPDATE ישיר או admin policy רחב, manager/admin/foreign/revoked/opaque denial, valid/invalid/stale/replay, join close, exact timestamp, locks/status/audit |
+| dblink | 75/75: conflicting וגם identical writers, validation לפני lock, details fast path, fixture-first/settings-first, latch, waiter שחוצה kickoff עם DB time טרי וביטול admin מתחרה |
+| Playwright | 2/2 ב־Desktop Chrome וב־Pixel 5: RTL/overflow, validation→version carry, שמירה/replay, `.123456` אחרי reload, outsider/admin isolation, active/completed, keyboard focus ויעדי מגע 44px |
+
+הפקודות, פלטי ה־PASS, reset מקומי, parity של generated types, build ו־
+`git diff --check` מתועדים ללא ערכי סוד ב־
+`docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
+בפרויקט linked.

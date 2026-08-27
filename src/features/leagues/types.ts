@@ -1,3 +1,5 @@
+import type { KeysetPage } from "@/lib/keyset-pagination";
+
 export type SeasonOption = {
   id: string;
   name: string;
@@ -14,6 +16,8 @@ export type LeagueDashboardItem = {
   status: "draft" | "open" | "active" | "completed" | "archived";
   role: LeagueRole;
 };
+
+export type LeagueDashboardPage = KeysetPage<LeagueDashboardItem>;
 
 export type LeagueSummary = {
   id: string;

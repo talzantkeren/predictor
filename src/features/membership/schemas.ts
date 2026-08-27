@@ -203,9 +203,9 @@ const dashboardJoinRequestRpcSchema = z
     proofs: request.proofs,
   }));
 
-export const dashboardJoinRequestsRpcSchema = z
+export const dashboardJoinRequestPageRpcSchema = z
   .array(dashboardJoinRequestRpcSchema)
-  .max(100);
+  .max(26);
 
 const managerJoinRequestRpcSchema = z
   .object({
@@ -234,9 +234,37 @@ const managerJoinRequestRpcSchema = z
     proofs: request.proofs,
   }));
 
-export const managerJoinRequestsRpcSchema = z
+export const managerJoinRequestPageRpcSchema = z
   .array(managerJoinRequestRpcSchema)
-  .max(100);
+  .max(26);
+
+const joinRequestStatusFilterSchema = z.enum([
+  "pending_proof",
+  "pending_approval",
+  "approved",
+  "rejected",
+]);
+
+export function parseJoinRequestStatusFilter(value: unknown):
+  | {
+      success: true;
+      data:
+        | "pending_proof"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | undefined;
+    }
+  | { success: false } {
+  if (value === undefined || value === "") {
+    return { success: true, data: undefined };
+  }
+
+  const parsed = joinRequestStatusFilterSchema.safeParse(value);
+  return parsed.success
+    ? { success: true, data: parsed.data }
+    : { success: false };
+}
 
 export const approvedJoinRequestRpcSchema = z
   .object({

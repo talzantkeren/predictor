@@ -251,6 +251,7 @@ DEMO_MODE=true
 | 012 `slice9_database_time_serialization` | תיקון forward-only: `save_prediction` ו־`claim_sports_sync` דוגמות wall-clock רק לאחר נעילת שורת ההכרעה; apply מקדים fencing ונעילת match להכרעת ביטול | waiter שחוצה kickoff/due/backoff/expiry מוכרע לפי הזמן שלאחר ההמתנה |
 | 013 `slice9_database_time_serialization_review` | helper פרטי ללא Data API EXECUTE מכריע cancellation תחת match lock מול kickoff שמור ונכנס, משמר latch גם ב־manual override ודורש שני מועדים עתידיים ל־reactivation | reschedule אינו פותח ניחושים אחרי גבול שחל; apply/save מקביליים אינם יוצרים deadlock |
 | 014 `slice9_full_sync_lease_duration` | מפריד ב־claim בין דגימת decision שלאחר lock לבין issuance לאחר תכנון העבודה | `sync_runs.started_at` הוא זמן ההנפקה ו־`locked_until = started_at + 120 seconds` גם לאחר המתנה |
+| 017 `slice9_clear_manual_override` | RPC forward-only, service-only ואידמפוטנטי שמסיר ownership ידני רק ממשחק API-Football ומוסיף audit יחיד | result/provenance/latch/predictions נשמרים; ordinary user נדחה; provider apply רשאי להתחדש לאחר clear |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -527,9 +528,11 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 
 התנהגות:
 
-1. caller הוא secret/system operation בלבד. `applyManualResult` מאמת session
-   ו־`system_admins`; gateway שרתי סגור מעביר את actor המאומת לקריאת
-   service-role, וה־RPC מאמת שוב שה־actor עדיין מנהל מערכת.
+1. caller הוא secret/system operation בלבד. `ManualMatchFormBoundary` לוכד
+   operation ו־match ID מהשרת ב־inline Server Action וקורא ל־helper
+   `mutateManualMatch` המוגן ב־`server-only`; ה־helper מאמת session ו־
+   `system_admins`. gateway שרתי סגור מעביר את actor המאומת לקריאת service-role,
+   וה־RPC מאמת שוב שה־actor עדיין מנהל מערכת.
    ב־Slice 7 ה־Cron משתמש ב־`SYNC_SYSTEM_ACTOR_ID` של principal ייעודי,
    לא־אינטראקטיבי וללא session UI, שמוקם באופן מאובטח לכל סביבה ב־
    `auth.users` וב־`system_admins`. חסרון env או הסרת ההרשאה מכשילים סגור;
@@ -555,10 +558,11 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 
 `SECURITY DEFINER` functions משתמשות ב־`set search_path = ''`, שמות schema מלאים והרשאות EXECUTE מצומצמות.
 
-### 7.5 `record_sync_attempt()`
+### 7.5 `record_sync_attempt()` — baseline שהוסר ב־S9-DEF-003
 
-הפונקציה היא גבול המוטציה היחיד של Slice 7 ונקראת פעם אחת בלבד מ־Cron דרך
-Data API:
+הפונקציה הייתה גבול המוטציה היחיד של Slice 7 ונקראה פעם אחת בלבד מ־Cron דרך
+Data API. S9-DEF-003 מסיר אותה forward-only ומחליף אותה בחוזה שב־§14; הרשימה
+להלן נשמרת כתיעוד baseline היסטורי ואינה מתארת callable נוכחי:
 
 1. קוראת את `x-predictor-system-actor` מ־`request.headers`, מאמתת UUID קנוני
    ובודקת שה־principal עדיין קיים ב־`system_admins`. אין actor בפרמטרים.
@@ -631,14 +635,22 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | --- | --- | --- | --- | --- |
 | Profile | trigger בהרשמה | self ב־Slice 1; active shared-league לאחר המודל המינימלי ב־Slice 2 | display name של עצמי | דרך מחיקת Auth בעתיד |
 | League | `createLeague` | member/manager | `updateLeagueSettings` | archive, לא hard delete |
-| Scoring rules | עם הליגה | member/manager | manager לפני lock | אין delete |
-| Prize rules | עם הליגה | member/manager | manager לפני completion | replace transactionally |
+| Scoring rules | עם הליגה | member/manager | manager או system admin לפני נעילת התחרות | אין delete |
+| Prize rules | עם הליגה | member/manager | manager או system admin לפני אותה נעילת תחרות | replace transactionally |
 | Invite | `createInvite` | manager; bootstrap עם public ID + Fragment secret | אין edit token | `revokeInvite` |
 | Join request | `submitJoinRequest` | owner/manager | approve/reject ב־Slice 4 דרך RPC מנהל בלבד | אין delete |
 | Proof | upload Handler | signed access אחרי AuthZ | אין overwrite | retention job בלבד |
 | Membership | approval RPC | same league/manager; רשימת active לקריאה בלבד ב־MVP | approval מפעיל; completion סוגר בקשות פתוחות; removal/reactivation post-MVP | status `removed` שמור ל־post-MVP, לא לפעולת UI ב־MVP |
-| Match | provider או `createOrCorrectMatch` של system admin מתוך teams קיימות | authenticated scoped | provider/admin correction + override מפורש | cancel, לא hard delete |
+| Match | provider או `create_or_correct_match` של system admin מתוך teams קיימות | authenticated scoped | provider/admin correction + override מפורש | cancel, לא hard delete |
 | Prediction | upsert לפני lock | policy תלוי זמן | upsert לפני lock | אין delete ב־MVP |
+
+נעילת התחרות המשותפת לחוקי הניקוד ולחלוקת פרסי ה־Demo היא בלתי הפיכה: היא
+חלה עם `locked_at`, מעבר מ־`draft/open`, הגעה לפי זמן מסד הנתונים ל־kickoff
+הראשון שנכלל, או כל latch/status `live`/`finished` של משחק נכלל. עד לנעילה
+החלפת הניקוד והפרסים מתבצעת במסמך אטומי וממוספר; לאחריה אין חלון מאוחר לשינוי
+פרסים עד completion. פרטי ליגה שאינם תחרותיים נשארים ניתנים לעריכה עד
+`completed`, ו־`archived` נשאר read-only. גישת system admin נעשית ב־RPC צר
+לליגה שהתבקשה במפורש ואינה מוסיפה policy של SELECT רוחבי לטבלאות הליגה.
 
 ## 9. Server Actions
 
@@ -653,10 +665,9 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
 | `rejectJoinRequest` | request id + reason | RPC reject | request rejected |
 | `savePrediction` | league, match, two scores | RPC `save_prediction` + RLS SELECT-only; actor/time/match+league status/season נאכפים במסד | saved timestamp |
 | `removeMember` (post-MVP; לא ממומש ב־Slice 9) | league + member | membership service עתידי | status removed + audit רק לאחר שינוי scope מאושר |
-| `applyManualResult` | match + result/status | `score_match` via admin client; completed leagues אינן משתנות אוטומטית | result and non-completed rankings updated; completed league enters review |
-| `createOrCorrectMatch` (Slice 9) | operation + existing match id לתיקון או server-issued stable create UUID, season, שתי team IDs קיימות, round, kickoff, status/result | system-admin service + RPC אטומי, idempotency ואודיט; manual ownership מסומן | match ידני יחיד נוצר/תוקן בלי team CRUD ובלי merge לפי display name |
+| `create_or_correct_match` (Slice 9) | operation + existing match id לתיקון או server-issued stable create UUID, season, שתי team IDs קיימות, round, kickoff, status/result | system-admin service + RPC אטומי, idempotency ואודיט; manual ownership מסומן | match ידני יחיד נוצר/תוקן בלי team CRUD ובלי merge לפי display name |
 | `resolveMatchResultReview` (Slice 9) | match id + result version + disposition ותוצאת זמן חוקי/ביטול לפי disposition | system-admin service + RPC אטומי; row עמיד ב־`match_result_reviews`, revalidation ואודיט | valid review נפתר פעם אחת, canonical match נכתב וה־flags מתנקים; non-completed leagues מנוקדות, ורק completed leagues שכבר מכילות snapshot לאותו match מקבלות pending reconciliation |
-| `clearManualOverride` (Slice 9) | match id | system-admin service + RPC ייעודי | ownership חוזר לספק בלי למחוק result קיים ועם audit אידמפוטנטי |
+| `clearManualOverride` (Slice 9) | confirmation בלבד; match id נלכד מה־row ב־Server Action | session + resource AuthZ + system-admin gateway + `clear_manual_match_override` service-only | ownership חוזר רק ל־API-Football בלי לשנות result/provenance/latch/predictions; replay typed ללא audit נוסף |
 | `reconcileCompletedLeague` (Slice 9) | league id + reviewed match/version | system-admin lifecycle service + RPC אטומי לפי global lock order | explicit audited recalculation של final league או no-op אידמפוטנטי; אין silent provider rewrite |
 | `startLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | manager רשאי `open` → `active` מוקדם; fallback חייב לשמור status/audit לא יאוחר מ־kickoff הראשון; recovery מאוחר מסומן כהפרת SLA |
 | `completeLeague` (Slice 9) | league id | league lifecycle service + RPC אטומי | `active` → `completed` רק אחרי terminal/reconciliation; בקשות פתוחות נסגרות אטומית והדוח מוגן משינוי שקט, עם reconciliation מפורש בלבד |
@@ -722,9 +733,16 @@ EXECUTE ל־`service_role` בלבד ואימות actor נוסף בתוך הפו�
    זהו שימוש חוזר ב־Cron הקיים, לא job/Route/secret חדשים.
 4. orchestration משותפת בוחרת `manual` או `api-football`. אחרי S9-DEF-003,
    manual מפעיל את `ManualSportsProvider` ומעביר payload דטרמיניסטי וחסום ל־
-   `apply_manual_fixture_catalog` — RPC אטומי, service-only, עם UUIDs יציבים
-   ו־teams מה־catalog. כל invocation מוסיף `sync_runs` סופי אחד; רק mutation
-   אמיתי מוסיף business-audit יחיד, ו־no-change replay אינו מכפיל rows/audit.
+   `apply_manual_fixture_catalog` — wrapper אטומי, payload-only ו־service-only,
+   עם UUIDs יציבים ו־teams מה־catalog. ה־wrapper גוזר actor מ־header שרתי וקורא
+   ל־core פרטי `SECURITY INVOKER` שאין לו grant ל־Data API; רק ה־core מחזיק את
+   actor lock, advisory/row locks, ה־preflight, inserts, run וה־audit. אין
+   overload granted שמקבל actor או clock. מיד לפני החלטת insert חסר, קריאת
+   production עם clock `NULL` דוגמת DB time טרי; fixture חסר שמועדו הגיע מחזיר
+   `MANUAL_CATALOG_CONFLICT`. כל invocation תקין שהגיע ל־RPC אחרי בניית ה־payload
+   השרתית מוסיף `sync_runs` סופי אחד; כשל validation/config לפני ה־RPC אינו
+   invocation מסדי. רק mutation אמיתי מוסיף business-audit יחיד, ו־no-change
+   replay אינו מכפיל rows/audit.
    אין קריאת HTTP.
    API-Football מבצע claim RPC ורק outcome `CLAIMED` ממשיך לספק. activation רץ
    לפני שני הענפים.
@@ -855,13 +873,18 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - `score_match` דוחה `finished` לפני kickoff ואינו משנה את המשחק או הניחושים.
 - שתי ליגות עם חוקי ניקוד שונים מקבלות `points` שונים לאותו משחק.
 - leaderboard אינו סופר ניחוש עתידי גם לבעליו, ולכן האגרגט זהה בין צופים.
-- `sync_runs`: schema, checks, RLS/grants, קריאת מנהל מערכת בלבד ו־EXECUTE
-  מצומצם ל־`record_sync_attempt`.
+- `sync_runs`: schema, checks, RLS/grants וקריאת מנהל מערכת בלבד; ה־RPC הידני
+  היחיד הוא `apply_manual_fixture_catalog` עם EXECUTE ל־service role בלבד,
+  ו־`record_sync_attempt` הישן אינו קיים.
 - actor חסר/שגוי/שהוסר נדחה ללא כתיבת `sync_runs` או `audit_logs`.
-- שתי sessions מוכיחות `CONCURRENT_ATTEMPT` בזמן xact lock מוחזק,
-  `MANUAL_PROVIDER` לאחר שחרורו, ושאין session lock דולף.
+- שתי sessions מוכיחות completion-vs-create ו־completion-vs-catalog לפי סדר
+  נעילות `leagues → matches`, כולל fail-closed בעונה completed. מרוץ ה־catalog
+  קורא ל־core המלא בזמן owner-only קבוע לפני cutoff, כדי שהוכחת lifecycle לא
+  תירקב עם הזמן.
 - Slice 9 מוסיף replay/concurrency ל־manual import: `MANUAL_APPLIED` פעם אחת,
   אחריו `MANUAL_NO_CHANGE`, ללא כפילות team/match/audit וללא merge בשם תצוגה.
+- core owner-only בזמן מפורש מוכיח באופן קבוע apply לפני kickoff ו־conflict
+  אטומי אחריו; PUBLIC/anon/authenticated/service role אינם יכולים להריץ אותו.
 - `sync_leases` ו־RPCs החיים: `NOT_DUE` ללא run, claim יחיד בשתי sessions אמיתיות, concurrent,
   reclaim שמסיים abandoned run, generation/token ישן או פג, apply/finalize
   atomicity והרשאות service-only.
@@ -1354,7 +1377,7 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
 
 #### חוזה capability של S9-DEF-003
 
-`createOrCorrectMatch` מקבל system-admin מאומת, operation, stable create UUID
+`create_or_correct_match` מקבל system-admin מאומת, operation, stable create UUID
 שהונפק בשרת או match ID קיים, season, שתי team IDs קיימות, round, kickoff UTC,
 status ותוצאה לפי הסטטוס. create חוזר עם אותו UUID ואותו payload מחזיר אותה
 רשומה ואותו audit outcome; payload שונה לאותו UUID נכשל בקוד יציב. יצירה/
@@ -1363,25 +1386,56 @@ DB kickoff נדחה; latch קיים אינו נפתח; שינוי season/teams �
 predictions או נעילה, ותיקון provider-owned אינו משנה provider identity. הוא
 אינו מוסיף team CRUD ואינו generic DB editor; כל actor אחר נדחה.
 
-במצב ה־base, orchestration מחזירה `skipped/MANUAL_PROVIDER` לפני ש־fixtures של
+במצב ההיסטורי שלפני DEF-003, orchestration החזירה `skipped/MANUAL_PROVIDER` לפני ש־fixtures של
 ה־adapter מוחלים, ולכן Manual/Preview אינם יכולים לאכלס match חדש דרך sync.
 S9-DEF-003 מבטל את ה־short-circuit: `ManualSportsProvider` עובר למסלול import
 server-only חסום, bounded ואידמפוטנטי על גבי catalog/seed דטרמיניסטי עם UUIDs
 קבועים. המקור הקנוני ל־`manual-catalog-v1` הוא חמשת matches ושש teams שב־
 `supabase/migrations/20260815200600_slice5_manual_demo_fixtures.sql:5-69`.
-ה־payload הנוכחי ב־`src/features/sports/fixtures.ts:3-78` אינו importable: הוא
-משתמש ב־IDs לא־UUID, dates אחרים ו־live/finished ישנים; Slice 9 מחליף אותו
-במיפוי המדויק ל־UUID/season/team/match/kickoff/status של ה־manifest הקנוני.
-RPC ה־import מכניס רק row חסר; conflict קיים שאינו זהה, provider-owned row,
-prediction/latch או ניסיון status/time regression נכשלים אטומית ואינם עושים
-overwrite. בדיקת parity אחרי reset משווה את כל שדות 5/5 ה־matches ו־6/6 ה־teams
+לפני DEF-003, ה־payload שהיה ב־`src/features/sports/fixtures.ts` לא היה
+importable: הוא השתמש ב־IDs לא־UUID, dates אחרים ו־live/finished ישנים. המימוש
+הנוכחי ממפה בדיוק UUID/season/team/match/kickoff/status של ה־manifest הקנוני.
+RPC ה־import מכניס רק row חסר; drift קיים בשדות הקבועים, provider-owned row,
+latch, עונה `completed`/`archived` עם catalog חסר, או fixture חסר שמועדו הגיע
+לפי זמן DB טרי נכשלים אטומית ואינם עושים overwrite.
+prediction קיים אינו מפריע ל־catalog replay זהה; בגבול `create_or_correct_match`,
+שינוי season/teams נחסם אם קיימים prediction או latch. בדיקת parity אחרי reset
+משווה את כל שדות 5/5 ה־matches ו־6/6 ה־teams
 בין adapter ל־DB, ומוכיחה שאין duplicate catalog או seed עתידי שהופך ל־live/
-finished ישן. כל ניסיון יוצר `sync_runs` סופי; רק `MANUAL_APPLIED` יוצר business
-audit, ו־`MANUAL_NO_CHANGE` אינו מכפיל אותו. `createOrCorrectMatch` נשאר escape
+finished ישן. כל invocation תקין שהגיע ל־RPC אחרי בניית ה־payload השרתית יוצר
+`sync_runs` סופי אחד; validation/config שנכשל לפני ה־RPC אינו invocation מסדי.
+רק `MANUAL_APPLIED` יוצר business audit, ו־`MANUAL_NO_CHANGE` אינו מכפיל אותו.
+`create_or_correct_match` נשאר escape
 hatch מתוך teams קיימות. rows ידניות/סינתטיות נשארות ללא provider identity;
 API-Football ממשיך לבצע upsert רק לפי `(external_provider, external_id)`. אסור
 למזג או להצמיד team לפי display name; reconciliation מכוון בעתיד יהיה פעולה
 מפורשת ומתועדת.
+
+#### חוזה capability של S9-DEF-008
+
+`clear_manual_match_override` מקבלת UUID משחק בלבד דרך gateway שרתי שמקבע את
+actor ה־session המאומת ב־header פנימי. היא אינה granted ל־anon/authenticated
+ואינה מקבלת actor, role, result, provider או flag מהדפדפן. רק match עם
+`external_provider='api-football'` ו־external ID מספרי חיובי תקין יכול לעבור
+מבעלות ידנית לבעלות ספק; row ידנית/סינתטית או provider אחר נדחים. ה־RPC דוגמת
+את season, נועלת את כל ליגות העונה בסדר UUID, מחזיקה מחדש את actor ב־
+`system_admins FOR KEY SHARE`, נועלת את ה־match ומוודאת שה־season לא השתנה.
+שינוי ממשי נכשל סגור כאשר אחת מליגות העונה `completed`/`archived`, עד מסירת
+reconciliation ב־W4.
+
+ה־mutation היחידה היא `is_manually_overridden=false` ו־`updated_at` מזמן המסד.
+ה־status, scores, `result_version`, external/provider metadata,
+`predictions_locked_at` וכל שורות/metadata הניחושים נשארים ללא שינוי. רק clear
+ראשון יוצר `match_manual_override_cleared`; replay מחזיר את אותה תמונת מצב עם
+`result_cleared=false`, אינו מזיז timestamp ואינו מוסיף audit. אחרי commit,
+apply מגודר של API-Football אינו מדלג עוד על ה־match וה־snapshot המאומת הבא
+רשאי להחליף את התוצאה לפי החוזה הקנוני.
+
+חובת carry ל־S9-REQ-001/W4: כל מעבר completion או automatic completion חייב
+לקחת `pg_advisory_xact_lock(2026090609)` לפני עבודה על league או על קבוצת
+ה־matches שלה, ולשמור את סדר `leagues → matches`. ה־acceptance של W4 חייב לכלול
+מרוץ dblink אמיתי completion-vs-missing-match; ה־guard של DEF-003 אינו תחליף
+ל־snapshot/reconciliation הסופי.
 
 #### Register מחייב וחשבון priorities
 
@@ -1461,7 +1515,7 @@ Preview ו־Production קשורים לאותו SHA; מצגת ודמו עברו r
 
 1. provider אוטומטי. גם אם הוא נחתך, נשארים catalog/seed דטרמיניסטיים,
    `ManualSportsProvider` שמגיע למסלול persistence חסום ו־
-   `createOrCorrectMatch` של system admin מתוך teams קיימות. Manual sync אינו
+   `create_or_correct_match` של system admin מתוך teams קיימות. Manual sync אינו
    רשאי להישאר `skipped` אחרי DEF-003, ואין להציג result-only override כ־
    fallback מלא.
 2. הרחבות דוח כגון export, BI או charts; נשארים הסיכום והדירוג הנכונים.
