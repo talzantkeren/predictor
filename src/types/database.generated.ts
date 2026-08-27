@@ -188,6 +188,104 @@ export type Database = {
           },
         ]
       }
+      league_match_reconciliations: {
+        Row: {
+          candidate_away_score: number | null
+          candidate_home_score: number | null
+          candidate_status: Database["public"]["Enums"]["match_status"]
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          decided_by: string | null
+          disposition: Database["public"]["Enums"]["league_match_reconciliation_disposition"]
+          id: string
+          league_id: string
+          match_id: string
+          result_version: number
+        }
+        Insert: {
+          candidate_away_score?: number | null
+          candidate_home_score?: number | null
+          candidate_status: Database["public"]["Enums"]["match_status"]
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          decided_by?: string | null
+          disposition?: Database["public"]["Enums"]["league_match_reconciliation_disposition"]
+          id?: string
+          league_id: string
+          match_id: string
+          result_version: number
+        }
+        Update: {
+          candidate_away_score?: number | null
+          candidate_home_score?: number | null
+          candidate_status?: Database["public"]["Enums"]["match_status"]
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          disposition?: Database["public"]["Enums"]["league_match_reconciliation_disposition"]
+          id?: string
+          league_id?: string
+          match_id?: string
+          result_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_match_reconciliations_snapshot_fkey"
+            columns: ["league_id", "match_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_snapshots"
+            referencedColumns: ["league_id", "match_id"]
+          },
+        ]
+      }
+      league_match_snapshots: {
+        Row: {
+          completed_at: string
+          completed_away_score: number | null
+          completed_home_score: number | null
+          completed_result_version: number
+          completed_status: Database["public"]["Enums"]["match_status"]
+          league_id: string
+          match_id: string
+        }
+        Insert: {
+          completed_at: string
+          completed_away_score?: number | null
+          completed_home_score?: number | null
+          completed_result_version: number
+          completed_status: Database["public"]["Enums"]["match_status"]
+          league_id: string
+          match_id: string
+        }
+        Update: {
+          completed_at?: string
+          completed_away_score?: number | null
+          completed_home_score?: number | null
+          completed_result_version?: number
+          completed_status?: Database["public"]["Enums"]["match_status"]
+          league_id?: string
+          match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_match_snapshots_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_snapshots_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_members: {
         Row: {
           approved_at: string
@@ -332,6 +430,62 @@ export type Database = {
           },
         ]
       }
+      match_result_reviews: {
+        Row: {
+          applied_result_version: number | null
+          candidate_away_score: number | null
+          candidate_home_score: number | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          disposition: Database["public"]["Enums"]["match_result_review_disposition"]
+          match_id: string
+          provider_status: string
+          result_version: number
+          selected_away_score: number | null
+          selected_home_score: number | null
+          selected_status: Database["public"]["Enums"]["match_status"] | null
+        }
+        Insert: {
+          applied_result_version?: number | null
+          candidate_away_score?: number | null
+          candidate_home_score?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          disposition?: Database["public"]["Enums"]["match_result_review_disposition"]
+          match_id: string
+          provider_status: string
+          result_version: number
+          selected_away_score?: number | null
+          selected_home_score?: number | null
+          selected_status?: Database["public"]["Enums"]["match_status"] | null
+        }
+        Update: {
+          applied_result_version?: number | null
+          candidate_away_score?: number | null
+          candidate_home_score?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          disposition?: Database["public"]["Enums"]["match_result_review_disposition"]
+          match_id?: string
+          provider_status?: string
+          result_version?: number
+          selected_away_score?: number | null
+          selected_home_score?: number | null
+          selected_status?: Database["public"]["Enums"]["match_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_result_reviews_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           away_score: number | null
@@ -347,7 +501,10 @@ export type Database = {
           predictions_locked_at: string | null
           provider_round_label: string | null
           provider_status: string | null
+          requires_review: boolean
           result_version: number
+          review_code: string | null
+          review_result_version: number | null
           round_number: number
           season_id: string
           status: Database["public"]["Enums"]["match_status"]
@@ -367,7 +524,10 @@ export type Database = {
           predictions_locked_at?: string | null
           provider_round_label?: string | null
           provider_status?: string | null
+          requires_review?: boolean
           result_version?: number
+          review_code?: string | null
+          review_result_version?: number | null
           round_number: number
           season_id: string
           status?: Database["public"]["Enums"]["match_status"]
@@ -387,7 +547,10 @@ export type Database = {
           predictions_locked_at?: string | null
           provider_round_label?: string | null
           provider_status?: string | null
+          requires_review?: boolean
           result_version?: number
+          review_code?: string | null
+          review_result_version?: number | null
           round_number?: number
           season_id?: string
           status?: Database["public"]["Enums"]["match_status"]
@@ -1351,7 +1514,12 @@ export type Database = {
         | "pending_approval"
         | "approved"
         | "rejected"
+      league_match_reconciliation_disposition:
+        | "pending"
+        | "applied"
+        | "dismissed"
       league_status: "draft" | "open" | "active" | "completed" | "archived"
+      match_result_review_disposition: "pending" | "resolved"
       match_status: "scheduled" | "live" | "finished" | "postponed" | "canceled"
       member_status: "active" | "removed"
       outcome: "HOME" | "DRAW" | "AWAY"
@@ -1493,7 +1661,13 @@ export const Constants = {
         "approved",
         "rejected",
       ],
+      league_match_reconciliation_disposition: [
+        "pending",
+        "applied",
+        "dismissed",
+      ],
       league_status: ["draft", "open", "active", "completed", "archived"],
+      match_result_review_disposition: ["pending", "resolved"],
       match_status: ["scheduled", "live", "finished", "postponed", "canceled"],
       member_status: ["active", "removed"],
       outcome: ["HOME", "DRAW", "AWAY"],
