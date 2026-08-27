@@ -504,3 +504,22 @@ npm run test:e2e -- e2e/reports.spec.ts
 `git diff --check` מתועדים ללא ערכי סוד ב־
 `docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
 בפרויקט linked.
+
+## Slice 9 — S9-REQ-001 checkpoints 4–5
+
+השלמה, review ויישוב נבדקים מול Supabase מקומי seeded בלבד. ה־fixtures
+סינתטיים ונגללים לאחור; אין provider חי, linked project, proof content או
+secret אמיתי. בדיקת provider משתמשת payload מצומצם שנבנה בתוך pgTAP.
+
+| שכבה | כיסוי ממוקד ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| pgTAP completion | 23/23: exact manager/foreign, terminal/review/scoring gates, rollback אטומי, snapshots, שתי בקשות pending, proof/history/audit, replay, manual decision ו־frozen list/detail |
+| pgTAP review/reconciliation | 30/30: ACL/actor, AET+replay, FT-while-pending, stale resolution, mixed active/completed, completion unblocked, apply/dismiss/replay, manual correction ו־fixture ללא snapshot |
+| Vitest | 571/571 מלא; מתוכם 36/36 ב־scoring schemas כוללים finished/canceled review ו־apply/dismiss validation |
+| pgTAP מלא | 1277/1277 ב־23 קבצים לאחר forward reset מקומי seeded |
+| Playwright regression | `e2e/scoring.spec.ts` עבר 2/2 ב־Desktop וב־Mobile לאחר תיקון copy; lifecycle E2E המלא נשאר checkpoint 8 ואינו נטען כאן |
+| Gates | lint, typecheck, generated-types drift, DB lint, build וסריקת 52 client artifacts עברו |
+
+פקודות ההרצה והפלטים המצונזרים נשמרים ב־
+`docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים
+בנפרד ב־checkpoint 7; הצלחת הבדיקות האטומיות כאן אינה מוצגת כראיית race.

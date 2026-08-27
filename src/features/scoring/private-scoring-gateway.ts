@@ -3,6 +3,8 @@ import "server-only";
 import { z } from "zod";
 
 import {
+  getSafeReconciliationErrorMessage,
+  getSafeResultReviewErrorMessage,
   getSafeManualOverrideClearErrorMessage,
   getSafeScoringErrorMessage,
 } from "@/features/scoring/errors";
@@ -132,5 +134,95 @@ export async function clearManualMatchOverrideAsSystem(
     };
   }
 
+  return { ok: true as const, data: parsed.data };
+}
+
+const resultReviewResolutionSchema = z.object({
+  result_match_id: z.string().uuid(),
+  result_review_version: z.number().int().nonnegative(),
+  result_applied_version: z.number().int().positive(),
+  result_status: z.enum(["finished", "canceled"]),
+  result_home_score: z.number().int().min(0).max(30).nullable(),
+  result_away_score: z.number().int().min(0).max(30).nullable(),
+  result_predictions_scored: z.number().int().nonnegative(),
+  result_reconciliations_created: z.number().int().nonnegative(),
+});
+
+export async function resolveMatchResultReviewAsSystem(
+  systemActorId: string,
+  input: {
+    matchId: string;
+    resultVersion: number;
+    selectedStatus: "finished" | "canceled";
+    selectedHomeScore: number | null;
+    selectedAwayScore: number | null;
+  },
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const nullableScore = (value: number | null) =>
+    value ?? (null as unknown as number);
+  const { data, error } = await admin.rpc("resolve_match_result_review", {
+    p_match_id: input.matchId,
+    p_result_version: input.resultVersion,
+    p_selected_status: input.selectedStatus,
+    p_selected_home_score: nullableScore(input.selectedHomeScore),
+    p_selected_away_score: nullableScore(input.selectedAwayScore),
+  });
+  if (error) {
+    return { ok: false as const, message: getSafeResultReviewErrorMessage(error) };
+  }
+  const parsed = resultReviewResolutionSchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed.success || parsed.data.result_match_id !== input.matchId) {
+    return {
+      ok: false as const,
+      message: "ההכרעה נשמרה, אך לא ניתן לקרוא את מצב המשחק. יש לרענן.",
+    };
+  }
+  return { ok: true as const, data: parsed.data };
+}
+
+const completedReconciliationSchema = z.object({
+  result_reconciliation_id: z.string().uuid(),
+  result_league_id: z.string().uuid(),
+  result_match_id: z.string().uuid(),
+  result_version: z.number().int().nonnegative(),
+  result_disposition: z.enum(["applied", "dismissed"]),
+  result_predictions_scored: z.number().int().nonnegative(),
+});
+
+export async function reconcileCompletedLeagueAsSystem(
+  systemActorId: string,
+  input: {
+    reconciliationId: string;
+    expectedResultVersion: number;
+    decision: "apply" | "dismiss";
+  },
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const { data, error } = await admin.rpc("reconcile_completed_league", {
+    p_reconciliation_id: input.reconciliationId,
+    p_expected_result_version: input.expectedResultVersion,
+    p_decision: input.decision,
+  });
+  if (error) {
+    return {
+      ok: false as const,
+      message: getSafeReconciliationErrorMessage(error),
+    };
+  }
+  const parsed = completedReconciliationSchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (
+    !parsed.success ||
+    parsed.data.result_reconciliation_id !== input.reconciliationId
+  ) {
+    return {
+      ok: false as const,
+      message: "ההכרעה נשמרה, אך לא ניתן לקרוא את מצב היישוב. יש לרענן.",
+    };
+  }
   return { ok: true as const, data: parsed.data };
 }

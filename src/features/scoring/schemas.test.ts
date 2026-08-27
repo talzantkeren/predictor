@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  completedReconciliationDecisionSchema,
   manualMatchInputSchema,
   manualOverrideClearConfirmationSchema,
   manualResultInputSchema,
   parseSystemMatchFilters,
+  resultReviewDecisionSchema,
 } from "@/features/scoring/schemas";
 
 const matchId = "26000000-0000-4000-8000-000000000201";
@@ -154,6 +156,52 @@ describe("manual override clear confirmation", () => {
       ).toBe(false);
     },
   );
+});
+
+describe("Slice 9 lifecycle decisions", () => {
+  it("normalizes a finished review decision and a scoreless cancellation", () => {
+    expect(
+      resultReviewDecisionSchema.parse({
+        selectedStatus: "finished",
+        selectedHomeScore: "2",
+        selectedAwayScore: "1",
+      }),
+    ).toEqual({
+      selectedStatus: "finished",
+      selectedHomeScore: 2,
+      selectedAwayScore: 1,
+    });
+    expect(
+      resultReviewDecisionSchema.parse({
+        selectedStatus: "canceled",
+        selectedHomeScore: "",
+        selectedAwayScore: "",
+      }),
+    ).toEqual({
+      selectedStatus: "canceled",
+      selectedHomeScore: null,
+      selectedAwayScore: null,
+    });
+  });
+
+  it.each([
+    { selectedStatus: "finished", selectedHomeScore: "", selectedAwayScore: "1" },
+    { selectedStatus: "finished", selectedHomeScore: "31", selectedAwayScore: "1" },
+    { selectedStatus: "canceled", selectedHomeScore: "1", selectedAwayScore: "" },
+    { selectedStatus: "live", selectedHomeScore: "1", selectedAwayScore: "1" },
+  ])("rejects malformed review decision input: %o", (input) => {
+    expect(resultReviewDecisionSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("accepts only explicit apply or dismiss reconciliation decisions", () => {
+    expect(
+      completedReconciliationDecisionSchema.parse({ decision: "apply" }),
+    ).toEqual({ decision: "apply" });
+    expect(
+      completedReconciliationDecisionSchema.safeParse({ decision: "approve" })
+        .success,
+    ).toBe(false);
+  });
 });
 
 describe("system match URL filters", () => {

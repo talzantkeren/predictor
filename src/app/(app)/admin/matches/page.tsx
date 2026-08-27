@@ -14,7 +14,10 @@ import {
 } from "@/features/predictions/display";
 import { ManualMatchFormBoundary } from "@/features/scoring/components/manual-match-form-boundary";
 import { ManualOverrideClearBoundary } from "@/features/scoring/components/manual-override-clear-boundary";
+import { CompletedReconciliationBoundary } from "@/features/scoring/components/completed-reconciliation-boundary";
+import { ResultReviewBoundary } from "@/features/scoring/components/result-review-boundary";
 import {
+  getPendingLeagueReconciliations,
   getSystemMatchEditorCatalog,
   getSystemMatchList,
 } from "@/features/scoring/queries";
@@ -72,12 +75,17 @@ export default async function SystemMatchesPage({
     );
   }
 
-  const [result, catalogResult] = await Promise.all([
+  const [result, catalogResult, reconciliationsResult] = await Promise.all([
     getSystemMatchList(supabase, filters.data, cursor.data),
     getSystemMatchEditorCatalog(supabase),
+    getPendingLeagueReconciliations(supabase),
   ]);
 
-  if (result.status === "denied" || catalogResult.status === "denied") {
+  if (
+    result.status === "denied" ||
+    catalogResult.status === "denied" ||
+    reconciliationsResult.status === "denied"
+  ) {
     notFound();
   }
 
@@ -103,7 +111,7 @@ export default async function SystemMatchesPage({
           </h1>
           <p className="mt-2 max-w-2xl leading-7 text-slate-600">
             שינוי נשמר אטומית ומחשב ניקוד מחדש רק בליגות שאינן סופיות. עונה
-            עם ליגה שהושלמה דורשת מסלול reconciliation מפורש.
+            עם ליגה שהושלמה דורשת מסלול יישוב מפורש.
           </p>
         </div>
         <nav aria-label="ניווט ניהול" className="flex flex-wrap gap-2">
@@ -126,6 +134,53 @@ export default async function SystemMatchesPage({
         מועד הפתיחה מוזן ב־UTC ונבדק שוב לפי זמן מסד הנתונים. תיקון תוצאה
         מחליף את הניקוד הקודם; שינוי זהות נחסם לאחר ניחוש או נעילה.
       </aside>
+
+      <section
+        className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+        aria-labelledby="reconciliation-title"
+      >
+        <p className="text-sm font-semibold text-blue-700">תוצאות סופיות קפואות</p>
+        <h2 id="reconciliation-title" className="mt-1 text-xl font-bold">
+          יישובי תוצאה שממתינים להכרעה
+        </h2>
+        {reconciliationsResult.status === "error" ? (
+          <div className="mt-4">
+            <ErrorState>לא ניתן לטעון את תור היישובים כרגע.</ErrorState>
+          </div>
+        ) : reconciliationsResult.items.length === 0 ? (
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            אין כרגע תיקוני תוצאה שממתינים להחלה או לדחייה בליגה שהושלמה.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {reconciliationsResult.items.map((reconciliation) => (
+              <article
+                key={reconciliation.id}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <h3 className="font-bold text-slate-950">
+                  {reconciliation.homeTeamName} — {reconciliation.awayTeamName}
+                </h3>
+                <p className="mt-1 break-words text-sm leading-6 text-slate-600">
+                  ליגה <bdi>{reconciliation.leagueId}</bdi> · גרסת תוצאה {reconciliation.resultVersion}
+                  {reconciliation.candidateStatus === "canceled"
+                    ? " · ביטול"
+                    : ` · ${reconciliation.candidateHomeScore}–${reconciliation.candidateAwayScore}`}
+                </p>
+                <CompletedReconciliationBoundary
+                  reconciliationId={reconciliation.id}
+                  expectedResultVersion={reconciliation.resultVersion}
+                />
+              </article>
+            ))}
+            {reconciliationsResult.hasMore ? (
+              <p className="text-sm font-semibold text-amber-900">
+                קיימים יישובים נוספים. יש להכריע בפריטים המוצגים ולרענן את העמוד.
+              </p>
+            ) : null}
+          </div>
+        )}
+      </section>
 
       {catalog && createMatchId ? (
         <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm sm:p-6">
@@ -290,6 +345,17 @@ export default async function SystemMatchesPage({
                   </dd>
                 </dl>
               </div>
+              {match.requiresReview && match.reviewResultVersion !== null ? (
+                <div className="mt-4">
+                  <p className="text-sm font-semibold text-amber-950">
+                    בדיקה נדרשת: <bdi>{match.reviewCode}</bdi> · גרסה {match.reviewResultVersion}
+                  </p>
+                  <ResultReviewBoundary
+                    matchId={match.id}
+                    resultVersion={match.reviewResultVersion}
+                  />
+                </div>
+              ) : null}
               {catalog ? (
                 <ManualMatchFormBoundary catalog={catalog} match={match} />
               ) : (

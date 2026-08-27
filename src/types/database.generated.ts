@@ -1540,6 +1540,21 @@ export type Database = {
         }[]
       }
       is_system_admin: { Args: never; Returns: boolean }
+      reconcile_completed_league: {
+        Args: {
+          p_decision: string
+          p_expected_result_version: number
+          p_reconciliation_id: string
+        }
+        Returns: {
+          result_disposition: Database["public"]["Enums"]["league_match_reconciliation_disposition"]
+          result_league_id: string
+          result_match_id: string
+          result_predictions_scored: number
+          result_reconciliation_id: string
+          result_version: number
+        }[]
+      }
       reject_join_request: {
         Args: { p_reason: string; p_request_id: string }
         Returns: {
@@ -1563,6 +1578,25 @@ export type Database = {
           request_created_at: string
           request_updated_at: string
           viewer_state: string
+        }[]
+      }
+      resolve_match_result_review: {
+        Args: {
+          p_match_id: string
+          p_result_version: number
+          p_selected_away_score: number
+          p_selected_home_score: number
+          p_selected_status: Database["public"]["Enums"]["match_status"]
+        }
+        Returns: {
+          result_applied_version: number
+          result_away_score: number
+          result_home_score: number
+          result_match_id: string
+          result_predictions_scored: number
+          result_reconciliations_created: number
+          result_review_version: number
+          result_status: Database["public"]["Enums"]["match_status"]
         }[]
       }
       revoke_invite: {

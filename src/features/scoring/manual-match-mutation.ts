@@ -78,7 +78,7 @@ export async function mutateManualMatch(
       : !result.data.changed
         ? "המשחק כבר תואם לפרטים שנשלחו."
         : parsed.data.status === "finished" || parsed.data.status === "canceled"
-          ? "התוצאה נשמרה והדירוגים חושבו מחדש."
+          ? "התוצאה נשמרה והדירוגים חושבו מחדש. בליגה שהושלמה נדרש יישוב מפורש."
           : "פרטי המשחק נשמרו בבעלות ידנית.",
     resultVersion: result.data.resultVersion,
   };

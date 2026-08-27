@@ -276,3 +276,58 @@ export function parseSystemMatchFilters(searchParams: {
     },
   };
 }
+
+const lifecycleScoreSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string" || !/^(0|[1-9][0-9]?)$/.test(value)) {
+      return value;
+    }
+    return Number(value);
+  },
+  z.number().int().min(0, "הערך המינימלי הוא 0.").max(30, "הערך המרבי הוא 30."),
+);
+
+export const resultReviewDecisionSchema = z
+  .object({
+    selectedStatus: z.enum(["finished", "canceled"]),
+    selectedHomeScore: z.preprocess(normalizeExactEmpty, lifecycleScoreSchema.optional()),
+    selectedAwayScore: z.preprocess(normalizeExactEmpty, lifecycleScoreSchema.optional()),
+  })
+  .superRefine((input, context) => {
+    if (input.selectedStatus === "finished") {
+      if (input.selectedHomeScore === undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["selectedHomeScore"],
+          message: "יש להזין תוצאת בית.",
+        });
+      }
+      if (input.selectedAwayScore === undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["selectedAwayScore"],
+          message: "יש להזין תוצאת חוץ.",
+        });
+      }
+    } else if (
+      input.selectedHomeScore !== undefined ||
+      input.selectedAwayScore !== undefined
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["selectedStatus"],
+        message: "ביטול משחק חייב להישמר ללא תוצאה.",
+      });
+    }
+  })
+  .transform((input) => ({
+    selectedStatus: input.selectedStatus,
+    selectedHomeScore:
+      input.selectedStatus === "finished" ? input.selectedHomeScore! : null,
+    selectedAwayScore:
+      input.selectedStatus === "finished" ? input.selectedAwayScore! : null,
+  }));
+
+export const completedReconciliationDecisionSchema = z.object({
+  decision: z.enum(["apply", "dismiss"]),
+});

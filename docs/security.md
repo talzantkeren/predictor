@@ -548,3 +548,32 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | דוח חלקי או overflow במספר חריג | safe nonnegative integer בכל count; cap של 500 רק ברשימת standings | null/fraction/unsafe נכשלים, 501 count מתקבל ומסלול standings חריג נכשל סגור |
 | דירוג שונה מן המסך הציבורי לחברים | reuse של `getLeagueStandings`/view ללא sorting חדש | `1,1,3`, exact informational ושמות כפולים keyed by user ID |
 | שפה כספית או AI חודרת לדוח | allowlist שדות ו־UI קבוע לא־כספי | notice גלוי וחיפוש currency/percentage/AI/payment links בדסקטופ וב־Pixel 5 |
+
+## Slice 9 — lifecycle, review ויישוב תוצאה סופית
+
+- `start_league` ו־`complete_league` הם RPCs צרים; אין עדכון status גנרי.
+  השלמה דורשת את מנהל הליגה המדויק, נועלת את המשאב לפני children, ודוחה
+  atomically סט ריק, משחק שאינו terminal, review פתוח או ניקוד שאינו בגרסה
+  הנוכחית. snapshot מלא, סגירת שתי בקשות ה־pending וה־audit נכתבים באותה
+  transaction; proof, חברות והיסטוריה אינם נמחקים.
+- `league_match_results` הוא view מסוג `security_invoker`. בליגה שהושלמה הוא
+  מחזיר רק שורות `league_match_snapshots` ואת התוצאה הקפואה; תיקון canonical
+  או fixture מאוחר אינם משנים list/detail סופי.
+- AET/PEN נשמרים כ־`match_result_reviews(match_id,result_version)` pending.
+  provider replay אינו מכפיל שורה, ו־FT שמגיע בזמן review מעדכן candidate בלבד
+  ואינו עוקף הכרעת מנהל מערכת. `resolve_match_result_review` דורש fixed system
+  actor, נועל `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
+  `completed/archived`.
+- כל תיקון canonical לגרסה חדשה יוצר reconciliation רק עבור snapshot קיים.
+  `reconcile_completed_league` נועל `match→snapshot→reconciliation`; apply
+  דורש התאמה מלאה לגרסת canonical הנוכחית ומחליף deterministically את snapshot
+  וניקוד הליגה היחידה. dismiss סוגר work item בלי לשנות תוצאה. שני הנתיבים
+  service-role-only מאחורי session+system-admin וה־admin gateway הקיים; IDs
+  וגרסאות נלכדים ב־Server Component ונבדקים שוב במסד.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| provider עוקף review או replay מכפיל work | advisory serialization, match→review locks ו־unique version | AET, replay ו־FT-while-pending ב־pgTAP |
+| תיקון משכתב דירוג סופי בשקט | scorer מסנן completed ויוצר queue רק מ־snapshot | mixed active/completed, no-prediction ו־post-completion fixture |
+| actor זר או גרסה ישנה מכריעים | session AuthZ, fixed actor, service-only RPC ו־expected version | authenticated denial, missing actor, stale/replay |
+| יישוב ליגה אחת משנה ליגה אחרת | reconciliation league-scoped ו־snapshot composite FK | apply מול dismiss בשתי ליגות שחולקות match |

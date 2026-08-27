@@ -64,3 +64,34 @@ export function getSafeManualOverrideClearErrorMessage(error: unknown) {
 
   return "לא ניתן להחזיר את ניהול המשחק לספק כרגע. יש לנסות שוב.";
 }
+
+const safeReviewErrors: Record<string, string> = {
+  FORBIDDEN: "אין הרשאה להכריע בדיקת תוצאה.",
+  MATCH_NOT_STARTED: "אפשר לאשר תוצאת סיום רק לאחר מועד פתיחת המשחק.",
+  REVIEW_NOT_FOUND: "בדיקת התוצאה המבוקשת אינה זמינה.",
+  REVIEW_STALE: "בדיקת התוצאה כבר הוכרעה או שגרסת המשחק השתנתה. יש לרענן.",
+  SCORING_RULES_MISSING: "לא ניתן לחשב ניקוד למשחק במצב הנתונים הנוכחי.",
+  VALIDATION_ERROR: "הכרעת התוצאה אינה תקינה.",
+};
+
+export function getSafeResultReviewErrorMessage(error: unknown) {
+  const message = getErrorValue(error, "message");
+  if (message && safeReviewErrors[message]) return safeReviewErrors[message];
+  return "לא ניתן להכריע את בדיקת התוצאה כרגע. יש לנסות שוב.";
+}
+
+const safeReconciliationErrors: Record<string, string> = {
+  FORBIDDEN: "אין הרשאה להכריע יישוב תוצאה סופית.",
+  RECONCILIATION_NOT_FOUND: "יישוב התוצאה המבוקש אינו זמין.",
+  RECONCILIATION_REPLAY: "יישוב התוצאה כבר הוכרע.",
+  RECONCILIATION_STALE: "גרסת המשחק או התוצאה הסופית השתנתה. יש לרענן.",
+  VALIDATION_ERROR: "הכרעת יישוב התוצאה אינה תקינה.",
+};
+
+export function getSafeReconciliationErrorMessage(error: unknown) {
+  const message = getErrorValue(error, "message");
+  if (message && safeReconciliationErrors[message]) {
+    return safeReconciliationErrors[message];
+  }
+  return "לא ניתן להכריע את יישוב התוצאה כרגע. יש לנסות שוב.";
+}

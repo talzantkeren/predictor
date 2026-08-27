@@ -17,6 +17,9 @@ export type SystemMatchItem = {
   homeScore: number | null;
   awayScore: number | null;
   resultVersion: number;
+  requiresReview: boolean;
+  reviewCode: string | null;
+  reviewResultVersion: number | null;
   isManuallyOverridden: boolean;
   externalProvider: string | null;
   homeTeamName: string;
@@ -24,6 +27,19 @@ export type SystemMatchItem = {
 };
 
 export type SystemMatchPage = KeysetPage<SystemMatchItem>;
+
+export type PendingLeagueReconciliation = {
+  id: string;
+  leagueId: string;
+  matchId: string;
+  resultVersion: number;
+  candidateStatus: ScoredMatchStatus;
+  candidateHomeScore: number | null;
+  candidateAwayScore: number | null;
+  createdAt: string;
+  homeTeamName: string;
+  awayTeamName: string;
+};
 
 export type SystemMatchFilters = {
   seasonId?: string;

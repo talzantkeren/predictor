@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   LeagueStanding,
+  PendingLeagueReconciliation,
   LeagueStandings,
   SystemMatchFilters,
   SystemMatchEditorCatalog,
@@ -65,7 +66,7 @@ export async function getSystemMatchList(
   let query = supabase
     .from("matches")
     .select(
-      "id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status, home_score, away_score, result_version, is_manually_overridden, external_provider, home_team:teams!matches_home_team_id_fkey(name), away_team:teams!matches_away_team_id_fkey(name)",
+      "id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status, home_score, away_score, result_version, requires_review, review_code, review_result_version, is_manually_overridden, external_provider, home_team:teams!matches_home_team_id_fkey(name), away_team:teams!matches_away_team_id_fkey(name)",
     )
     .order("kickoff_at", { ascending: false })
     .order("id", { ascending: false })
@@ -104,6 +105,9 @@ export async function getSystemMatchList(
         homeScore: match.home_score,
         awayScore: match.away_score,
         resultVersion: match.result_version,
+        requiresReview: match.requires_review,
+        reviewCode: match.review_code,
+        reviewResultVersion: match.review_result_version,
         isManuallyOverridden: match.is_manually_overridden,
         externalProvider: match.external_provider,
         homeTeamName: match.home_team.name,
@@ -111,6 +115,83 @@ export async function getSystemMatchList(
       }),
       (match) => ({ at: match.kickoff_at, id: match.id }),
     ),
+  };
+}
+
+const PENDING_RECONCILIATION_LIMIT = 25;
+
+export async function getPendingLeagueReconciliations(
+  supabase: SupabaseClient<Database>,
+): Promise<
+  | { status: "found"; items: PendingLeagueReconciliation[]; hasMore: boolean }
+  | { status: "denied" }
+  | { status: "error" }
+> {
+  const authorization = await getSystemAdminAuthorization(supabase);
+  if (authorization.status !== "authorized") return authorization;
+
+  const { data: reconciliations, error } = await supabase
+    .from("league_match_reconciliations")
+    .select(
+      "id, league_id, match_id, result_version, candidate_status, candidate_home_score, candidate_away_score, created_at",
+    )
+    .eq("disposition", "pending")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(PENDING_RECONCILIATION_LIMIT + 1);
+
+  if (error || !reconciliations) return { status: "error" };
+  const visible = reconciliations.slice(0, PENDING_RECONCILIATION_LIMIT);
+  const matchIds = [...new Set(visible.map((item) => item.match_id))];
+  const matchesResult =
+    matchIds.length === 0
+      ? { data: [], error: null }
+      : await supabase
+          .from("matches")
+          .select(
+            "id, home_team:teams!matches_home_team_id_fkey(name), away_team:teams!matches_away_team_id_fkey(name)",
+          )
+          .in("id", matchIds)
+          .limit(PENDING_RECONCILIATION_LIMIT);
+
+  if (matchesResult.error || !matchesResult.data) return { status: "error" };
+  const matchesById = new Map(
+    matchesResult.data.map((match) => [
+      match.id,
+      {
+        homeTeamName: match.home_team.name,
+        awayTeamName: match.away_team.name,
+      },
+    ]),
+  );
+
+  const items: PendingLeagueReconciliation[] = [];
+  for (const reconciliation of visible) {
+    const match = matchesById.get(reconciliation.match_id);
+    const candidateStatus = reconciliation.candidate_status;
+    if (
+      !match ||
+      (candidateStatus !== "finished" && candidateStatus !== "canceled")
+    ) {
+      return { status: "error" };
+    }
+    items.push({
+      id: reconciliation.id,
+      leagueId: reconciliation.league_id,
+      matchId: reconciliation.match_id,
+      resultVersion: reconciliation.result_version,
+      candidateStatus,
+      candidateHomeScore: reconciliation.candidate_home_score,
+      candidateAwayScore: reconciliation.candidate_away_score,
+      createdAt: reconciliation.created_at,
+      ...match,
+    });
+  }
+
+  return {
+    status: "found",
+    items,
+    hasMore: reconciliations.length > PENDING_RECONCILIATION_LIMIT,
   };
 }
 
