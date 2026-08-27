@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  getSafeLeagueCompletionErrorMessage,
   getSafeLeagueErrorMessage,
   getSafeLeagueLifecycleErrorMessage,
   getSafeLeagueSettingsErrorMessage,
@@ -153,5 +154,48 @@ export async function startLeague(
     ok: true,
     changed: result.result_changed,
     code: result.result_code,
+  };
+}
+
+type CompleteLeagueResult =
+  | {
+      ok: true;
+      changed: boolean;
+      snapshotCount: number;
+      closedRequestCount: number;
+    }
+  | { ok: false; message: string };
+
+export async function completeLeague(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+): Promise<CompleteLeagueResult> {
+  const { data, error } = await supabase.rpc("complete_league", {
+    p_league_id: leagueId,
+  });
+  const result = data?.[0];
+
+  if (
+    error ||
+    !result ||
+    result.result_league_id !== leagueId ||
+    result.result_status !== "completed" ||
+    typeof result.result_changed !== "boolean" ||
+    !Number.isSafeInteger(result.result_snapshot_count) ||
+    result.result_snapshot_count < 0 ||
+    !Number.isSafeInteger(result.result_closed_request_count) ||
+    result.result_closed_request_count < 0
+  ) {
+    return {
+      ok: false,
+      message: getSafeLeagueCompletionErrorMessage(error),
+    };
+  }
+
+  return {
+    ok: true,
+    changed: result.result_changed,
+    snapshotCount: result.result_snapshot_count,
+    closedRequestCount: result.result_closed_request_count,
   };
 }

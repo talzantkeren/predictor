@@ -75,3 +75,24 @@ export function getSafeLeagueLifecycleErrorMessage(error: unknown) {
 
   return "לא ניתן להפעיל את הליגה כרגע. יש לנסות שוב.";
 }
+
+const safeLeagueCompletionErrors: Record<string, string> = {
+  UNAUTHENTICATED: "פג תוקף ההתחברות. יש להתחבר מחדש.",
+  LEAGUE_NOT_COMPLETABLE:
+    "עדיין לא ניתן להשלים את הליגה. יש לוודא שכל המשחקים הסתיימו ושכל התוצאות והניקוד אושרו.",
+};
+
+export function getSafeLeagueCompletionErrorMessage(error: unknown) {
+  const message = getDatabaseErrorValue(error, "message");
+
+  if (message && safeLeagueCompletionErrors[message]) {
+    return safeLeagueCompletionErrors[message];
+  }
+
+  // Missing and foreign league IDs deliberately share an opaque response.
+  if (message === "LEAGUE_NOT_FOUND") {
+    return "לא ניתן להשלים את הליגה.";
+  }
+
+  return "לא ניתן להשלים את הליגה כרגע. יש לנסות שוב.";
+}

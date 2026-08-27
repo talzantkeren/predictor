@@ -13,6 +13,7 @@ import {
 } from "@/features/leagues/schemas";
 import { getLeagueSettingsAuthorization } from "@/features/leagues/settings-query";
 import {
+  completeLeague,
   createLeague,
   startLeague,
   updateLeagueSettings,
@@ -194,5 +195,40 @@ export async function startLeagueAction(
         : result.changed
           ? "הליגה הופעלה וחוקי התחרות ננעלו."
           : "הליגה כבר פעילה.",
+  };
+}
+
+export async function completeLeagueAction(
+  leagueId: string,
+  _previousState: LeagueLifecycleActionState,
+  _formData: FormData,
+): Promise<LeagueLifecycleActionState> {
+  void _previousState;
+  void _formData;
+  const parsedLeagueId = z.string().uuid().safeParse(leagueId);
+  if (!parsedLeagueId.success) {
+    return { status: "error", message: "לא ניתן להשלים את הליגה." };
+  }
+
+  const { supabase } = await requireAuthenticatedUser(
+    `/leagues/${parsedLeagueId.data}`,
+  );
+  const result = await completeLeague(supabase, parsedLeagueId.data);
+
+  if (!result.ok) {
+    return { status: "error", message: result.message };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/leagues/${parsedLeagueId.data}`);
+  revalidatePath(`/leagues/${parsedLeagueId.data}/matches`);
+  revalidatePath(`/leagues/${parsedLeagueId.data}/standings`);
+  revalidatePath(`/leagues/${parsedLeagueId.data}/members`);
+
+  return {
+    status: "success",
+    message: result.changed
+      ? `הליגה הושלמה ונקבעו ${result.snapshotCount} משחקים לתוצאה הסופית.`
+      : "הליגה כבר הושלמה.",
   };
 }

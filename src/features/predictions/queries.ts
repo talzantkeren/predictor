@@ -8,6 +8,7 @@ import type {
   LeagueMatchList,
   MatchDetail,
   MatchListFilter,
+  MatchStatus,
   OwnPrediction,
 } from "@/features/predictions/types";
 import {
@@ -30,6 +31,42 @@ const ELIGIBLE_LEAGUE_PAGE_SIZE = 20;
 const REVEALED_PREDICTION_PAGE_SIZE = 25;
 
 type PredictionRow = Database["public"]["Tables"]["predictions"]["Row"];
+type LeagueMatchResultRow =
+  Database["public"]["Views"]["league_match_results"]["Row"];
+type ValidLeagueMatchResultRow = LeagueMatchResultRow & {
+  id: string;
+  round_number: number;
+  kickoff_at: string;
+  status: MatchStatus;
+  home_team_id: string;
+  home_team_name: string;
+  away_team_id: string;
+  away_team_name: string;
+};
+
+const matchStatuses = [
+  "scheduled",
+  "live",
+  "finished",
+  "postponed",
+  "canceled",
+] as const satisfies readonly MatchStatus[];
+
+function isValidLeagueMatchResultRow(
+  row: LeagueMatchResultRow,
+): row is ValidLeagueMatchResultRow {
+  return (
+    typeof row.id === "string" &&
+    Number.isSafeInteger(row.round_number) &&
+    typeof row.kickoff_at === "string" &&
+    typeof row.status === "string" &&
+    (matchStatuses as readonly string[]).includes(row.status) &&
+    typeof row.home_team_id === "string" &&
+    typeof row.home_team_name === "string" &&
+    typeof row.away_team_id === "string" &&
+    typeof row.away_team_name === "string"
+  );
+}
 
 function mapOwnPrediction(
   prediction: Pick<
@@ -87,11 +124,11 @@ export async function getLeagueMatchList(
   if (!league) return { status: "not-found" };
 
   let matchesQuery = supabase
-    .from("matches")
+    .from("league_match_results")
     .select(
-      "id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
+      "league_id, id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team_id, home_team_name, home_team_short_name, away_team_id, away_team_name, away_team_short_name",
     )
-    .eq("season_id", league.season_id)
+    .eq("league_id", league.id)
     .order("kickoff_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(MATCH_PAGE_SIZE + 1);
@@ -128,6 +165,10 @@ export async function getLeagueMatchList(
     matchesResult.error ||
     !matchesResult.data
   ) {
+    return { status: "error" };
+  }
+
+  if (!matchesResult.data.every(isValidLeagueMatchResultRow)) {
     return { status: "error" };
   }
 
@@ -184,14 +225,14 @@ export async function getLeagueMatchList(
           homeScore: match.home_score,
           awayScore: match.away_score,
           homeTeam: {
-            id: match.home_team.id,
-            name: match.home_team.name,
-            shortName: match.home_team.short_name,
+            id: match.home_team_id,
+            name: match.home_team_name,
+            shortName: match.home_team_short_name,
           },
           awayTeam: {
-            id: match.away_team.id,
-            name: match.away_team.name,
-            shortName: match.away_team.short_name,
+            id: match.away_team_id,
+            name: match.away_team_name,
+            shortName: match.away_team_short_name,
           },
           ownPrediction: predictionsByMatchId.get(match.id) ?? null,
         }),

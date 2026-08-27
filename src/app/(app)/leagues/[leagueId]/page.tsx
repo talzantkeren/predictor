@@ -6,6 +6,7 @@ import { DemoNotice } from "@/components/ui/demo-notice";
 import { ErrorState } from "@/components/ui/error-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
+import { CompleteLeagueForm } from "@/features/leagues/components/complete-league-form";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
 import { StartLeagueForm } from "@/features/leagues/components/start-league-form";
 import {
@@ -213,6 +214,11 @@ export default async function LeagueSummaryPage({
               {league.status === "open" ? (
                 <div className="mt-4">
                   <StartLeagueForm leagueId={league.id} />
+                </div>
+              ) : null}
+              {league.status === "active" ? (
+                <div className="mt-4">
+                  <CompleteLeagueForm leagueId={league.id} />
                 </div>
               ) : null}
               <div className="mt-4 grid gap-3">

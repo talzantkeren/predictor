@@ -139,6 +139,13 @@ export type Database = {
             foreignKeyName: "invite_links_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "invite_links_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
@@ -179,6 +186,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "join_requests_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
           {
             foreignKeyName: "join_requests_league_id_fkey"
             columns: ["league_id"]
@@ -274,7 +288,21 @@ export type Database = {
             foreignKeyName: "league_match_snapshots_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "league_match_snapshots_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_snapshots_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_results"
             referencedColumns: ["id"]
           },
           {
@@ -328,6 +356,13 @@ export type Database = {
             foreignKeyName: "league_members_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "league_members_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
@@ -369,6 +404,13 @@ export type Database = {
             foreignKeyName: "league_scoring_rules_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: true
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "league_scoring_rules_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
@@ -378,6 +420,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           allow_late_join: boolean
+          completed_at: string | null
           created_at: string
           demo_entry_fee_agorot: number
           demo_payment_instructions: string | null
@@ -394,6 +437,7 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           allow_late_join?: boolean
+          completed_at?: string | null
           created_at?: string
           demo_entry_fee_agorot?: number
           demo_payment_instructions?: string | null
@@ -410,6 +454,7 @@ export type Database = {
         Update: {
           activated_at?: string | null
           allow_late_join?: boolean
+          completed_at?: string | null
           created_at?: string
           demo_entry_fee_agorot?: number
           demo_payment_instructions?: string | null
@@ -480,6 +525,13 @@ export type Database = {
           selected_status?: Database["public"]["Enums"]["match_status"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "match_result_reviews_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_result_reviews_match_id_fkey"
             columns: ["match_id"]
@@ -687,7 +739,21 @@ export type Database = {
             foreignKeyName: "predictions_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "predictions_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predictions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_results"
             referencedColumns: ["id"]
           },
           {
@@ -722,6 +788,13 @@ export type Database = {
           position?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "prize_rules_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
           {
             foreignKeyName: "prize_rules_league_id_fkey"
             columns: ["league_id"]
@@ -1054,7 +1127,49 @@ export type Database = {
             foreignKeyName: "league_members_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "league_match_results"
+            referencedColumns: ["league_id"]
+          },
+          {
+            foreignKeyName: "league_members_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_match_results: {
+        Row: {
+          away_score: number | null
+          away_team_id: string | null
+          away_team_name: string | null
+          away_team_short_name: string | null
+          home_score: number | null
+          home_team_id: string | null
+          home_team_name: string | null
+          home_team_short_name: string | null
+          id: string | null
+          kickoff_at: string | null
+          league_id: string | null
+          predictions_locked_at: string | null
+          provider_status: string | null
+          round_number: number | null
+          status: Database["public"]["Enums"]["match_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1140,6 +1255,17 @@ export type Database = {
           result_match_id: string
           result_status: Database["public"]["Enums"]["match_status"]
           result_version: number
+        }[]
+      }
+      complete_league: {
+        Args: { p_league_id: string }
+        Returns: {
+          result_changed: boolean
+          result_closed_request_count: number
+          result_completed_at: string
+          result_league_id: string
+          result_snapshot_count: number
+          result_status: Database["public"]["Enums"]["league_status"]
         }[]
       }
       consume_proof_upload_rate_limit: {
