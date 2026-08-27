@@ -12,9 +12,9 @@ Status: `OWNER_ACTION_REQUIRED`
 | --- | --- |
 | ID | `S9-REQ-005` |
 | Branch | `feature/slice-9-implementation` |
-| Candidate SHA | `<final-candidate-sha>` |
-| Pushed SHA | `<final-pushed-sha>` |
-| Clean-clone SHA | `<clean-clone-sha>` |
+| Candidate SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` |
+| Pushed SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` (implementation checkpoint; evidence-only follow-up may advance HEAD) |
+| Clean-clone SHA | `2a692242c795b3129792b7b7f7cd203c1776f9f9` |
 | Draft review | Draft PR #14 — נשאר Draft, לא ממוזג |
 
 ## מטריצת שערים מקומיים
@@ -36,7 +36,7 @@ Status: `OWNER_ACTION_REQUIRED`
 | Representative scale | `npm.cmd run scale:plans` | PASS | ארבעה plans: 0.153/2.182/0.464/0.834ms; rows 51/51/51/26 |
 | Viewports | `$env:FINAL_VIEWPORT_AUDIT='true'; npm.cmd run test:e2e:run -- e2e/home.spec.ts --project=desktop-chromium` | PASS | 1/1 in 2.7s; 360 / 390 / 768 / 1024 / 1440 inspected; no clipping/overlap/overflow |
 | S9-DEF-024 repeats | `npm.cmd run test:e2e:run -- e2e/prediction-lock.spec.ts` | PASS | three clean E2E repeats: 2/2 in 26.6s, 2/2 in 26.6s, 2/2 in 26.8s; no `[WebServer] Error` |
-| Clean clone | `npm.cmd ci` ואז `npm.cmd run verify` ו־`npm.cmd run build` ב־clean-clone | PENDING | טרם נמדד על SHA דחוף |
+| Clean clone | `npm.cmd ci` ואז `npm.cmd run verify` ו־`npm.cmd run build` ב־clean-clone | PASS | SHA מדויק; install 425/0 vulnerabilities; 627/1443/28 passed; E2E 5.8m; client scan 52; build exit 0; Git status clean |
 
 ## חוזי regression חדשים
 

@@ -54,7 +54,7 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-REQ-002 | P1 | W7 | מצגת, demo script וחזרה של 10–15 דקות | OWNER_ACTION_REQUIRED | §11, `S9-REQ-002` | `docs/evidence/slice-9/w7/S9-REQ-002.md` | `c52393d654f63906a4561231d1943e38de2437d1` | 9 שקפים עריכים+render, notes, script, fallback ו־regression עברו; owner חייב לבצע ולתעד חזרה אנושית 10–15 דקות על candidate SHA, לרבות קישורים ו־outage. |
 | S9-REQ-004 | P2 | W7 | חבילת מסמכי הגשה מסונכרנת | VERIFIED | §11, `S9-REQ-004` | `docs/evidence/slice-9/w7/S9-REQ-004.md` | `219c31bb28cdfa90e873168675c23849e2baade7` | README/testing/security/scale/evaluator והספר v1.3 מסונכרנים; 627/627, ‏1443/1443 ו־28/28 נמדדו מחדש; links, render 5/5, build ו־client scan עברו. |
 | S9-REQ-003 | P1 | W8 | ראיית הגשה סופית וגישת evaluator | OWNER_ACTION_REQUIRED | §11, `S9-REQ-003` | `docs/evidence/slice-9/w8/S9-REQ-003.md` | `1e3b9968c54edca78bab72ffefa491cbd2e0454f` | read-only register ו־regression עברו; final SHA/Production parity/evaluator/Hosted migrations חסרים, CI חסום ב־Billing, Preview Cron=60 ו־Sports key עדיין ב־Preview. |
-| S9-REQ-005 | P2 | W8 | hardening וראיית בדיקה סופית | IN_PROGRESS | §11, `S9-REQ-005` | `docs/evidence/slice-9/w8/S9-REQ-005.md` | — | matrix מלאה, clean clone, Advisors/scale/UI/security וראיות final SHA. |
+| S9-REQ-005 | P2 | W8 | hardening וראיית בדיקה סופית | OWNER_ACTION_REQUIRED | §11, `S9-REQ-005` | `docs/evidence/slice-9/w8/S9-REQ-005.md` | `2a692242c795b3129792b7b7f7cd203c1776f9f9` | local+clean-clone matrix ירוקה: 627 Vitest, ‏1443 DB, ‏28 E2E, build/lint/types/audit/scale/UI; Hosted Advisors/password, CI billing, native 200%, evaluator/rehearsal/final Production SHA נשארו owner-only ואינם waived. |
 
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
