@@ -1355,11 +1355,14 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   ל־deadline ואינו backdating של האודיט. principal לא־אינטראקטיבי מקבל מראש
   designation יחיד `automation_purpose='sports_sync'`; trigger מבוקר יוצר את
   ה־binding הפרטי, ו־migration קדימה מקדמת binding קיים לאותו designation.
-  recovery שנחשף בגבול עסקי רשאי לקרוא את ה־designation ישירות כאשר cache
-  ה־binding חסר, בלי לכתוב אותו אחרי נעילת league. הוא מייחס את אירוע האודיט
-  ל־system actor ושומר את `auth.uid()` של החבר/מוזמן רק בתור
-  `metadata.triggering_actor_id`. חסרון designation נכשל סגור, actor אחר אינו
-  מחליף אותו בשקט והסרת שורת `system_admins` מסירה את הקישור. פעולה ידנית מוקדמת
+   recovery שנחשף בגבול עסקי רשאי לקרוא את ה־designation ישירות כאשר cache
+   ה־binding חסר, בלי לכתוב אותו אחרי נעילת league. הוא מייחס את אירוע האודיט
+   ל־system actor ושומר את `auth.uid()` של החבר/מוזמן רק בתור
+   `metadata.triggering_actor_id`. חסרון designation נכשל סגור, actor אחר אינו
+   מחליף אותו בשקט והסרת שורת `system_admins` מסירה את הקישור. לפני פתיחת traffic
+   ב־Hosted חדש, runbook+CI contract מחייבים designation יחיד, binding תואם
+   והתאמה value-free ל־`SYNC_SYSTEM_ACTOR_ID`; תבנית הראיה שומרת רק PASS/FAIL
+   ולעולם לא UUID. פעולה ידנית מוקדמת
   משתמשת בזמן DB שלה. המירוץ manual/automatic יוצר transition ואירוע audit
   יחידים ונועל את חוקי הניקוד; correctness אינו נשען על שעון הדפדפן או על tick
   מוצלח יחיד.

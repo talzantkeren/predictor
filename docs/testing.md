@@ -576,6 +576,12 @@ revocation ו־rotation מפורש. בדיקת ה־lifecycle מאמתת שב־sc
 ומחייב boundary בליגה אחרת להסתיים לפני שחרורו; כך חזרה לנעילת binding אחרי
 league תיכשל ולא תוכל להחזיר את היפוך הסדר מול Cron.
 
+חוזה owner-runbook של F10 מקבע גם את שער ה־pre-traffic שאינו יכול להיווצר
+מסכימה בלבד: שלושת הסמנים `exactly_one_designated_actor`,
+`boundary_binding_ready` ו־`sync_actor_matches_designation` חייבים להופיע
+ב־runbook, ב־checker ובתבנית value-free. הסרת §3A או אחד משדות הראיה מכשילה
+גם את `owner-runbooks:check` וגם את בדיקת Vitest הבלתי תלויה.
+
 תיקון הביקורת המאוחר מוסיף את
 `supabase/tests/slice9-league-lock-scope.test.sql`. הוא מחזיק transaction של
 `save_prediction` ושל completion אידמפוטנטי בליגה A, מוכיח שפעולה באותה ליגה

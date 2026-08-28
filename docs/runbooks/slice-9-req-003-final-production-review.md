@@ -102,8 +102,17 @@ select
     as boundary_binding_ready;
 ```
 
-Require both values to be `true` before proceeding. The first natural Cron tick
-verifies the same identity; it is no longer allowed to create this precondition.
+Require both values to be `true`. In the same closed-traffic maintenance window,
+open only the Production `SYNC_SYSTEM_ACTOR_ID` entry in Vercel's protected
+settings UI and visually compare it with the noninteractive Auth principal just
+designated. Do not use `vercel env pull`, copy either UUID, paste it into a shell
+or SQL history, save it, or capture it in a screenshot. Record only
+`sync_actor_matches_designation: PASS` or `FAIL` in the owner template.
+
+Require all three observations—`exactly_one_designated_actor`,
+`boundary_binding_ready` and `sync_actor_matches_designation`—to be `PASS`
+before deploying or opening application traffic. A mismatch remains fail-closed;
+do not use the first natural Cron tick as discovery or repair.
 
 ## 4. Confirm the final environment-name/scope matrix
 

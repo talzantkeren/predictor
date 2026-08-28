@@ -40,6 +40,15 @@ ordered lists equal: NOT_RUN
 Hosted migration parity: NOT_RUN
 ```
 
+## System actor readiness
+
+```text
+exactly_one_designated_actor: NOT_RUN
+boundary_binding_ready: NOT_RUN
+sync_actor_matches_designation: NOT_RUN
+actor UUID copied, saved or captured: NOT_RUN
+```
+
 ## Environment scopes
 
 ```text
