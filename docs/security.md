@@ -586,7 +586,8 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - AET/PEN נשמרים כ־`match_result_reviews(match_id,result_version)` pending.
   provider replay אינו מכפיל שורה, ו־FT שמגיע בזמן review מעדכן candidate בלבד
   ואינו עוקף הכרעת מנהל מערכת. `resolve_match_result_review` דורש fixed system
-  actor, נועל `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
+  actor, לוקח registry בלעדי לפני גילוי ליגות העונה, נועל את כל מפתחות הליגה
+  שנמצאו ואז `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
   `completed/archived`.
 - כל תיקון canonical לגרסה חדשה יוצר reconciliation רק עבור snapshot קיים.
   `reconcile_completed_league` לוקח advisory key של הליגה ואז נועל
@@ -658,8 +659,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   ה־administrator ולעולם אינו כותב את tuple הקישור אחרי league lock, כדי לא להפוך את סדר
   bind→league של Cron מול league→actor של boundary. כתיבת fixture מגשרת את כל
   מפתחות הליגות המושפעות, ולכן aggregate ה־first kickoff אינו משתנה באמצע
-  ההכרעה. כותבי catalog שיכולים להוסיף fixture לוקחים קודם מחסום registry
-  גלובלי צר; `create_league` מחזיקה אותו במצב shared עד commit. הסדר הוא תמיד
+  ההכרעה. כותבי catalog שיכולים להוסיף fixture והכרעת review שמגלה את ליגות
+  העונה לוקחים קודם מחסום registry גלובלי צר; `create_league` מחזיקה אותו
+  במצב shared עד commit. הסדר הוא תמיד
   registry→league keys→league rows, והמחסום אינו נלקח בשמירה או completion
   רגילות.
 - ה־RPCs הציבוריים נשארים narrow, ‏`SECURITY DEFINER`, ‏`search_path=''`
@@ -674,8 +676,8 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | --- | --- | --- |
 | deadlock completion↔join/proof | per-league advisory + league→request→proof/member | backends נפרדים ל־finalize/approve/reject מול completion |
 | שתי השלמות יוצרות snapshot/audit כפול | per-league advisory + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
-| provider עוקף review במירוץ | affected-league advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
-| ליגה לא קשורה נתקעת מאחורי save/completion | key נפרד לכל league; global registry רק ל־catalog | save ו־completion בליגה B מסתיימים בעוד transaction בליגה A פתוחה |
+| provider עוקף review במירוץ | registry לפני discovery + affected-league advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
+| ליגה לא קשורה נתקעת מאחורי save/completion | key נפרד לכל league; global registry רק ל־catalog ול־review discovery | save ו־completion בליגה B מסתיימים בעוד transaction בליגה A פתוחה |
 | חבר/מוזמן מיוחס בטעות כמי שביצע activation אוטומטי | private immutable system-actor binding; caller רק ב־metadata; fail-closed לפני bootstrap | actor מדויק, mismatch/revocation/rotation ו־binding-tuple race ב־pgTAP |
 | תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |
 

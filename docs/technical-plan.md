@@ -259,6 +259,7 @@ DEMO_MODE=true
 | 024 `slice9_sync_cron_budget` | מתקינה `pg_cron`, מסירה Data API schema usage ומיישרת אטומית את ה־job הקיים לשם provider-neutral ול־45s בלי לקרוא/להחזיר command | local reset; job חסר הוא no-op, כפול/לא־מוכר נכשל סגור, ו־schedule/active/target נשמרים |
 | 025 `slice9_bidi_text_hardening` | checks קדימה על שמות וטקסט תצוגה של user/league/provider; אין טבלה או grant חדשים | Unicode bidi controls נדחים במסד, טקסט עברי/Latin מעורב נשמר, ו־UI מבודד ב־`bdi dir="auto"` |
 | 026 `slice9_system_actor_bootstrap` | designation יחיד `sports_sync`, trigger binding מבוקר ו־fallback עסקי לקריאה בלבד כאשר cache ה־binding חסר | migration קיימת מקדמת binding אטומית; Hosted חדש מחייב grant לפני traffic; late approval במצב UNBOUND מצליח בלי לייחס אוטומציה למנהל |
+| 027 `slice9_review_registry_barrier` | מכניס את הכרעת review למחסום registry בלעדי לפני גילוי ליגות העונה, ולאחריו נועל את כל מפתחות הליגה בסדר יציב | יצירת ליגה שלא הושלמה אינה יכולה להופיע ל־`score_match` אחרי שלב הגילוי בלי שמפתח הליגה שלה מוחזק |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -1365,8 +1366,9 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   decided_at, created_at)`
   עם PK זוגי ו־constraints שמחייבים actor/time/result לפי disposition. AET/PEN
   או provider disposition לא־מוכר יוצרים row `pending` ואינם מתחזים ל־
-  `match_status`. `resolveMatchResultReview` של system admin גוזר תחילה את כל
-  הליגות בעונת המשחק, לוקח את מפתחות הליגה בסדר יציב, נועל match→review
+  `match_status`. `resolveMatchResultReview` של system admin לוקח תחילה את
+  מחסום ה־registry הבלעדי, גוזר את כל הליגות בעונת המשחק, לוקח את מפתחות
+  הליגה בסדר יציב, נועל match→review
   ומאמת שוב שה־match עדיין באותה `review_result_version` ושה־row pending.
   disposition תקף כותב באותה טרנזקציה canonical `finished`+תוצאת זמן חוקי או
   `canceled`, מעלה `matches.result_version`, מסמן את ה־row `resolved` עם
@@ -1381,16 +1383,17 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   metadata והעתק עברי ב־display layer, שומרת proofs/history, מוסיפה audit
   ומעבירה ל־`completed` פעם אחת בלבד.
 - סדר הנעילות למוטציות lifecycle/membership/proof/scoring הוא:
-  `catalog registry barrier (רק create/catalog) → league advisory keys →
+  `catalog registry barrier (create/catalog/review discovery) → league advisory keys →
   leagues → profiles → join_requests(id) → payment_proofs(id) →
   league_members(id) → matches(id) → match_result_reviews(match_id, result_version) →
   league_match_snapshots(league_id, match_id) →
   league_match_reconciliations(id)`.
   ה־league advisory key הוא `(2026090609, hashtext(league_id::text))`; בריבוי
-  ליגות ממיינים ומסירים כפילויות לפי מפתח ה־`int4`. רק כותב catalog שיכול
-  להוסיף fixture לוקח קודם את מחסום ה־registry הבלעדי; `create_league` מחזיקה
-  shared barrier. מוטציות lifecycle רגילות מדלגות עליו, ולכן ליגות שונות אינן
-  serialized. מותר לדלג על שכבות שאינן רלוונטיות; טבלאות בעלות `id` ננעלות
+  ליגות ממיינים ומסירים כפילויות לפי מפתח ה־`int4`. כותב catalog שיכול
+  להוסיף fixture והכרעת review שמגלה את ליגות העונה לוקחים קודם את מחסום
+  ה־registry הבלעדי; `create_league` מחזיקה shared barrier. מוטציות lifecycle
+  רגילות מדלגות עליו, ולכן ליגות שונות אינן serialized. מותר לדלג על שכבות
+  שאינן רלוונטיות; טבלאות בעלות `id` ננעלות
   בסדר UUID, ושני המפתחות הזוגיים ננעלים בסדר לקסיקוגרפי. אסור לרכוש
   parent/שכבה מוקדמת אחרי child. rate-limit transaction הוא leaf path
   `profiles → join_requests` ואינו רוכש league לאחר מכן; finalize עובר
@@ -1482,8 +1485,9 @@ apply מגודר של API-Football אינו מדלג עוד על ה־match וה�
 חובת ה־carry של S9-REQ-001/W4 נמסרה כך: כל מעבר completion או automatic
 completion לוקח מפתח advisory דו־חלקי לפי league לפני עבודה על הליגה או על
 קבוצת ה־matches שלה ושומר `league → matches`. כתיבת catalog שיכולה להוסיף
-match משתמשת קודם במחסום registry גלובלי צר, מגלה את כל הליגות המושפעות ואז
-לוקחת את מפתחותיהן; `create_league` משתתפת במחסום shared כדי למנוע phantom.
+match, וגם הכרעת review שמגלה ליגות לפני scoring, משתמשות קודם במחסום registry
+גלובלי צר, מגלות את כל הליגות המושפעות ואז לוקחות את מפתחותיהן; `create_league`
+משתתפת במחסום shared כדי למנוע phantom.
 מרוצי dblink אמיתיים מכסים completion-vs-missing-match וכן התקדמות בלתי תלויה
 של save/completion בשתי ליגות. ה־guard של DEF-003 אינו תחליף ל־snapshot/
 reconciliation הסופי.

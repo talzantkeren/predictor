@@ -286,7 +286,8 @@ regression רגיל. ההכרעה נעשית תחת נעילת שורת המשח
 מתוקנת אינה רשאית לשכתב בשקט snapshot, ניקוד או דירוג סופי של ליגה שהושלמה.
 
 תוצאת ספק שאינה בטוחה לזמן החוקי נשמרת ב־`match_result_reviews` לפי
-`(match_id, result_version)`. הכרעת system admin נועלת match ואז review, מקבלת
+`(match_id, result_version)`. הכרעת system admin לוקחת מחסום registry בלעדי
+לפני גילוי ליגות העונה, נועלת את מפתחות הליגה שנמצאו ואז match→review, מקבלת
 רק review ממתין של הגרסה הנוכחית, וכותבת אטומית תוצאה חוקית קנונית או ביטול.
 stale version, replay, actor זר או תיקון ספק מקביל נדחים ללא mutation. לאחר
 ההכרעה `score_match` מנקד מחדש רק ליגות שאינן `completed`; לכל ליגה שהושלמה

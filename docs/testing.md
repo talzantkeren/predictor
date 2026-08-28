@@ -584,6 +584,13 @@ league תיכשל ולא תוכל להחזיר את היפוך הסדר מול C
 settings, manual match, manual override clear, scoring, league-lock scope,
 lifecycle, review, database-time serialization ו־API-Football sync.
 
+תיקון F8 מוסיף `slice9-review-registry-barrier.test.sql` עם חמישה backends.
+creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, resolver נדרש להמתין על
+ה־registry לפני discovery, ולאחר commit הוא נדרש להחזיק גם את מפתח הליגה
+החדשה לפני שהוא ממתין על ליגה קיימת; completion מקביל נדרש להמתין על אותו
+מפתח. מול הסכימה שלפני migration הבדיקה נכשלה ב־6 מתוך 27 assertions, לרבות
+היעדר ההמתנה על registry והיעדר מפתח הליגה החדשה; לאחר migration עברה 27/27.
+
 Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
 Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
 ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת
