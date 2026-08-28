@@ -261,6 +261,7 @@ DEMO_MODE=true
 | 026 `slice9_system_actor_bootstrap` | designation יחיד `sports_sync`, trigger binding מבוקר ו־fallback עסקי לקריאה בלבד כאשר cache ה־binding חסר | migration קיימת מקדמת binding אטומית; Hosted חדש מחייב grant לפני traffic; late approval במצב UNBOUND מצליח בלי לייחס אוטומציה למנהל |
 | 027 `slice9_review_registry_barrier` | מכניס את הכרעת review למחסום registry בלעדי לפני גילוי ליגות העונה, ולאחריו נועל את כל מפתחות הליגה בסדר יציב | יצירת ליגה שלא הושלמה אינה יכולה להופיע ל־`score_match` אחרי שלב הגילוי בלי שמפתח הליגה שלה מוחזק |
 | 028 `slice9_reconciliation_lock_reverify` | מאמת ומגלה work item, נכשל מיד אם חסר, לוקח את מפתח הליגה ואז קושר post-lock re-read לאותה ליגה לפני delegate | work item שנעלם או שויך מחדש בזמן ההמתנה נכשל `RECONCILIATION_NOT_FOUND`; delegate אינו רץ תחת מפתח של ליגה אחרת |
+| 029 `slice9_hosted_rls_helper_hardening_contract` | maintenance function פרטית, invoker-rights וללא app/Data API EXECUTE ACL שמחילה idempotently path ריק וביטול EXECUTE על `rls_auto_enable` רק אם אובייקט Hosted קיים | אותה לוגיקה רצה ב־migration ונבדקת מול fixture event-trigger אמיתי; Vitest מקבע את קריאת ה־migration; היעדר האובייקט הוא no-op |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 

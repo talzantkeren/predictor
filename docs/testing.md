@@ -599,6 +599,18 @@ creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, res
 הסכימה שלפני migration נכשלו 5 מתוך 23 assertions וה־delegate סימן בפועל את
 הרשומה של ליגה B כ־`dismissed`; לאחר migration עברו 23/23.
 
+תיקון F6 מחליף שש טענות `not exists` היפותטיות ב־18 assertions מול fixture
+אמיתי של `public.rls_auto_enable()` ו־event trigger ‏`ensure_rls`, בתוך
+transaction שנגלל לאחור. הבדיקה משנה בנפרד SECURITY INVOKER, ‏search path,
+קישור trigger וכל אחד מארבעת grants, ומוכיחה שה־guard המתאים מחזיר false.
+לאחר הקמת מצב Hosted פגיע היא מפעילה את חוזה התחזוקה הפרטי שנוצר ורץ באותה
+migration, ואז מאמתת SECURITY DEFINER/path ריק, קישור trigger שמור והיעדר
+EXECUTE ל־PUBLIC/anon/authenticated/service_role. היעדר האובייקט המקומי נבדק
+כ־no-op מפורש ואינו משמש עוד כראיית pass. שתי בדיקות Vitest משוות את שתי
+פקודות ההקשחה ל־migration המקורית ומחייבות שקריאת החוזה תהיה המשפט האחרון
+ב־migration החדשה, אחרי ביטול grants; הסרת ה־auto-application נכשלת גם אם
+הפונקציה עצמה נשארה תקינה.
+
 Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
 Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
 ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת

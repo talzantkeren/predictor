@@ -37,7 +37,7 @@ rate limits נצפים ו־Demo-only.
 | Gate | תוצאה נצפית | Disposition |
 | --- | --- | --- |
 | Security Advisor initial | 28: ‏0 ERROR, ‏22 WARN, ‏6 INFO | 28/28 מפורטים ב־`S9-REQ-005-security-advisor.md` |
-| `rls_auto_enable` anon/auth warnings | שתי אזהרות אמיתיות | `FIXED`: path ריק, grants מבוטלים, trigger נשמר; post-fix Advisor אינו מציג אותן |
+| `rls_auto_enable` anon/auth warnings | שתי אזהרות אמיתיות | `FIXED`: path ריק, grants מבוטלים, trigger נשמר; post-fix Advisor אינו מציג אותן. pgTAP יוצר event-trigger אמיתי, מוכיח שכל guard מזהה mutation ורק אז מריץ את חוזה ההקשחה של ה־migration |
 | Security Advisor post-fix | 26: כל הפריטים הנותרים מוסברים | intentional gateway/deny-all/`pg_net` הם `NO-FIX WITH EVIDENCE`; leaked-password הוא accepted risk |
 | Performance Advisor | 20: ‏0 ERROR, ‏0 WARN, ‏20 INFO | 12 `NO-ADD WITH EVIDENCE`; שמונה `RETAIN WITH EVIDENCE`; אין index ספקולטיבי |
 

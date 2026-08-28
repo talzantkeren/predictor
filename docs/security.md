@@ -49,6 +49,11 @@ RISK**. הגנת leaked-password של Supabase אינה זמינה בתכנית 
   אימתה מינימום שמונה, ללא character classes, תקרת Auth של 72 בתים והגנת
   leaked-password כבויה; כל ממצאי ה־Advisors קיבלו disposition תחת
   `S9-REQ-005`.
+- helper ה־event trigger האופציונלי `public.rls_auto_enable()` מוקשח רק אם הוא
+  קיים: `search_path=''` וכל EXECUTE של Data API מבוטל בלי לשנות את קישור
+  ה־trigger. חוזה התחזוקה הוא invoker-rights תחת `private`, ללא EXECUTE ACL
+  שאינו של ה־owner וללא גישה ל־PUBLIC, ‏`anon`, ‏`authenticated` או
+  `service_role`; ה־migration מפעילה אותו בהרשאות owner.
 
 הסיכון נפתח מחדש אם הפרויקט עובר לתכנית שכוללת את היכולת מסיבה אחרת, היקף
 המוצר מתרחב לנתונים רגישים מהותית יותר, מתרחש אירוע אבטחה או מתקבלת ראיית
