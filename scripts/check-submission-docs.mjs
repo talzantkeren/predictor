@@ -147,7 +147,7 @@ invariant(
 for (const expected of ["OWNER_ACTION_REQUIRED", "custom SMTP", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
   invariant(evaluator.includes(expected), `Evaluator runbook is missing owner guidance: ${expected}`);
 }
-const openRecordIds = [
+const trackedOwnerRecordIds = [
   "S9-DEF-025",
   "S9-DEF-022",
   "S9-REQ-003",
@@ -156,10 +156,10 @@ const openRecordIds = [
   "S9-DEF-004",
   "S9-REQ-002",
 ];
-for (const id of openRecordIds) {
+for (const id of trackedOwnerRecordIds) {
   invariant(ownerActions.includes(id), `Owner-actions document is missing: ${id}`);
 }
-for (const expected of ["בדיוק שבע פעולות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
+for (const expected of ["בדיוק חמש פעולות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
   invariant(ownerActions.includes(expected), `Owner-actions document is missing contract text: ${expected}`);
 }
 const deliveryRecordIds = [

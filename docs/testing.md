@@ -613,11 +613,20 @@ indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב
 
 רגרסיית `e2e/accessibility-matrix.spec.ts` מריצה בנוסף את דפי הכניסה הציבוריים
 `/`, ‏`/login`, ‏`/register` ו־`/forgot-password` בכל אחד מהרוחבים
-360/390/768/1024/1440, בשני פרויקטי Chromium. בכל שילוב נבדקים axe WCAG
-A/AA כולל contrast, סדר מקלדת ו־focus indicator בכל תחנה, 44×44 ליעדי פעולה
-שאינם קישורי טקסט inline, ‏RTL, overflow ו־reduced motion. הרגרסיה חשפה תחילה
-שדות Auth בגובה 42px וקישור שחזור בגובה 20px; לאחר התיקון עברה 10/10 והפיקה
-40 screenshots מקומיים מסוננים תחת `tmp/final-accessibility`.
+360/390/768/1024/1440, בשני פרויקטי Chromium. באותם רוחבים נבדקים גם
+`/admin/matches`, ‏`/admin/sync`, ‏members ו־settings מורשים עם fixture מקומי,
+ומצב rejection שנדחה בגבול השרת. בכל שילוב נבדקים axe WCAG A/AA, יחס contrast
+מכריע או חישוב CSS מפורש ל־finding מסוג `partially obscured`, שם נגיש לא־ריק,
+סדר Tab זהה לסדר DOM גם סביב תחנות UA פנימיות, focus indicator גלוי, 44×44
+לכל יעד פעולה או label קליקבילי מקושר, RTL, ‏overflow ו־reduced motion. אין
+פטור גורף לקישורי inline.
+
+המטריצה חשפה ותיקנה קישור Auth בגובה 21px, קישור מותג ללא שם ב־mobile, טקסט
+UTC ביחס 4.37:1, skip link בגובה 36px וקישורי מנהל בגובה 42px. בנוסף רץ בשני
+הפרויקטים קירוב reflow של viewport ‏720×450 עם DPR 2 ו־screen זהה, שמפיק
+raster של 1440×900; הוא מריץ שוב את שמונת המסכים ואת מצב rejection, אך אינו
+Chrome native Zoom. הריצה הנקייה על `2decde7` עברה 14/14 ללא skip והפיקה 108
+screenshots זמניים תחת `tmp/final-accessibility`.
 
 ### Slice 9 W6 — WebServer error signal
 

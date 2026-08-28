@@ -45,9 +45,10 @@ RISK**. הגנת leaked-password של Supabase אינה זמינה בתכנית 
 - rate limits, שחזור enumeration-safe לאחר תיקון `S9-DEF-001`, ניטור והיקף
   Demo-only הם בקרות מפצות. custom SMTP ואמינות recovery נשארים בנפרד תחת
   `S9-DEF-004` ואינם נסגרים בהחלטה זו.
-- אין לטעון שמדיניות Hosted חזקה יותר הושלמה עד שראיה לקריאה בלבד מוכיחה
-  אותה. אימות זה נשאר acceptance פתוח של `S9-REQ-005` ואינו שינוי Auth ב־PR
-  התיעוד.
+- אין לטעון שמדיניות Hosted חזקה יותר מן הראיה. הקריאה ב־28 באוגוסט 2026
+  אימתה מינימום שמונה, ללא character classes, תקרת Auth של 72 בתים והגנת
+  leaked-password כבויה; כל ממצאי ה־Advisors קיבלו disposition תחת
+  `S9-REQ-005`.
 
 הסיכון נפתח מחדש אם הפרויקט עובר לתכנית שכוללת את היכולת מסיבה אחרת, היקף
 המוצר מתרחב לנתונים רגישים מהותית יותר, מתרחש אירוע אבטחה או מתקבלת ראיית
@@ -678,14 +679,12 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 ## סיכונים שיוריים ופעולות owner למסירה
 
 הגבולות המקומיים והאוטומטיים אינם הופכים פעולה Hosted או אנושית ל־PASS. נכון
-ל־27 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
+ל־28 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
 
 - להגדיר delivery מאושר או custom SMTP ולבצע confirmation/recovery עם נמען
   disposable מורשה; Production URL לבדו אינו ראיית Email.
 - לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
   ומשחרר lease תחת תקציב 120 השניות.
-- להסיר את `SPORTS_API_KEY` מ־Preview, להשאירו Sensitive ו־Production-only,
-  ולתעד רק שמות משתנים ו־scopes.
 - לבצע Chrome native 200% על candidate SHA ולתעד תוצאה; CSS zoom אינו תחליף.
 - לבצע חזרה אנושית 10–15 דקות ולמסור גישת evaluator מחוץ ל־repository.
 

@@ -132,6 +132,42 @@ for (const width of [360, 390, 768, 1024, 1440]) {
     `Viewport regression is missing the ${width}px width.`,
   );
 }
+for (const expected of [
+  "accessibilityMatrixOrder",
+  ".ariaSnapshot()",
+  "observedFocusOrder",
+  'result.id === "color-contrast"',
+  "deviceScaleFactor: 2",
+  "height: 450",
+  "width: 720",
+  'route: "/admin/matches"',
+  'route: "/admin/sync"',
+  'artifactName: "league-members"',
+  'artifactName: "league-settings"',
+  "assertInvalidRejectionState",
+  "manuallyMeasuredSelectors",
+  "element.labels",
+  "storageState: await manager.context.storageState()",
+  "hasTouch: descriptor.hasTouch",
+  "isMobile: descriptor.isMobile",
+]) {
+  invariant(
+    viewportSpec.includes(expected),
+    `Viewport regression is missing the explicit accessibility contract: ${expected}`,
+  );
+}
+invariant(
+  !/\btest(?:\.describe)?\.(?:skip|fixme|only|fail)\b/u.test(viewportSpec) &&
+    !/\btestInfo\.skip\s*\(/u.test(viewportSpec) &&
+    !/\btest\.describe\.configure\s*\(\s*\{[^}]*\bmode\s*:\s*["']skip["']/su.test(
+      viewportSpec,
+    ),
+  "Viewport regression must not skip, disable, isolate or mark an accessibility check as an expected failure.",
+);
+invariant(
+  !viewportSpec.includes("isInlineTextLink"),
+  "Viewport regression must not restore the blanket inline-link touch-target exemption.",
+);
 for (const label of [
   "dashboard_leagues_101",
   "eligible_leagues_101",

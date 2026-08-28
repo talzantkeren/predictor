@@ -218,10 +218,10 @@ DEMO_MODE=true
   subscription/key נפרדים ל־Preview יישקלו רק אם דרישת QA חיה ומהימנה עתידית
   תצדיק זאת. בידוד מכסה בין credentials נפרדים אינו מאומת, ואין הצדקה לרכוש
   subscription נוסף רק עבור Preview ב־MVP.
-- ההחלטה התיעודית אינה משנה את Vercel. `S9-DEF-025` נשאר פתוח עד להסרת ה־key
-  מ־Preview, סימון Production כ־Sensitive ככל שנתמך, מטריצת שמות/scope
-  מסוננת ללא ערכים, סריקת bundle/logs, CI ירוק עם Manual ואימות ש־Production
-  Cron ממשיך לפעול.
+- `S9-DEF-025` אומת ב־28 באוגוסט 2026: הרשומה הקיימת צומצמה באמצעות target-only
+  update ל־Production בלבד ונשארה Sensitive, ללא קריאת הערך. Preview חדש עבר
+  ב־Manual ללא key, מטריצת names/scopes וסריקות bundle/logs נשמרו, והמשכיות
+  Production Cron נצפתה בקריאה בלבד.
 - `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `SYNC_SYSTEM_ACTOR_ID`, מפתחות ספק וסיסמת DB אינם מופיעים ב־client bundle, logs או Git. עותק ה־Cron לסביבת Supabase נשמר ב־Vault אחרי ה־deploy, לא ב־migration.
 - `SYNC_SYSTEM_ACTOR_ID` optional ב־schema הכללית כדי לא להפיל build שאינו
   מפעיל Cron, אך נדרש בזמן קריאת Route של Slice 7. הוא מכיל UUID קנוני של
@@ -1497,8 +1497,8 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 `S9-DEF-021` נסגר כסתירת מסמכים והיכולת מוזגה ל־`S9-REQ-001`;
 ה־traceability gap של MATCH-03 מוזג ל־`S9-DEF-003`; `S9-DEF-023` נסגר לאחר
 הוספת [`docs/course-source.md`](./course-source.md) והכרעת `S9-TDEC-003`.
-`S9-DEF-025` חזר ל־register הפתוח כ־P3 Hosted configuration/evidence לאחר
-שהמדיניות הוכרעה ב־`S9-TDEC-002`; ההחלטה אינה מתחזה לשינוי Vercel שבוצע.
+`S9-DEF-025` נסגר ב־28 באוגוסט 2026 לאחר שינוי Hosted target-only, ‏Preview
+חדש, מטריצת names/scopes מסוננת, סריקות bundle/logs ותצפית Cron לקריאה בלבד.
 
 #### דרישות Slice 9 מתוכננות
 
@@ -1508,26 +1508,27 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 - `S9-REQ-002` — deck, demo script וחזרה מוכחת של 10–15 דקות.
 - `S9-REQ-003` — final CI/deployment SHA, public incognito וגישת evaluator ל־GitHub.
 - `S9-REQ-004` — חבילת מסמכי הגשה וספר פרויקט מסונכרנים.
-- `S9-REQ-005` — full verification, Advisors dispositions, representative plans,
-  native 200%, keyboard/contrast/touch וראיות Hosted/manual סופיות. הראיות
+- `S9-REQ-005` — Hosted password policy, ‏Security/Performance Advisor עם
+  disposition לכל finding, representative plans ובקרות hardening. הראיות
   כוללות את acceptance של `S9-TDEC-004`: מדיניות password ב־Hosted תואמת
   למינימום שמונה תווים ולתקרת 72 בתים, בקרות rate/monitoring מתועדות ואין
-  טענת leaked-password protection;
-  וכן את acceptance של `S9-DEF-025` לגבי scope סוד הספורט.
+  טענת leaked-password protection. ‏Native 200% ו־keyboard/contrast/touch
+  שייכים ל־`S9-DEF-022`; scope סוד הספורט שייך ל־`S9-DEF-025`. כל אחת משלוש
+  הרשומות מקבלת status עצמאי ואינה סוגרת את האחרות.
 
 #### Technical decision ledger
 
 | ID | מצב | owner/הכרעה |
 | --- | --- | --- |
 | `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | repository owner (`talzantkeren`): המאגר נשאר פרטי ובתכנית הנוכחית; אין direct push ל־`main`; merge רק מ־PR שנבדק; נרשמים candidate SHA והצלחת `Lint, typecheck, unit tests and build`, `Supabase database tests` ו־`Playwright core flows` על אותו SHA, ואז מאומתים Production commit, immutable URL וה־alias. rationale: single-maintainer course repo ו־API 403. reopen: collaborator/visibility/plan משתנים, ניסיון direct push, control failure או דרישת evaluator |
-| `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות נשארים פתוחים ב־DEF-025 |
+| `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות אומתו ב־DEF-025 ב־28.8.2026 |
 | `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | נשמר manifest provenance ב־[`docs/course-source.md`](./course-source.md); ה־PDF המדויק נמסר בנפרד ולא נכלל ב־Git ללא הרשאת redistribution מפורשת |
 | `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation של שמונה תווים לפחות ועד 72 בתים בקידוד UTF-8, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. מדיניות Hosted ו־Advisor אומתו ב־REQ-005 ב־28.8.2026. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
 
 כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. אין להפוך את המאגר לציבורי, לרכוש
-plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. סגירת decision
-אינה סגירת acceptance: שינוי scope של Vercel נשאר ב־`S9-DEF-025`, וראיית
-password/rate/monitor controls נשארת ב־`S9-REQ-005`. Branch control, Preview
+plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. שינוי scope של
+Vercel וראיית password/Advisors אומתו ב־28.8.2026 תחת `S9-DEF-025` ו־
+`S9-REQ-005`. Branch control, Preview
 Auth, custom SMTP ו־leaked-password protection הם gates פנימיים ואינם מיוחסים
 ישירות למסמך הקורס.
 

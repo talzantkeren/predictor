@@ -2,8 +2,9 @@
 
 Status: `OWNER_ACTION_REQUIRED`.
 
-זהו סדר העבודה המהיר ביותר לפתיחת התלויות. יש כאן **בדיוק שבע פעולות**, אחת
-לכל רשומה פתוחה. בצעו את כולן באותה ישיבה ובאותו final SHA, אך אל תסמנו PASS
+זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק חמש פעולות**;
+שתי רשומות שנסגרו נשמרות ברשימה לצורך traceability. בצעו את חמש הפעולות
+הפתוחות באותה ישיבה ובאותו final SHA, אך אל תסמנו PASS
 לפני תצפית אמיתית. אין למזג, לאשר, להעביר ל־Ready או להפעיל auto-merge ב־PR
 #14. אין לפתוח, להעתיק, לצלם או לשמור secret, כתובת נמען, זהות evaluator,
 סיסמה, cookie, signed URL או payload של provider.
@@ -22,19 +23,26 @@ value.
 ## 2. S9-DEF-022 — Chrome native 200%
 
 **איפה:** Chrome רגיל, על production build מקומי של ה־final SHA; Menu → Zoom →
-`200%`. אין להשתמש ב־CSS zoom או device emulation.
+`200%`. אין להשתמש ב־CSS zoom או ב־DevTools Device Toolbar/device emulation.
 
-**פעולה יחידה:** ברוחב mobile וברוחב desktop לעבור keyboard-only על
-`/admin/matches`, ‏`/admin/sync` ו־`/leagues/<owned-league>/members`; לבדוק
-busy name יחיד, focus גלוי אחרי דחייה, help+error, alert יחיד, contrast AA,
-יעדי 44×44 CSS px, RTL והיעדר horizontal overflow.
+**פעולה יחידה:** כשה־Zoom נשאר 200%, לשנות ידנית את חלון Chrome ולבצע פעם עם
+`window.innerWidth` של 360–390 CSS px ופעם עם לפחות 1024 CSS px. בכל רוחב
+לעבור keyboard-only על `/admin/matches`, ‏`/admin/sync` ו־
+`/leagues/<owned-league>/members`; לבדוק סדר ושם focus, ‏busy name יחיד, focus
+גלוי אחרי דחייה, help+error, ‏alert יחיד, contrast AA, יעדי 44×44 CSS px, ‏RTL
+והיעדר horizontal overflow. DevTools מנותק מותר לקריאה בלבד של
+`window.innerWidth` ושל Accessibility/Computed panes. ב־Slow 3G לרענן את שני
+מסכי המנהל כדי לחשוף את ה־busy region, ואז להחזיר No throttling. את מצב
+הדחייה יש להפעיל עם קלט חוקי לדפדפן אך פסול לשרת, למשל clipboard שנוצר ב־
+`Set-Clipboard -Value ("סיבה " + [char]0x202E + " נסתרת")`. אם החומרה אינה
+מאפשרת 1024 CSS px ב־200%, לתעד את הרוחב המרבי ולהשאיר את הרשומה פתוחה.
 
 **ראיה לשמור:** בחבילת owner
 `S9-DEF-022/01-native-200-mobile.png`,
 `S9-DEF-022/02-native-200-desktop.png` ו־
 `S9-DEF-022/03-accessibility-snapshot.txt`, כולם מצונזרים. להוסיף ל־
-`docs/evidence/slice-9/w6/S9-DEF-022.md` את SHA, גרסת Chrome, רוחבים, Zoom,
-מדידות ותוצאת כל מסך.
+`docs/evidence/slice-9/w6/S9-DEF-022.md` את SHA, גרסת Chrome, שני
+`window.innerWidth`, ‏Zoom, מדידות ותוצאת כל מסך.
 
 **אימות לאחר הפעולה:** Local Supabase בלבד.
 
@@ -164,5 +172,5 @@ npm.cmd run docs:submission:check -- --online
 git diff --check
 ```
 
-לאחר שבע הפעולות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל ל־PASS על
+לאחר חמש הפעולות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל ל־PASS על
 בסיס כוונה, צילום חסר או תוצאה מ־SHA אחר.

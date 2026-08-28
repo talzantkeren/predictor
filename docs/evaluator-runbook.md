@@ -88,10 +88,13 @@ npm run presentation:check
 | --- | --- | --- |
 | Hosted Email | לבצע את `docs/runbooks/slice-9-def-004-hosted-auth.md` כפעולה רציפה אחת עם custom SMTP מאושר ונמען disposable מורשה | למלא את `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; ללא recipient או credential |
 | Hosted Cron | לבצע פעם אחת את `docs/runbooks/slice-9-def-012-production-cron.md` אחרי final deploy | למלא `docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md`; רק response/run/lease columns מסוננים |
-| Vercel Sports secret | להסיר Preview scope ולהשאיר `SPORTS_API_KEY` Sensitive Production-only | שמות משתנים ו־scopes בלבד |
-| native zoom | Chrome Zoom=200% על candidate, keyboard ו־viewport מייצג | viewport, zoom, מסך, PASS/FAIL |
+| native zoom | Chrome Zoom=200% על candidate, keyboard, ‏360–390 CSS px ולפחות 1024 CSS px ללא device emulation | viewport, zoom, גרסת Chrome, מסך, PASS/FAIL |
 | חזרה | לבצע ולתעד 10–15 דקות לפי `presentation/rehearsal-log.md` | SHA, משך, קישורים, fallback ותוצאה |
 | evaluator/final SHA | להעניק גישת מאגר וחשבונות מחוץ ל־Git ולרשום Production SHA סופי | זהות evaluator אינה נכתבת; רק מצב access ו־SHA |
+
+שער ה־Vercel Sports נסגר ב־28 באוגוסט 2026: `SPORTS_API_KEY` נשאר Sensitive
+ו־Production-only, ו־Preview/Local/CI נשארו Manual ללא key. זו תצפית שכבר
+נשמרה ב־`S9-DEF-025`, לא פעולת owner שנותרה.
 
 עד שכל שער רלוונטי הושלם, הוא נשאר `OWNER_ACTION_REQUIRED`. אין להכריז על
 מוכנות לשחרור, אין להציג real money או AI runtime, ואין למזג את Draft PR #14.
