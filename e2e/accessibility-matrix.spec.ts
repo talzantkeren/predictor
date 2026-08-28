@@ -1,5 +1,4 @@
 import AxeBuilder from "@axe-core/playwright";
-import type { Browser, TestInfo } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -8,9 +7,11 @@ import {
   devices,
   expect,
   test,
+  type Browser,
   type BrowserContext,
   type BrowserContextOptions,
   type Page,
+  type TestInfo,
 } from "./support/stream-safe-test";
 
 import {
