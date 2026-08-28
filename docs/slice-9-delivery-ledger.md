@@ -144,6 +144,27 @@ pgTAP, types current, book/submission, build, ‏52-artifact scan ו־38/38 E2E
 PR #14 נשאר Draft. לא בוצעו merge, Ready for review או auto-merge, ולא בוצעה
 mutation ב־Hosted/linked.
 
+## סגירת findings של ביקורת round 2 — code and gates only
+
+| Finding | Status | Pushed SHA | שינוי וראיית regression |
+| --- | --- | --- | --- |
+| F10 — bootstrap של boundary actor | FIXED | `a1a8e11cc4252686cd1a76b53971669b72a407b4` | migration קדימה מוסיף designation יחיד `sports_sync`, מקדם binding קיים בזמן deploy, יוצר cache ב־trigger בעת designation ומאפשר fallback לקריאה בלבד כשה־cache במצב UNBOUND. בדיקת late approval מוחקת את ה־binding לפני kickoff שכבר חל ומוכיחה activation+audit עם actor המערכת; מול המימוש הישן הקריאה נעצרת ב־`SYSTEM_ACTOR_UNAVAILABLE`. במסד Hosted ריק לחלוטין migration אינה ממציאה Auth UUID: runbook ה־Production דורש designation ואימותו אחרי migrations ולפני פתיחת traffic. |
+| F8 — barrier לפני review discovery | FIXED | `b06f481cad57a1ce9efb28a996d91e922189086f`, `ec4ca777c281125c3501d83fb525b7fb1269ce90` | `resolve_match_result_review` לוקח את אותו registry barrier לפני discovery ורק אז את מפתחות הליגות. בדיקת dblink עם חמישה backends נכשלה מול הסכימה הקודמת ב־6/27 assertions ועברה 27/27 לאחר התיקון; בדיקה מבנית נוספת מקבעת את סדר barrier→discovery→league locks. |
+| F9 — reconcile lock/reverify | FIXED | `9a1ba2f01558101b2881abe6e4b33a7710431e64` | ה־wrapper נכשל מיד ב־not-found, נועל את מפתח הליגה, נועל מחדש את שורות league→match→snapshot→reconciliation ומאמת שה־work item עדיין קשור לאותה ליגה לפני delegate. המירוץ הישן נכשל ב־5/23 assertions ואף dismiss את הרשומה שהועברה לליגה B; אחרי migration עברו 23/23 והיא נשארה pending עם `RECONCILIATION_NOT_FOUND`. |
+| F6 — advisor hardening non-vacuous | FIXED | `ed1a0e53d6dede677e68b5e2ea13fbb6da23697f` | pgTAP יוצר transactional event trigger ו־`rls_auto_enable` אמיתיים, מפעיל בנפרד mode/path/link/ארבע mutations של EXECUTE ומחייב כל guard להיכשל לפני תיקון; אחר כך חוזה migration מתקן ומאומת ב־18/18. שתי בדיקות Vitest מקבעות parity מול migration המקור ואת הקריאה האוטומטית כמשפט אחרון; הסרת הקריאה נצפתה כ־1/2 failing וחזרה ל־2/2 אחרי restore. |
+| F11 — gates enforced | FIXED | `e01d9492bbdc0a4be0151f5177d6aa3032cab5d9` | כל ששת השערים נקראים ישירות מ־CI ומ־`npm run verify`; scale plans רצים כשה־DB פעיל. חוזה sentinel סינתטי נשמר תחת `.next` וקשור ל־`BUILD_ID`, ולכן direct scan נכשל סגור על build ישן/חוזה חסר/אי־התאמה. הסרת `hardening:check` מ־verify נצפתה כ־1/3 failing; לאחר restore עברו 3/3, וחמש בדיקות scanner התנהגותיות עברו. |
+
+### Final observed gates אחרי F11
+
+| פקודה | תוצאה נצפית |
+| --- | --- |
+| `npm run verify` | PASS — lint; strict typecheck; ‏53 files/651 Vitest; ארבעת שערי evidence/hardening/runbooks/Sports; ‏34 files/1574 pgTAP; ארבעה scale plans עם rows ‏51/51/51/26; generated types current; book/submission checks; build; שתי סריקות של 53 artifacts; ‏42/42 Playwright ב־9.4 דקות |
+| `npm run build` | PASS — Next.js production compile, TypeScript, page collection ו־static generation |
+| mutation check של F11 | EXPECTED FAIL — הסרה זמנית של `hardening:check` גרמה ל־1/3 failure; הקובץ שוחזר לפני commit והבדיקה חזרה ל־3/3 PASS |
+
+לא נערכו נתיבי המצגת שבבעלות המשימה הנפרדת. ארבעת קובצי ה־E2E/רכיבים
+שהיו modified מראש נשמרו מחוץ לכל commit. ‏PR #14 נשאר Draft ולא מוזג.
+
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
 רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
