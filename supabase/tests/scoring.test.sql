@@ -136,9 +136,9 @@ select ok(
 
 -- Real concurrent sessions prove that score_match does not introduce the
 -- reverse matches -> leagues lock edge. A third session holds the audit actor
--- row after scoring owns the match, so save_prediction acquires league/member
--- locks and waits on that match. Releasing audit must let scoring finish without
--- requesting a league lock.
+-- row: scoring first owns the registry and exact league advisory key, then
+-- waits at its audit foreign key. save_prediction must queue on that same
+-- league key. Releasing audit lets scoring finish before save can proceed.
 create extension if not exists dblink with schema extensions;
 
 select is(
@@ -342,6 +342,30 @@ select lives_ok(
             on backend.operation = 'score'
            and backend.backend_pid = activity.pid
           where activity.wait_event_type = 'Lock'
+        ) and exists (
+          select 1
+          from pg_catalog.pg_locks as held
+          join slice6_concurrency_backends as backend
+            on backend.operation = 'score'
+           and backend.backend_pid = held.pid
+          where held.locktype = 'advisory'
+            and held.classid = 0::oid
+            and held.objid = 2026090609::oid
+            and held.objsubid = 1
+            and held.granted
+        ) and exists (
+          select 1
+          from pg_catalog.pg_locks as held
+          join slice6_concurrency_backends as backend
+            on backend.operation = 'score'
+           and backend.backend_pid = held.pid
+          where held.locktype = 'advisory'
+            and held.classid = 2026090609::oid
+            and held.objid = pg_catalog.hashtext(
+              'c6000000-0000-4000-8000-000000000010'
+            )::oid
+            and held.objsubid = 2
+            and held.granted
         );
         v_attempt := v_attempt + 1;
         if v_attempt >= 100 then
@@ -352,7 +376,7 @@ select lives_ok(
     end;
     $$
   $wait$,
-  'score_match owns the match before reaching the controlled audit lock wait'
+  'score_match owns the registry and exact league key at the controlled audit lock wait'
 );
 select is(
   extensions.dblink_send_query('slice6_save', $remote$
@@ -364,7 +388,7 @@ select is(
     )
   $remote$),
   1,
-  'save_prediction starts while score_match owns the match row'
+  'save_prediction starts while score_match owns the exact league key'
 );
 select lives_ok(
   $wait$
@@ -375,22 +399,28 @@ select lives_ok(
       loop
         exit when exists (
           select 1
-          from pg_catalog.pg_stat_activity as activity
+          from pg_catalog.pg_locks as waiting
           join slice6_concurrency_backends as backend
             on backend.operation = 'save'
-           and backend.backend_pid = activity.pid
-          where activity.wait_event_type = 'Lock'
+           and backend.backend_pid = waiting.pid
+          where waiting.locktype = 'advisory'
+            and waiting.classid = 2026090609::oid
+            and waiting.objid = pg_catalog.hashtext(
+              'c6000000-0000-4000-8000-000000000010'
+            )::oid
+            and waiting.objsubid = 2
+            and not waiting.granted
         );
         v_attempt := v_attempt + 1;
         if v_attempt >= 100 then
-          raise exception 'prediction session did not reach the match lock wait';
+          raise exception 'prediction session did not reach the league-key wait';
         end if;
         perform pg_catalog.pg_sleep(0.02);
       end loop;
     end;
     $$
   $wait$,
-  'save_prediction waits on the match while scoring holds it'
+  'save_prediction waits on the exact league key held by scoring'
 );
 select is(
   extensions.dblink_exec('slice6_control', 'commit'),
@@ -423,7 +453,7 @@ where operation = 'save';
 select is(
   (select result_text from slice6_concurrency_results where operation = 'score'),
   'score-ok',
-  'score_match completes while save_prediction waits on the match'
+  'score_match completes before save_prediction can acquire the league key'
 );
 select is(
   (select error_text from slice6_concurrency_results where operation = 'score'),

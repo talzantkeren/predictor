@@ -562,6 +562,46 @@ select is(
   'legacy promotion is idempotent after the designation is established'
 );
 
+update private.slice9_system_actor_bindings
+set actor_id = 'db000000-0000-4000-8000-000000000003'
+where binding_name = 'business_boundary_activation';
+select results_eq(
+  $$select administrator.user_id, administrator.automation_purpose,
+           binding.actor_id
+    from public.system_admins as administrator
+    cross join private.slice9_system_actor_bindings as binding
+    where administrator.automation_purpose = 'sports_sync'
+      and binding.binding_name = 'business_boundary_activation'$$,
+  $$values (
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'sports_sync'::text,
+    'db000000-0000-4000-8000-000000000003'::uuid
+  )$$,
+  'the mismatch regression starts with distinct designated and legacy-bound actors'
+);
+select throws_ok(
+  $$select private.slice9_promote_legacy_boundary_binding()$$,
+  'P0001', 'SYSTEM_ACTOR_MISMATCH',
+  'legacy promotion fails closed instead of replacing a distinct designation'
+);
+select results_eq(
+  $$select administrator.user_id, administrator.automation_purpose,
+           binding.actor_id
+    from public.system_admins as administrator
+    cross join private.slice9_system_actor_bindings as binding
+    where administrator.automation_purpose = 'sports_sync'
+      and binding.binding_name = 'business_boundary_activation'$$,
+  $$values (
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'sports_sync'::text,
+    'db000000-0000-4000-8000-000000000003'::uuid
+  )$$,
+  'a rejected legacy mismatch preserves both actors for explicit operator repair'
+);
+update private.slice9_system_actor_bindings
+set actor_id = '70000000-0000-4000-8000-000000000007'
+where binding_name = 'business_boundary_activation';
+
 delete from private.slice9_system_actor_bindings
 where binding_name = 'business_boundary_activation';
 select is(

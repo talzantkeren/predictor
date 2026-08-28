@@ -560,6 +560,11 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
    locks בעצמו ואין לו Data API grant; כך כל הקריאות הישירות והעקיפות שומרות
    על הסדר `registry → league key → match` ואינן הופכות את סדר
    `league → league_members → match` של `save_prediction`.
+   מסלול ה־sync קורא בכוונה לאותו גבול ציבורי לכל fixture סופי: קבוצת הנעילות
+   החיצונית היא superset של עונת הספק ושל עונות המשחקים הקיימים ב־payload,
+   ו־season-consistency של ניחושים מונעת יעד ניקוד מחוץ לקבוצה. רכישה חוזרת של
+   נעילת transaction היא reentrant; parse/lookup חוזרים מתקבלים כעלות תחומה
+   של batch עד 50 כדי שלא ליצור נתיב ניקוד פרטי שעוקף אימות והרשאות.
 3. validation של score/status ושל זמן DB לאחר השגת ה־lock; `finished` לפני
    `kickoff_at` נדחה, ו־`canceled` לפני kickoff נשאר מותר.
 4. עדכון result ו־version רק כאשר השתנו.

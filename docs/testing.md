@@ -622,6 +622,11 @@ Data API grant. `slice9-league-lock-scope.test.sql` מפעיל את ה־RPC בח
 אמיתיים ש־delete מקביל מ־`system_admins` ממתין ל־`FOR KEY SHARE` של helper
 פרטי ללא Data API grant. הסרת retain מאחד ה־wrappers מכשילה את ספירת 3/3;
 הסרת `FOR KEY SHARE` מן ה־helper מאפשרת ל־revocation לעבור ומכשילה את ה־wait.
+בדיקת ה־sync מקבעת את שרשרת הקריאות executable עד `public.score_match` ולא
+מסתפקת במחרוזת מתוך הערה, וכן מקבעת שקבוצת הליגות החיצונית כוללת את עונת
+הספק ואת עונות המשחקים הקיימים מן ה־payload. בדיקת ה־promotion בונה גם מצב
+מכוון של designation ו־legacy binding שונים ומחייבת `SYSTEM_ACTOR_MISMATCH`
+בלי לשנות אף אחד מהם.
 
 תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
 שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני

@@ -88,9 +88,48 @@ select ok(
   position('pg_try_advisory_lock' in lower(pg_get_functiondef('public.claim_sports_sync(text,boolean)'::regprocedure))) = 0
   and position('private.slice9_lock_leagues' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
   and position('slice9_apply_api_football_sync_batch_with_global_lock' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
-  and position('score_match' in lower(pg_get_functiondef('private.slice9_apply_api_football_sync_batch_with_global_lock(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('from private.slice9_apply_api_football_sync_batch_unserialized(' in lower(pg_get_functiondef('private.slice9_apply_api_football_sync_batch_with_global_lock(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('from public.score_match(' in lower(pg_get_functiondef('private.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
   and position('update public.predictions' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) = 0,
-  'the lease is row-based and apply bridges affected leagues before delegated scoring without direct prediction writes'
+  'the lease is row-based and the executable apply chain reaches the public scoring boundary without direct prediction writes'
+);
+select ok(
+  position(
+    'where season.external_provider = ''api-football'''
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'join public.matches as match'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'join public.leagues as league on league.season_id = match.season_id'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'private.slice9_lock_leagues'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) < position(
+    'private.slice9_apply_api_football_sync_batch_with_global_lock'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  )
+  and position(
+    'where season.external_provider = ''api-football'''
+    in lower(pg_get_functiondef(
+      'private.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0,
+  'the outer apply lock set remains a superset of provider-season and existing-fixture scoring targets'
 );
 
 create temp table slice7b_demo_counts as
