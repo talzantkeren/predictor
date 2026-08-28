@@ -430,7 +430,7 @@ select ok(
     2::smallint,
     false
   ),
-  'completion shares the new league key and cannot freeze half-scored state'
+  'completion waits on the same new league key and cannot freeze half-scored state'
 );
 
 select is(

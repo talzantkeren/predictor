@@ -87,15 +87,30 @@ select ok(
 
 select ok(
   position(
-    'private.slice9_lock_leagues'
+    'pg_advisory_xact_lock(2026090609);'
     in lower(pg_get_functiondef(
       'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
     ))
   ) > 0
+  and position(
+    'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
+    ))
+  ) < position(
+    'private.slice9_lock_leagues'
+    in lower(pg_get_functiondef(
+      'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
+    ))
+  )
   and lower(pg_get_functiondef(
     'private.slice9_resolve_match_result_review_without_global_lock(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
-  )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)'
-  and position(
+  )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)',
+  'review resolution enters the registry barrier before affected league keys while its delegate stays barrier-free'
+);
+
+select ok(
+  position(
     'private.slice9_lock_leagues'
     in lower(pg_get_functiondef(
       'public.reconcile_completed_league(uuid,integer,text)'::regprocedure
@@ -104,7 +119,7 @@ select ok(
   and lower(pg_get_functiondef(
     'private.slice9_reconcile_completed_league_without_global_lock(uuid,integer,text)'::regprocedure
   )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)',
-  'review and reconciliation result writers are scoped only by affected league keys'
+  'reconciliation remains scoped only by its affected league key'
 );
 
 select isnt(
