@@ -255,7 +255,7 @@ npm run test:e2e -- scoring.spec.ts
 | --- | --- |
 | Vitest | confirmation literal מדויק; missing/null/blank/forged נדחים; קוד provider-ownership ממופה להודעה בטוחה |
 | pgTAP | חתימה, `SECURITY DEFINER`, `search_path`, grants ו־actor קבוע; ordinary user/actor חסר או מבוטל; API-Football בלבד; completed/archived fail-closed; result/status/version/provider metadata/latch/predictions נשמרים; clear ראשון typed+audit יחיד ו־replay typed ללא timestamp/audit נוסף |
-| dblink | sessions PostgreSQL אמיתיות עם timeouts חסומים מוכיחות duplicate clear יחיד, clear מול apply מגודר שלא מאבד תוצאה ומאפשר provider resume, ו־revocation מול clear ללא deadlock |
+| dblink | sessions PostgreSQL אמיתיות עם timeouts חסומים מוכיחות duplicate clear יחיד, clear מול apply מגודר שלא מאבד תוצאה ומאפשר provider resume, revocation מול clear ללא deadlock, ו־`create_league` אמיתי שממתין על shared registry כאשר clear כבר גילה את העונה וממתין על שורת ליגה |
 | Playwright | Desktop Chrome ו־Pixel 5: checkbox confirmation, focus על שגיאה, יעד UUID שנלכד בשרת מול hidden `matchId` מזויף, direct-RPC denial למשתמש רגיל, תיקון provider-owned ואז clear, תוצאה/ניקוד/provenance/latch נשמרים, audit יחיד, RTL וללא overflow |
 
 הרצה ממוקדת בזמן פיתוח, על Supabase מקומי בלבד:

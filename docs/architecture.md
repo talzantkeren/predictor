@@ -335,8 +335,10 @@ reconciliation; פעולה שאינה יכולה ליצור את הרשומות 
 confirmation והרשאת משאב, gateway מסוג `server-only` קורא ל־
 `clear_manual_match_override` באמצעות actor קבוע מ־header שרתי. ה־RPC זמינה
 רק ל־`service_role`, מאמתת מחדש את ה־actor, מקבלת רק שורת API-Football עם
-external ID מספרי תקין, נועלת את ליגות העונה בסדר UUID ואז את המשחק ומוודאת
-שהעונה לא השתנתה. מעבר ownership ממשי בעונה `completed`/`archived` נדחה עד
+external ID מספרי תקין, לוקחת מחסום registry בלעדי לפני discovery, נועלת את
+ליגות העונה בסדר UUID ואז את המשחק ומוודאת שהעונה לא השתנתה. לכן יצירת ליגה
+מקבילה באותה עונה ממתינה ואינה יכולה להופיע רק בבדיקת ה־completed המאוחרת.
+מעבר ownership ממשי בעונה `completed`/`archived` נדחה עד
 מסלול reconciliation של W4. הפעולה משנה רק `is_manually_overridden` ו־
 `updated_at` ומוסיפה audit יחיד; היא אינה משנה status, scores, result version,
 provider provenance, prediction-lock latch או predictions. replay לאחר הסרה

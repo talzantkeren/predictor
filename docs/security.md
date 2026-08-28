@@ -360,7 +360,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   exact-resource AuthZ לפני gateway שרתי. `clear_manual_match_override` אינה
   מקבלת actor/provider/result מהטופס; ה־actor מגיע מ־header פנימי ונבדק מחדש
   מול `system_admins`. ה־RPC service-only מקבלת רק API-Football עם external ID
-  מספרי, נועלת leagues בסדר UUID לפני match ומסרבת למעבר ממשי בעונה סופית.
+  מספרי, לוקחת registry barrier בלעדי לפני גילוי העונה, נועלת leagues בסדר UUID
+  לפני match ומסרבת למעבר ממשי בעונה סופית. `create_league` משתתפת במחסום
+  shared ולכן אינה יכולה להוסיף phantom בין discovery לבדיקת completed.
   היא משנה רק את דגל ה־override ואת `updated_at`, משמרת result/provenance/latch/
   predictions ויוצרת audit יחיד; replay הוא no-op ללא timestamp/audit חדש.
 - `score_match` אינה ניתנת להרצה ל־`anon` או ל־`authenticated`; גם ברירת המחדל

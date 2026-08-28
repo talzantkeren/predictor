@@ -35,6 +35,42 @@ begin
 end;
 $$;
 
+create function pg_temp.wait_for_advisory_lock(
+  p_backend_pid integer,
+  p_classid oid,
+  p_objid oid,
+  p_objsubid smallint,
+  p_granted boolean
+)
+returns boolean
+language plpgsql
+as $$
+declare
+  v_attempt integer := 0;
+begin
+  loop
+    if exists (
+      select 1
+      from pg_catalog.pg_locks as lock
+      where lock.pid = p_backend_pid
+        and lock.locktype = 'advisory'
+        and lock.classid = p_classid
+        and lock.objid = p_objid
+        and lock.objsubid = p_objsubid
+        and lock.granted = p_granted
+    ) then
+      return true;
+    end if;
+
+    v_attempt := v_attempt + 1;
+    if v_attempt >= 300 then
+      return false;
+    end if;
+    perform pg_catalog.pg_sleep(0.01);
+  end loop;
+end;
+$$;
+
 select is(
   extensions.dblink_connect(
     'slice9_clear_control',
@@ -82,6 +118,14 @@ select is(
   ),
   'OK',
   'the administrator-revocation connection opens'
+);
+select is(
+  extensions.dblink_connect(
+    'slice9_clear_creator',
+    'host=supabase_db_predictor port=5432 dbname=postgres user=postgres password=postgres'
+  ),
+  'OK',
+  'the concurrent league-creator connection opens'
 );
 
 select is(
@@ -141,6 +185,17 @@ select is(
   'SET',
   'the revocation connection has bounded waits'
 );
+select is(
+  extensions.dblink_exec('slice9_clear_creator', $remote$
+    set statement_timeout = '15s';
+    set lock_timeout = '10s';
+    set role authenticated;
+    set request.jwt.claims =
+      '{"sub":"d9911111-1111-4111-8111-111111111111","role":"authenticated"}';
+  $remote$),
+  'SET',
+  'the concurrent creator has only the authenticated manager context'
+);
 
 select is(
   extensions.dblink_exec('slice9_clear_control', $remote$
@@ -165,7 +220,11 @@ select is(
     delete from public.predictions
     where match_id = 'd9900000-0000-4000-8000-000000000001';
     delete from public.leagues
-    where id = 'd9900000-0000-4000-8000-000000000010';
+    where id = 'd9900000-0000-4000-8000-000000000010'
+       or (
+         manager_id = 'd9911111-1111-4111-8111-111111111111'
+         and name = 'Slice 9 registry race league'
+       );
     delete from public.matches
     where id = 'd9900000-0000-4000-8000-000000000001';
     delete from public.sports_provider_rounds
@@ -299,7 +358,135 @@ union all
 select 'revoker'::text, backend.pid
 from extensions.dblink(
   'slice9_clear_revoker', 'select pg_catalog.pg_backend_pid()'
+) as backend(pid integer)
+union all
+select 'creator'::text, backend.pid
+from extensions.dblink(
+  'slice9_clear_creator', 'select pg_catalog.pg_backend_pid()'
 ) as backend(pid integer);
+
+-- Clear must hold the exclusive registry barrier before it discovers the
+-- season's league set. Keep it waiting on an existing league row, then prove a
+-- real create_league caller queues on the shared barrier instead of committing
+-- a phantom after discovery.
+select is(
+  extensions.dblink_exec('slice9_clear_locker', $remote$
+    begin;
+    update public.leagues
+    set name = name
+    where id = 'd9900000-0000-4000-8000-000000000010';
+  $remote$),
+  'UPDATE 1',
+  'the registry-race holder owns the discovered league row'
+);
+select is(
+  extensions.dblink_send_query('slice9_clear_one', $remote$
+    select result_cleared
+    from public.clear_manual_match_override(
+      'd9900000-0000-4000-8000-000000000001'
+    )
+  $remote$),
+  1,
+  'clear starts and waits after registry acquisition and discovery'
+);
+select ok(
+  pg_temp.wait_for_remote_lock(
+    (select pid from slice9_clear_backend_pids where name = 'one')
+  ),
+  'clear reaches the existing league-row wait'
+);
+select ok(
+  pg_temp.wait_for_advisory_lock(
+    (select pid from slice9_clear_backend_pids where name = 'one'),
+    0::oid,
+    2026090609::oid,
+    1::smallint,
+    true
+  ),
+  'clear retains the exclusive registry barrier while waiting on the league row'
+);
+select is(
+  extensions.dblink_send_query('slice9_clear_creator', $remote$
+    select public.create_league(
+      'd9900000-0000-4000-8000-000000000027',
+      'Slice 9 registry race league',
+      null,
+      0,
+      null,
+      null::timestamptz,
+      true,
+      3::smallint,
+      1::smallint,
+      0::smallint,
+      '[{"position":1,"percentage_bps":10000}]'::jsonb
+    )
+  $remote$),
+  1,
+  'a real create_league call starts after clear discovery'
+);
+select ok(
+  pg_temp.wait_for_advisory_lock(
+    (select pid from slice9_clear_backend_pids where name = 'creator'),
+    0::oid,
+    2026090609::oid,
+    1::smallint,
+    false
+  ),
+  'the creator waits on the shared registry barrier instead of committing a phantom'
+);
+select is(
+  extensions.dblink_exec('slice9_clear_locker', 'commit'),
+  'COMMIT',
+  'the discovered league row is released after both waits are observed'
+);
+create temp table slice9_registry_race_clear as
+select result.*
+from extensions.dblink_get_result('slice9_clear_one', false)
+  as result(cleared boolean);
+select is(
+  (select count(*)::integer
+   from extensions.dblink_get_result('slice9_clear_one', false)
+     as drained(value text)),
+  0,
+  'the registry-race clear result is fully drained'
+);
+select is(
+  (select cleared from slice9_registry_race_clear),
+  true,
+  'clear completes before the queued league creation'
+);
+create temp table slice9_registry_race_created as
+select result.*
+from extensions.dblink_get_result('slice9_clear_creator', false)
+  as result(league_id uuid);
+select is(
+  (select count(*)::integer
+   from extensions.dblink_get_result('slice9_clear_creator', false)
+     as drained(value text)),
+  0,
+  'the registry-race creator result is fully drained'
+);
+select ok(
+  (select league_id is not null from slice9_registry_race_created),
+  'the queued creator succeeds only after clear releases the barrier'
+);
+select is(
+  extensions.dblink_exec('slice9_clear_control', $remote$
+    delete from public.leagues
+    where manager_id = 'd9911111-1111-4111-8111-111111111111'
+      and season_id = 'd9900000-0000-4000-8000-000000000027'
+      and name = 'Slice 9 registry race league';
+    update public.matches
+    set is_manually_overridden = true,
+        updated_at = '2098-08-01T00:00:00Z'
+    where id = 'd9900000-0000-4000-8000-000000000001';
+    delete from public.audit_logs
+    where action = 'match_manual_override_cleared'
+      and entity_id = 'd9900000-0000-4000-8000-000000000001';
+  $remote$),
+  'DELETE 1',
+  'the registry-race rows are removed and the handoff fixture is restored'
+);
 
 -- Two concurrent clears serialize. The winner changes ownership once; the
 -- waiter observes the committed state and returns a true no-op.
@@ -897,7 +1084,11 @@ select is(
     delete from public.predictions
     where match_id = 'd9900000-0000-4000-8000-000000000001';
     delete from public.leagues
-    where id = 'd9900000-0000-4000-8000-000000000010';
+    where id = 'd9900000-0000-4000-8000-000000000010'
+       or (
+         manager_id = 'd9911111-1111-4111-8111-111111111111'
+         and name = 'Slice 9 registry race league'
+       );
     delete from public.matches
     where id = 'd9900000-0000-4000-8000-000000000001';
     delete from public.sports_provider_rounds
@@ -959,6 +1150,11 @@ select is(
   extensions.dblink_disconnect('slice9_clear_revoker'),
   'OK',
   'the revocation connection closes'
+);
+select is(
+  extensions.dblink_disconnect('slice9_clear_creator'),
+  'OK',
+  'the concurrent league-creator connection closes'
 );
 select is(
   extensions.dblink_disconnect('slice9_clear_control'),

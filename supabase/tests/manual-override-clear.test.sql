@@ -53,6 +53,35 @@ select ok(
   'the handoff boundary cannot rewrite predictions or invoke scoring'
 );
 
+select ok(
+  position(
+    'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.clear_manual_match_override(uuid)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.clear_manual_match_override(uuid)'::regprocedure
+    ))
+  ) < position(
+    'private.slice9_clear_manual_match_override_without_registry_barrier'
+    in lower(pg_get_functiondef(
+      'public.clear_manual_match_override(uuid)'::regprocedure
+    ))
+  )
+  and lower(pg_get_functiondef(
+    'private.slice9_clear_manual_match_override_without_registry_barrier(uuid)'::regprocedure
+  )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)'
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_clear_manual_match_override_without_registry_barrier(uuid)',
+    'EXECUTE'
+  ),
+  'the public handoff owns the registry barrier while its existing mutation delegate remains private and barrier-free'
+);
+
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at

@@ -264,6 +264,7 @@ DEMO_MODE=true
 | 029 `slice9_hosted_rls_helper_hardening_contract` | maintenance function פרטית, invoker-rights וללא app/Data API EXECUTE ACL שמחילה idempotently path ריק וביטול EXECUTE על `rls_auto_enable` רק אם אובייקט Hosted קיים | אותה לוגיקה רצה ב־migration ונבדקת מול fixture event-trigger אמיתי; Vitest מקבע את קריאת ה־migration; היעדר האובייקט הוא no-op |
 | 030 `slice9_system_actor_legacy_promotion_contract` | חוזה deployment פרטי, invoker-rights וללא Data API grant שמקדם binding קיים ל־designation היחיד `sports_sync` ונכשל על mismatch | pgTAP בונה מצב legacy אמיתי, מקדם ומריץ replay idempotent; Vitest מחייב invocation סופי ב־migration; היעדר binding הוא no-op מפורש |
 | 031 `slice9_score_match_registry_barrier` | עטיפת ה־RPC הישירה של `score_match` במחסום registry, גילוי כל ליגות העונה ונעילות advisory ממוינות לפני ה־delegate הקיים | קריאת service-role ישירה אינה יכולה לגלות ליגה חדשה ב־snapshot מאוחר בלי להחזיק את המפתח שלה; ה־delegate ללא grant ונשאר barrier-free |
+| 032 `slice9_clear_override_registry_barrier` | מעביר את מימוש `clear_manual_match_override` ל־delegate פרטי ועוטף את גילוי ליגות העונה במחסום registry בלעדי | `create_league` בעונה זהה ממתינה במחסום shared עד שה־clear מסיים את בדיקת ה־completed/archived; ליגה חדשה אינה יכולה להופיע כ־phantom אחרי discovery |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -1487,8 +1488,9 @@ API-Football ממשיך לבצע upsert רק לפי `(external_provider, externa
 actor ה־session המאומת ב־header פנימי. היא אינה granted ל־anon/authenticated
 ואינה מקבלת actor, role, result, provider או flag מהדפדפן. רק match עם
 `external_provider='api-football'` ו־external ID מספרי חיובי תקין יכול לעבור
-מבעלות ידנית לבעלות ספק; row ידנית/סינתטית או provider אחר נדחים. ה־RPC דוגמת
-את season, נועלת את כל ליגות העונה בסדר UUID, מחזיקה מחדש את actor ב־
+מבעלות ידנית לבעלות ספק; row ידנית/סינתטית או provider אחר נדחים. ה־RPC לוקחת
+מחסום registry בלעדי לפני דגימת ה־season וגילוי הליגות, נועלת את כל ליגות
+העונה בסדר UUID, מחזיקה מחדש את actor ב־
 `system_admins FOR KEY SHARE`, נועלת את ה־match ומוודאת שה־season לא השתנה.
 שינוי ממשי נכשל סגור כאשר אחת מליגות העונה `completed`/`archived`, עד מסירת
 reconciliation ב־W4.
