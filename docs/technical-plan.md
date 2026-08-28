@@ -262,6 +262,7 @@ DEMO_MODE=true
 | 027 `slice9_review_registry_barrier` | מכניס את הכרעת review למחסום registry בלעדי לפני גילוי ליגות העונה, ולאחריו נועל את כל מפתחות הליגה בסדר יציב | יצירת ליגה שלא הושלמה אינה יכולה להופיע ל־`score_match` אחרי שלב הגילוי בלי שמפתח הליגה שלה מוחזק |
 | 028 `slice9_reconciliation_lock_reverify` | מאמת ומגלה work item, נכשל מיד אם חסר, לוקח את מפתח הליגה ואז קושר post-lock re-read לאותה ליגה לפני delegate | work item שנעלם או שויך מחדש בזמן ההמתנה נכשל `RECONCILIATION_NOT_FOUND`; delegate אינו רץ תחת מפתח של ליגה אחרת |
 | 029 `slice9_hosted_rls_helper_hardening_contract` | maintenance function פרטית, invoker-rights וללא app/Data API EXECUTE ACL שמחילה idempotently path ריק וביטול EXECUTE על `rls_auto_enable` רק אם אובייקט Hosted קיים | אותה לוגיקה רצה ב־migration ונבדקת מול fixture event-trigger אמיתי; Vitest מקבע את קריאת ה־migration; היעדר האובייקט הוא no-op |
+| 030 `slice9_system_actor_legacy_promotion_contract` | חוזה deployment פרטי, invoker-rights וללא Data API grant שמקדם binding קיים ל־designation היחיד `sports_sync` ונכשל על mismatch | pgTAP בונה מצב legacy אמיתי, מקדם ומריץ replay idempotent; Vitest מחייב invocation סופי ב־migration; היעדר binding הוא no-op מפורש |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 

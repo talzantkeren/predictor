@@ -582,6 +582,12 @@ league תיכשל ולא תוכל להחזיר את היפוך הסדר מול C
 ב־runbook, ב־checker ובתבנית value-free. הסרת §3A או אחד משדות הראיה מכשילה
 גם את `owner-runbooks:check` וגם את בדיקת Vitest הבלתי תלויה.
 
+תיקון promotion של F10 אינו נשען עוד על UPDATE חד־פעמי שאינו פוגש fixture
+מקומי. בדיקת activation מנקה designation, יוצרת binding legacy ישיר, מפעילה
+את `slice9_promote_legacy_boundary_binding()` ומוכיחה designation+binding תואמים
+וכן replay idempotent. בדיקת Vitest נפרדת מחייבת שהקריאה לחוזה תישאר המשפט
+האחרון ב־migration הקדמית.
+
 תיקון הביקורת המאוחר מוסיף את
 `supabase/tests/slice9-league-lock-scope.test.sql`. הוא מחזיק transaction של
 `save_prediction` ושל completion אידמפוטנטי בליגה A, מוכיח שפעולה באותה ליגה

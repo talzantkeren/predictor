@@ -104,6 +104,30 @@ select ok(
 );
 
 select ok(
+  to_regprocedure('private.slice9_promote_legacy_boundary_binding()') is not null
+  and not (
+    select prosecdef
+    from pg_proc
+    where oid = 'private.slice9_promote_legacy_boundary_binding()'::regprocedure
+  )
+  and (
+    select proconfig @> array['search_path=""']
+    from pg_proc
+    where oid = 'private.slice9_promote_legacy_boundary_binding()'::regprocedure
+  )
+  and not has_function_privilege(
+    'anon', 'private.slice9_promote_legacy_boundary_binding()', 'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated', 'private.slice9_promote_legacy_boundary_binding()', 'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role', 'private.slice9_promote_legacy_boundary_binding()', 'EXECUTE'
+  ),
+  'legacy promotion is an invoker-rights deployment contract with no Data API grant'
+);
+
+select ok(
   (
     select bool_and(prosecdef and proconfig @> array['search_path=""'])
     from pg_proc
@@ -491,6 +515,51 @@ select results_eq(
     'sports_sync'::text
   )$$,
   'the local principal is explicitly designated before any Cron call'
+);
+
+update public.system_admins
+set automation_purpose = null
+where user_id = '70000000-0000-4000-8000-000000000007';
+insert into private.slice9_system_actor_bindings (
+  binding_name,
+  actor_id
+) values (
+  'business_boundary_activation',
+  '70000000-0000-4000-8000-000000000007'
+);
+select results_eq(
+  $$select administrator.automation_purpose, binding.actor_id
+    from private.slice9_system_actor_bindings as binding
+    join public.system_admins as administrator
+      on administrator.user_id = binding.actor_id
+    where binding.binding_name = 'business_boundary_activation'$$,
+  $$values (
+    null::text,
+    '70000000-0000-4000-8000-000000000007'::uuid
+  )$$,
+  'the promotion regression starts with a legacy binding and no designation'
+);
+select is(
+  private.slice9_promote_legacy_boundary_binding(),
+  true,
+  'the deployment contract promotes the legacy binding before traffic'
+);
+select results_eq(
+  $$select administrator.automation_purpose, binding.actor_id
+    from private.slice9_system_actor_bindings as binding
+    join public.system_admins as administrator
+      on administrator.user_id = binding.actor_id
+    where binding.binding_name = 'business_boundary_activation'$$,
+  $$values (
+    'sports_sync'::text,
+    '70000000-0000-4000-8000-000000000007'::uuid
+  )$$,
+  'legacy promotion restores the unique designation and retains the same binding'
+);
+select is(
+  private.slice9_promote_legacy_boundary_binding(),
+  true,
+  'legacy promotion is idempotent after the designation is established'
 );
 
 delete from private.slice9_system_actor_bindings

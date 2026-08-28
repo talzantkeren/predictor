@@ -344,6 +344,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   הרשאות טבלה ל־`anon`, ל־`authenticated` או ל־`service_role`. אין מסך CRUD;
   הענקה נעשית רק ב־seed מאובטח או migration ייעודית. `is_system_admin()` מחזירה
   למשתמש מאומת רק אם הזהות שלו קיימת בטבלה ואינה מאפשרת לשאול על משתמש אחר.
+- upgrade של Hosted שכבר מכיל binding פרטי מפעיל חוזה migration idempotent
+  שמקדם את אותו actor בלבד ל־`sports_sync`. החוזה הוא invoker-rights, ללא
+  EXECUTE ל־Data API, מחזיר no-op מפורש כאשר אין binding ונכשל סגור אם designation
+  קיים מצביע ל־actor אחר. pgTAP משחזר את מצב ה־legacy במקום להסתמך על seed.
 - מסך Slice 9 משתמש ב־`ManualMatchFormBoundary`: Server Component לוכד ב־inline
   Server Action את operation ואת UUID היצירה שהשרת הנפיק או את match ID שנקרא
   מהמסד, ואז קורא ל־`mutateManualMatch` המוגן ב־`server-only`. ה־helper מבצע
