@@ -48,30 +48,43 @@ gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,j
 gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url
 ```
 
-## Vercel — baseline היסטורי בלבד
+## Vercel — תצפיות שאינן final Production
 
-ה־Preview שנצפה קודם היה deployment
-`dpl_Cjza13KogKyyLMbZr972AU5DmbY3`, immutable
-`predictor-mew7uo1y9-tals-projects-19902e47.vercel.app`, READY/HTTP 200. הוא
-אינו final SHA.
-
-ה־Production שנצפה קודם היה deployment
-`dpl_VtykjW3xjXJcjmpCjH25wZTBP3xn`, immutable
-`predictor-2r75rqica-tals-projects-19902e47.vercel.app`, READY/HTTP 200. ה־200
-הוא smoke היסטורי ואינו מוכיח Production parity ל־`<final-sha>`.
+לאחר תיקון S9-DEF-025 הופעל redeploy מפורש ל־Preview על source
+`2fc9a36ed5e8adc101ebef6c4a42796a0abe5690`. הפריסה הגיעה ל־READY בתוך דקה
+ועברה public smoke ‏4/4 ב־Manual ללא Sports key. מזהי project/deployment,
+aliases וכתובות אינם נשמרים במסמך זה. לא הופעלה או קודמה פריסת Production;
+לכן התצפית אינה מוכיחה Production parity ל־`<final-sha>`.
 
 ## מטריצת env ללא ערכים
 
-בצילום read-only הקודם נמצא `SPORTS_API_KEY` ב־scope
-`preview,production`. S9-DEF-025 מצמצם זאת לפעולת owner יחידה: להסיר Preview
-בלי Reveal/Copy. מטריצת blank values וגבולות Local/CI כבר נבדקו. אחרי הפעולה,
-S9-REQ-003 דורש snapshot סופי של names/scopes בלבד.
+S9-DEF-025 נסגר ב־28 באוגוסט 2026 באמצעות target-only update לרשומה הקיימת,
+בלי לקרוא, למשוך, להדפיס או לשלוח value. זו המטריצה המסוננת הנוכחית; אין בה
+עמודת value או fragment של value:
+
+| Variable name | Environment | Classification | Scope |
+| --- | --- | --- | --- |
+| `SPORTS_API_KEY` | Production | Sensitive | Production only; all branches |
+| `SPORTS_API_KEY` | Preview | Not present | No Preview or branch-specific association |
+| `SPORTS_API_KEY` | Local | Not present | Manual configuration; no key |
+| `SPORTS_API_KEY` | CI | Not present | Manual workflow; no key entry |
+| `SPORTS_API_PROVIDER` | Production | Sensitive | Production only; all branches |
+| `SPORTS_API_PROVIDER` | Preview | Not present | No Preview or branch-specific association |
+| `SPORTS_API_PROVIDER` | Local | Local configuration | Manual |
+| `SPORTS_API_PROVIDER` | CI | Workflow configuration | Manual |
+
+S9-REQ-003 עדיין דורש snapshot סופי של names/scopes בלבד על ה־final SHA; הוא
+אינו מחזיר את Preview scope ואינו דורש Reveal/Copy של key.
 
 ## migrations מקומיות
 
-ה־reset והבדיקה המקומיים החילו 36 migrations עד `20260827180000`. לא בוצעה
-פנייה ל־linked Supabase. ה־owner ישווה ב־SQL Editor את עמודת `version` בלבד מול
-קובצי Git, וישמור parity מצונזר על אותו `<final-sha>`.
+ה־reset האחרון החיל 39 migrations עד `20260827200000`. במהלך S9-REQ-005
+נבדקה רשימת Hosted והוחלה בבידוד רק migration ההקשחה
+`20260825000000_revoke_rls_event_trigger_rpc_access.sql`; לאחריה נצפו 20
+migrations מרוחקות, בעוד 19 migrations של Slice 9 נשארו local-only במכוון.
+לא בוצע linked reset ולא נעשה ניסיון לסגור את S9-REQ-003. לאחר merge ה־owner
+ישווה את עמודת `version` בלבד מול קובצי Git וישמור parity מצונזר על אותו
+`<final-sha>`.
 
 ## שער owner היחיד
 

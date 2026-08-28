@@ -22,14 +22,17 @@ for (const expected of [
   "Lint, typecheck, unit tests and build",
   "Supabase database tests",
   "Playwright core flows",
-  "dpl_Cjza13KogKyyLMbZr972AU5DmbY3",
-  "predictor-mew7uo1y9-tals-projects-19902e47.vercel.app",
-  "dpl_VtykjW3xjXJcjmpCjH25wZTBP3xn",
-  "predictor-2r75rqica-tals-projects-19902e47.vercel.app",
+  "2fc9a36ed5e8adc101ebef6c4a42796a0abe5690",
+  "Manual ללא Sports key",
+  "מזהי project/deployment",
   "Billing/spending blocker: RESOLVED",
   "SPORTS_API_KEY",
-  "preview,production",
-  "20260827180000",
+  "Production only; all branches",
+  "No Preview or branch-specific association",
+  "Manual workflow; no key entry",
+  "39 migrations",
+  "20260825000000_revoke_rls_event_trigger_rpc_access.sql",
+  "19 migrations של Slice 9 נשארו local-only",
   "Evaluator access",
   "Hosted migration parity",
   "Final Production and evaluator closeout",
@@ -56,6 +59,13 @@ invariant(
   !/(?:SUPABASE_SECRET_KEY|CRON_SECRET|SPORTS_API_KEY)\s*=\s*\S+/u.test(evidence),
   "Final-submission evidence contains a secret assignment.",
 );
+for (const stale of [
+  "preview,production",
+  "dpl_Cjza13KogKyyLMbZr972AU5DmbY3",
+  "dpl_VtykjW3xjXJcjmpCjH25wZTBP3xn",
+]) {
+  invariant(!evidence.includes(stale), `Final-submission evidence contains stale Hosted state: ${stale}`);
+}
 
 console.log(
   "Final-submission register verified: observed CI is recorded and one consolidated Production/evaluator owner action remains.",

@@ -14,6 +14,7 @@ const documentPaths = [
   "docs/course-source.md",
   "docs/evaluator-runbook.md",
   "docs/final-submission-evidence.md",
+  "docs/slice-9-delivery-ledger.md",
   "docs/slice-9-owner-actions.md",
   "docs/slice-9-review-packet.md",
   "presentation/README.md",
@@ -107,6 +108,7 @@ const projectBookSource = documents.get("docs/project-book-source.md");
 const evaluator = documents.get("docs/evaluator-runbook.md");
 const courseSource = documents.get("docs/course-source.md");
 const ownerActions = documents.get("docs/slice-9-owner-actions.md");
+const deliveryLedger = documents.get("docs/slice-9-delivery-ledger.md");
 const reviewPacket = documents.get("docs/slice-9-review-packet.md");
 
 invariant(!readme.includes("מצב נוכחי: Slice 8"), "README still describes Slice 8 as current.");
@@ -171,6 +173,39 @@ const deliveryRecordIds = [
 ];
 for (const id of deliveryRecordIds) {
   invariant(reviewPacket.includes(`| ${id} |`), `Review packet is missing record row: ${id}`);
+}
+const currentLedgerSection = deliveryLedger.split("## Final closeout", 1)[0];
+const currentLedgerRows = currentLedgerSection
+  .split(/\r?\n/u)
+  .filter((line) => /^\| S9-(?:DEF|REQ)-\d{3} \|/u.test(line));
+const verifiedLedgerRows = currentLedgerRows.filter((line) => line.includes("| VERIFIED |"));
+const ownerLedgerRows = currentLedgerRows.filter((line) =>
+  line.includes("| OWNER_ACTION_REQUIRED |"),
+);
+invariant(currentLedgerRows.length === 25, `Expected 25 delivery rows, found ${currentLedgerRows.length}.`);
+invariant(
+  verifiedLedgerRows.length === 20 && ownerLedgerRows.length === 5,
+  `Expected 20 VERIFIED and 5 OWNER_ACTION_REQUIRED rows, found ${verifiedLedgerRows.length}/${ownerLedgerRows.length}.`,
+);
+for (const [id, status] of [
+  ["S9-REQ-005", "VERIFIED"],
+  ["S9-DEF-025", "VERIFIED"],
+  ["S9-DEF-022", "OWNER_ACTION_REQUIRED"],
+]) {
+  invariant(
+    currentLedgerRows.some((row) => row.startsWith(`| ${id} |`) && row.includes(`| ${status} |`)),
+    `Delivery ledger has the wrong final status for ${id}.`,
+  );
+  invariant(
+    reviewPacket.includes(`| ${id} | ${status} |`),
+    `Review packet has the wrong final status for ${id}.`,
+  );
+}
+for (const id of ["S9-DEF-004", "S9-DEF-012", "S9-DEF-022", "S9-REQ-002", "S9-REQ-003"]) {
+  invariant(
+    ownerLedgerRows.some((row) => row.startsWith(`| ${id} |`)),
+    `Expected open delivery record is missing: ${id}`,
+  );
 }
 for (const expected of [
   "Look here first",
