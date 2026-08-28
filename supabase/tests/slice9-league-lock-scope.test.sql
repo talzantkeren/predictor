@@ -128,6 +128,52 @@ select ok(
 
 select ok(
   position(
+    'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'from public.leagues as league'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  ) < position(
+    'from public.leagues as league'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  )
+  and position(
+    'from public.leagues as league'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  ) < position(
+    'private.slice9_lock_leagues'
+    in lower(pg_get_functiondef(
+      'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+    ))
+  )
+  and lower(pg_get_functiondef(
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure
+  )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)'
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)',
+    'EXECUTE'
+  ),
+  'the direct scorer orders registry barrier before discovery before affected league keys while its delegate stays private and barrier-free'
+);
+
+select ok(
+  position(
     'private.slice9_lock_leagues'
     in lower(pg_get_functiondef(
       'public.reconcile_completed_league(uuid,integer,text)'::regprocedure
@@ -158,6 +204,39 @@ begin
       from pg_catalog.pg_stat_activity as activity
       where activity.pid = p_backend_pid
         and activity.wait_event_type = 'Lock'
+    ) then
+      return true;
+    end if;
+    v_attempt := v_attempt + 1;
+    if v_attempt >= 300 then return false; end if;
+    perform pg_catalog.pg_sleep(0.01);
+  end loop;
+end;
+$$;
+
+create function pg_temp.wait_for_advisory_lock(
+  p_backend_pid integer,
+  p_classid oid,
+  p_objid oid,
+  p_objsubid smallint,
+  p_granted boolean
+)
+returns boolean
+language plpgsql
+as $$
+declare
+  v_attempt integer := 0;
+begin
+  loop
+    if exists (
+      select 1
+      from pg_catalog.pg_locks as lock
+      where lock.pid = p_backend_pid
+        and lock.locktype = 'advisory'
+        and lock.classid = p_classid
+        and lock.objid = p_objid
+        and lock.objsubid = p_objsubid
+        and lock.granted = p_granted
     ) then
       return true;
     end if;
@@ -210,6 +289,12 @@ select is(
     'host=supabase_db_predictor port=5432 dbname=postgres user=postgres password=postgres'
   ), 'OK', 'the unrelated-league caller connection opens'
 );
+select is(
+  extensions.dblink_connect(
+    'league_scope_scorer',
+    'host=supabase_db_predictor port=5432 dbname=postgres user=postgres password=postgres'
+  ), 'OK', 'the direct scorer connection opens'
+);
 
 select is(
   extensions.dblink_exec('league_scope_control', $remote$
@@ -237,6 +322,8 @@ select is(
     where id between
       'da100000-0000-4000-8000-000000000101'::uuid and
       'da100000-0000-4000-8000-000000000102'::uuid;
+    delete from public.system_admins
+    where user_id = 'da100000-0000-4000-8000-000000000001'::uuid;
     delete from auth.users
     where id = 'da100000-0000-4000-8000-000000000001'::uuid;
 
@@ -251,6 +338,12 @@ select is(
       extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
       now(), '{"provider":"email","providers":["email"]}',
       '{"display_name":"League Scope"}', now(), now()
+    );
+
+    insert into public.system_admins (user_id, granted_by)
+    values (
+      'da100000-0000-4000-8000-000000000001',
+      'da100000-0000-4000-8000-000000000001'
     );
 
     insert into public.seasons (
@@ -337,6 +430,187 @@ select is(
   $remote$),
   'CREATE FUNCTION',
   'the unrelated-league caller helper is installed'
+);
+
+select is(
+  extensions.dblink_exec('league_scope_scorer', $remote$
+    set statement_timeout = '10s';
+    create function pg_temp.try_score()
+    returns text language plpgsql as $function$
+    declare v_result record;
+    begin
+      perform set_config(
+        'request.headers',
+        '{"x-predictor-system-actor":"da100000-0000-4000-8000-000000000001"}',
+        true
+      );
+      select * into strict v_result
+      from public.score_match(
+        'da100000-0000-4000-8000-000000000201',
+        'canceled',
+        null,
+        null,
+        false,
+        'manual'
+      );
+      return 'SCORED:' || v_result.result_status::text;
+    exception when others then
+      return 'ERROR:' || sqlstate || ':' || sqlerrm;
+    end $function$;
+  $remote$),
+  'CREATE FUNCTION',
+  'the direct scorer helper is installed'
+);
+
+create temp table score_scope_pid as
+select pid
+from extensions.dblink(
+  'league_scope_scorer', 'select pg_backend_pid()'
+) as result(pid integer);
+
+select is(
+  extensions.dblink_exec('league_scope_holder', $remote$
+    begin;
+    do $block$
+    begin
+      perform pg_catalog.pg_advisory_xact_lock_shared(2026090609);
+    end $block$;
+  $remote$),
+  'DO',
+  'a shared catalog writer keeps the registry barrier open'
+);
+select is(
+  extensions.dblink_send_query(
+    'league_scope_scorer',
+    'select pg_temp.try_score()'
+  ),
+  1,
+  'direct scoring starts while the registry barrier is held'
+);
+select ok(
+  pg_temp.wait_for_advisory_lock(
+    (select pid from score_scope_pid),
+    0::oid,
+    2026090609::oid,
+    1::smallint,
+    false
+  ),
+  'direct scoring waits on the exclusive registry barrier before discovery'
+);
+select is(
+  extensions.dblink_exec('league_scope_holder', 'commit'),
+  'COMMIT',
+  'the registry barrier is released after its wait is observed'
+);
+select ok(
+  pg_temp.wait_until_ready('league_scope_scorer'),
+  'direct scoring finishes after the registry barrier is released'
+);
+select results_eq(
+  $$select value from extensions.dblink_get_result('league_scope_scorer')
+    as result(value text)$$,
+  $$values ('SCORED:canceled'::text)$$,
+  'direct scoring succeeds after registry serialization'
+);
+select is(
+  (
+    select count(*)::integer
+    from extensions.dblink_get_result('league_scope_scorer')
+      as drained(value text)
+  ),
+  0,
+  'the registry-barrier scoring result is fully drained'
+);
+select is(
+  extensions.dblink_exec('league_scope_control', $remote$
+    update public.matches
+    set status = 'scheduled',
+        home_score = null,
+        away_score = null,
+        result_version = 0,
+        is_manually_overridden = false,
+        updated_at = clock_timestamp()
+    where id = 'da100000-0000-4000-8000-000000000201'::uuid;
+    delete from public.audit_logs
+    where entity_type = 'match_result'
+      and entity_id = 'da100000-0000-4000-8000-000000000201'::uuid;
+  $remote$),
+  'DELETE 1',
+  'the match is restored after the registry-barrier probe'
+);
+
+select is(
+  extensions.dblink_exec('league_scope_holder', $remote$
+    begin;
+    do $block$
+    begin
+      perform pg_catalog.pg_advisory_xact_lock(
+        2026090609,
+        pg_catalog.hashtext('da100000-0000-4000-8000-000000000301')
+      );
+    end $block$;
+  $remote$),
+  'DO',
+  'the affected league key is held independently of the registry barrier'
+);
+select is(
+  extensions.dblink_send_query(
+    'league_scope_scorer',
+    'select pg_temp.try_score()'
+  ),
+  1,
+  'direct scoring starts while its affected league key is held'
+);
+select ok(
+  pg_temp.wait_for_advisory_lock(
+    (select pid from score_scope_pid),
+    2026090609::oid,
+    pg_catalog.hashtext('da100000-0000-4000-8000-000000000301')::oid,
+    2::smallint,
+    false
+  ),
+  'direct scoring waits on the exact discovered league key'
+);
+select is(
+  extensions.dblink_exec('league_scope_holder', 'commit'),
+  'COMMIT',
+  'the affected league key is released after its wait is observed'
+);
+select ok(
+  pg_temp.wait_until_ready('league_scope_scorer'),
+  'direct scoring finishes after the affected league key is released'
+);
+select results_eq(
+  $$select value from extensions.dblink_get_result('league_scope_scorer')
+    as result(value text)$$,
+  $$values ('SCORED:canceled'::text)$$,
+  'direct scoring succeeds after affected-league serialization'
+);
+select is(
+  (
+    select count(*)::integer
+    from extensions.dblink_get_result('league_scope_scorer')
+      as drained(value text)
+  ),
+  0,
+  'the league-key scoring result is fully drained'
+);
+select is(
+  extensions.dblink_exec('league_scope_control', $remote$
+    update public.matches
+    set status = 'scheduled',
+        home_score = null,
+        away_score = null,
+        result_version = 0,
+        is_manually_overridden = false,
+        updated_at = clock_timestamp()
+    where id = 'da100000-0000-4000-8000-000000000201'::uuid;
+    delete from public.audit_logs
+    where entity_type = 'match_result'
+      and entity_id = 'da100000-0000-4000-8000-000000000201'::uuid;
+  $remote$),
+  'DELETE 1',
+  'the match is restored after the affected-league probe'
 );
 
 select is(
@@ -563,6 +837,8 @@ select is(extensions.dblink_disconnect('league_scope_same'), 'OK',
   'the same-league waiter disconnects');
 select is(extensions.dblink_disconnect('league_scope_other'), 'OK',
   'the unrelated-league caller disconnects');
+select is(extensions.dblink_disconnect('league_scope_scorer'), 'OK',
+  'the direct scorer disconnects');
 
 select is(
   extensions.dblink_exec('league_scope_control', $remote$
@@ -590,6 +866,8 @@ select is(
     where id between
       'da100000-0000-4000-8000-000000000101'::uuid and
       'da100000-0000-4000-8000-000000000102'::uuid;
+    delete from public.system_admins
+    where user_id = 'da100000-0000-4000-8000-000000000001'::uuid;
     delete from auth.users
     where id = 'da100000-0000-4000-8000-000000000001'::uuid;
   $remote$),

@@ -75,6 +75,32 @@ select ok(
 );
 
 select ok(
+  to_regprocedure(
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)'
+  ) is not null
+  and (select prosecdef from pg_proc where oid =
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure)
+  and (select array_to_string(proconfig, ',') from pg_proc where oid =
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure) = 'search_path=""'
+  and not has_function_privilege(
+    'anon',
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_score_match_without_registry_barrier(uuid,public.match_status,numeric,numeric,boolean,text)',
+    'EXECUTE'
+  ),
+  'the unlocked scoring delegate is security-definer, empty-path, and private to database-owned wrappers'
+);
+
+select ok(
   to_regclass('public.league_leaderboard') is not null
   and (select relkind = 'v' from pg_class where oid = 'public.league_leaderboard'::regclass),
   'league_leaderboard is a view rather than duplicated state'

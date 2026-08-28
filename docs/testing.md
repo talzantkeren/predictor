@@ -220,15 +220,16 @@ npm run test:e2e -- prediction-lock.spec.ts
 | שכבה | כיסוי |
 | --- | --- |
 | Vitest | specification executable בדיקתי לסיווג HOME/DRAW/AWAY ול־exact/correct/wrong ב־3/1/0 ובחוקים מותאמים; Zod ל־finished/canceled וציונים 0–30; מיפוי שגיאת kickoff ושם חסר בטוחים; חלוקת אחוזי מקומות משותפים ב־basis points ללא floating point |
-| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; exact, בית, חוץ, תיקו וטעות; דחיית `finished` לפני kickoff ללא mutation; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, ספירת הגשות רק אחרי kickoff, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
-| DB concurrency | שני חיבורי `dblink` אמיתיים מפעילים `score_match` ו־`save_prediction` במקביל. ה־score נועל match בלבד; השמירה ממתינה לו ומסתיימת ב־`PREDICTION_LOCKED` הצפוי, ללא deadlock או lock timeout |
+| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; delegate פרטי ללא Data API grant; exact, בית, חוץ, תיקו וטעות; דחיית `finished` לפני kickoff ללא mutation; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, ספירת הגשות רק אחרי kickoff, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
+| DB concurrency | probes אמיתיים של `dblink` מפעילים `score_match` ו־`save_prediction` במקביל ללא deadlock; probe נוסף מחזיק תחילה shared registry ואחר כך את מפתח הליגה המדויק, ומוכיח ב־`pg_locks` שקריאת `score_match` הישירה ממתינה על כל שכבה לפני הניקוד |
 | Playwright | מנהל מערכת מאומת מזין 2–1 דרך `/admin/matches`; משתמש רגיל נדחה גם מהנתיב וגם מקריאת RPC ישירה; `/leagues/[leagueId]/standings` מציג לחבר דירוג 1,1,3 ב־Desktop וב־Mobile; RTL וללא overflow |
 
-בדיקת המקביליות משתמשת רק במכולת PostgreSQL המקומית וב־credentials המקומיים
-הקבועים של Supabase CLI. היא חוסמת זמנית את שורת actor של audit כדי ליצור סדר
-מתוזמן: `score_match` מחזיקה את match, ובאותו זמן `save_prediction` מחזיקה את
-league ואת membership וממתינה ל־match. שחרור החסימה מוכיח ששני התהליכים
-מסתיימים בלי מעגל נעילות. אין להריץ את קובץ הבדיקה מול פרויקט linked/hosted.
+בדיקות המקביליות משתמשות רק במכולת PostgreSQL המקומית וב־credentials המקומיים
+הקבועים של Supabase CLI. probe הניקוד הוותיק חוסם זמנית את שורת actor של audit
+כדי לתזמן `score_match` מול `save_prediction`; probe ה־Slice 9 מחזיק במפורש
+registry ואז league advisory key ומזהה את ההמתנה המדויקת ב־`pg_locks`.
+שחרור החסימות מוכיח שהפעולות מסתיימות ללא מעגל נעילות. אין להריץ את קובצי
+הבדיקה מול פרויקט linked/hosted.
 
 קובץ `src/features/scoring/__tests__/scoring-specification.ts` הוא חוזה בדיקתי
 בלבד ואינו מיובא בקוד הייצור. הוא מגן על דוגמאות SCORE-01/02 ועל מטריצת
@@ -606,6 +607,14 @@ creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, res
 היעדר ההמתנה על registry והיעדר מפתח הליגה החדשה; לאחר migration עברה 27/27.
 assertion מבני נוסף מקבע במפורש barrier→`public.leagues` discovery→league
 keys; הזזת ה־discovery מעל המחסום נכשלת גם בלי להסתמך על תזמון המירוץ.
+
+תיקון הכניסה הישירה ל־`public.score_match` משתמש באותו prefix של
+registry→discovery→league keys ומעביר את המימוש הקודם ל־delegate פרטי ללא
+Data API grant. `slice9-league-lock-scope.test.sql` מפעיל את ה־RPC בחיבור נפרד,
+מחזיק תחילה shared registry ואחר כך את מפתח הליגה המדויק, ומוודא שה־backend
+ממתין על כל אחד מהם לפני שהוא מצליח. מוטציה מקומית שהחליפה את ה־wrapper
+בקריאה ישירה ל־delegate נכשלה ב־3 מתוך 59 assertions: השומר המבני ושתי
+המתנות ה־advisory.
 
 תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
 שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני

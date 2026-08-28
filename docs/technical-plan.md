@@ -263,6 +263,7 @@ DEMO_MODE=true
 | 028 `slice9_reconciliation_lock_reverify` | מאמת ומגלה work item, נכשל מיד אם חסר, לוקח את מפתח הליגה ואז קושר post-lock re-read לאותה ליגה לפני delegate | work item שנעלם או שויך מחדש בזמן ההמתנה נכשל `RECONCILIATION_NOT_FOUND`; delegate אינו רץ תחת מפתח של ליגה אחרת |
 | 029 `slice9_hosted_rls_helper_hardening_contract` | maintenance function פרטית, invoker-rights וללא app/Data API EXECUTE ACL שמחילה idempotently path ריק וביטול EXECUTE על `rls_auto_enable` רק אם אובייקט Hosted קיים | אותה לוגיקה רצה ב־migration ונבדקת מול fixture event-trigger אמיתי; Vitest מקבע את קריאת ה־migration; היעדר האובייקט הוא no-op |
 | 030 `slice9_system_actor_legacy_promotion_contract` | חוזה deployment פרטי, invoker-rights וללא Data API grant שמקדם binding קיים ל־designation היחיד `sports_sync` ונכשל על mismatch | pgTAP בונה מצב legacy אמיתי, מקדם ומריץ replay idempotent; Vitest מחייב invocation סופי ב־migration; היעדר binding הוא no-op מפורש |
+| 031 `slice9_score_match_registry_barrier` | עטיפת ה־RPC הישירה של `score_match` במחסום registry, גילוי כל ליגות העונה ונעילות advisory ממוינות לפני ה־delegate הקיים | קריאת service-role ישירה אינה יכולה לגלות ליגה חדשה ב־snapshot מאוחר בלי להחזיק את המפתח שלה; ה־delegate ללא grant ונשאר barrier-free |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -550,9 +551,12 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
    לא־אינטראקטיבי וללא session UI, שמוקם באופן מאובטח לכל סביבה ב־
    `auth.users` וב־`system_admins`. חסרון env או הסרת ההרשאה מכשילים סגור;
    direct `pg_cron`/SQL invocation ללא context אינו מסלול נתמך.
-2. lock על match בלבד. אין lock על `leagues` או על `league_scoring_rules`, כדי
-   לא להפוך את סדר `leagues → league_members → matches` של `save_prediction`
-   וליצור מעגל deadlock.
+2. הגבול הציבורי לוקח מחסום registry בלעדי לפני discovery של כל הליגות בעונת
+   המשחק, ואחריו את מפתחות ה־league advisory הממוינים. רק אז ה־delegate הפרטי
+   נועל את ה־match ומחשב set-based. ה־delegate אינו לוקח registry או league
+   locks בעצמו ואין לו Data API grant; כך כל הקריאות הישירות והעקיפות שומרות
+   על הסדר `registry → league key → match` ואינן הופכות את סדר
+   `league → league_members → match` של `save_prediction`.
 3. validation של score/status ושל זמן DB לאחר השגת ה־lock; `finished` לפני
    `kickoff_at` נדחה, ו־`canceled` לפני kickoff נשאר מותר.
 4. עדכון result ו־version רק כאשר השתנו.
@@ -1411,8 +1415,10 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   `profiles → join_requests` ואינו רוכש league לאחר מכן; finalize עובר
   `league → request → proof`; approve עובר `league → request → member`;
   completion עובר `league → requests → members/matches/reviews/snapshots`.
-  `score_match` נשאר match-only, רשאי להוסיף match-review/reconciliation
-  leaves לפי הסדר ואינו רוכש league לאחר מכן.
+  ה־wrapper הציבורי של `score_match` נכנס למחסום registry לפני גילוי ליגות
+  העונה ולוקח את מפתחותיהן לפני ה־delegate; ה־delegate נשאר match-only, רשאי
+  להוסיף match-review/reconciliation leaves לפי הסדר ואינו רוכש league לאחר
+  מכן.
 - כל מוטציית membership/proof שאיבדה את המירוץ ל־completion נכשלת באופן אטום;
   replay של completion אינו מכפיל reason/audit. real multi-session tests
   מוכיחים completion מול upload/finalize/approve/reject.

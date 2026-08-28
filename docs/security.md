@@ -366,6 +366,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - `score_match` אינה ניתנת להרצה ל־`anon` או ל־`authenticated`; גם ברירת המחדל
   של `service_role` נשללת ומוענק לה `EXECUTE` מפורש ומצומצם בלבד. ה־admin client
   נשאר `server-only` ונצרך לניקוד רק דרך gateway ייעודי, לא כלקוח גנרי.
+- ה־wrapper הציבורי של `score_match` מאמת actor, לוקח את מחסום ה־registry
+  הבלעדי לפני גילוי ליגות העונה ואז נועל את מפתחות הליגה הממוינים. ה־delegate
+  שמבצע את הניקוד נשאר בסכמה `private`, ללא EXECUTE ל־Data API, ואינו רוכש את
+  המחסום מחדש. לכן גם caller בעל secret key אינו יכול לעקוף את סדר הנעילות.
 - מאחר שקריאת service-role אינה נושאת `auth.uid()` של המשתמש, ה־Action מעביר
   ללקוח השרת header פנימי וקבוע עם מזהה ה־session המאומת. המשתמש אינו יכול
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
@@ -377,7 +381,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   ואינו מגיע מהבקשה. env חסר, UUID שגוי או הסרת השורה מ־`system_admins`
   מכשילים את הריצה סגור; אין fallback ל־service-role ישן, לזהות אנושית או
   לקריאת SQL/pg_cron ללא context.
-- הפונקציה נועלת רק את שורת `matches`. היא קוראת את חוקי כל ליגה ללא
+- לאחר שה־wrapper מחזיק את מפתחות הליגה, ה־delegate נועל את שורת `matches`. הוא קורא את חוקי כל ליגה ללא
   `FOR UPDATE` ואינה נועלת `leagues`, ולכן אינה הופכת את סדר הנעילות הקיים של
   `save_prediction` (`leagues → league_members → matches`). התוצאה, גרסתה,
   כל שדות הניקוד וה־audit נכתבים באותה transaction. retry זהה הוא no-op ואינו
@@ -407,7 +411,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | זיוף actor דרך הטופס או קריאת gateway לא מורשית | אין actor בקלט; header פנימי נוצר רק במודול `server-only`; `system_admins` ללא CRUD | בדיקות schema/grants/import boundary ו־actor שאינו בטבלה |
 | ניקוד כפול או שאריות מתוצאה קודמת | overwrite set-based לפי result/rule version בתוך transaction אחת | exact/outcome/wrong/draw, retry זהה, correction ו־cancel |
 | תוצאת סיום מוקדמת יוצרת totals תלויי־צופה | זמן DB אחרי match lock + דחיית `finished` לפני kickoff; אגרגטים מסננים לפי kickoff | pgTAP לתוצאה מוקדמת ללא mutation ולניחוש עתידי שאינו נספר גם לבעליו |
-| deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד; provider apply מקבע `lease → run → match` ואינו נועל league/rules | probes מרובי־חיבורים עם audit wait מבוקר מריצים גם `score_match`/save וגם apply/save חופפים |
+| deadlock או phantom עם שמירת ניחוש/יצירת ליגה | wrapper של `score_match` מקבע `registry → league keys → match`; ה־delegate אינו רוכש registry/league מחדש; provider apply משתמש באותו prefix לפני `lease → run → match` | probes מרובי־חיבורים בודקים score/save וגם apply/save חופפים; probe ייעודי מחזיק registry ואז league key ומוכיח שה־RPC הישיר ממתין על שניהם |
 | דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
 | שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |
 
