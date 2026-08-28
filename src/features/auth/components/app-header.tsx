@@ -10,6 +10,7 @@ export function AppHeader() {
       <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"
+          aria-label="מעבר ללוח האישי"
           className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg font-extrabold text-navy-900 sm:justify-start"
         >
           <span

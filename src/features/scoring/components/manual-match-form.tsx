@@ -192,7 +192,7 @@ export function ManualMatchForm({
             id={`${prefix}-kickoff-error`}
             messages={state.fieldErrors?.kickoffAt}
           />
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-slate-600">
             הספרות מפורשות ישירות כשעת UTC, ללא המרת אזור הזמן של הדפדפן.
           </p>
         </div>
