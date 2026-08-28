@@ -65,11 +65,11 @@ npx playwright install
 | `test:e2e:preview` | smoke ציבורי מפורש מול `PLAYWRIGHT_BASE_URL`; אינו מתחזה לזרימת Auth מלאה |
 | `test:e2e:run` | `playwright test` מקומי מול build קיים |
 | `test:client-secrets` | build עם sentinel סינתטי וסריקת artifacts; נכשל אם לא נסרק פלט |
-| `test:client-secrets:scan` | primitive פנימי שסורק build קיים ודורש sentinel |
+| `test:client-secrets:scan` | סורק build קיים מול חוזה sentinel סינתטי הקשור ל־`BUILD_ID`; נכשל על חוזה חסר או ישן |
 | `types:db` | יצירת `src/types/database.generated.ts` מה־DB המקומי |
 | `docs:book:check` | regeneration זמני והשוואת bytes ל־`docs/project-book.docx` |
 | `docs:submission:check` | בדיקת סנכרון וקישורי מסמכי ההגשה |
-| `verify` | lint → typecheck → unit → DB → generated types drift → שני שערי docs → build+client-secret scan → E2E מול אותו build |
+| `verify` | lint → typecheck → unit → שערי evidence/hardening/runbooks/Sports → DB → scale plans → generated types drift → שערי docs → build+client-secret scan → סריקה ישירה → E2E מול אותו build |
 
 ## 3. מבנה תיקיות יעד
 
@@ -966,12 +966,18 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 בכל pull request:
 
 1. `npm ci`.
-2. lint ו־typecheck.
-3. unit tests.
-4. Supabase local reset + DB tests.
-5. production build.
-6. Playwright core flows ב־job נפרד.
-7. בדיקה ש־generated DB types מעודכנים.
+2. lint, ‏typecheck ו־unit tests.
+3. `submission:evidence:check`, ‏`hardening:check`, ‏`owner-runbooks:check`
+   ו־`sports:secret-boundaries` ב־quality job.
+4. Supabase local reset + DB tests, אחריהם `scale:plans` לפני כיבוי המסד.
+5. בדיקה ש־generated DB types מעודכנים ו־production build ב־quality job.
+6. build עם sentinel סינתטי, חוזה מקומי הקשור ל־`BUILD_ID`, סריקת artifacts
+   בזמן ה־build וסריקה ישירה נוספת ב־E2E job. חוזה חסר/ישן נכשל סגור, ולכן
+   הסריקה הישירה אינה יכולה לעבור על build מקרי שלא נבנה עם ה־sentinel.
+7. Playwright core flows ב־job נפרד מול אותו build סרוק.
+
+אותם ששת שערי ההקשחה נקראים ישירות גם מ־`npm run verify`; אין שער ידני בין
+השישה, משום שכולם דטרמיניסטיים ונתמכים ב־CI המקומי.
 
 ## 15. תכנית מימוש לפי Vertical Slices
 

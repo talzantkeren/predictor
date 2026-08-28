@@ -470,8 +470,10 @@ npm run test:e2e
 - `npm run test:e2e` כולל build עם sentinel server-only וסריקת primitive
   `test:client-secrets:scan` לפני הפעלת השרת. `npm run test:client-secrets`
   הוא שער עצמאי שבונה וסורק בעצמו; `npm run verify` מריץ אותו במפורש ואז מפעיל
-  `test:e2e:run` מול אותו build. כך גם CI וגם verify אוכפים את הסריקה ישירות
-  בלי build כפול.
+  סריקה ישירה נוספת ואת `test:e2e:run` מול אותו build. ה־build שומר ב־`.next`
+  חוזה סינתטי לא־סודי הכולל `BUILD_ID`; הסריקה הישירה נכשלת אם החוזה חסר,
+  שייך ל־build ישן או אינו תואם ל־sentinel הסינתטי. כך גם CI וגם verify
+  אוכפים את הסריקה בלי build כפול ובלי להסתמך על משתנה process מצעד קודם.
 
 ## Slice 8: דוח מנהל לא־כספי
 
@@ -610,6 +612,14 @@ EXECUTE ל־PUBLIC/anon/authenticated/service_role. היעדר האובייקט 
 פקודות ההקשחה ל־migration המקורית ומחייבות שקריאת החוזה תהיה המשפט האחרון
 ב־migration החדשה, אחרי ביטול grants; הסרת ה־auto-application נכשלת גם אם
 הפונקציה עצמה נשארה תקינה.
+
+תיקון F11 מחבר ישירות את `submission:evidence:check`, ‏`hardening:check`,
+`owner-runbooks:check`, ‏`sports:secret-boundaries`, ‏`scale:plans` ו־
+`test:client-secrets:scan` גם ל־CI וגם ל־`npm run verify`. בדיקת חוזה סטטית
+נכשלת אם אחד השערים מוסר, מוזז ל־job חסר תלות, או אם scale plans רצים אחרי
+כיבוי Supabase. חמש בדיקות התנהגות מריצות את סורק ה־artifacts בתיקיות build
+מבודדות: build נקי עובר, בעוד sentinel ב־client chunk, חוזה חסר, `BUILD_ID`
+ישן או sentinel סביבתי שאינו תואם נכשלים סגור בלי להדפיס את ה־sentinel.
 
 Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
 Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,

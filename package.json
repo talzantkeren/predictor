@@ -35,7 +35,7 @@
     "scale:plans": "tsx scripts/check-scale-plans.ts",
     "sports:secret-boundaries": "node scripts/check-sports-secret-boundaries.mjs",
     "poc:sports": "tsx scripts/sports-provider-poc.ts",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:db && npm run types:check && npm run docs:book:check && npm run docs:submission:check && npm run presentation:check && npm run test:client-secrets && npm run test:e2e:run"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run submission:evidence:check && npm run hardening:check && npm run owner-runbooks:check && npm run sports:secret-boundaries && npm run test:db && npm run scale:plans && npm run types:check && npm run docs:book:check && npm run docs:submission:check && npm run presentation:check && npm run test:client-secrets && npm run test:client-secrets:scan && npm run test:e2e:run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

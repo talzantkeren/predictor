@@ -46,7 +46,7 @@ rate limits נצפים ו־Demo-only.
 execute. רק `resolve_invite` פתוח ל־anon בכוונה; כל 17 פתוחים ל־authenticated
 עם actor/resource checks ובדיקות של משתמש/ליגה זרים.
 
-## מטריצת verification
+## מטריצת verification בנקודת סגירת S9-REQ-005
 
 | Gate | פקודה | תוצאה נצפית | Status |
 | --- | --- | --- | --- |
@@ -63,7 +63,7 @@ execute. רק `resolve_invite` פתוח ל־anon בכוונה; כל 17 פתוח�
 | Performance Advisor | `supabase db advisors --linked --type performance --level info` | 20/20 dispositioned | PASS |
 | Migration isolation | linked `db push --dry-run`, then apply | exactly one hardening migration | PASS |
 
-הרצת DB ראשונה נכשלה כש־Docker יצר מחדש את מסד ה־Local באמצע קובץ
+הרצת DB ראשונה בנקודת הסגירה נכשלה כש־Docker יצר מחדש את מסד ה־Local באמצע קובץ
 multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מהחיבור שנקטע. שתי
 הריצות לא סומנו כ־PASS. לאחר reset קדימה ותצפית health תקינה, כל 1502 בדיקות
 ה־DB וכל 624 בדיקות חבילת ה־multi-session עברו.

@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
 import { containsUnexpectedWebServerError } from "@/lib/playwright-server-log";
@@ -35,6 +35,11 @@ const playwrightArguments = process.argv
       argument !== "--client-secret-check-only",
   );
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+const clientSecretScanContractPath = join(
+  process.cwd(),
+  ".next",
+  "client-secret-scan-contract.json",
+);
 
 if (
   clientSecretCheckOnly &&
@@ -122,6 +127,32 @@ function run(
     );
     process.exit(1);
   }
+}
+
+function writeClientSecretScanContract(syntheticSentinel: string) {
+  if (!/^sports-client-sentinel-[a-f0-9]{48}$/u.test(syntheticSentinel)) {
+    console.error("Could not create the synthetic client-secret scan contract.");
+    process.exit(1);
+  }
+
+  const buildId = readFileSync(
+    join(process.cwd(), ".next", "BUILD_ID"),
+    "utf8",
+  ).trim();
+  if (!buildId) {
+    console.error("The client-secret build did not produce a build ID.");
+    process.exit(1);
+  }
+
+  writeFileSync(
+    clientSecretScanContractPath,
+    `${JSON.stringify({
+      version: 1,
+      buildId,
+      syntheticSentinel,
+    })}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
 }
 
 async function runPlaywright(
@@ -236,7 +267,9 @@ if (!skipBuild && !externalBaseUrl) {
     SPORTS_API_KEY: clientSecretSentinel,
     CLIENT_SECRET_SENTINEL: clientSecretSentinel,
   };
+  rmSync(clientSecretScanContractPath, { force: true });
   run(["run", "build"], sentinelBuildEnvironment);
+  writeClientSecretScanContract(clientSecretSentinel);
   run(["run", "test:client-secrets:scan"], sentinelBuildEnvironment);
 }
 

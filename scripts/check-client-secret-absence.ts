@@ -1,16 +1,70 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { extname, join } from "node:path";
 
-const sentinel = process.env.CLIENT_SECRET_SENTINEL;
-if (!sentinel) {
-  console.error("CLIENT_SECRET_SENTINEL is required for the client artifact scan.");
+type ScanContract = {
+  version: 1;
+  buildId: string;
+  syntheticSentinel: string;
+};
+
+const nextDirectory = join(process.cwd(), ".next");
+const buildIdPath = join(nextDirectory, "BUILD_ID");
+const contractPath = join(nextDirectory, "client-secret-scan-contract.json");
+let buildId: string;
+try {
+  buildId = readFileSync(buildIdPath, "utf8").trim();
+} catch {
+  console.error("The client artifact scan requires a completed production build ID.");
   process.exit(1);
 }
-const requiredSentinel = sentinel;
+if (!buildId) {
+  console.error("The client artifact scan requires a completed production build ID.");
+  process.exit(1);
+}
+
+function isSyntheticSentinel(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^sports-client-sentinel-[a-f0-9]{48}$/u.test(value)
+  );
+}
+
+const environmentSentinel = process.env.CLIENT_SECRET_SENTINEL;
+let contract: ScanContract;
+try {
+  contract = JSON.parse(readFileSync(contractPath, "utf8")) as ScanContract;
+} catch {
+  console.error(
+    "The direct client artifact scan requires the synthetic sentinel contract produced by test:client-secrets.",
+  );
+  process.exit(1);
+}
+
+if (
+  contract.version !== 1 ||
+  contract.buildId !== buildId ||
+  !isSyntheticSentinel(contract.syntheticSentinel)
+) {
+  console.error(
+    "The synthetic sentinel contract does not belong to the current production build.",
+  );
+  process.exit(1);
+}
+if (environmentSentinel && environmentSentinel !== contract.syntheticSentinel) {
+  console.error(
+    "The supplied synthetic sentinel does not match the current production build contract.",
+  );
+  process.exit(1);
+}
+const requiredSentinel = contract.syntheticSentinel;
 
 const roots = [
-  { directory: join(process.cwd(), ".next", "static"), allFiles: true },
-  { directory: join(process.cwd(), ".next", "server", "app"), allFiles: false },
+  { directory: join(nextDirectory, "static"), allFiles: true },
+  { directory: join(nextDirectory, "server", "app"), allFiles: false },
 ];
 const renderedExtensions = new Set([".html", ".rsc", ".txt"]);
 let filesScanned = 0;

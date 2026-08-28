@@ -80,7 +80,8 @@ names/scopes בלבד על ה־final SHA; הוא
 
 ## migrations מקומיות
 
-ה־reset האחרון החיל 39 migrations עד `20260827200000`. במהלך S9-REQ-005
+ה־reset שנרשם בנקודת סגירת S9-REQ-005 החיל 39 migrations עד
+`20260827200000`. במהלך אותה סגירה
 נבדקה רשימת Hosted והוחלה בבידוד רק migration ההקשחה
 `20260825000000_revoke_rls_event_trigger_rpc_access.sql`; לאחריה נצפו 20
 migrations מרוחקות, בעוד 19 migrations של Slice 9 נשארו local-only במכוון.
