@@ -13,7 +13,7 @@ select is(
     from information_schema.columns
     where table_schema = 'public' and table_name = 'system_admins'
   ),
-  'user_id,granted_by,granted_at',
+  'user_id,granted_by,granted_at,automation_purpose',
   'system_admins is the minimal documented table'
 );
 select ok(

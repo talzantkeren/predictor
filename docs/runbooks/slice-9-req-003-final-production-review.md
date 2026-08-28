@@ -73,6 +73,38 @@ ordered ID lists; require exact equality through the newest Git migration.
 Record `Hosted migration parity: PASS` only after the comparison. Do not run
 `supabase link`, `supabase db push`, or any linked reset from the agent session.
 
+### 3A. Require the system actor designation before application traffic
+
+Migration `20260828090000` promotes an existing boundary binding atomically. On
+a brand-new Hosted project, however, the environment-specific Auth principal is
+created outside Git and cannot be invented by schema SQL. Keep application
+traffic closed after migrations, create the noninteractive principal through
+Supabase Auth Admin, and grant its protected row through the controlled SQL
+channel with `automation_purpose='sports_sync'` before deploying the app. Never
+save or screenshot either UUID. A rotation must clear the old designation and
+grant the new one in the same controlled maintenance window before traffic
+resumes.
+
+Then run only this value-free readiness query and record its two booleans:
+
+```sql
+select
+  (select count(*)
+     from public.system_admins
+     where automation_purpose = 'sports_sync') = 1
+    as exactly_one_designated_actor,
+  (select count(*)
+     from private.slice9_system_actor_bindings as binding
+     join public.system_admins as administrator
+       on administrator.user_id = binding.actor_id
+      and administrator.automation_purpose = 'sports_sync'
+     where binding.binding_name = 'business_boundary_activation') = 1
+    as boundary_binding_ready;
+```
+
+Require both values to be `true` before proceeding. The first natural Cron tick
+verifies the same identity; it is no longer allowed to create this precondition.
+
 ## 4. Confirm the final environment-name/scope matrix
 
 This step follows the S9-DEF-025 Preview-scope correction. Run:

@@ -35,6 +35,75 @@ select ok(
 );
 
 select ok(
+  exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'system_admins'
+      and column_name = 'automation_purpose'
+      and data_type = 'text'
+      and is_nullable = 'YES'
+  )
+  and exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.system_admins'::regclass
+      and conname = 'system_admins_automation_purpose_check'
+      and contype = 'c'
+      and convalidated
+  )
+  and exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'system_admins'
+      and indexname = 'system_admins_automation_purpose_unique_idx'
+      and indexdef ilike '%where (automation_purpose is not null)%'
+  ),
+  'the noninteractive system actor has one constrained unique designation'
+);
+
+select ok(
+  exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.system_admins'::regclass
+      and tgname = 'slice9_sync_business_boundary_actor_binding'
+      and not tgisinternal
+  )
+  and (
+    select prosecdef and proconfig @> array['search_path=""']
+    from pg_proc
+    where oid = 'private.slice9_sync_business_boundary_actor_binding()'::regprocedure
+  )
+  and not has_function_privilege(
+    'anon',
+    'private.slice9_sync_business_boundary_actor_binding()',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'private.slice9_sync_business_boundary_actor_binding()',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'private.slice9_sync_business_boundary_actor_binding()',
+    'EXECUTE'
+  )
+  and not has_column_privilege(
+    'anon', 'public.system_admins', 'automation_purpose', 'SELECT,UPDATE'
+  )
+  and not has_column_privilege(
+    'authenticated', 'public.system_admins', 'automation_purpose', 'SELECT,UPDATE'
+  )
+  and not has_column_privilege(
+    'service_role', 'public.system_admins', 'automation_purpose', 'SELECT,UPDATE'
+  ),
+  'the designation trigger and column have no Data API grant'
+);
+
+select ok(
   (
     select bool_and(prosecdef and proconfig @> array['search_path=""'])
     from pg_proc
@@ -238,6 +307,32 @@ values
     '2099-08-27T12:00:00Z', 'scheduled'
   );
 
+insert into public.join_requests (
+  id, league_id, user_id, status, created_at, updated_at
+) values (
+  'db000000-0000-4000-8000-000000000401',
+  'db000000-0000-4000-8000-000000000203',
+  'db000000-0000-4000-8000-000000000002',
+  'pending_approval',
+  '2026-08-27T09:00:00Z',
+  '2026-08-27T09:00:00Z'
+);
+
+insert into public.payment_proofs (
+  id, join_request_id, uploaded_by, storage_path, mime_type, size_bytes,
+  sha256, upload_idempotency_key, uploaded_at
+) values (
+  'db000000-0000-4000-8000-000000000501',
+  'db000000-0000-4000-8000-000000000401',
+  'db000000-0000-4000-8000-000000000002',
+  'league/db000000-0000-4000-8000-000000000203/request/db000000-0000-4000-8000-000000000401/db000000-0000-4000-8000-000000000501.webp',
+  'image/webp',
+  128,
+  repeat('d', 64),
+  'db000000-0000-4000-8000-000000000601',
+  '2026-08-27T09:01:00Z'
+);
+
 create temp table activation_due_result as
 select *
 from private.slice9_activate_due_leagues_core(
@@ -387,6 +482,78 @@ select is(
   'manual replay writes exactly one activation audit event'
 );
 
+select results_eq(
+  $$select administrator.user_id, administrator.automation_purpose
+    from public.system_admins as administrator
+    where administrator.automation_purpose = 'sports_sync'$$,
+  $$values (
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'sports_sync'::text
+  )$$,
+  'the local principal is explicitly designated before any Cron call'
+);
+
+delete from private.slice9_system_actor_bindings
+where binding_name = 'business_boundary_activation';
+select is(
+  (
+    select count(*)::integer
+    from private.slice9_system_actor_bindings
+    where binding_name = 'business_boundary_activation'
+  ),
+  0,
+  'the late-approval regression starts from the legacy UNBOUND state'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"db000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+create temp table activation_unbound_approval_result as
+select request_status::text, member_status::text
+from public.approve_join_request(
+  'db000000-0000-4000-8000-000000000401'
+);
+reset role;
+
+select results_eq(
+  $$select request_status, member_status
+    from activation_unbound_approval_result$$,
+  $$values ('approved'::text, 'active'::text)$$,
+  'late approval succeeds before the first Cron binding write'
+);
+select results_eq(
+  $$select league.status::text,
+           league.activated_at = match.kickoff_at,
+           audit.actor_id,
+           audit.metadata ->> 'triggering_actor_id'
+    from public.leagues as league
+    join public.matches as match
+      on match.id = 'db000000-0000-4000-8000-000000000303'
+    join public.audit_logs as audit
+      on audit.entity_id = league.id
+     and audit.action = 'league_activated'
+    where league.id = 'db000000-0000-4000-8000-000000000203'$$,
+  $$values (
+    'active'::text,
+    true,
+    '70000000-0000-4000-8000-000000000007'::uuid,
+    'db000000-0000-4000-8000-000000000001'::text
+  )$$,
+  'UNBOUND recovery uses the designated system actor and records the manager only as trigger provenance'
+);
+select is(
+  (
+    select count(*)::integer
+    from private.slice9_system_actor_bindings
+    where binding_name = 'business_boundary_activation'
+  ),
+  0,
+  'the league-first fallback remains read-only and cannot invert the lock order'
+);
+
 set local role service_role;
 select set_config('request.headers', '{}', true);
 select throws_ok(
@@ -480,6 +647,21 @@ select is(
   0,
   'revoking the configured system administrator removes its boundary binding'
 );
+select throws_ok(
+  $$select private.slice9_business_boundary_system_actor()$$,
+  'P0001', 'SYSTEM_ACTOR_UNAVAILABLE',
+  'an ordinary system administrator is never guessed when the designation is absent'
+);
+update public.system_admins
+set automation_purpose = 'sports_sync'
+where user_id = 'db000000-0000-4000-8000-000000000003';
+select results_eq(
+  $$select binding.actor_id
+    from private.slice9_system_actor_bindings as binding
+    where binding.binding_name = 'business_boundary_activation'$$,
+  $$values ('db000000-0000-4000-8000-000000000003'::uuid)$$,
+  'controlled rotation designates and binds the replacement before traffic'
+);
 set local role service_role;
 select set_config(
   'request.headers',
@@ -488,7 +670,7 @@ select set_config(
 );
 select lives_ok(
   $$select * from public.activate_due_leagues()$$,
-  'the next valid Cron call binds an explicitly rotated system actor'
+  'the next valid Cron call verifies the explicitly rotated system actor'
 );
 reset role;
 select results_eq(

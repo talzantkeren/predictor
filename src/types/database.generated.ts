@@ -1060,16 +1060,19 @@ export type Database = {
       }
       system_admins: {
         Row: {
+          automation_purpose: string | null
           granted_at: string
           granted_by: string
           user_id: string
         }
         Insert: {
+          automation_purpose?: string | null
           granted_at?: string
           granted_by: string
           user_id: string
         }
         Update: {
+          automation_purpose?: string | null
           granted_at?: string
           granted_by?: string
           user_id?: string

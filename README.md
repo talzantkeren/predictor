@@ -268,23 +268,26 @@ gateway סגור. אין בטופס שדה authoritative של operation או mat
 `SYNC_SYSTEM_ACTOR_ID`, צרו ערך אקראי משלכם ל־`CRON_SECRET` ואל תשמרו אותו
 ב־Git. `npm run test:e2e` מזריק סוד אקראי חדש לכל הרצה אוטומטית.
 
-לכל סביבת hosted מבצעים את ההקמה ידנית ומאובטחת:
+לכל סביבת hosted מבצעים את ההקמה ידנית ומאובטחת, לפני פתיחת תעבורת משתמשים:
 
-1. יוצרים דרך Supabase Auth Admin, בסשן תפעולי מבוקר, משתמש לא־אינטראקטיבי
+1. משאירים את תעבורת האפליקציה סגורה ומחילים את כל ה־migrations. בסביבה קיימת
+   ה־migration מקדמת אטומית את ה־binding הישן ל־designation החדש.
+2. יוצרים דרך Supabase Auth Admin, בסשן תפעולי מבוקר, משתמש לא־אינטראקטיבי
    ייעודי. אין להפיץ או לשמור credential להתחברות; שומרים רק את ה־UUID שלו.
-2. מעניקים ל־UUID שורה ב־`system_admins` דרך ערוץ ניהול מבוקר. אין מסך UI
-   שמעניק הרשאה זו. הסרת השורה מבטלת מיד את יכולת ה־RPC.
-3. מגדירים ב־Vercel את `SYNC_SYSTEM_ACTOR_ID` ואת `CRON_SECRET` כמשתני
+3. מעניקים ל־UUID שורה ב־`system_admins` עם
+   `automation_purpose='sports_sync'` דרך ערוץ ניהול מבוקר. ה־trigger יוצר מיד
+   את ה־binding הפרטי. דורשים בדיוק designation אחד ו־binding תואם לפני deploy
+   של האפליקציה; אין מסך UI שמעניק הרשאה זו.
+4. מגדירים ב־Vercel את `SYNC_SYSTEM_ACTOR_ID` ואת `CRON_SECRET` כמשתני
    server-only. את אותו סוד Cron שומרים ב־Supabase Vault, לא ב־migration.
-4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
+5. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
    ב־SQL, ב־Git או בלוגים. שם ה־job היחיד הוא `predictor-sports-sync`.
-5. מיד לאחר migration מריצים tick מאומת אחד לפני פתיחת תעבורת משתמשים. ה־tick
-   קושר את actor הקבוע להפעלות גבול; עד אז reconciliation מאוחר נכשל סגור עם
-   `SYSTEM_ACTOR_UNAVAILABLE`. החלפת actor מחייבת קודם הסרת שורת
-   `system_admins` הישנה ורק אז tick עם ה־UUID החדש; actor שני אינו מחליף קישור
-   קיים בשקט.
-6. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
+6. פורסים ופותחים תעבורה רק אחרי בדיקת ה־designation וה־binding. tick ראשון
+   מאמת את אותה זהות אך אינו יוצר עוד את התנאי המוקדם להפעלת גבול. rotation
+   מתבצע בטרנזקציה תפעולית מבוקרת שמסירה את designation הישן ומעניקה
+   `sports_sync` למחליף לפני חידוש התעבורה; actor שני אינו מחליף אותו בשקט.
+7. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
    העברית שהקטלוג הוחל או שכבר היה מעודכן, ובמסך `/admin/sync` מוודאים שורת
    `succeeded/manual` סופית. קודי `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` מוחזרים
    לפעולה ואינם נשמרים ב־`error_code`, שנשאר `null` בהצלחה. זהו import של

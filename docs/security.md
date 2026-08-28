@@ -333,7 +333,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ## תוצאות, ניקוד ודירוג ב־Slice 6
 
-- `system_admins` הוקדמה כטבלה מינימלית מוגנת. RLS מופעלת, אין policies ואין
+- `system_admins` הוקדמה כטבלה מינימלית מוגנת. `automation_purpose` אופציונלי
+  וחסום לערך היחיד `sports_sync`, עם unique חלקי שמונע שני principals
+  אוטומטיים. RLS מופעלת, אין policies ואין
   הרשאות טבלה ל־`anon`, ל־`authenticated` או ל־`service_role`. אין מסך CRUD;
   הענקה נעשית רק ב־seed מאובטח או migration ייעודית. `is_system_admin()` מחזירה
   למשתמש מאומת רק אם הזהות שלו קיימת בטבלה ואינה מאפשרת לשאול על משתמש אחר.
@@ -648,11 +650,12 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   invite, submit ו־completion. helper פרטי ללא Data API grant מקבע transition
   מאוחר פעם אחת, נועל את חוקי הניקוד ב־first kickoff ושומר
   `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. אירוע כזה משתמש ב־system
-  actor הלא־אינטראקטיבי שנקשר מראש על ידי `activate_due_leagues`; caller רגיל
-  נשמר רק ב־`metadata.triggering_actor_id`. טבלת ה־binding ושני helpers פרטיים
-  חסרי grant לכל Data API role. הקישור הראשון immutable כל עוד ה־actor מורשה,
-  mismatch נכשל סגור והסרת `system_admins` מוחקת אותו ב־cascade; lookup נועל
-  רק את שורת ה־administrator ולא את tuple הקישור, כדי לא להפוך את סדר
+  actor הלא־אינטראקטיבי בעל designation יחיד `sports_sync`; caller רגיל נשמר
+  רק ב־`metadata.triggering_actor_id`. trigger מבוקר יוצר את cache ה־binding
+  בעת ההענקה, ו־lookup עסקי יכול ליפול לקריאת designation בלבד אם ה־cache חסר.
+  טבלת ה־binding וה־helpers הפרטיים חסרי grant לכל Data API role. mismatch נכשל
+  סגור והסרת `system_admins` מוחקת את הקישור ב־cascade; lookup נועל רק את שורת
+  ה־administrator ולעולם אינו כותב את tuple הקישור אחרי league lock, כדי לא להפוך את סדר
   bind→league של Cron מול league→actor של boundary. כתיבת fixture מגשרת את כל
   מפתחות הליגות המושפעות, ולכן aggregate ה־first kickoff אינו משתנה באמצע
   ההכרעה. כותבי catalog שיכולים להוסיף fixture לוקחים קודם מחסום registry

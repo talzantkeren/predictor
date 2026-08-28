@@ -563,9 +563,12 @@ completion. השנייה עברה 35/35 ומכסה provider FT מול review, re
 Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
 finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
 
-תיקון attribution של הביקורת מוסיף binding פרטי ל־system actor. בדיקת
-activation מאמתת ACL, actor קבוע, דחיית replacement שקט, cascade בעת revocation
-ו־rotation מפורש. בדיקת ה־lifecycle מאמתת שב־scheduled וב־business-boundary
+תיקון attribution של הביקורת מוסיף binding פרטי ל־system actor. תיקון F10
+מוסיף designation יחיד `sports_sync` ו־fallback לקריאה בלבד: בדיקת activation
+מוחקת את ה־binding, מאשרת בקשת הצטרפות בליגה שכבר חצתה kickoff ומוכיחה שה־
+boundary מצליח ומייחס את האודיט ל־actor המיועד עוד לפני קריאת Cron. היא גם
+מאמתת ACL, דחיית replacement שקט, היעדר ניחוש של admin רגיל, cascade בעת
+revocation ו־rotation מפורש. בדיקת ה־lifecycle מאמתת שב־scheduled וב־business-boundary
 ה־`audit_logs.actor_id` הוא principal המערכת, בעוד החבר המפעיל נשמר רק ב־
 `metadata.triggering_actor_id`. probe מרובה־חיבורים מחזיק את tuple ה־binding
 ומחייב boundary בליגה אחרת להסתיים לפני שחרורו; כך חזרה לנעילת binding אחרי

@@ -258,6 +258,7 @@ DEMO_MODE=true
 | 017 `slice9_clear_manual_override` | RPC forward-only, service-only ואידמפוטנטי שמסיר ownership ידני רק ממשחק API-Football ומוסיף audit יחיד | result/provenance/latch/predictions נשמרים; ordinary user נדחה; provider apply רשאי להתחדש לאחר clear |
 | 024 `slice9_sync_cron_budget` | מתקינה `pg_cron`, מסירה Data API schema usage ומיישרת אטומית את ה־job הקיים לשם provider-neutral ול־45s בלי לקרוא/להחזיר command | local reset; job חסר הוא no-op, כפול/לא־מוכר נכשל סגור, ו־schedule/active/target נשמרים |
 | 025 `slice9_bidi_text_hardening` | checks קדימה על שמות וטקסט תצוגה של user/league/provider; אין טבלה או grant חדשים | Unicode bidi controls נדחים במסד, טקסט עברי/Latin מעורב נשמר, ו־UI מבודד ב־`bdi dir="auto"` |
+| 026 `slice9_system_actor_bootstrap` | designation יחיד `sports_sync`, trigger binding מבוקר ו־fallback עסקי לקריאה בלבד כאשר cache ה־binding חסר | migration קיימת מקדמת binding אטומית; Hosted חדש מחייב grant לפני traffic; late approval במצב UNBOUND מצליח בלי לייחס אוטומציה למנהל |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -292,6 +293,8 @@ Slice 7 ממשיך לכתוב שורות סופיות בלבד.
 
 - `user_id uuid primary key references auth.users(id)`.
 - `granted_by uuid not null references auth.users(id)`, `granted_at timestamptz`.
+- `automation_purpose text null` — ערך יחיד מותר `sports_sync`, עם unique חלקי;
+  זהו designation מפורש ל־principal הלא־אינטראקטיבי ולא role שמגיע מהלקוח.
 - אין CRUD דרך משתמש רגיל; seed ידני מאובטח או migration ייעודית בלבד.
 
 ### 6.3 ספורט
@@ -1340,11 +1343,14 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   ראשון, או ה־Cron הבא, מבצע reconciliation idempotent: `activated_at` נשמר
   כ־`first_kickoff_at`, `recorded_at` נשאר זמן הכתיבה, ונוסף code
   `ACTIVATION_PERSIST_LATE` שמסומן לכשל תפעולי/alert. recovery זה אינו PASS
-  ל־deadline ואינו backdating של האודיט. ה־Cron המאומת קושר מראש בטבלה פרטית
-  את ה־system actor הלא־אינטראקטיבי; recovery שנחשף בגבול עסקי מייחס את אירוע
-  האודיט אליו ושומר את `auth.uid()` של החבר/מוזמן רק בתור
-  `metadata.triggering_actor_id`. חסרון binding נכשל סגור, actor אחר אינו מחליף
-  אותו בשקט והסרת שורת `system_admins` מסירה את הקישור. פעולה ידנית מוקדמת
+  ל־deadline ואינו backdating של האודיט. principal לא־אינטראקטיבי מקבל מראש
+  designation יחיד `automation_purpose='sports_sync'`; trigger מבוקר יוצר את
+  ה־binding הפרטי, ו־migration קדימה מקדמת binding קיים לאותו designation.
+  recovery שנחשף בגבול עסקי רשאי לקרוא את ה־designation ישירות כאשר cache
+  ה־binding חסר, בלי לכתוב אותו אחרי נעילת league. הוא מייחס את אירוע האודיט
+  ל־system actor ושומר את `auth.uid()` של החבר/מוזמן רק בתור
+  `metadata.triggering_actor_id`. חסרון designation נכשל סגור, actor אחר אינו
+  מחליף אותו בשקט והסרת שורת `system_admins` מסירה את הקישור. פעולה ידנית מוקדמת
   משתמשת בזמן DB שלה. המירוץ manual/automatic יוצר transition ואירוע audit
   יחידים ונועל את חוקי הניקוד; correctness אינו נשען על שעון הדפדפן או על tick
   מוצלח יחיד.
