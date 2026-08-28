@@ -70,10 +70,12 @@ S9-DEF-025 נסגר ב־28 באוגוסט 2026 באמצעות target-only update
 | `SPORTS_API_KEY` | CI | Not present | Manual workflow; no key entry |
 | `SPORTS_API_PROVIDER` | Production | Sensitive | Production only; all branches |
 | `SPORTS_API_PROVIDER` | Preview | Not present | No Preview or branch-specific association |
-| `SPORTS_API_PROVIDER` | Local | Local configuration | Manual |
-| `SPORTS_API_PROVIDER` | CI | Workflow configuration | Manual |
+| `SPORTS_API_PROVIDER` | Local | Local configuration | Local scope only |
+| `SPORTS_API_PROVIDER` | CI | Workflow configuration | CI scope only |
 
-S9-REQ-003 עדיין דורש snapshot סופי של names/scopes בלבד על ה־final SHA; הוא
+תצפית runtime נפרדת אישרה ש־Preview, ‏Local ו־CI בוחרים במסלול Manual ללא
+key וללא קריאת provider חי. S9-REQ-003 עדיין דורש snapshot סופי של
+names/scopes בלבד על ה־final SHA; הוא
 אינו מחזיר את Preview scope ואינו דורש Reveal/Copy של key.
 
 ## migrations מקומיות
