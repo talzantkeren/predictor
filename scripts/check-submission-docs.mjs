@@ -161,7 +161,7 @@ const trackedOwnerRecordIds = [
 for (const id of trackedOwnerRecordIds) {
   invariant(ownerActions.includes(id), `Owner-actions document is missing: ${id}`);
 }
-for (const expected of ["בדיוק חמש פעולות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
+for (const expected of ["בדיוק חמש רשומות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
   invariant(ownerActions.includes(expected), `Owner-actions document is missing contract text: ${expected}`);
 }
 const deliveryRecordIds = [

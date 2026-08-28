@@ -2,9 +2,10 @@
 
 Status: `OWNER_ACTION_REQUIRED`.
 
-זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק חמש פעולות**;
-שתי רשומות שנסגרו נשמרות ברשימה לצורך traceability. בצעו את חמש הפעולות
-הפתוחות באותה ישיבה ובאותו final SHA, אך אל תסמנו PASS
+זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק חמש רשומות
+פתוחות**, אך רק ארבע דורשות פעולה או קלט אנושיים; S9-DEF-012 executable כולו
+בידי agent לאחר merge. שתי רשומות שנסגרו נשמרות ברשימה לצורך traceability.
+בצעו את השערים הפתוחים על אותו final SHA, אך אל תסמנו PASS
 לפני תצפית אמיתית. אין למזג, לאשר, להעביר ל־Ready או להפעיל auto-merge ב־PR
 #14. אין לפתוח, להעתיק, לצלם או לשמור secret, כתובת נמען, זהות evaluator,
 סיסמה, cookie, signed URL או payload של provider.
@@ -49,17 +50,22 @@ npm.cmd run test:a11y:native-scale
 npx.cmd vitest run src/lib/admin-loading-accessibility.test.ts
 ```
 
-## 3. S9-REQ-003 — final Production וגישת evaluator
+## 3. S9-REQ-003 — final Production וגישת evaluator (agent + קלט owner אחד)
 
 **איפה:** PowerShell; GitHub Actions/PR; Supabase Production SQL Editor; Vercel
 Deployments; חלון Chrome Incognito; GitHub Settings → Collaborators and teams.
 
-**פעולה יחידה:** לבצע מתחילתו ועד סופו את
-`docs/runbooks/slice-9-req-003-final-production-review.md`: להקפיא SHA נקי
-ודחוף, לקשור אליו CI ירוק בכל שלושת ה־jobs, להשוות Hosted migrations, לשמור
-env names/scopes לאחר פעולה 1, לקדם את אותו Source SHA ל־Production, לאמת
-immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, ולהשיג מן evaluator
-אישור read למאגר הפרטי. PR #14 נשאר Draft.
+**קלט owner יחיד (כ־2 דקות):** למסור מחוץ ל־Git את זהות GitHub המאושרת של
+evaluator ואת שיטת ה־out-of-band המאושרת לגישת Demo. אין למסור credential
+ב־Git או בראיה.
+
+**פעולת agent לאחר merge:** לבצע מתחילתו ועד סופו את
+`docs/runbooks/slice-9-req-003-final-production-review.md`: להקפיא את
+final/main SHA ואת merge commit, לקשור אליו CI ירוק בכל שלושת ה־jobs, להשוות
+Hosted migrations, לשמור env names/scopes, לקשור את Production לאותו Source
+SHA, לאמת immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, להזמין את
+הזהות שסופקה כ־read-only ולקבל ממנה אישור. אין לבצע דבר מזה כל עוד PR #14
+Draft; ה־runbook אינו נותן הרשאת merge.
 
 **ראיה לשמור:** למלא
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md` ולשמור רק את קובצי
@@ -70,7 +76,7 @@ immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, ולהשיג מן 
 
 ```powershell
 gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,jobs,url
-gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url
+gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url
 npm.cmd run submission:evidence:check
 npm.cmd run owner-runbooks:check
 npm.cmd run docs:submission:check -- --online
@@ -170,5 +176,5 @@ npm.cmd run docs:submission:check -- --online
 git diff --check
 ```
 
-לאחר חמש הפעולות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל ל־PASS על
-בסיס כוונה, צילום חסר או תוצאה מ־SHA אחר.
+לאחר חמש הרשומות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל
+ל־PASS על בסיס כוונה, צילום חסר או תוצאה מ־SHA אחר.

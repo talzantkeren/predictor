@@ -45,7 +45,7 @@ response streams והתווספה regression שמוכיחה סדר סגירה ב
 
 ```powershell
 gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,jobs,url
-gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url
+gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url
 ```
 
 ## Vercel — תצפיות שאינן final Production
@@ -85,17 +85,18 @@ names/scopes בלבד על ה־final SHA; הוא
 נבדקה רשימת Hosted והוחלה בבידוד רק migration ההקשחה
 `20260825000000_revoke_rls_event_trigger_rpc_access.sql`; לאחריה נצפו 20
 migrations מרוחקות, בעוד 19 migrations של Slice 9 נשארו local-only במכוון.
-לא בוצע linked reset ולא נעשה ניסיון לסגור את S9-REQ-003. לאחר merge ה־owner
+לא בוצע linked reset ולא נעשה ניסיון לסגור את S9-REQ-003. לאחר merge agent מאומת
 ישווה את עמודת `version` בלבד מול קובצי Git וישמור parity מצונזר על אותו
 `<final-sha>`.
 
-## שער owner היחיד
+## שער final יחיד וקלט owner המצומצם
 
 | שער | פעולה מדויקת | סטטוס |
 | --- | --- | --- |
-| Final Production and evaluator closeout | לבצע ברצף את `docs/runbooks/slice-9-req-003-final-production-review.md`: להקפיא SHA ו־Draft PR, לקשור אליו CI ירוק, להוכיח Hosted migrations/env scopes, לקדם את אותו SHA ל־Production, לאמת immutable+alias ב־incognito Demo-only, ולהשיג אישור evaluator לקריאת המאגר הפרטי | OWNER_ACTION_REQUIRED |
+| Final Production and evaluator closeout | agent מבצע לאחר merge את `docs/runbooks/slice-9-req-003-final-production-review.md`: final/main SHA ו־merge, CI, Hosted migrations/env scopes, Production+incognito ושערי מסמכים. owner מספק מחוץ ל־Git רק זהות evaluator מאושרת ושיטת Demo access מאושרת | OWNER_ACTION_REQUIRED |
 
 התבנית הריקה נמצאת ב־
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md`. אין לסמן את הרשומה
 VERIFIED לפני שכל הראיות מתייחסות לאותו SHA. PR #14 לא ימוזג, לא יסומן Ready,
-לא יאושר ולא יקבל auto-merge במסגרת הפעולה.
+לא יאושר ולא יקבל auto-merge במסגרת המשימה הנוכחית; ה־runbook מתחיל רק אחרי
+merge מורשה שנעשה מחוץ למשימה זו.

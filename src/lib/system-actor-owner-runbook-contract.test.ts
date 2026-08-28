@@ -39,7 +39,9 @@ describe("system-actor owner runbook contract", () => {
   it("orders the pre-traffic gate after migrations and before deployment", () => {
     const migrationParity = runbook.indexOf("## 3. Prove Hosted migration parity");
     const systemActorGate = runbook.indexOf(`### ${section}`);
-    const productionDeployment = runbook.indexOf("## 5. Promote the exact candidate to Production");
+    const productionDeployment = runbook.indexOf(
+      "## 5. Bind the live Production deployment to the final SHA",
+    );
 
     expect(migrationParity).toBeGreaterThan(-1);
     expect(systemActorGate).toBeGreaterThan(migrationParity);

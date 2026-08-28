@@ -2,34 +2,59 @@
 
 Status: `OWNER_ACTION_REQUIRED`.
 
-This is the **single owner action** for S9-REQ-003: perform the steps below in
-one sitting after every earlier owner action and the final branch push are
-complete. Do not merge, approve, mark Ready, or enable auto-merge on PR #14.
-Never reveal, copy, screenshot, or save an environment value, credential,
-evaluator identity, Demo password, cookie, signed URL, or provider payload.
+This is an **agent-executable post-merge gate**. Do not execute it while PR #14
+is Draft or before an authorized merge and the final Production deployment
+exist. This runbook never authorizes merge, approval, Ready-for-review,
+auto-merge or deployment from the current pre-merge task.
+
+The only owner input required is supplied before step 7 and kept outside Git:
+
+1. the approved evaluator's GitHub identity; and
+2. the approved out-of-band access method for Demo credentials.
+
+An authenticated agent can perform every other step. Never reveal, copy,
+screenshot, or save an environment secret, credential, evaluator identity,
+Demo password, cookie, signed URL, or provider payload.
 
 Copy
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md` to a working copy and
 fill only observed results. Keep every field `NOT_RUN`/`NOT_CAPTURED` until the
 corresponding step has actually completed.
 
-## 1. Freeze the pushed candidate and prove PR state
+## Mechanical artifact map
+
+| Artifact | Exact screen or command | Sanitized content |
+| --- | --- | --- |
+| Final identity | repository PowerShell commands in §1 and `gh pr view` | main/final SHA, clean parity, merged state and merge timestamp; no identity |
+| `S9-REQ-003-owner-ci.json` | `gh run view` in §2 | only the seven allowlisted JSON fields |
+| Git/Hosted migration lists | `Get-ChildItem` in §3 and **Supabase → SQL Editor → New query** | ordered migration version IDs only |
+| System actor readiness | the value-free SQL in §3A; identifier-only visual equality | three PASS/FAIL booleans; no UUID |
+| `S9-REQ-003-final-env-scopes.md` | `vercel env ls --json` in §4 | environment names/scopes only; no value |
+| `S9-REQ-003-production.txt` | **Vercel → Deployments → Production → Overview/Source/Domains** | deployment ID, Source SHA, immutable host, alias, target/state, route duration |
+| Incognito smoke | Chrome Incognito plus the two `curl.exe` commands in §6 | timestamp, URL kind, effective host, HTTP status and PASS/FAIL |
+| Evaluator confirmation | **GitHub → Settings → Collaborators and teams** plus evaluator reply | PASS/FAIL, timestamp and evidence location; no identity or credential |
+
+Nothing in this runbook calls `vercel env pull`, reveals an environment value,
+reads Vault, exports a token or asks anyone to re-enter a secret.
+
+## 1. Freeze the merged final SHA and prove PR state
 
 In PowerShell, from the repository root:
 
 ```powershell
 $env:GIT_PAGER='cat'
-git switch feature/slice-9-implementation
+git switch main
 git pull --ff-only
 $finalSha = git rev-parse HEAD
 git status --short
-git rev-parse origin/feature/slice-9-implementation
-gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url
+git rev-parse origin/main
+gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url
 ```
 
-Require an empty status, identical local/origin SHAs, `state=OPEN`,
-`isDraft=true`, and `headRefOid=$finalSha`. Save the sanitized output in the
-template under “Final identity”; do not run a PR mutation command.
+Require an empty status, identical local/origin SHAs, `state=MERGED`, a non-null
+`mergedAt`, and `mergeCommit.oid=$finalSha`. Save the sanitized output in the
+template under “Final identity”; do not run a PR mutation command. If PR #14 is
+still Draft/open, stop: the post-merge gate is not yet eligible to run.
 
 ## 2. Bind completed CI to that exact SHA
 
@@ -104,9 +129,10 @@ select
 
 Require both values to be `true`. In the same closed-traffic maintenance window,
 open only the Production `SYNC_SYSTEM_ACTOR_ID` entry in Vercel's protected
-settings UI and visually compare it with the noninteractive Auth principal just
-designated. Do not use `vercel env pull`, copy either UUID, paste it into a shell
-or SQL history, save it, or capture it in a screenshot. Record only
+settings UI and visually compare its **identifier** with the noninteractive Auth
+principal just designated. This UUID is an identifier, not a credential; no
+secret is opened. Do not use `vercel env pull`, copy either UUID, paste it into a
+shell or SQL history, save it, or capture it in a screenshot. Record only
 `sync_actor_matches_designation: PASS` or `FAIL` in the owner template.
 
 Require all three observations—`exactly_one_designated_actor`,
@@ -128,15 +154,16 @@ only** (`key`, `type`, `target`, `gitBranch`). Save the sanitized table as
 `SPORTS_API_KEY` to have Production scope only; do not open Reveal/Copy or save
 values.
 
-## 5. Promote the exact candidate to Production
+## 5. Bind the live Production deployment to the final SHA
 
 Open **Vercel → predictor → Deployments**. Find the READY deployment whose
-**Source** commit is the full `$finalSha`; open it and verify the full source
-SHA before continuing. Select **… → Promote to Production → Promote**. This is
-the sole Hosted deployment mutation in this runbook.
+**Source** commit is the full `$finalSha`; open it and verify the full source SHA
+before continuing. Require the Production alias to be attached. If automatic
+post-merge deployment did not attach it, stop and report the deployment blocker;
+this audit runbook does not authorize promotion of a different SHA.
 
-After promotion, open `Vercel → predictor → Deployments → Production`, select
-the promoted deployment, and record from its Overview/Source/Domains panels:
+Open `Vercel → predictor → Deployments → Production`, select the deployment,
+and record from its Overview/Source/Domains panels:
 
 - deployment ID;
 - full Source commit SHA;
@@ -165,7 +192,12 @@ Record only timestamp, URL kind, final effective host, HTTP `200`,
 `incognito=PASS`, and `Demo-only=PASS` in the template. Do not save cookies,
 account details, proof paths, or signed URLs.
 
-## 7. Grant and verify evaluator access
+## 7. Grant and verify evaluator access — the only owner input
+
+Before opening GitHub Settings, obtain the two owner-supplied items named at the
+top: approved evaluator identity and approved out-of-band Demo access method.
+Do not proceed with a guessed identity or channel, and do not write either into
+the repository.
 
 Open **GitHub → predictor → Settings → Collaborators and teams → Add people**.
 Invite the approved evaluator identity with read access only. Supply Demo
@@ -178,7 +210,7 @@ and the evidence location in the template. Do not record the evaluator identity
 or Demo credential. This human confirmation cannot be replaced by the owner's
 own GitHub session.
 
-## 8. Close the one action and re-run document gates
+## 8. Close the post-merge gate and re-run document gates
 
 Fill the template only when steps 1–7 all refer to the same `$finalSha`. Then
 run:
@@ -187,10 +219,10 @@ run:
 npm.cmd run submission:evidence:check
 npm.cmd run owner-runbooks:check
 npm.cmd run docs:submission:check -- --online
-gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url
+gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url
 ```
 
 Require all document commands to exit 0 and the final PR read to remain
-`OPEN`/`isDraft=true` on `$finalSha`. If any artifact is missing, refers to a
-different SHA, or contains a secret, leave S9-REQ-003
+`MERGED` with `mergeCommit.oid=$finalSha`. If any artifact is missing, refers
+to a different SHA, or contains a secret, leave S9-REQ-003
 `OWNER_ACTION_REQUIRED`.

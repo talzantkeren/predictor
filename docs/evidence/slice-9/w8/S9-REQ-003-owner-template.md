@@ -7,13 +7,24 @@ This file is intentionally empty of claims. Fill it only while executing
 evaluator identity, Demo credentials, cookies, signed URLs, or environment
 values.
 
+Executor: authenticated post-merge agent.
+
+## Owner input — supplied out of band only
+
+```text
+approved evaluator identity received: NOT_RUN
+approved Demo access method received: NOT_RUN
+identity or credential recorded in Git: NOT_RUN
+```
+
 ## Final identity
 
 ```text
-final SHA: <final-sha>
+final/main SHA: <final-sha>
 local/origin parity: NOT_RUN
 clean worktree: NOT_RUN
-PR #14 remains Draft: NOT_RUN
+PR #14 merged: NOT_RUN
+merge commit equals final SHA: NOT_RUN
 PR read-only output: NOT_CAPTURED
 ```
 
@@ -96,6 +107,6 @@ identity or credential recorded here: NOT_RUN
 npm.cmd run submission:evidence:check: NOT_RUN
 npm.cmd run owner-runbooks:check: NOT_RUN
 npm.cmd run docs:submission:check -- --online: NOT_RUN
-final PR #14 remains Draft read: NOT_RUN
+final PR #14 merged/final-SHA read: NOT_RUN
 single-SHA evidence set complete: NOT_RUN
 ```

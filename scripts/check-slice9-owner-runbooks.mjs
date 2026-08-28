@@ -73,9 +73,11 @@ const artifacts = [
     path: "docs/runbooks/slice-9-req-003-final-production-review.md",
     required: [
       "S9-REQ-003",
-      "single owner action",
+      "agent-executable post-merge gate",
+      "The only owner input required",
+      "Mechanical artifact map",
       "gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,jobs,url",
-      "gh pr view 14 --json number,isDraft,state,headRefOid,mergeStateStatus,url",
+      "gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url",
       "Supabase Dashboard → SQL Editor → New query",
       "supabase_migrations.schema_migrations",
       "3A. Require the system actor designation before application traffic",
@@ -98,7 +100,10 @@ const artifacts = [
       "<final-run-id>",
       "NOT_CAPTURED",
       "NOT_RUN",
-      "PR #14 remains Draft",
+      "approved evaluator identity received",
+      "approved Demo access method received",
+      "PR #14 merged",
+      "merge commit equals final SHA",
       "Hosted migration parity",
       "System actor readiness",
       "exactly_one_designated_actor",
@@ -139,5 +144,5 @@ invariant(
 );
 
 console.log(
-  "Owner runbooks verified: the Hosted steps are exact and sanitized; S9-DEF-012 requires no owner input.",
+  "Owner runbooks verified: the Hosted steps are exact and sanitized; S9-DEF-012 requires no owner input and S9-REQ-003 requires only evaluator identity/access method.",
 );
