@@ -239,6 +239,8 @@ test("emulated 200% reflow approximation at a 1440x900 physical raster", async (
   );
   mkdirSync(outputDirectory, { recursive: true });
 
+  const initialResponse = await page.goto("/");
+  expect(initialResponse?.ok()).toBe(true);
   expect(
     await page.evaluate(() => ({
       devicePixelRatio: window.devicePixelRatio,
