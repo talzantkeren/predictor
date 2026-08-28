@@ -595,9 +595,10 @@ league תיכשל ולא תוכל להחזיר את היפוך הסדר מול C
 ממתינה וש־save/completion בליגה B מסתיימות לפני commit של A. assertions
 מבניים מאמתים את שמונת גבולות ה־lifecycle, היעדר ה־global lock מן completion,
 סדר registry→league keys בכותבי catalog ו־shared registry ב־`create_league`.
-חבילת multi-session המלאה כוללת עשרה קבצי dblink: keyset pagination, league
+חבילת multi-session המלאה כוללת אחד־עשר קבצי dblink: keyset pagination, league
 settings, manual match, manual override clear, scoring, league-lock scope,
-lifecycle, review, database-time serialization ו־API-Football sync.
+lifecycle, review, system-actor retention, database-time serialization ו־
+API-Football sync.
 
 תיקון F8 מוסיף `slice9-review-registry-barrier.test.sql` עם חמישה backends.
 creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, resolver נדרש להמתין על
@@ -615,6 +616,12 @@ Data API grant. `slice9-league-lock-scope.test.sql` מפעיל את ה־RPC בח
 ממתין על כל אחד מהם לפני שהוא מצליח. מוטציה מקומית שהחליפה את ה־wrapper
 בקריאה ישירה ל־delegate נכשלה ב־3 מתוך 59 assertions: השומר המבני ושתי
 המתנות ה־advisory.
+
+`slice9-system-actor-retention.test.sql` מקבע מבנית שבשלושת כותבי ה־scoring
+הסדר הוא registry→league keys→actor retain→delegate, ומוכיח בחיבורי dblink
+אמיתיים ש־delete מקביל מ־`system_admins` ממתין ל־`FOR KEY SHARE` של helper
+פרטי ללא Data API grant. הסרת retain מאחד ה־wrappers מכשילה את ספירת 3/3;
+הסרת `FOR KEY SHARE` מן ה־helper מאפשרת ל־revocation לעבור ומכשילה את ה־wait.
 
 תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
 שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני

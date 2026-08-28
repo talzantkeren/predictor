@@ -369,14 +369,18 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   של `service_role` נשללת ומוענק לה `EXECUTE` מפורש ומצומצם בלבד. ה־admin client
   נשאר `server-only` ונצרך לניקוד רק דרך gateway ייעודי, לא כלקוח גנרי.
 - ה־wrapper הציבורי של `score_match` מאמת actor, לוקח את מחסום ה־registry
-  הבלעדי לפני גילוי ליגות העונה ואז נועל את מפתחות הליגה הממוינים. ה־delegate
-  שמבצע את הניקוד נשאר בסכמה `private`, ללא EXECUTE ל־Data API, ואינו רוכש את
-  המחסום מחדש. לכן גם caller בעל secret key אינו יכול לעקוף את סדר הנעילות.
+  הבלעדי לפני גילוי ליגות העונה ואז נועל את מפתחות הליגה הממוינים. לאחר
+  ההמתנה הוא מאמת מחדש את actor ומחזיק את שורת `system_admins` ב־`FOR KEY
+  SHARE` עד commit. אותו post-wait retain נאכף ב־`create_or_correct_match`
+  ובהכרעת review. ה־delegates נשארים בסכמה `private`, ללא EXECUTE ל־Data API,
+  ואינם רוכשים את המחסום מחדש.
 - מאחר שקריאת service-role אינה נושאת `auth.uid()` של המשתמש, ה־Action מעביר
   ללקוח השרת header פנימי וקבוע עם מזהה ה־session המאומת. המשתמש אינו יכול
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
-  ומאמתת מחדש מול `system_admins` לפני lock או שינוי. כך ה־actor באודיט אינו
-  נלקח מקלט דפדפן, ושינוי הרשאה בין בדיקת ה־Action ל־RPC נכשל סגור.
+  ומאמתת מול `system_admins`; אחרי כל advisory wait ולפני delegate של כתיבת
+  scoring מתבצעים revalidation ו־`FOR KEY SHARE`. כך ה־actor באודיט אינו נלקח
+  מקלט דפדפן: revocation שכבר התחייבה מכשילה סגור, ו־revocation מאוחרת ממתינה
+  עד סיום הטרנזקציה המורשית.
 - מסלול ה־Cron של Slice 7 משתמש באותו header רק מתוך gateway server-only ועם
   `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי. ה־principal מוקם
   באופן מאובטח לכל סביבה ב־`auth.users` וב־`system_admins`, אינו משמש ל־UI
