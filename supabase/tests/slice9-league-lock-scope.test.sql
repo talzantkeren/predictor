@@ -93,7 +93,24 @@ select ok(
     ))
   ) > 0
   and position(
+    'from public.leagues as league'
+    in lower(pg_get_functiondef(
+      'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
+    ))
+  ) > 0
+  and position(
     'pg_advisory_xact_lock(2026090609);'
+    in lower(pg_get_functiondef(
+      'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
+    ))
+  ) < position(
+    'from public.leagues as league'
+    in lower(pg_get_functiondef(
+      'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
+    ))
+  )
+  and position(
+    'from public.leagues as league'
     in lower(pg_get_functiondef(
       'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
     ))
@@ -106,7 +123,7 @@ select ok(
   and lower(pg_get_functiondef(
     'private.slice9_resolve_match_result_review_without_global_lock(uuid,integer,public.match_status,numeric,numeric)'::regprocedure
   )) !~ 'pg_advisory_xact_lock\([[:space:]]*2026090609[[:space:]]*\)',
-  'review resolution enters the registry barrier before affected league keys while its delegate stays barrier-free'
+  'review resolution orders registry barrier before discovery before affected league keys while its delegate stays barrier-free'
 );
 
 select ok(

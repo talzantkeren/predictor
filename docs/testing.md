@@ -604,6 +604,8 @@ creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, res
 החדשה לפני שהוא ממתין על ליגה קיימת; completion מקביל נדרש להמתין על אותו
 מפתח. מול הסכימה שלפני migration הבדיקה נכשלה ב־6 מתוך 27 assertions, לרבות
 היעדר ההמתנה על registry והיעדר מפתח הליגה החדשה; לאחר migration עברה 27/27.
+assertion מבני נוסף מקבע במפורש barrier→`public.leagues` discovery→league
+keys; הזזת ה־discovery מעל המחסום נכשלת גם בלי להסתמך על תזמון המירוץ.
 
 תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
 שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני
