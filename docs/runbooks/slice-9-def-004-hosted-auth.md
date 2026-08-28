@@ -7,8 +7,10 @@ custom SMTP purchase is not required when one authorized demonstration succeeds.
 
 The only owner-only capability is mailbox access. The owner supplies an exact
 recipient that is already a member of the Supabase organization and an existing
-Hosted Auth account, then returns the received recovery link out of band. The
-agent performs the Dashboard reads, UI request and remaining browser checks.
+Hosted Auth account, then returns the received recovery link out of band. Use a
+mailbox that does not prefetch or rewrite one-time recovery links; institutional
+safe-link scanners can consume the token before the human handoff. The agent
+performs the Dashboard reads, UI request and remaining browser checks.
 Never store the recipient, link, password, token, cookie, query string or full
 callback URL in Git, terminal output, screenshots or evidence.
 
@@ -89,8 +91,12 @@ delivery, but it can never close the record.
    sent from the Hosted Supabase project and obtain explicit owner confirmation.
 3. In a private Chrome profile open
    `https://predictor-swart.vercel.app/forgot-password`, enter the address and
-   submit once. Record only UTC timestamp, HTTP/UI safe result code and elapsed
-   time. Do not repeat the request.
+   submit once. The request must pass through the application form/Server Action
+   in that same profile so its PKCE verifier cookie is retained. Do not replace
+   this step with a direct `/auth/v1/recover` request: a direct request can send
+   mail while leaving the application callback without its verifier. Record only
+   UTC timestamp, HTTP/UI safe result code and elapsed time. Do not repeat the
+   request.
 4. Stop. The owner checks their own inbox and pastes the recovery link back only
    into the active private handoff. The agent cannot inspect the mailbox and must
    not claim delivery until the owner reports the message.
@@ -101,6 +107,14 @@ delivery, but it can never close the record.
 6. After the owner confirms the submit, the agent verifies the safe success
    state, opens the same link in a fresh private tab and requires replay denial,
    logs out, requires **old password denied**, and requires **new password login**.
+
+If Supabase rejects the first human use with `otp_expired` before
+`/update-password`, stop. Record `RECOVERY_TOKEN_REJECTED_BEFORE_CALLBACK`; do
+not classify it as replay denial and do not send again without a new explicit
+owner approval and a confirmed rate-limit window. The next authorized attempt
+must use an exact organization-member/Auth address on a mailbox without
+one-time-link prefetch. Never weaken Hosted Auth or change the email template to
+work around a scanner during this checkpoint.
 
 Sanitized pre-merge outcomes go in the “Pre-merge delivery checkpoint” section
 of the template. The recovery link and either password never enter the template.
@@ -121,7 +135,8 @@ In **Vercel → predictor → Deployments → Production → Source**, require t
 Source SHA to equal `$finalSha`. Then repeat the URL/delivery/template/rate
 observations and the full confirmation/recovery session on that deployment.
 
-If the supplied known address has no disposable Hosted account, the owner may
+If the supplied known address has no disposable Hosted account, or its mailbox
+prefetches one-time links, the owner may
 authorize one normal UI signup in the same private browser. Observe confirmation
 delivery and the **same-browser callback** before logout; this consumes one of
 the two built-in messages. Wait for the project-wide window if necessary rather
