@@ -135,15 +135,25 @@ git diff --check
 Settings, Email Templates, Rate Limits; Chrome private profile על Production;
 mailbox disposable מאושר.
 
-**פעולה יחידה:** לבצע את
-`docs/runbooks/slice-9-def-004-hosted-auth.md` עם custom SMTP credential של
-ה־owner ונמען disposable מאושר: confirmation באותו browser, known/unknown
-copy, recovery, replay denial, logout, old-password denial, new-password login
-ו־429/cooldown. אין לשמור כתובת, password, callback query או provider response.
+ה־Email provider נצפה Enabled, השירות המובנה פעיל במכסה של שתי הודעות לשעה
+ולא נדרשת רכישת SMTP. שני callback entries היסטוריים של Preview עדיין קיימים;
+agent יסיר אותם לאחר merge דרך URL Configuration בלי secret.
+
+**קלט owner עכשיו (2–5 דקות):** למסור מחוץ ל־Git כתובת מדויקת שהיא גם member
+ב־Supabase organization וגם חשבון Auth מוכר; לאשר recovery יחיד; ואז להחזיר
+את הקישור שהתקבל מן mailbox. כתובת plus-alias מתאימה רק אם אותו alias מדויק
+כבר member. אין למסור password.
+
+**פעולת agent:** לבצע את
+`docs/runbooks/slice-9-def-004-hosted-auth.md`: pre-merge send יחיד, callback,
+password update עם handoff ללחיצה הסופית, replay denial, logout ו־old/new login.
+לאחר merge להסיר את ה־Preview callbacks ולצלם מחדש confirmation/recovery/
+known-unknown/429 על final SHA. אין לשמור כתובת, password, callback query או
+provider response.
 
 **ראיה לשמור:** למלא
 `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; לשמור בחבילת owner את
-עשרת הצילומים המצונזרים `S9-DEF-004/01-...` עד `10-...` לפי ה־runbook.
+הארטיפקטים המצונזרים `S9-DEF-004/01-...` עד `10-...` לפי ה־runbook.
 
 **אימות לאחר הפעולה:** Local Supabase/Mailpit בלבד.
 

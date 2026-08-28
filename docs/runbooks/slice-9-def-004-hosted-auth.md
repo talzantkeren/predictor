@@ -1,23 +1,31 @@
 # S9-DEF-004 — Hosted Auth delivery/recovery runbook
 
-Status: `OWNER_ACTION_REQUIRED`. This runbook defines one **single owner action**:
-configure/verify approved Hosted delivery and execute one authorized disposable
-confirmation/recovery session on the final candidate. The agent must not perform
-it because it requires owner credentials, a disposable recipient and Hosted
-mutation/email delivery.
+Status: `OWNER_ACTION_REQUIRED`. The pre-merge checkpoint removes the delivery
+unknown, but formal acceptance is recorded only after the merged final SHA is
+live. The built-in Supabase delivery service is an approved Demo mechanism; a
+custom SMTP purchase is not required when one authorized demonstration succeeds.
 
-Do not reveal, copy, screenshot, paste into a terminal, or commit an SMTP
-password, recipient address, password, token, cookie, query string, full callback
-URL, provider response, or Supabase secret. Use a disposable non-personal
-recipient explicitly approved for this test.
+The only owner-only capability is mailbox access. The owner supplies an exact
+recipient that is already a member of the Supabase organization and an existing
+Hosted Auth account, then returns the received recovery link out of band. The
+agent performs the Dashboard reads, UI request and remaining browser checks.
+Never store the recipient, link, password, token, cookie, query string or full
+callback URL in Git, terminal output, screenshots or evidence.
+
+Supabase's built-in sender is best-effort, limited to two project-wide auth
+emails per hour, and delivers only to exact organization-member addresses. A
+Gmail plus-alias is valid only if that exact alias is already an organization
+member. Do not invite a new organization member or configure SMTP merely to make
+this check pass.
 
 ## Artifact destinations
 
-Fill `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`. Save only reviewed,
-sanitized images under an owner-controlled evidence bundle using these names:
+Fill `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`. Keep screenshots in
+an owner-controlled packet; Git receives only the sanitized template and result
+codes.
 
 1. `S9-DEF-004/01-url-configuration.png`
-2. `S9-DEF-004/02-smtp-scope.png`
+2. `S9-DEF-004/02-delivery-mechanism.png`
 3. `S9-DEF-004/03-email-templates.png`
 4. `S9-DEF-004/04-rate-limits.png`
 5. `S9-DEF-004/05-known-unknown-copy.png`
@@ -27,120 +35,117 @@ sanitized images under an owner-controlled evidence bundle using these names:
 9. `S9-DEF-004/09-password-transition.png`
 10. `S9-DEF-004/10-cooldown.png`
 
-Before committing any image, inspect it at full size and remove all account,
-message, URL-query, browser-storage and provider identifiers. The template may
-link to an external owner packet instead of committing screenshots.
+Before retaining any image, inspect it at full size and crop every account,
+message, URL-query, browser-storage, project and provider identifier.
 
-## 1. Pin the candidate
+## 1. Pre-merge read-only configuration checkpoint
 
-From a clean repository checkout:
+Open the Production project in Supabase Dashboard. Do not click Save on any Auth
+screen during this checkpoint.
+
+### Authentication → URL Configuration
+
+Require:
+
+- Site URL exactly `https://predictor-swart.vercel.app`;
+- Redirect URLs exactly
+  `https://predictor-swart.vercel.app/auth/confirm` and
+  `http://localhost:3000/auth/confirm`;
+- optional `http://127.0.0.1:3000/auth/confirm` only when that exact local origin
+  is actively used;
+- no wildcard and no stale Preview/Slice alias.
+
+If a stale Preview entry is present, record `STALE_PREVIEW_CALLBACK_PRESENT`.
+Do not remove it in the read-only checkpoint. In the final post-merge run, use
+**Authentication → URL Configuration → Redirect URLs**, delete only the named
+stale entries, click Save once, reload, and verify the exact allowlist above.
+This mutation changes only callback allowlisting; it reads or re-enters no
+secret.
+
+### Authentication → Sign In / Providers and Emails
+
+Require **Email: Enabled**. Under **Authentication → Emails → SMTP Settings**,
+record only whether custom SMTP is absent/present; never open or copy a
+credential. When custom SMTP is absent, the visible default templates and
+“Set up SMTP” control establish that the project is using the built-in service.
+Under **Authentication → Email Templates**, verify Confirm signup and Reset
+Password use platform-generated confirmation URLs and contain no recipient or
+real-financial content.
+
+Under **Authentication → Rate Limits**, observe the email control without
+changing it. For the built-in sender it is non-editable; record the documented
+effective limit `BUILT_IN_EMAIL_LIMIT_2_PER_HOUR`. Do not manufacture a numeric
+Dashboard value when the disabled control is blank.
+
+## 2. Pre-merge recovery checkpoint — one send, then pause
+
+This checkpoint may run against the current Production deployment to de-risk
+delivery, but it can never close the record.
+
+1. Obtain one owner-approved recipient. Confirm privately that the exact address
+   is both an organization member and a known Hosted Auth account. Do not query
+   or print it in evidence.
+2. Immediately before submission, state that one password-recovery email will be
+   sent from the Hosted Supabase project and obtain explicit owner confirmation.
+3. In a private Chrome profile open
+   `https://predictor-swart.vercel.app/forgot-password`, enter the address and
+   submit once. Record only UTC timestamp, HTTP/UI safe result code and elapsed
+   time. Do not repeat the request.
+4. Stop. The owner checks their own inbox and pastes the recovery link back only
+   into the active private handoff. The agent cannot inspect the mailbox and must
+   not claim delivery until the owner reports the message.
+5. Treat the returned link as a credential: do not echo, log, screenshot or
+   commit it. Navigate in the same private profile, verify the callback reaches
+   `/update-password`, fill a generated temporary password, and hand control to
+   the owner for the final password-change submit.
+6. After the owner confirms the submit, the agent verifies the safe success
+   state, opens the same link in a fresh private tab and requires replay denial,
+   logs out, requires **old password denied**, and requires **new password login**.
+
+Sanitized pre-merge outcomes go in the “Pre-merge delivery checkpoint” section
+of the template. The recovery link and either password never enter the template.
+
+## 3. Final post-merge acceptance on one SHA
+
+After authorized merge and final Production deployment, start from a clean
+checkout of `main`:
 
 ```powershell
-git switch feature/slice-9-implementation
-git pull
-git rev-parse HEAD
+git switch main
+git pull --ff-only
+$finalSha = git rev-parse HEAD
 git status --short
 ```
 
-Record only the full SHA. `git status --short` must be empty. Open the immutable
-Production deployment corresponding to that SHA; if SHA parity is unavailable,
-stop and leave the template `NOT_RUN`.
+In **Vercel → predictor → Deployments → Production → Source**, require the live
+Source SHA to equal `$finalSha`. Then repeat the URL/delivery/template/rate
+observations and the full confirmation/recovery session on that deployment.
 
-## 2. Verify exact URL configuration
+If the supplied known address has no disposable Hosted account, the owner may
+authorize one normal UI signup in the same private browser. Observe confirmation
+delivery and the **same-browser callback** before logout; this consumes one of
+the two built-in messages. Wait for the project-wide window if necessary rather
+than bypassing the limit. Do not create a user through the Admin API solely for
+the audit.
 
-In Supabase Dashboard, choose the Production project, then open
-**Authentication → URL Configuration**.
+From `/forgot-password`, submit the known address once and a syntactically valid
+unknown address once. The visible copy must remain enumeration-safe. The unknown
+request must not be treated as delivery evidence. Complete recovery, password
+update, replay denial, logout, old-password denial and new-password login exactly
+as in §2.
 
-- Site URL must be exactly `https://predictor-swart.vercel.app`.
-- Redirect URLs must include exactly
-  `https://predictor-swart.vercel.app/auth/confirm` and
-  `http://localhost:3000/auth/confirm`.
-- `http://127.0.0.1:3000/auth/confirm` is allowed only when that exact loopback
-  origin is used locally.
-- Do not add a wildcard. Preview callback is absent unless Preview Auth is an
-  explicitly approved internal QA path.
+## 4. 429/cooldown behavior
 
-Capture `01-url-configuration.png` with query strings and project identifiers
-cropped. If a URL must change, make only the exact owner-approved change, save,
-reload this screen and capture the resulting list.
+Use only the approved known account. After the allowed demonstration, a further
+UI recovery request may be used to observe the existing cooldown/429. Do not
+change the two-per-hour limit, send parallel traffic or involve another
+recipient. Require an actionable alert without provider detail. If the current
+window would make the extra request unsafe or ambiguous, record `NOT_RUN` and
+repeat only this row after the window; never infer a PASS.
 
-## 3. Configure/verify delivery without opening credentials
+## 5. Local regression
 
-Open **Authentication → SMTP Settings**. Using the approved secrets manager,
-configure the approved custom SMTP/delivery provider if it is not already
-configured. Do not use Reveal/Copy and do not type a credential while screen
-sharing. The sender/domain must be a non-personal Demo sender authorized by the
-owner.
-
-Save, reload the screen, and capture `02-smtp-scope.png` showing only enabled
-state, sender classification/domain and safe scope. Crop hostname, username,
-password, project identifiers and provider response details.
-
-Open **Authentication → Email Templates**. Inspect Confirm signup and Reset
-Password. Confirm each uses the platform-generated confirmation URL and contains
-no recipient-specific or real-financial language. Capture only template names and
-enabled state as `03-email-templates.png`; do not capture a generated link.
-
-Open **Authentication → Rate Limits**. Record the displayed email/recovery
-limits and monitoring destination without changing them. Capture
-`04-rate-limits.png` after removing project/account identifiers.
-
-## 4. Authorized confirmation and known/unknown recovery
-
-Use a new private Chrome profile and the approved disposable address. Start from
-`https://predictor-swart.vercel.app/register`.
-
-1. Register through the UI with a unique synthetic display name and a temporary
-   password held only in the password manager.
-2. Observe delivery time, open the confirmation message in the same browser,
-   follow the callback, and verify an authenticated session reaches the expected
-   product route. Record only UTC timestamps, origin and path; never the full URL.
-3. Log out.
-4. On `/forgot-password`, submit the approved known address, then a syntactically
-   valid unknown disposable address that is not an account. Capture only the two
-   user-facing response blocks as `05-known-unknown-copy.png`; both must avoid
-   account enumeration.
-5. Record safe outcome codes and elapsed time in the template. Do not record the
-   addresses.
-
-This is the required **same-browser callback** confirmation proof. Save the
-post-callback product state, with display name masked, as
-`06-confirmation-session.png`.
-
-## 5. Recovery, replay and password transition
-
-For the known disposable account:
-
-1. Request recovery once and observe delivery.
-2. Open the message in the same browser and follow the callback.
-3. Verify a recovery session is established, set a new temporary password, and
-   capture only the safe success state as `07-recovery-session.png`.
-4. Reopen the already-used recovery link in a fresh private tab. It must be
-   rejected without a session; capture the path and safe error only as
-   `08-replay-denied.png`.
-5. Log out. Attempt login with the old password: **old password denied**.
-6. Attempt login with the new password: **new password login** succeeds.
-7. Capture the two safe UI outcomes, never either password, as
-   `09-password-transition.png`.
-
-Record expected stable outcome codes/messages, path-only destinations and UTC
-timestamps in the template.
-
-## 6. 429/cooldown behavior
-
-Using only the authorized disposable known account, submit recovery through the
-UI at the documented rate until the existing Hosted limit returns 429/cooldown.
-Do not change the limit, use parallel traffic, or involve another recipient.
-Verify the UI exposes an actionable alert and does not reveal provider detail.
-Capture only that alert and safe retry guidance as `10-cooldown.png`; record no
-raw headers.
-
-If the configured limit would require abusive volume, stop and mark this row
-`NOT_RUN` with the exact owner decision; do not manufacture a PASS.
-
-## 7. Local regression after Hosted observation
-
-From the clean candidate checkout, with Local Supabase/Mailpit only:
+Against Local Supabase/Mailpit only:
 
 ```powershell
 npm.cmd run test:e2e -- e2e/auth.spec.ts
@@ -148,15 +153,14 @@ npm.cmd run owner-runbooks:check
 git status --short
 ```
 
-Expected test names include authentication/profile signup, confirmation, logout,
-login and recovery in Desktop and Mobile Chromium. Save only test counts,
-duration and the absence/presence of `[WebServer] Error`. The repository must
-remain clean except for the deliberately filled sanitized evidence template.
+Save only test names/counts/duration, absence or presence of `[WebServer] Error`,
+and clean-status outcome.
 
 ## Completion rule
 
-The single owner action is complete only when URL/SMTP/template/rate screens,
-known+unknown handling, delivery, same-browser callback/session, update, replay
-denial, logout, old-password denial, new-password success and 429/cooldown are
-all observed on the same final candidate and the local commands pass. Otherwise
-leave `S9-DEF-004` as `OWNER_ACTION_REQUIRED` and name the one failed step.
+The pre-merge run proves only whether built-in delivery works and leaves the
+record `OWNER_ACTION_REQUIRED`. Mark S9-DEF-004 `VERIFIED` only when the final
+merged SHA has exact Production/local callbacks with stale Preview aliases
+absent; email remains enabled; delivery, same-browser callback, update, replay
+denial, logout, old-password denial, new-password login and applicable
+cooldown/copy checks were actually observed; and the local regressions pass.

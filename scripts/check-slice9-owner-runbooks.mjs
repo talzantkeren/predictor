@@ -5,11 +5,15 @@ const artifacts = [
     path: "docs/runbooks/slice-9-def-004-hosted-auth.md",
     required: [
       "S9-DEF-004",
-      "single owner action",
+      "built-in Supabase delivery service",
       "Authentication → URL Configuration",
-      "Authentication → SMTP Settings",
+      "Authentication → Sign In / Providers",
+      "Authentication → Emails → SMTP Settings",
       "Authentication → Email Templates",
       "Authentication → Rate Limits",
+      "BUILT_IN_EMAIL_LIMIT_2_PER_HOUR",
+      "STALE_PREVIEW_CALLBACK_PRESENT",
+      "one send, then pause",
       "same-browser callback",
       "old password denied",
       "new password login",
@@ -23,6 +27,8 @@ const artifacts = [
     required: [
       "Status: `NOT_RUN`",
       "<candidate-sha>",
+      "Pre-merge delivery checkpoint",
+      "Built-in delivery classification",
       "NOT_CAPTURED",
       "NOT_RUN",
       "Production callback",
@@ -144,5 +150,5 @@ invariant(
 );
 
 console.log(
-  "Owner runbooks verified: the Hosted steps are exact and sanitized; S9-DEF-012 requires no owner input and S9-REQ-003 requires only evaluator identity/access method.",
+  "Owner runbooks verified: Hosted steps are exact and sanitized; built-in Auth delivery is explicit; S9-DEF-012 needs no owner input and S9-REQ-003 needs only evaluator identity/access method.",
 );

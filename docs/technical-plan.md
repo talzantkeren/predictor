@@ -1568,7 +1568,8 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. שינוי scope של
 Vercel וראיית password/Advisors אומתו ב־28.8.2026 תחת `S9-DEF-025` ו־
 `S9-REQ-005`. Branch control, Preview
-Auth, custom SMTP ו־leaked-password protection הם gates פנימיים ואינם מיוחסים
+Auth, ‏Hosted delivery (built-in demonstrated או custom SMTP) ו־leaked-password
+protection הם gates פנימיים ואינם מיוחסים
 ישירות למסמך הקורס.
 
 **כלל release:** אפס P0/P1 פתוחים, ואין P2 ללא תיקון או waiver כתוב שאושר על

@@ -43,8 +43,9 @@ RISK**. הגנת leaked-password של Supabase אינה זמינה בתכנית 
   character class מחייבים עדכון מסונכרן של Zod, העתקי ה־UI, הבדיקות ואימות
   חשבונות ה־Demo.
 - rate limits, שחזור enumeration-safe לאחר תיקון `S9-DEF-001`, ניטור והיקף
-  Demo-only הם בקרות מפצות. custom SMTP ואמינות recovery נשארים בנפרד תחת
-  `S9-DEF-004` ואינם נסגרים בהחלטה זו.
+  Demo-only הם בקרות מפצות. אמינות delivery/recovery ב־Hosted נשארת בנפרד תחת
+  `S9-DEF-004`: השירות המובנה 2/h מאושר להדגמה ל־organization member, ו־SMTP
+  אינו נדרש אלא אם ההדגמה נכשלת או נדרש נמען שרירותי.
 - אין לטעון שמדיניות Hosted חזקה יותר מן הראיה. הקריאה ב־28 באוגוסט 2026
   אימתה מינימום שמונה, ללא character classes, תקרת Auth של 72 בתים והגנת
   leaked-password כבויה; כל ממצאי ה־Advisors קיבלו disposition תחת
@@ -709,8 +710,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 הגבולות המקומיים והאוטומטיים אינם הופכים פעולה Hosted או אנושית ל־PASS. נכון
 ל־28 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
 
-- להגדיר delivery מאושר או custom SMTP ולבצע confirmation/recovery עם נמען
-  disposable מורשה; Production URL לבדו אינו ראיית Email.
+- לבצע confirmation/recovery עם השירות המובנה המאושר ונמען שהוא organization
+  member; רק אם delivery זה נכשל לשקול custom SMTP. ‏Production URL לבדו אינו
+  ראיית Email.
 - לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
   ומשחרר lease תחת תקציב 120 השניות.
 - לבצע Chrome native 200% על candidate SHA ולתעד תוצאה; CSS zoom אינו תחליף.

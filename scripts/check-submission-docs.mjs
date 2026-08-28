@@ -146,7 +146,7 @@ invariant(
   !/627\/627|1443\/1443|28\/28/u.test(deliverySnapshot),
   "Current testing snapshot contains obsolete point-in-time totals.",
 );
-for (const expected of ["OWNER_ACTION_REQUIRED", "custom SMTP", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
+for (const expected of ["OWNER_ACTION_REQUIRED", "השירות המובנה", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
   invariant(evaluator.includes(expected), `Evaluator runbook is missing owner guidance: ${expected}`);
 }
 const trackedOwnerRecordIds = [
