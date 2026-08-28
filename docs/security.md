@@ -590,8 +590,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   שנמצאו ואז `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
   `completed/archived`.
 - כל תיקון canonical לגרסה חדשה יוצר reconciliation רק עבור snapshot קיים.
-  `reconcile_completed_league` לוקח advisory key של הליגה ואז נועל
-  `league→match→snapshot→reconciliation`; apply
+  `reconcile_completed_league` מאמת קלט וקיום לפני delegate, לוקח advisory key
+  של הליגה שהתגלתה, וקורא מחדש את אותו work item כשהוא קשור לאותה ליגה תחת
+  נעילת parent. missing או remap בזמן ההמתנה נכשל סגור; לאחר נעילת הליגה הוא
+  משלים `match→snapshot→reconciliation` ורק אז נכנס ל־delegate; apply
   דורש התאמה מלאה לגרסת canonical הנוכחית ומחליף deterministically את snapshot
   וניקוד הליגה היחידה. dismiss סוגר work item בלי לשנות תוצאה. שני הנתיבים
   service-role-only מאחורי session+system-admin וה־admin gateway הקיים; IDs
@@ -603,6 +605,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | תיקון משכתב דירוג סופי בשקט | scorer מסנן completed ויוצר queue רק מ־snapshot | mixed active/completed, no-prediction ו־post-completion fixture |
 | actor זר או גרסה ישנה מכריעים | session AuthZ, fixed actor, service-only RPC ו־expected version | authenticated denial, missing actor, stale/replay |
 | יישוב ליגה אחת משנה ליגה אחרת | reconciliation league-scoped ו־snapshot composite FK | apply מול dismiss בשתי ליגות שחולקות match |
+| reconciliation נעל ליגה אחת אך work item הועבר לאחרת בזמן ההמתנה | post-lock re-read קשור ל־league ID המקורי ו־fail-closed לפני delegate | remap בשני backends נשאר pending ומחזיר `RECONCILIATION_NOT_FOUND` |
 
 ## Slice 9 — ספריית חברים פעילים לקריאה בלבד
 

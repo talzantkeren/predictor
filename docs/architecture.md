@@ -296,8 +296,11 @@ stale version, replay, actor זר או תיקון ספק מקביל נדחים �
 `(league_id, match_id, result_version)`.
 
 רק גבול system-admin צר של reconciliation רשאי להחיל שינוי על תוצאה סופית.
-הוא לוקח תחילה advisory key דו־חלקי לפי מזהה הליגה, ואז נועל
-league→match→snapshot→reconciliation לפי סדר הנעילות הקנוני, מאמת
+הוא גוזר את מזהה הליגה מן ה־work item ונכשל מיד אם הוא חסר, לוקח advisory key
+דו־חלקי לאותה ליגה, וקורא מחדש את הקישור תוך נעילת parent. שינוי שיוך בזמן
+ההמתנה נכשל סגור; משם הוא משלים
+match→snapshot→reconciliation לפי סדר הנעילות הקנוני, ורק אז מאמת ומפעיל את
+ה־delegate. ה־delegate מאמת
 שהגרסה pending ועדכנית ושה־snapshot הקפוא קיים, מעדכן את ה־snapshot ומבצע
 overwrite דטרמיניסטי לניחושי אותה ליגה בלבד. דחייה מסמנת את הרשומה
 `dismissed` בלי לשנות snapshot או ניקוד. משחק שנוסף לעונה אחרי completion אינו

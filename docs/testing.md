@@ -591,6 +591,14 @@ creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, res
 מפתח. מול הסכימה שלפני migration הבדיקה נכשלה ב־6 מתוך 27 assertions, לרבות
 היעדר ההמתנה על registry והיעדר מפתח הליגה החדשה; לאחר migration עברה 27/27.
 
+תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
+שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני
+שה־delegate נפתר. במירוץ dblink נפרד ה־wrapper מגלה ליגה A וממתין על המפתח
+שלה, בעוד backend אחר מעביר את הרשומה לליגה B; לאחר השחרור הקריאה החוזרת
+נכשלת סגור והרשומה נשארת pending. בדיקה נוספת דוחה decision ‏`NULL`. מול
+הסכימה שלפני migration נכשלו 5 מתוך 23 assertions וה־delegate סימן בפועל את
+הרשומה של ליגה B כ־`dismissed`; לאחר migration עברו 23/23.
+
 Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
 Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
 ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת

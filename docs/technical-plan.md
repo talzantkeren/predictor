@@ -260,6 +260,7 @@ DEMO_MODE=true
 | 025 `slice9_bidi_text_hardening` | checks קדימה על שמות וטקסט תצוגה של user/league/provider; אין טבלה או grant חדשים | Unicode bidi controls נדחים במסד, טקסט עברי/Latin מעורב נשמר, ו־UI מבודד ב־`bdi dir="auto"` |
 | 026 `slice9_system_actor_bootstrap` | designation יחיד `sports_sync`, trigger binding מבוקר ו־fallback עסקי לקריאה בלבד כאשר cache ה־binding חסר | migration קיימת מקדמת binding אטומית; Hosted חדש מחייב grant לפני traffic; late approval במצב UNBOUND מצליח בלי לייחס אוטומציה למנהל |
 | 027 `slice9_review_registry_barrier` | מכניס את הכרעת review למחסום registry בלעדי לפני גילוי ליגות העונה, ולאחריו נועל את כל מפתחות הליגה בסדר יציב | יצירת ליגה שלא הושלמה אינה יכולה להופיע ל־`score_match` אחרי שלב הגילוי בלי שמפתח הליגה שלה מוחזק |
+| 028 `slice9_reconciliation_lock_reverify` | מאמת ומגלה work item, נכשל מיד אם חסר, לוקח את מפתח הליגה ואז קושר post-lock re-read לאותה ליגה לפני delegate | work item שנעלם או שויך מחדש בזמן ההמתנה נכשל `RECONCILIATION_NOT_FOUND`; delegate אינו רץ תחת מפתח של ליגה אחרת |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 
@@ -1412,10 +1413,11 @@ Slice 9 שתוכננו מראש נשארות `S9-REQ-*`; הן אינן מתוא�
   `league_match_snapshots` אוכף membership בסט הקפוא; match שנוסף אחרי completion
   אינו מקבל reconciliation ואינו יכול להיכנס לליגה גם בפעולה מפורשת.
   `reconcileCompletedLeague` של system admin מזהה את רשומת ה־review בלי
-  לנעול אותה מוקדם, לוקח את מפתח הליגה, ואז נועל
-  `league → match → snapshot → reconciliation`
-  במסלול apply ומחיל את ה־snapshot המפורש באותה נוסחת scoring; dismissal נועל
-  `league → match → reconciliation` ורשאי לדלג על snapshot. לפני apply או
+  לנעול אותה מוקדם ונכשל לפני delegate אם היא חסרה, לוקח את מפתח הליגה ואז
+  קורא מחדש ומוודא שהרשומה עדיין קשורה לאותה ליגה תוך נעילת parent. שני
+  המסלולים משלימים `league → match → snapshot → reconciliation` לפני delegate.
+  במסלול apply הוא מחיל את ה־snapshot המפורש באותה נוסחת scoring; dismissal
+  אינו משנה אותו. לפני apply או
   dismissal נבדקים שוב pending/version וקיום snapshot; מזהה שאינו בסט הקפוא
   נדחה כ־not-found/no-op אטום. אין queue בזיכרון או הסתמכות על `audit_logs`
   בלבד.
