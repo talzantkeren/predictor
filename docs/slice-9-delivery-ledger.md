@@ -188,6 +188,33 @@ mutation ב־Hosted/linked.
 לא נערכו נתיבי המצגת שבבעלות המשימה הנפרדת. ארבעת קובצי ה־E2E/רכיבים שהיו
 modified מראש נשארו מחוץ לכל commit. ‏PR #14 נשאר Draft ולא מוזג.
 
+## סגירת הביקורת המקיפה הנוספת — 28.8.2026
+
+הסבב הזה סוגר את שני ממצאי ה־LOW החדשים ואת שאריות חוזה הבדיקה שנלוו אליהם.
+לא השתנה סטטוס אף רשומת מסירה, ולא בוצעה פעולת Hosted או Production:
+
+| ממצא/שארית | Status | Pushed SHA | תיקון וראיה שנצפתה |
+| --- | --- | --- | --- |
+| `clear_manual_match_override` ללא registry barrier | FIXED | `42d79f79f40845c0fd472dc44260ced643f57504` | migration קדימה משמרת את חתימת ה־RPC, מעבירה את המימוש ל־delegate פרטי ללא Data API grant, ולוקחת barrier בלעדי לפני גילוי העונה. מירוץ dblink עם `create_league` אמיתי מוכיח שה־creator ממתין במחסום shared עד שה־clear מסיים; wrapper מוטנטי ללא barrier הכשיל 3/107 assertions, ולאחר reset עברו 107/107. |
+| revocation של actor בזמן scoring | FIXED | `4863abf9874b647dc90dd74d3aa21d352082b799` | helper פרטי, invoker-rights, ‏empty-path וללא Data API grant מאמת מחדש את actor אחרי registry+league waits ומחזיק את `system_admins` ב־`FOR KEY SHARE` עד commit. שלושת הגבולות `score_match`, ‏`create_or_correct_match` ו־`resolve_match_result_review` קוראים לו לפני delegate. הסרת `FOR KEY SHARE` הכשילה 2/18; הסרת ה־retain מ־`score_match` הכשילה 1/18; baseline ממוקד עבר 213/213. |
+| promotion mismatch, קריאת sync וניסוחי lock חלשים | CLOSED_CONTRACT_GAPS | `5578f24c4f93c06eaf0f0a26f46e7d3549fbd28f` | בדיקת promotion בונה designation ו־legacy binding שונים ומחייבת `SYSTEM_ACTOR_MISMATCH` בלי mutation; הסרת הענף הכשילה 1/45. חוזה ה־sync דורש כעת קריאה executable מדויקת ל־`public.score_match` ומקבע שה־lock set החיצוני הוא superset של עונת הספק ועונות fixtures קיימים; alias מוטנטי שהשאיר את ההערה הכשיל 1/79. בדיקת scoring מזהה את מפתח ה־advisory המדויק שעליו `save_prediction` ממתינה. |
+| overhead של wrapper חוזר בתוך batch | ACCEPTED_WITH_EVIDENCE | `5578f24c4f93c06eaf0f0a26f46e7d3549fbd28f` | ה־batch תחום ל־50 fixtures; נעילות transaction חוזרות הן reentrant וקבוצת הנעילות הפנימית מקובעת כ־subset. parse/lookup חוזרים נשמרים בכוונה כדי שכל ניקוד יעבור באותו גבול actor/authorization, במקום ליצור bypass פרטי לצורך אופטימיזציה ספקולטיבית. |
+
+### שערים נצפים אחרי הסגירה הנוספת
+
+| פקודה | תוצאה נצפית |
+| --- | --- |
+| `npm run verify` | PASS — lint; strict typecheck; ‏55 files/656 Vitest; כל שערי evidence/hardening/runbooks/Sports; ‏35 files/1638 pgTAP; ארבעה scale plans עם rows ‏51/51/51/26; generated types current; book/submission/presentation checks; build; שתי סריקות של 53 artifacts; ‏42/42 Playwright ב־9.2 דקות |
+| `npm run build` | PASS — validation, Next.js production compile, TypeScript, page collection ו־static generation |
+| local forward reset + DB lint | PASS — כל 47 migrations עד `20260828103000`; seed/restart; `extensions`, ‏`private` ו־`public` ללא schema error |
+| focused contract baseline | PASS — activation+sync+scoring ‏198/198; actor-retention/lock/review/scoring ‏213/213; generated-type drift ו־submission evidence עברו |
+
+ה־`SYSTEM_ACTOR_UNAVAILABLE` בתוך חוזה ה־promotion נשאר guard הגנתי מול מצב
+שלא ניתן לבנות דרך הסכימה התקינה: ה־FK של binding ל־`system_admins` עם
+`ON DELETE CASCADE` מונע שורת binding יתומה. הוא אינו נספר כראיית runtime.
+נתיבי המצגת לא נערכו. ארבעת קובצי המשתמש שהיו modified מראש נשארו מחוץ לכל
+commit; ‏PR #14 נשאר Draft, פתוח ולא ממוזג.
+
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
 רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
