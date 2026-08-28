@@ -266,6 +266,7 @@ DEMO_MODE=true
 | 031 `slice9_score_match_registry_barrier` | עטיפת ה־RPC הישירה של `score_match` במחסום registry, גילוי כל ליגות העונה ונעילות advisory ממוינות לפני ה־delegate הקיים | קריאת service-role ישירה אינה יכולה לגלות ליגה חדשה ב־snapshot מאוחר בלי להחזיק את המפתח שלה; ה־delegate ללא grant ונשאר barrier-free |
 | 032 `slice9_clear_override_registry_barrier` | מעביר את מימוש `clear_manual_match_override` ל־delegate פרטי ועוטף את גילוי ליגות העונה במחסום registry בלעדי | `create_league` בעונה זהה ממתינה במחסום shared עד שה־clear מסיים את בדיקת ה־completed/archived; ליגה חדשה אינה יכולה להופיע כ־phantom אחרי discovery |
 | 033 `slice9_scoring_actor_retention` | helper פרטי וללא Data API grant מאמת מחדש את actor הבקשה ולוקח `system_admins FOR KEY SHARE` אחרי registry+league waits בשלושת כותבי ה־scoring | revocation שהתחילה קודם מנצחת והקריאה נכשלת סגור; revocation מאוחרת ממתינה עד commit של `score_match`, ‏`create_or_correct_match` או הכרעת review |
+| 034 `slice9_remaining_scoring_actor_retention` | משלים את אותו post-wait retain ב־`reconcile_completed_league` וב־`apply_api_football_sync_batch` בלי לשנות חתימות או delegates | כל חמשת הגבולות שתלויים ב־helper מקובעים מבנית; reconcile שומר `league key → actor → rows`, ו־sync שומר `registry → league keys → actor → batch delegate` גם ללא fixture סופי |
 
 כל migration כוללת rollback מחשבתי בתיאור ה־PR, גם אם Supabase migrations הן forward-only בפועל. אין לערוך migration שכבר הופעלה ב־Production; יוצרים migration חדשה.
 

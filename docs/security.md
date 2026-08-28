@@ -372,8 +372,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   הבלעדי לפני גילוי ליגות העונה ואז נועל את מפתחות הליגה הממוינים. לאחר
   ההמתנה הוא מאמת מחדש את actor ומחזיק את שורת `system_admins` ב־`FOR KEY
   SHARE` עד commit. אותו post-wait retain נאכף ב־`create_or_correct_match`
-  ובהכרעת review. ה־delegates נשארים בסכמה `private`, ללא EXECUTE ל־Data API,
-  ואינם רוכשים את המחסום מחדש.
+  ובהכרעת review, וכן אחרי מפתח הליגה של `reconcile_completed_league` ואחרי
+  registry+league keys של `apply_api_football_sync_batch`. ה־delegates נשארים
+  בסכמה `private`, ללא EXECUTE ל־Data API, ואינם רוכשים את המחסום מחדש.
 - מאחר שקריאת service-role אינה נושאת `auth.uid()` של המשתמש, ה־Action מעביר
   ללקוח השרת header פנימי וקבוע עם מזהה ה־session המאומת. המשתמש אינו יכול
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין

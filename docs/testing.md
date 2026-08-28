@@ -617,10 +617,11 @@ Data API grant. `slice9-league-lock-scope.test.sql` מפעיל את ה־RPC בח
 בקריאה ישירה ל־delegate נכשלה ב־3 מתוך 59 assertions: השומר המבני ושתי
 המתנות ה־advisory.
 
-`slice9-system-actor-retention.test.sql` מקבע מבנית שבשלושת כותבי ה־scoring
-הסדר הוא registry→league keys→actor retain→delegate, ומוכיח בחיבורי dblink
+`slice9-system-actor-retention.test.sql` מקבע מבנית שבכל חמשת כותבי ה־scoring
+שתלויים ב־helper הסדר הוא required registry/league locks→actor
+retain→delegate, ומוכיח בחיבורי dblink
 אמיתיים ש־delete מקביל מ־`system_admins` ממתין ל־`FOR KEY SHARE` של helper
-פרטי ללא Data API grant. הסרת retain מאחד ה־wrappers מכשילה את ספירת 3/3;
+פרטי ללא Data API grant. הסרת retain מאחד ה־wrappers מכשילה את ספירת 5/5;
 הסרת `FOR KEY SHARE` מן ה־helper מאפשרת ל־revocation לעבור ומכשילה את ה־wait.
 בדיקת ה־sync מקבעת את שרשרת הקריאות executable עד `public.score_match` ולא
 מסתפקת במחרוזת מתוך הערה, וכן מקבעת שקבוצת הליגות החיצונית כוללת את עונת

@@ -51,23 +51,46 @@ select is(
       values
         (
           'public.score_match(uuid,public.match_status,numeric,numeric,boolean,text)'::regprocedure,
-          'private.slice9_score_match_without_registry_barrier'::text
+          'private.slice9_score_match_without_registry_barrier'::text,
+          true
         ),
         (
           'public.create_or_correct_match(text,uuid,uuid,uuid,uuid,numeric,timestamp with time zone,public.match_status,numeric,numeric)'::regprocedure,
-          'private.slice9_create_or_correct_match_with_global_lock'::text
+          'private.slice9_create_or_correct_match_with_global_lock'::text,
+          true
         ),
         (
           'public.resolve_match_result_review(uuid,integer,public.match_status,numeric,numeric)'::regprocedure,
-          'private.slice9_resolve_match_result_review_without_global_lock'::text
+          'private.slice9_resolve_match_result_review_without_global_lock'::text,
+          true
+        ),
+        (
+          'public.reconcile_completed_league(uuid,integer,text)'::regprocedure,
+          'private.slice9_reconcile_completed_league_without_global_lock'::text,
+          false
+        ),
+        (
+          'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure,
+          'private.slice9_apply_api_football_sync_batch_with_global_lock'::text,
+          true
         )
-    ) as boundary(routine_oid, delegate_marker)
+    ) as boundary(routine_oid, delegate_marker, requires_registry)
     cross join lateral (
       select lower(pg_get_functiondef(boundary.routine_oid)) as definition
     ) as source
-    where position('pg_advisory_xact_lock(2026090609);' in source.definition) > 0
-      and position('private.slice9_lock_leagues' in source.definition) >
-        position('pg_advisory_xact_lock(2026090609);' in source.definition)
+    where position('private.slice9_lock_leagues' in source.definition) > 0
+      and (
+        not boundary.requires_registry
+        or (
+          position(
+            'pg_advisory_xact_lock(2026090609);' in source.definition
+          ) > 0
+          and position('private.slice9_lock_leagues' in source.definition) >
+            position(
+              'pg_advisory_xact_lock(2026090609);' in source.definition
+            )
+        )
+      )
       and position(
         'private.slice9_retain_system_actor_from_request'
         in source.definition
@@ -77,8 +100,8 @@ select is(
         in source.definition
       )
   ),
-  3,
-  'all three scoring writers order registry then league keys then actor retention then delegate'
+  5,
+  'all five helper-backed scoring writers order required locks then actor retention then delegate'
 );
 
 create function pg_temp.wait_for_remote_lock(p_backend_pid integer)
