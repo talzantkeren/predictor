@@ -165,6 +165,29 @@ mutation ב־Hosted/linked.
 לא נערכו נתיבי המצגת שבבעלות המשימה הנפרדת. ארבעת קובצי ה־E2E/רכיבים
 שהיו modified מראש נשמרו מחוץ לכל commit. ‏PR #14 נשאר Draft ולא מוזג.
 
+## תיקוני follow-up לביקורת round 2 — 28.8.2026
+
+ה־follow-up סוגר את חמשת הפערים הקונקרטיים שהועלו בביקורת החוזרת, בלי לשנות
+את סטטוס רשומות המסירה ובלי לבצע פעולת Hosted/Production:
+
+| פער | Pushed SHA | תיקון וראיה שנצפתה |
+| --- | --- | --- |
+| F10 — שער pre-traffic אינו מוגן וה־env actor אינו מושווה | `dfd4c56785af71e0f0e500b0005f321a69cb9ddc` | checker ו־Vitest מחייבים את §3A, את שני ערכי ה־readiness ואת `sync_actor_matches_designation` גם ב־runbook וגם בתבנית value-free. ה־runbook דורש השוואה חזותית זמנית ל־Production env בלי לשמור UUID. שינוי זמני של כותרת §3A הכשיל את checker ואת Vitest ‏1/3; לאחר restore עברו 3/3. |
+| F10 — מסלול promotion של binding קיים לא נבדק | `db03671603ed8a967f3b0f7be6847c5bec82abe5` | migration קדימה מוסיפה helper פרטי, invoker-rights, empty-path וללא Data API grant; היעדר binding הוא no-op, mismatch נכשל סגור ו־replay idempotent. fixture יוצר legacy binding אמיתי ועבר 42/42; helper מוטנטי שהחזיר false הכשיל שלוש assertions ובהמשך `SYSTEM_ACTOR_UNAVAILABLE`. הסרת invocation הסופי הכשילה Vitest ‏1/2. |
+| F8 — השומר המבני לא קיבע discovery מתחת למחסום | `4f3ef91596bffe2436df188bed7059580f21fea4` | assertion מקבע במפורש barrier→`public.leagues` discovery→league keys. הזזה מקומית של discovery מעל המחסום הכשילה assertion יחיד מתוך 39; reset החזיר 39/39. |
+| F8 — כניסת `public.score_match` הישירה עקפה registry/league keys | `43a893b2f1599e64d7b0aa430a35bae414edc8c5` | migration קדימה משמרת את חתימת ה־RPC אך עוטפת אותה ב־actor→registry→discovery→sorted league keys ומעבירה את המימוש הקודם ל־delegate פרטי ללא Data API EXECUTE. probe בחיבור נפרד מוכיח המתנה על ה־registry ועל מפתח הליגה המדויק. עטיפה מוטנטית ללא prefix נכשלה בדיוק ב־3/59; לאחר reset עברו scoring+scope ‏133/133 ו־review barrier ‏27/27. |
+
+### שערי סיום נצפים אחרי ה־follow-up
+
+| פקודה | תוצאה נצפית |
+| --- | --- |
+| `npm run verify` | PASS — lint; strict typecheck; ‏55 files/656 Vitest; ארבעת שערי evidence/hardening/runbooks/Sports; ‏34 files/1600 pgTAP; scale plans עם rows ‏51/51/51/26; generated types current; book/submission/presentation checks; build; שתי סריקות של 53 artifacts; ‏42/42 Playwright ב־9.2 דקות |
+| `npm run build` | PASS — validation, Next.js production compile, TypeScript, page collection ו־static generation |
+| local forward reset + DB lint | PASS — כל 45 migrations עד `20260828101000`; seed/restart; `extensions`, ‏`private` ו־`public` ללא schema error |
+
+לא נערכו נתיבי המצגת שבבעלות המשימה הנפרדת. ארבעת קובצי ה־E2E/רכיבים שהיו
+modified מראש נשארו מחוץ לכל commit. ‏PR #14 נשאר Draft ולא מוזג.
+
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
 רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
