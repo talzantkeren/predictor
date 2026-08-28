@@ -215,6 +215,37 @@ modified מראש נשארו מחוץ לכל commit. ‏PR #14 נשאר Draft ו
 נתיבי המצגת לא נערכו. ארבעת קובצי המשתמש שהיו modified מראש נשארו מחוץ לכל
 commit; ‏PR #14 נשאר Draft, פתוח ולא ממוזג.
 
+## השלמת חוזה actor retention לכל כותבי scoring — 28.8.2026
+
+ממצא ה־LOW האחרון מן הביקורת המתוזמנת נסגר ב־commit
+`2071b0a90c2c235efe950184f84728bce9129a2d`, בלי לשנות סטטוס של רשומת מסירה
+ובלי פעולת Hosted או Production:
+
+| ממצא | Status | תיקון וראיית regression |
+| --- | --- | --- |
+| `reconcile_completed_league` ו־`apply_api_football_sync_batch` לא קיבעו actor אחרי ההמתנה | FIXED | migration קדימה `20260828104000_slice9_remaining_scoring_actor_retention.sql` משמרת את שתי חתימות ה־RPC ואת grants ה־`service_role` בלבד. reconciliation שומר `league key → actor retain → lock-bound recheck → delegate`; ה־batch שומר `registry barrier → sorted league keys → actor retain → delegate`, גם ב־batch שאין בו fixture סופי. כך כל שמונת כותבי ה־service-role במיפוי הביקורת מקיימים את חוזה ה־revocation. |
+
+`slice9-system-actor-retention.test.sql` מקבע כעת את כל חמשת ה־wrappers
+שתלויים ב־helper. הסרה זמנית של retain מ־reconciliation במסד המקומי בלבד
+הכשילה assertion אחד מתוך 18 והורידה את המניין מ־5 ל־4; לאחר reset, הסרה
+נפרדת מן ה־API-Football batch הכשילה באותו אופן 1/18. קובץ המוטציה הזמני
+נמחק, reset מלא החיל מחדש את כל 48 ה־migrations, וה־baseline הממוקד עבר
+283/283 בשישה קובצי pgTAP. ‏DB lint לא מצא schema errors ו־generated types
+נשארו current; החתימות החשופות לא השתנו.
+
+### שערים נצפים אחרי השלמת ה־retention
+
+| פקודה | תוצאה נצפית |
+| --- | --- |
+| `npm run verify` | PASS — lint; strict typecheck; ‏55 files/656 Vitest; כל שערי evidence/hardening/runbooks/Sports; ‏35 files/1638 pgTAP; ארבעה scale plans עם rows ‏51/51/51/26; generated types current; book/submission/presentation checks; build; שתי סריקות של 53 artifacts; ‏42/42 Playwright ב־9.1 דקות |
+| `npm run build` | PASS — validation, Next.js production compile, TypeScript, page collection ו־static generation |
+| local forward reset | PASS — כל 48 migrations עד `20260828104000`; seed ו־restart |
+| שתי mutations נפרדות | EXPECTED FAIL — כל הסרת retain הכשילה בדיוק 1/18; לאחר restore עברו 18/18 וה־focused set עבר 283/283 |
+
+נתיבי המצגת לא נערכו. ארבעת קובצי המשתמש שהיו modified מראש נשארו מחוץ לכל
+commit. ‏PR #14 נשאר Draft, פתוח ולא ממוזג; פעולות ה־Production וה־native
+Chrome Zoom=200% נשארות פעולות הבעלים המתועדות ולא נטענות כאן כ־PASS.
+
 ## ראיית סגירת W3 מה־session של 27.8.2026
 
 רק ארבע רשומות W3 נסגרות על בסיס ההרצות האלה; W4 נשאר `NOT_STARTED`.
