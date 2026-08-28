@@ -13,6 +13,9 @@ const [
   performanceExport,
   authPolicy,
   viewportSpec,
+  playwrightConfig,
+  e2eRunner,
+  packageManifest,
   scalePlanChecker,
 ] = await Promise.all([
   readFile(registerPath, "utf8").catch(() => undefined),
@@ -20,6 +23,9 @@ const [
   readFile(performanceExportPath, "utf8").catch(() => undefined),
   readFile(authPolicyPath, "utf8").catch(() => undefined),
   readFile("e2e/accessibility-matrix.spec.ts", "utf8"),
+  readFile("playwright.config.ts", "utf8"),
+  readFile("scripts/run-e2e.ts", "utf8"),
+  readFile("package.json", "utf8"),
   readFile("scripts/check-scale-plans.ts", "utf8"),
 ]);
 
@@ -105,7 +111,7 @@ for (const expected of [
 }
 
 for (const row of [
-  "Native 200% zoom",
+  "Chrome page zoom 200%",
   "Vercel secret scope",
   "Production Cron",
   "Hosted migration parity",
@@ -150,12 +156,41 @@ for (const expected of [
   "storageState: await manager.context.storageState()",
   "hasTouch: descriptor.hasTouch",
   "isMobile: descriptor.isMobile",
+  "Browser.getBrowserCommandLine",
+  "visualViewportScale",
+  "viewportEmulation: false",
+  "clippedTargets",
+  "overlappingTargets",
 ]) {
   invariant(
     viewportSpec.includes(expected),
     `Viewport regression is missing the explicit accessibility contract: ${expected}`,
   );
 }
+for (const expected of [
+  'process.env.S9_NATIVE_SCALE_AUDIT === "1"',
+  "viewport: null",
+  '"--force-device-scale-factor=2"',
+  "`--window-size=${viewport.width},${viewport.height}`",
+]) {
+  invariant(
+    playwrightConfig.includes(expected),
+    `Native-scale Playwright configuration is missing: ${expected}`,
+  );
+}
+for (const expected of [
+  'process.argv.includes("--native-scale-audit")',
+  'S9_NATIVE_SCALE_AUDIT: "1"',
+]) {
+  invariant(
+    e2eRunner.includes(expected),
+    `Native-scale E2E runner is missing: ${expected}`,
+  );
+}
+invariant(
+  packageManifest.includes('"test:a11y:native-scale"'),
+  "The native-scale accessibility command is missing from package.json.",
+);
 invariant(
   !/\btest(?:\.describe)?\.(?:skip|fixme|only|fail)\b/u.test(viewportSpec) &&
     !/\btestInfo\.skip\s*\(/u.test(viewportSpec) &&

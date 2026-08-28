@@ -80,7 +80,7 @@ multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מ
 
 | Gate | רשומה | Status | גבול |
 | --- | --- | --- | --- |
-| Native 200% zoom | `S9-DEF-022` | TRACKED_BY_RECORD | בדיקת Chrome native אנושית בלבד |
+| Chrome page zoom 200% | `S9-DEF-022` | TRACKED_BY_RECORD | forced browser-scale matrix עברה; נשאר spot-check אנושי קצר של פקד Zoom בשלושה מסכים |
 | Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | הסרת Preview ללא Reveal ו־Preview verification |
 | Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final acceptance רק אחרי merge; לא נוסה כאן |
 | Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | 19 migrations נשארו local-only; לא נפרסו כאן |

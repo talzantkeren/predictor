@@ -20,34 +20,32 @@ Status: `OWNER_ACTION_REQUIRED`.
 אין פעולת owner שנותרה לרשומה זו. אין להריץ listing גולמי שעלול לכלול עמודת
 value.
 
-## 2. S9-DEF-022 — Chrome native 200%
+## 2. S9-DEF-022 — spot-check קצר של Chrome page zoom
+
+מטריצת forced browser scale מלאה כבר עברה 10/10 על
+360/390/768/1024/1440, עם `--force-device-scale-factor=2`, ‏DPR 2 ובלי
+viewport emulation. היא כוללת שמות, contrast, סדר/focus, יעדי 44×44,
+clipping/overlap/overflow וכל מצב rejection. דגל device scale אינו אותו
+מנגנון כמו פקד page zoom, ולכן נשארת רק בדיקת rounding/reflow קצרה.
 
 **איפה:** Chrome רגיל, על production build מקומי של ה־final SHA; Menu → Zoom →
 `200%`. אין להשתמש ב־CSS zoom או ב־DevTools Device Toolbar/device emulation.
 
-**פעולה יחידה:** כשה־Zoom נשאר 200%, לשנות ידנית את חלון Chrome ולבצע פעם עם
-`window.innerWidth` של 360–390 CSS px ופעם עם לפחות 1024 CSS px. בכל רוחב
-לעבור keyboard-only על `/admin/matches`, ‏`/admin/sync` ו־
-`/leagues/<owned-league>/members`; לבדוק סדר ושם focus, ‏busy name יחיד, focus
-גלוי אחרי דחייה, help+error, ‏alert יחיד, contrast AA, יעדי 44×44 CSS px, ‏RTL
-והיעדר horizontal overflow. DevTools מנותק מותר לקריאה בלבד של
-`window.innerWidth` ושל Accessibility/Computed panes. ב־Slow 3G לרענן את שני
-מסכי המנהל כדי לחשוף את ה־busy region, ואז להחזיר No throttling. את מצב
-הדחייה יש להפעיל עם קלט חוקי לדפדפן אך פסול לשרת, למשל clipboard שנוצר ב־
-`Set-Clipboard -Value ("סיבה " + [char]0x202E + " נסתרת")`. אם החומרה אינה
-מאפשרת 1024 CSS px ב־200%, לתעד את הרוחב המרבי ולהשאיר את הרשומה פתוחה.
+**פעולה יחידה (כ־4 דקות):** לעבור keyboard-only על `/admin/matches`, ‏
+`/leagues/<owned-league>/members` ו־`/leagues/<owned-league>/settings` כאשר
+Zoom נשאר 200%. בכל מסך לבדוק focus גלוי, שאין control/text חתוך או חופף ושאין
+horizontal page scroll. ב־members לעבור ב־Tab את כל scroller הניווט ולהפעיל
+את rejection הפסול המתועד; textarea, ‏help+error ו־alert חייבים להישאר גלויים.
 
-**ראיה לשמור:** בחבילת owner
-`S9-DEF-022/01-native-200-mobile.png`,
-`S9-DEF-022/02-native-200-desktop.png` ו־
-`S9-DEF-022/03-accessibility-snapshot.txt`, כולם מצונזרים. להוסיף ל־
-`docs/evidence/slice-9/w6/S9-DEF-022.md` את SHA, גרסת Chrome, שני
-`window.innerWidth`, ‏Zoom, מדידות ותוצאת כל מסך.
+**ראיה לשמור:** צילום מצונזר אחד של members/error ו־
+`S9-DEF-022/01-chrome-page-zoom-200-spot-check.txt` עם SHA, גרסת Chrome,
+שלושת שמות המסכים ו־PASS/FAIL בלבד.
 
 **אימות לאחר הפעולה:** Local Supabase בלבד.
 
 ```powershell
 npm.cmd run test:e2e -- e2e/accessibility-matrix.spec.ts
+npm.cmd run test:a11y:native-scale
 npx.cmd vitest run src/lib/admin-loading-accessibility.test.ts
 ```
 

@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
-import { mkdirSync } from "node:fs";
+import type { Browser, TestInfo } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 
 import {
   devices,
@@ -27,6 +29,7 @@ const viewports = [
 ] as const;
 
 const publicEntryRoutes = ["/", "/login", "/register", "/forgot-password"] as const;
+const nativeScaleAudit = process.env.S9_NATIVE_SCALE_AUDIT === "1";
 
 const canonicalUuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -37,9 +40,19 @@ type PasswordSessionResponse = {
 
 type BrowserAudit = {
   clientWidth: number;
+  clippedTargets: Array<{
+    label: string;
+    left: number;
+    right: number;
+    tag: string;
+  }>;
   direction: string;
   focusableCount: number;
   focusOrder: string[];
+  overlappingTargets: Array<{
+    first: string;
+    second: string;
+  }>;
   scrollWidth: number;
   undersizedTargets: Array<{
     height: number;
@@ -106,6 +119,67 @@ async function auditBrowserContracts(page: Page) {
       ];
     });
 
+    const targetLabel = (element: HTMLElement) =>
+      element.getAttribute("aria-label") ??
+      element.textContent?.trim().replace(/\s+/gu, " ").slice(0, 80) ??
+      element.tagName;
+    const clippedTargets = candidates.flatMap((element) => {
+      const bounds = element.getBoundingClientRect();
+      if (
+        bounds.left >= -0.5 &&
+        bounds.right <= document.documentElement.clientWidth + 0.5
+      ) {
+        return [];
+      }
+      let ancestor = element.parentElement;
+      while (ancestor) {
+        const overflowX = getComputedStyle(ancestor).overflowX;
+        if (
+          ["auto", "scroll"].includes(overflowX) &&
+          ancestor.scrollWidth > ancestor.clientWidth + 1
+        ) {
+          // Deliberate component-level scrolling is not page clipping. The
+          // keyboard pass below must still scroll every target fully onscreen.
+          return [];
+        }
+        ancestor = ancestor.parentElement;
+      }
+      return [
+        {
+          label: targetLabel(element),
+          left: bounds.left,
+          right: bounds.right,
+          tag: element.tagName,
+        },
+      ];
+    });
+    const overlappingTargets = candidates.flatMap((first, firstIndex) =>
+      candidates.slice(firstIndex + 1).flatMap((second) => {
+        if (first.contains(second) || second.contains(first)) return [];
+        const firstBounds = first.getBoundingClientRect();
+        const secondBounds = second.getBoundingClientRect();
+        const isOnscreen = (bounds: DOMRect) =>
+          bounds.right > 0 &&
+          bounds.left < document.documentElement.clientWidth &&
+          bounds.bottom > 0 &&
+          bounds.top < window.innerHeight;
+        if (!isOnscreen(firstBounds) || !isOnscreen(secondBounds)) return [];
+        const overlapWidth =
+          Math.min(firstBounds.right, secondBounds.right) -
+          Math.max(firstBounds.left, secondBounds.left);
+        const overlapHeight =
+          Math.min(firstBounds.bottom, secondBounds.bottom) -
+          Math.max(firstBounds.top, secondBounds.top);
+        if (overlapWidth <= 1 || overlapHeight <= 1) return [];
+        return [
+          {
+            first: targetLabel(first),
+            second: targetLabel(second),
+          },
+        ];
+      }),
+    );
+
     const focusOrder = candidates.map((element, index) => {
       const order = String(index);
       element.dataset.accessibilityMatrixOrder = order;
@@ -114,9 +188,11 @@ async function auditBrowserContracts(page: Page) {
 
     return {
       clientWidth: document.documentElement.clientWidth,
+      clippedTargets,
       direction: document.documentElement.dir,
       focusableCount: candidates.length,
       focusOrder,
+      overlappingTargets,
       scrollWidth: document.documentElement.scrollWidth,
       undersizedTargets,
     };
@@ -255,7 +331,9 @@ async function auditRoute({
   const audit = await auditBrowserContracts(page);
   expect(audit.direction).toBe("rtl");
   expect(audit.scrollWidth).toBeLessThanOrEqual(audit.clientWidth);
+  expect(audit.clippedTargets).toEqual([]);
   expect(audit.focusableCount).toBeGreaterThan(0);
+  expect(audit.overlappingTargets).toEqual([]);
   expect(audit.undersizedTargets).toEqual([]);
 
   await page.evaluate(() => {
@@ -327,6 +405,15 @@ async function auditRoute({
 }
 
 function getContextOptions(projectName: string): BrowserContextOptions {
+  if (nativeScaleAudit) {
+    return {
+      baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+      timezoneId: "Asia/Jerusalem",
+      userAgent: devices["Desktop Chrome"].userAgent,
+      viewport: null,
+    };
+  }
+
   const descriptor = projectName.startsWith("mobile-")
     ? devices["Pixel 5"]
     : devices["Desktop Chrome"];
@@ -340,6 +427,75 @@ function getContextOptions(projectName: string): BrowserContextOptions {
     userAgent: descriptor.userAgent,
     viewport: descriptor.viewport,
   };
+}
+
+function getNativeScaleViewport(projectName: string) {
+  const match = /^native-scale-(\d+)x(\d+)$/u.exec(projectName);
+  if (!match) {
+    throw new Error(`Native-scale project name is invalid: ${projectName}`);
+  }
+  return { height: Number(match[2]), width: Number(match[1]) };
+}
+
+async function assertNativeScaleProcess({
+  browser,
+  outputDirectory,
+  page,
+  viewport,
+}: {
+  browser: Browser;
+  outputDirectory: string;
+  page: Page;
+  viewport: { height: number; width: number };
+}) {
+  const cdp = await page.context().newCDPSession(page);
+  const commandLine = (await cdp.send("Browser.getBrowserCommandLine")) as {
+    arguments?: unknown;
+  };
+  const argumentsList = Array.isArray(commandLine.arguments)
+    ? commandLine.arguments.filter(
+        (argument): argument is string => typeof argument === "string",
+      )
+    : [];
+  expect(argumentsList).toContain("--force-device-scale-factor=2");
+
+  const metrics = await page.evaluate(() => ({
+    devicePixelRatio: window.devicePixelRatio,
+    innerHeight: window.innerHeight,
+    innerWidth: window.innerWidth,
+    visualViewportScale: window.visualViewport?.scale ?? null,
+  }));
+  expect(metrics).toEqual({
+    devicePixelRatio: 2,
+    innerHeight: viewport.height,
+    innerWidth: viewport.width,
+    visualViewportScale: 1,
+  });
+
+  const screenshot = await page.screenshot({ animations: "disabled" });
+  const raster = await sharp(screenshot).metadata();
+  expect({ height: raster.height, width: raster.width }).toEqual({
+    height: viewport.height * 2,
+    width: viewport.width * 2,
+  });
+
+  writeFileSync(
+    join(outputDirectory, `native-scale-${viewport.width}.json`),
+    `${JSON.stringify(
+      {
+        browserVersion: browser.version(),
+        commandLineScale: 2,
+        cssViewport: viewport,
+        devicePixelRatio: metrics.devicePixelRatio,
+        raster: { height: raster.height, width: raster.width },
+        visualViewportScale: metrics.visualViewportScale,
+        viewportEmulation: false,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 }
 
 function localSupabaseConfiguration() {
@@ -435,6 +591,8 @@ async function assertInvalidRejectionState({
   const audit = await auditBrowserContracts(page);
   expect(audit.direction).toBe("rtl");
   expect(audit.scrollWidth).toBeLessThanOrEqual(audit.clientWidth);
+  expect(audit.clippedTargets).toEqual([]);
+  expect(audit.overlappingTargets).toEqual([]);
   expect(audit.undersizedTargets).toEqual([]);
 
   await page.screenshot({
@@ -447,40 +605,70 @@ async function assertInvalidRejectionState({
   });
 }
 
-test.describe("automated accessibility viewport matrix", () => {
-  for (const viewport of viewports) {
-    test(`${viewport.width}px: names, order, focus, contrast and touch contracts`, async ({
-      page,
-    }, testInfo) => {
-      await page.setViewportSize(viewport);
-      await page.emulateMedia({ reducedMotion: "reduce" });
-      const browserErrors: string[] = [];
-      page.on("console", (message) => {
-        if (message.type() === "error") browserErrors.push(message.text());
-      });
-      page.on("pageerror", (error) => browserErrors.push(error.message));
+async function auditPublicMatrix({
+  page,
+  testInfo,
+  viewport,
+}: {
+  page: Page;
+  testInfo: TestInfo;
+  viewport: { height: number; width: number };
+}) {
+  if (!nativeScaleAudit) {
+    await page.setViewportSize(viewport);
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const browserErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => browserErrors.push(error.message));
 
-      const outputDirectory = join(
+  const outputDirectory = join(
+    process.cwd(),
+    "tmp",
+    "final-accessibility",
+    testInfo.project.name,
+  );
+  mkdirSync(outputDirectory, { recursive: true });
+
+  for (const route of publicEntryRoutes) {
+    await auditRoute({ outputDirectory, page, route, viewport });
+  }
+
+  expect(browserErrors).toEqual([]);
+}
+
+if (nativeScaleAudit) {
+  test("forced browser scale: public accessibility matrix", async ({
+    browser,
+    page,
+  }, testInfo) => {
+    const viewport = getNativeScaleViewport(testInfo.project.name);
+    await auditPublicMatrix({ page, testInfo, viewport });
+    await assertNativeScaleProcess({
+      browser,
+      outputDirectory: join(
         process.cwd(),
         "tmp",
         "final-accessibility",
         testInfo.project.name,
-      );
-      mkdirSync(outputDirectory, { recursive: true });
-
-      for (const route of publicEntryRoutes) {
-        await auditRoute({
-          outputDirectory,
-          page,
-          route,
-          viewport,
-        });
-      }
-
-      expect(browserErrors).toEqual([]);
+      ),
+      page,
+      viewport,
     });
-  }
-});
+  });
+} else {
+  test.describe("automated accessibility viewport matrix", () => {
+    for (const viewport of viewports) {
+      test(`${viewport.width}px: names, order, focus, contrast and touch contracts`, async ({
+        page,
+      }, testInfo) => {
+        await auditPublicMatrix({ page, testInfo, viewport });
+      });
+    }
+  });
+}
 
 test("authenticated admin, members and settings matrix", async ({
   browser,
@@ -575,8 +763,22 @@ test("authenticated admin, members and settings matrix", async ({
     );
     mkdirSync(outputDirectory, { recursive: true });
 
-    for (const viewport of viewports) {
-      await manager.page.setViewportSize(viewport);
+    const activeViewports = nativeScaleAudit
+      ? [getNativeScaleViewport(testInfo.project.name)]
+      : viewports;
+    if (nativeScaleAudit) {
+      await assertNativeScaleProcess({
+        browser,
+        outputDirectory,
+        page: manager.page,
+        viewport: activeViewports[0],
+      });
+    }
+
+    for (const viewport of activeViewports) {
+      if (!nativeScaleAudit) {
+        await manager.page.setViewportSize(viewport);
+      }
       for (const authenticatedRoute of authenticatedRoutes) {
         await auditRoute({
           ...authenticatedRoute,
@@ -594,51 +796,55 @@ test("authenticated admin, members and settings matrix", async ({
       }
     }
 
-    const emulatedViewport = { height: 450, width: 720 };
-    const emulatedContext = await browser.newContext({
-      ...contextOptions,
-      deviceScaleFactor: 2,
-      reducedMotion: "reduce",
-      screen: emulatedViewport,
-      storageState: await manager.context.storageState(),
-      viewport: emulatedViewport,
-    });
-    contexts.push(emulatedContext);
-    const emulatedPage = await emulatedContext.newPage();
-    emulatedPage.on("console", (message) => {
-      if (message.type() === "error") browserErrors.push(message.text());
-    });
-    emulatedPage.on("pageerror", (error) => browserErrors.push(error.message));
-    const emulatedResponse = await emulatedPage.goto("/admin/matches");
-    expect(emulatedResponse?.ok()).toBe(true);
-    expect(
-      await emulatedPage.evaluate(() => ({
-        devicePixelRatio: window.devicePixelRatio,
-        innerHeight: window.innerHeight,
-        innerWidth: window.innerWidth,
-      })),
-    ).toEqual({ devicePixelRatio: 2, innerHeight: 450, innerWidth: 720 });
-
-    const emulatedOutputDirectory = join(
-      process.cwd(),
-      "tmp",
-      "final-accessibility",
-      `authenticated-emulated-200-percent-${testInfo.project.name}`,
-    );
-    mkdirSync(emulatedOutputDirectory, { recursive: true });
-    for (const authenticatedRoute of authenticatedRoutes) {
-      await auditRoute({
-        ...authenticatedRoute,
-        outputDirectory: emulatedOutputDirectory,
-        page: emulatedPage,
+    if (!nativeScaleAudit) {
+      const emulatedViewport = { height: 450, width: 720 };
+      const emulatedContext = await browser.newContext({
+        ...contextOptions,
+        deviceScaleFactor: 2,
+        reducedMotion: "reduce",
+        screen: emulatedViewport,
+        storageState: await manager.context.storageState(),
         viewport: emulatedViewport,
       });
-      if (authenticatedRoute.artifactName === "league-members") {
-        await assertInvalidRejectionState({
+      contexts.push(emulatedContext);
+      const emulatedPage = await emulatedContext.newPage();
+      emulatedPage.on("console", (message) => {
+        if (message.type() === "error") browserErrors.push(message.text());
+      });
+      emulatedPage.on("pageerror", (error) =>
+        browserErrors.push(error.message),
+      );
+      const emulatedResponse = await emulatedPage.goto("/admin/matches");
+      expect(emulatedResponse?.ok()).toBe(true);
+      expect(
+        await emulatedPage.evaluate(() => ({
+          devicePixelRatio: window.devicePixelRatio,
+          innerHeight: window.innerHeight,
+          innerWidth: window.innerWidth,
+        })),
+      ).toEqual({ devicePixelRatio: 2, innerHeight: 450, innerWidth: 720 });
+
+      const emulatedOutputDirectory = join(
+        process.cwd(),
+        "tmp",
+        "final-accessibility",
+        `authenticated-emulated-200-percent-${testInfo.project.name}`,
+      );
+      mkdirSync(emulatedOutputDirectory, { recursive: true });
+      for (const authenticatedRoute of authenticatedRoutes) {
+        await auditRoute({
+          ...authenticatedRoute,
           outputDirectory: emulatedOutputDirectory,
           page: emulatedPage,
           viewport: emulatedViewport,
         });
+        if (authenticatedRoute.artifactName === "league-members") {
+          await assertInvalidRejectionState({
+            outputDirectory: emulatedOutputDirectory,
+            page: emulatedPage,
+            viewport: emulatedViewport,
+          });
+        }
       }
     }
     expect(browserErrors).toEqual([]);
@@ -647,9 +853,10 @@ test("authenticated admin, members and settings matrix", async ({
   }
 });
 
-test("emulated 200% reflow approximation at a 1440x900 physical raster", async ({
-  browser,
-}, testInfo) => {
+if (!nativeScaleAudit) {
+  test("emulated 200% reflow approximation at a 1440x900 physical raster", async ({
+    browser,
+  }, testInfo) => {
   const viewport = { height: 450, width: 720 };
   const profile = getContextOptions(testInfo.project.name);
   const context = await browser.newContext({
@@ -692,4 +899,5 @@ test("emulated 200% reflow approximation at a 1440x900 physical raster", async (
   } finally {
     await context.close();
   }
-});
+  });
+}

@@ -685,7 +685,13 @@ DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך
 `e2e/join-and-proofs.spec.ts` שולח דרך ה־UI סיבת דחייה שנדחית רק בגבול השרת,
 ומאמת שה־textarea מקבל focus, ‏`aria-invalid`, תיאור help+error יחיד ו־focus
 indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב־Desktop וב־Pixel 5.
-בדיקת native 200% מתועדת בנפרד בראיית S9-DEF-022 ואינה מוחלפת ב־CSS zoom.
+בדיקת scaling מתועדת בנפרד בראיית S9-DEF-022 ואינה משתמשת ב־CSS zoom. נוסף
+ה־gate `npm run test:a11y:native-scale`: חמישה תהליכי Chromium נפתחים עם
+`--force-device-scale-factor=2`, ‏`viewport: null` וחלון native לכל אחד מן
+הרוחבים 360/390/768/1024/1440. ה־gate מאמת את שורת הפקודה, ‏DPR 2,
+`visualViewport.scale=1`, raster כפול והיעדר viewport emulation, ומריץ את כל
+המסכים והחוזים של המטריצה. מאחר ש־Chromium מפריד בין device scale לבין
+HostZoomMap/page zoom, נשאר spot-check קצר של שלושה מסכים עם Chrome Zoom=200%.
 
 רגרסיית `e2e/accessibility-matrix.spec.ts` מריצה בנוסף את דפי הכניסה הציבוריים
 `/`, ‏`/login`, ‏`/register` ו־`/forgot-password` בכל אחד מהרוחבים

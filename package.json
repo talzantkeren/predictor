@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "tsx scripts/run-e2e.ts",
+    "test:a11y:native-scale": "tsx scripts/run-e2e.ts --native-scale-audit e2e/accessibility-matrix.spec.ts",
     "test:e2e:preview": "tsx scripts/run-e2e.ts --external-smoke",
     "test:e2e:run": "tsx scripts/run-e2e.ts --skip-build",
     "test:client-secrets": "tsx scripts/run-e2e.ts --client-secret-check-only",

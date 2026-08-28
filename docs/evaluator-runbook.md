@@ -88,7 +88,7 @@ npm run presentation:check
 | --- | --- | --- |
 | Hosted Email | לבצע את `docs/runbooks/slice-9-def-004-hosted-auth.md` כפעולה רציפה אחת עם custom SMTP מאושר ונמען disposable מורשה | למלא את `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; ללא recipient או credential |
 | Hosted Cron | לבצע פעם אחת את `docs/runbooks/slice-9-def-012-production-cron.md` אחרי final deploy | למלא `docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md`; רק response/run/lease columns מסוננים |
-| native zoom | Chrome Zoom=200% על candidate, keyboard, ‏360–390 CSS px ולפחות 1024 CSS px ללא device emulation | viewport, zoom, גרסת Chrome, מסך, PASS/FAIL |
+| page zoom spot-check | Chrome Zoom=200% על candidate: keyboard ב־admin matches, ‏members/error ו־settings; אין clipping/overlap/page overflow | zoom, גרסת Chrome, שלושת המסכים, PASS/FAIL; מטריצת forced DSF מלאה כבר מתועדת ב־S9-DEF-022 |
 | חזרה | לבצע ולתעד 10–15 דקות לפי `presentation/rehearsal-log.md` | SHA, משך, קישורים, fallback ותוצאה |
 | evaluator/final SHA | להעניק גישת מאגר וחשבונות מחוץ ל־Git ולרשום Production SHA סופי | זהות evaluator אינה נכתבת; רק מצב access ו־SHA |
 

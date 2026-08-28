@@ -22,6 +22,7 @@ const npmNeedsShell = !npmCliPath && process.platform === "win32";
 const skipBuild = process.argv.includes("--skip-build");
 const serveOnly = process.argv.includes("--serve-only");
 const externalSmoke = process.argv.includes("--external-smoke");
+const nativeScaleAudit = process.argv.includes("--native-scale-audit");
 const clientSecretCheckOnly = process.argv.includes(
   "--client-secret-check-only",
 );
@@ -32,6 +33,7 @@ const playwrightArguments = process.argv
       argument !== "--skip-build" &&
       argument !== "--serve-only" &&
       argument !== "--external-smoke" &&
+      argument !== "--native-scale-audit" &&
       argument !== "--client-secret-check-only",
   );
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
@@ -63,12 +65,20 @@ if (externalSmoke && !externalBaseUrl) {
   process.exit(1);
 }
 
+if (nativeScaleAudit && (externalSmoke || externalBaseUrl || serveOnly)) {
+  console.error(
+    "The native-scale accessibility audit requires the local production build and cannot use external or serve-only mode.",
+  );
+  process.exit(1);
+}
+
 function getProcessEnvironment() {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
     // Playwright otherwise writes an automatic DOM/URL error snapshot. Slice
     // 3 exercises bearer-token URLs, so failure artifacts must omit page state.
     PLAYWRIGHT_NO_COPY_PROMPT: "1",
+    ...(nativeScaleAudit ? { S9_NATIVE_SCALE_AUDIT: "1" } : {}),
   };
 
   if (process.platform === "win32" && process.env.LOCALAPPDATA) {
