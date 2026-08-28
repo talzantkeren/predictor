@@ -38,7 +38,9 @@ const artifacts = [
     path: "docs/runbooks/slice-9-def-012-production-cron.md",
     required: [
       "S9-DEF-012",
-      "single owner action",
+      "agent-executable post-merge gate",
+      "Mechanical artifact map",
+      "No owner input, credential",
       "Supabase Dashboard → SQL Editor → New query",
       "cron.job",
       "net._http_response",
@@ -55,6 +57,7 @@ const artifacts = [
     path: "docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md",
     required: [
       "Status: `NOT_RUN`",
+      "Owner input required: `NONE`",
       "<candidate-sha>",
       "NOT_CAPTURED",
       "NOT_RUN",
@@ -136,5 +139,5 @@ invariant(
 );
 
 console.log(
-  "Owner runbooks verified: S9-DEF-004, S9-DEF-012 and S9-REQ-003 each have one exact Hosted action and an empty sanitized evidence template.",
+  "Owner runbooks verified: the Hosted steps are exact and sanitized; S9-DEF-012 requires no owner input.",
 );

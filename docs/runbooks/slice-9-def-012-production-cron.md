@@ -1,9 +1,11 @@
 # S9-DEF-012 — final Production Cron observation
 
-Status: `OWNER_ACTION_REQUIRED`. This runbook defines one **single owner action**:
-after the final candidate is deployed and its migrations are present, observe one
-natural scheduled Production tick and link its sanitized `pg_net` response to one
-terminal `sync_runs` row and a released lease.
+Status: `OWNER_ACTION_REQUIRED` until the post-merge observation exists. This is
+an **agent-executable post-merge gate**, not an owner-only action: after the final
+SHA is live and its migrations are present, an authenticated agent can observe
+one natural scheduled Production tick and link its sanitized `pg_net` response
+to one terminal `sync_runs` row and a released lease. No owner input, credential
+or secret re-entry is required.
 
 Never invoke the Production route with a copied Cron secret, reveal Vault values,
 select `cron.job.command`, print headers/URLs, or store `response.content`, cookies,
@@ -23,6 +25,22 @@ outputs in the owner evidence bundle with these names:
 
 Text artifacts must contain only the selected columns shown below. Never save a
 SQL Editor history panel if it exposes another query.
+
+### Mechanical artifact map
+
+| Artifact | Exact screen or command | Allowed content |
+| --- | --- | --- |
+| `01-production-deployment-sha.png` | **Vercel → Project → Deployments → Production → immutable deployment → Source** | full commit SHA, READY/state and Production alias only |
+| `02-migration-version.txt` | **Supabase → SQL Editor → New query**, run only the version query in §2 | the single migration version column |
+| `03-cron-job-shape.txt` | same SQL Editor screen, run only the boolean shape query in §2 | `jobname`, `schedule`, `active`, `timeout_is_45s` |
+| `04-linked-response-run.txt` | same SQL Editor screen, after one natural tick run only the CTE in §3 | the eleven selected response/run/timing/lease columns |
+| `05-local-regression.txt` | repository PowerShell, run exactly the four commands in §5 | command, count/duration, exit status and clean-status result |
+
+This procedure never opens an environment value, Vault value, Cron URL/header,
+`cron.job.command` or response body. `private.configure_predictor_sync_cron()`
+may consume existing Vault entries internally; it neither asks for nor returns
+them. If the function reports missing infrastructure, stop and report that state
+instead of reading, copying or re-entering a value.
 
 ## 1. Pin the final deployment
 
@@ -179,7 +197,7 @@ Save test names/counts/durations and the clean status as
 
 ## Completion rule
 
-The single owner action is complete only when deployment SHA, migration, one-job
-shape, one natural response, one terminal run, timing and lease release all meet
-the requirements and the local regressions pass. Otherwise leave the template
-and ledger `OWNER_ACTION_REQUIRED` with the precise failing column.
+The post-merge agent gate is complete only when deployment SHA, migration,
+one-job shape, one natural response, one terminal run, timing and lease release
+all meet the requirements and the local regressions pass. Otherwise leave the
+template and ledger `OWNER_ACTION_REQUIRED` with the precise failing column.

@@ -76,12 +76,12 @@ npm.cmd run owner-runbooks:check
 npm.cmd run docs:submission:check -- --online
 ```
 
-## 4. S9-DEF-012 — tick טבעי אחד של Production Cron
+## 4. S9-DEF-012 — tick טבעי אחד של Production Cron (agent אחרי merge)
 
 **איפה:** Vercel → predictor → Deployments → Production → Source; Supabase
 Dashboard → SQL Editor → New query.
 
-**פעולה יחידה:** מיד אחרי פעולה 3 לבצע את
+**קלט owner:** אין. לאחר merge ו־Production deploy, סוכן מאומת מבצע את
 `docs/runbooks/slice-9-def-012-production-cron.md`: להוכיח SHA, migration
 `20260827170000`, job יחיד `predictor-sports-sync` עם timeout 45s, ואז להמתין
 ל־tick טבעי ולחבר response בטוח אחד ל־terminal `sync_runs` יחיד ול־lease

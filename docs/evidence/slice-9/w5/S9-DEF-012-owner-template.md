@@ -7,6 +7,8 @@ Fill only after executing
 Vault values, headers, URLs, `response.content`, cookies, actors, secrets or
 provider payloads.
 
+Executor: authenticated post-merge agent. Owner input required: `NONE`.
+
 ## Candidate and deployment
 
 | Field | Value |
