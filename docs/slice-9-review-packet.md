@@ -54,15 +54,27 @@
 | S9-DEF-024 | VERIFIED | runner מכשיל server errors; `AppLink` מונע prefetch ספקולטיבי, שמירת prediction ממתינה ל־RSC POST+idle, ו־teardown מחנה דפים ב־`about:blank` וסוגר contexts בסדר בטוח. | `scripts/run-e2e.ts`; `playwright-server-log.ts`; `response-streams.ts`; stream-safe fixture; `app-link.tsx`; `prediction-lock.spec.ts` | `playwright-server-log.test.ts`; `playwright-response-streams.test.ts`; חמש prediction-lock repeats; full 38-scenario E2E | `docs/evidence/slice-9/w6/S9-DEF-024.md`; `docs/evidence/slice-9/w6/S9-DEF-024-final-head-recurrence.md` |
 | S9-DEF-013 | VERIFIED | ספר הפרויקט נגזר ממקור אחד; package entries נשמרים בסדר וב־`ZIP_STORED` כדי לקבל אותם bytes גם ב־Python/zlib שונים. | `project-book-source.md`; `generate-project-book.py`; `project-book.docx`; workflow | `project-book-contract.test.ts`; checks ב־Python 3.12+3.14; Word/Poppler render inspection של 5/5 עמודים | `docs/evidence/slice-9/w7/S9-DEF-013.md`; `docs/evidence/slice-9/w7/S9-DEF-013-python-runtime-determinism.md` |
 | S9-DEF-014 | VERIFIED | policy מגדיר Production/Local Auth ומסווג Preview כ־public smoke ללא Auth. | `README.md`; `docs/deployment.md`; deployment-docs contract | `deployment-docs-contract.test.ts`; focused auth tests; URL wildcard scan | `docs/evidence/slice-9/w7/S9-DEF-014.md` |
-| S9-REQ-002 | OWNER_ACTION_REQUIRED | 9-slide deck, source, notes, timing, demo script, fallbacks ו־checklist הושלמו. | `presentation/predictor1-final-project.pptx`; `deck-source.md`; `timing-guide.md`; `demo-script.md`; fallback PNGs | `presentation:check`; PPTX fidelity/overflow/render inspection; lifecycle E2E | `docs/evidence/slice-9/w7/S9-REQ-002.md` |
+| S9-REQ-002 | OWNER_ACTION_REQUIRED | deck, source, notes, timing, demo script, fallbacks ו־checklist הושלמו; חזרה אנושית רציפה ומתוזמנת עדיין חסרה. | `presentation/predictor1-final-project.pptx`; `deck-source.md`; `timing-guide.md`; `demo-script.md`; fallback PNGs | `presentation:check`; PPTX fidelity/overflow/render inspection; lifecycle E2E | `docs/evidence/slice-9/w7/S9-REQ-002.md` |
 | S9-REQ-004 | VERIFIED | README/testing/security/scale/evaluator והספר סונכרנו לחבילת submission אחת. | submission docs; project-book source/DOCX; `scripts/check-submission-docs.mjs` | `docs:submission:check -- --online`; project-book contract/render; full local gates | `docs/evidence/slice-9/w7/S9-REQ-004.md` |
-| S9-REQ-003 | OWNER_ACTION_REQUIRED | הכשל האמיתי ב־CI תוקן והוכח; נוסף final Production/evaluator runbook עם owner template יחיד. | `final-submission-evidence.md`; final-production runbook; owner-runbook/submission checkers | runs 33090719466, 33097585902, 33097590476; `submission:evidence:check`; `owner-runbooks:check` | `docs/evidence/slice-9/w8/S9-REQ-003.md`; owner template לידו |
+| S9-REQ-003 | OWNER_ACTION_REQUIRED | הכשל האמיתי ב־CI תוקן והוכח; נוסף runbook יחיד ל־final Production, ‏pre/post-public secret audit, מעבר מותנה ל־Public, גישה אנונימית ו־clean clone, עם owner template מסונן. אישור owner המותנה ל־Ready/merge/Public ולפרסום author metadata התקבל; הוא אינו PASS ואינו סוגר את הרשומה. | `final-submission-evidence.md`; final-production/Public runbook; owner-runbook/submission checkers | runs 33090719466, 33097585902, 33097590476; `submission:evidence:check`; `owner-runbooks:check` | `docs/evidence/slice-9/w8/S9-REQ-003.md`; owner template לידו |
 | S9-REQ-005 | VERIFIED | Hosted policy נקראה בלבד; app הותאם לתקרת 72 bytes; ‏28 Security ו־20 Performance findings קיבלו disposition ו־`rls_auto_enable` הוקשח במיגרציה קדימה. | `20260825000000_revoke_rls_event_trigger_rpc_access.sql`; final hardening register; Advisor/Auth exports; checker | post-fix Advisors; ‏87 Auth Vitest; ‏641 Vitest; ‏1502 pgTAP; ‏624 multi-session; build/types/drift | `docs/evidence/slice-9/w8/S9-REQ-005.md`; שלושת exports לידו |
 
 ## גבול review
 
 ממצאי owner אינם waiver. חמש הרשומות שנותרו — S9-DEF-004, ‏S9-DEF-012,
 ‏S9-DEF-022, ‏S9-REQ-002 ו־S9-REQ-003 — נשארות
-`OWNER_ACTION_REQUIRED` עד evidence מתאים. אין לייחס ל־Local הוכחת Hosted,
-אין להשתמש ב־Preview כראיית Production, ואין לשנות workflow/test/config כדי
-להסתיר failure. Draft PR #14 נשאר Draft ולא ממוזג.
+`OWNER_ACTION_REQUIRED` עד evidence מתאים; המניין המחייב נשאר 20 `VERIFIED`
+ו־5 `OWNER_ACTION_REQUIRED`.
+
+אישור owner המותנה להעביר את PR #14 ל־Ready, למזג ולפרסם את המאגר התקבל
+ב־29.8.2026, אך אינו משנה סטטוס ואינו מתיר auto-merge או direct push. לפני
+Ready/merge חייבים לעבור על אותו candidate SHA החלק ה־pre-merge המתועד של
+S9-DEF-004, בדיקת S9-DEF-022, חזרת S9-REQ-002 ושלושת CI jobs הנקובים. לאחר
+merge נשארים לביצוע החלק הסופי של S9-DEF-004, ‏S9-DEF-012 ו־S9-REQ-003 על
+final/main SHA.
+
+אין לייחס ל־Local הוכחת Hosted, אין להשתמש ב־Preview כראיית Production ואין
+לשנות workflow/test/config כדי להסתיר failure. מעבר ל־Public מותר רק בתוך
+runbook ‏S9-REQ-003 לאחר final Production, סריקות pre-public הנדרשות וכל יתר
+שערי הקדם; לאחר המעבר נדרשים אימות אנונימי, בדיקת הגנות וסריקה חוזרת. עד שכל
+חמש הרשומות נסגרות אין להכריז `READY_TO_SUBMIT`.

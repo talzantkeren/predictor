@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.19 |
-| תאריך עדכון | 26 באוגוסט 2026 |
-| סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה |
+| גרסה | 3.20 |
+| תאריך עדכון | 29 באוגוסט 2026 |
+| סטטוס | Slice 9 — final closeout; נותרו שערי owner, merge, Production ופרסום Public מותנה |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -1545,7 +1545,9 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
   `DEF-002→{DEF-003,DEF-008}→REQ-001`; acceptance כולל את כל guard/matrix/
   concurrency של DEF-005 ואת active-members list של DEF-021.
 - `S9-REQ-002` — deck, demo script וחזרה מוכחת של 10–15 דקות.
-- `S9-REQ-003` — final CI/deployment SHA, public incognito וגישת evaluator ל־GitHub.
+- `S9-REQ-003` — final CI/deployment SHA, ‏Production incognito, פרסום המאגר
+  ל־Public וגישה אנונימית ל־README/default `main`/final SHA ו־clean clone;
+  גישת Demo, אם נדרשת, נמסרת מחוץ ל־Git.
 - `S9-REQ-004` — חבילת מסמכי הגשה וספר פרויקט מסונכרנים.
 - `S9-REQ-005` — Hosted password policy, ‏Security/Performance Advisor עם
   disposition לכל finding, representative plans ובקרות hardening. הראיות
@@ -1559,13 +1561,13 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 
 | ID | מצב | owner/הכרעה |
 | --- | --- | --- |
-| `S9-TDEC-001` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | repository owner (`talzantkeren`): המאגר נשאר פרטי ובתכנית הנוכחית; אין direct push ל־`main`; merge רק מ־PR שנבדק; נרשמים candidate SHA והצלחת `Lint, typecheck, unit tests and build`, `Supabase database tests` ו־`Playwright core flows` על אותו SHA, ואז מאומתים Production commit, immutable URL וה־alias. rationale: single-maintainer course repo ו־API 403. reopen: collaborator/visibility/plan משתנים, ניסיון direct push, control failure או דרישת evaluator |
+| `S9-TDEC-001` | `RESOLVED — PUBLIC RELEASE APPROVED`, 29.8.2026 | repository owner (`talzantkeren`) אישר להעביר את המאגר ל־Public רק לאחר pre-public secret/PII audit ו־merge reviewed של PR #14 עם `Lint, typecheck, unit tests and build`, `Supabase database tests` ו־`Playwright core flows` ירוקים על אותו SHA. author metadata ופרטי מחבר טכניים היסטוריים אושרו לפרסום; אין direct push ל־`main`. לאחר שינוי visibility מאמתים אנונימית repository/README/default `main`/final SHA ו־clean clone, בודקים מחדש protection/rulesets ומפעילים secret scanning/push protection אם זמינים. `S9-REQ-003` נשאר שער הביצוע והראיה. |
 | `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות אומתו ב־DEF-025 ב־28.8.2026 |
 | `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | נשמר manifest provenance ב־[`docs/course-source.md`](./course-source.md); ה־PDF המדויק נמסר בנפרד ולא נכלל ב־Git ללא הרשאת redistribution מפורשת |
 | `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation של שמונה תווים לפחות ועד 72 בתים בקידוד UTF-8, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. מדיניות Hosted ו־Advisor אומתו ב־REQ-005 ב־28.8.2026. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
 
-כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. אין להפוך את המאגר לציבורי, לרכוש
-plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. שינוי scope של
+כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. הפרסום ל־Public מותר רק לפי החוזה
+המותנה של `S9-TDEC-001`; אין לרכוש plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. שינוי scope של
 Vercel וראיית password/Advisors אומתו ב־28.8.2026 תחת `S9-DEF-025` ו־
 `S9-REQ-005`. Branch control, Preview
 Auth, ‏Hosted delivery (built-in demonstrated או custom SMTP) ו־leaked-password

@@ -115,7 +115,7 @@ for (const row of [
   "Vercel secret scope",
   "Production Cron",
   "Hosted migration parity",
-  "Evaluator access",
+  "Public repository access",
   "Human rehearsal",
   "Final Production SHA",
 ]) {

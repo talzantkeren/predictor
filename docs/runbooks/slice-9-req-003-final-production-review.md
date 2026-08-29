@@ -1,19 +1,19 @@
-# S9-REQ-003 — final Production and evaluator closeout
+# S9-REQ-003 — final Production and Public repository closeout
 
 Status: `OWNER_ACTION_REQUIRED`.
 
-This is an **agent-executable post-merge gate**. Do not execute it while PR #14
-is Draft or before an authorized merge and the final Production deployment
-exist. This runbook never authorizes merge, approval, Ready-for-review,
-auto-merge or deployment from the current pre-merge task.
+This is an **agent-executable post-merge gate**. The owner authorization for
+Ready-for-review, a reviewed merge and conditional Public publication is already
+recorded, but it grants no PASS. Start this runbook only after every documented
+pre-merge gate passed on the exact candidate SHA, PR #14 was merged without
+direct push or auto-merge, and the final Production deployment exists.
 
-The only owner input required is supplied before step 7 and kept outside Git:
-
-1. the approved evaluator's GitHub identity; and
-2. the approved out-of-band access method for Demo credentials.
+The owner approved Public visibility and publication of technical author
+metadata on 29 August 2026. No evaluator GitHub identity is required. Any Demo
+credential delivery method that is needed remains out of band and outside Git.
 
 An authenticated agent can perform every other step. Never reveal, copy,
-screenshot, or save an environment secret, credential, evaluator identity,
+screenshot, or save an environment secret, credential,
 Demo password, cookie, signed URL, or provider payload.
 
 Copy
@@ -32,7 +32,9 @@ corresponding step has actually completed.
 | `S9-REQ-003-final-env-scopes.md` | `vercel env ls --json` in §4 | environment names/scopes only; no value |
 | `S9-REQ-003-production.txt` | **Vercel → Deployments → Production → Overview/Source/Domains** | deployment ID, Source SHA, immutable host, alias, target/state, route duration |
 | Incognito smoke | Chrome Incognito plus the two `curl.exe` commands in §6 | timestamp, URL kind, effective host, HTTP status and PASS/FAIL |
-| Evaluator confirmation | **GitHub → Settings → Collaborators and teams** plus evaluator reply | PASS/FAIL, timestamp and evidence location; no identity or credential |
+| Pre-public publication audit | Gitleaks on the clean worktree and a mirror of every advertised ref; GitHub CLI/API inventory for PRs, Actions, Releases and Issues | scanner/version, surface counts, inaccessible non-public payload count, finding counts and PASS/FAIL only; no value |
+| Public repository verification | pre/post GitHub settings snapshot, anonymous HTTP/API, credential-disabled `git ls-remote` and clean clone | visibility, README/default `main`/final SHA, protection/rulesets, secret scanning/push protection and PASS/FAIL only |
+| Post-public publication scan | a fresh anonymous mirror and the same trusted scanner after visibility changes | advertised-ref/commit counts, finding counts and PASS/FAIL only; no value |
 
 Nothing in this runbook calls `vercel env pull`, reveals an environment value,
 reads Vault, exports a token or asks anyone to re-enter a secret.
@@ -192,27 +194,118 @@ Record only timestamp, URL kind, final effective host, HTTP `200`,
 `incognito=PASS`, and `Demo-only=PASS` in the template. Do not save cookies,
 account details, proof paths, or signed URLs.
 
-## 7. Grant and verify evaluator access — the only owner input
+## 7. Complete the mandatory pre-public publication audit
 
-Before opening GitHub Settings, obtain the two owner-supplied items named at the
-top: approved evaluator identity and approved out-of-band Demo access method.
-Do not proceed with a guessed identity or channel, and do not write either into
-the repository.
+Do not change visibility until steps 1–6, every other required submission gate
+and this section are PASS on `$finalSha`. Use a trusted Gitleaks release with
+`--redact=100`; keep any temporary machine-readable report outside the
+repository and record finding counts only. The audit must cover the working tree, every branch, every tag and the full Git history. A last-commit scan is
+not sufficient.
 
-Open **GitHub → predictor → Settings → Collaborators and teams → Add people**.
-Invite the approved evaluator identity with read access only. Supply Demo
-credentials through the approved out-of-band channel, never Git. Ask the
-evaluator to confirm, in their own signed-in browser, that the private
-repository opens and that the README local-run instructions are visible.
+From the clean final checkout, require an empty `git status --short`. Scan the
+complete working directory with `gitleaks dir`, including tracked, untracked and
+ignored secret-bearing candidates such as `.env*` and local credential/config
+files. Bulk dependency/build directories may be excluded only with documented
+patterns after their ignored config/text candidates have received a separate
+targeted scan; being ignored is not itself a scan disposition. Also scan a fresh
+authenticated `git clone --mirror` with `gitleaks git --log-opts=--all`. Confirm
+the mirror includes every ref advertised by GitHub, including branch, tag and
+pull-request refs, and record only counts of refs, commits and findings. Record
+the result in `pre-public FULL_HISTORY_SECRET_SCAN: NOT_RUN` only after it is
+observed; the completed value must be PASS with zero validated real secrets.
+On Windows set `$env:GIT_ATTR_NOSYSTEM='1'` before the Git scan so an Office
+textconv cannot invalidate the walk, and require a nonzero scanned commit count;
+a zero-commit scanner result is invalid, never PASS.
 
-Record only `evaluator repository access: PASS`, the confirmation timestamp,
-and the evidence location in the template. Do not record the evaluator identity
-or Demo credential. This human confirmation cannot be replaced by the owner's
-own GitHub session.
+Inspect `.env.example` separately and require that `.env.example` contains names and placeholders only. Record this as `ENV_EXAMPLE_PLACEHOLDERS_ONLY: NOT_RUN`.
+Never copy ignored local credential content into a report, commit or Actions
+artifact. If a scanner finds a real credential anywhere in the working
+directory or any publishable file/ref, stop without showing the value and
+require revocation/rotation; an expired or invalid value may receive a sanitized
+disposition, but an active ignored credential is not skipped. Do not rewrite
+history or force-push without new, explicit owner authorization.
 
-## 8. Close the post-merge gate and re-run document gates
+Using authenticated GitHub CLI/API reads, enumerate and inspect all PR descriptions and comments, GitHub Actions logs and artifacts, and Releases, Issues, evidence files and screenshots. Include issue comments, PR reviews and
+review comments. Download every still-accessible Actions log/artifact to a
+private temporary directory, scan it with redaction, and delete no run or
+artifact. For retention-pruned or otherwise inaccessible payloads, record the
+count separately and verify that GitHub does not serve the payload; do not claim
+that its unavailable bytes were scanned. Record the aggregate result as
+`ACTIONS_LOGS_AND_ARTIFACTS_AUDIT: NOT_RUN`.
 
-Fill the template only when steps 1–7 all refer to the same `$finalSha`. Then
+Review every finding privately. Test hashes, examples and approved technical
+author metadata may be classified as false positives only with a documented
+type/location disposition that never includes the matched value. The pre-public
+gate is PASS only when all publishable surfaces were covered, every finding has
+a disposition, and the validated real-secret count is zero. Store only
+PASS/FAIL, surface counts, inaccessible non-public payload counts, raw finding
+counts and false-positive counts in the template.
+
+## 8. Publish and verify the repository
+
+### 8A. Snapshot controls and change visibility
+
+First record a sanitized pre-change snapshot:
+
+```powershell
+gh api repos/talzantkeren/predictor/branches/main
+gh api repos/talzantkeren/predictor/branches/main/protection
+gh api repos/talzantkeren/predictor/rulesets
+gh api repos/talzantkeren/predictor
+```
+
+Record only visibility, default branch, `protected`, ruleset/protection status
+or the documented availability error, and secret-scanning/push-protection
+status. Then change visibility using GitHub Settings or the authenticated CLI;
+never put a credential on the command line. Require `visibility=public` and
+record `repository visibility PUBLIC: NOT_RUN` only from the observed result.
+
+### 8B. Verify anonymous access and final SHA
+
+In a browser with no GitHub session, open the repository and confirm the README,
+default `main` and final commit are visible. From a fresh PowerShell process with
+no credential helper, verify the advertised main SHA and a clean clone:
+
+```powershell
+$env:GIT_TERMINAL_PROMPT='0'
+git -c credential.helper= ls-remote https://github.com/talzantkeren/predictor.git refs/heads/main
+$cloneRoot = Join-Path $env:TEMP ('predictor-anonymous-' + [guid]::NewGuid().ToString('N'))
+git -c credential.helper= clone --no-tags --single-branch --branch main https://github.com/talzantkeren/predictor.git $cloneRoot
+git -C $cloneRoot rev-parse HEAD
+git -C $cloneRoot status --short
+```
+
+Require the remote and cloned SHAs to equal `$finalSha`, with an empty clone
+status. Record `anonymous final SHA parity: NOT_RUN` and
+`anonymous clean clone: NOT_RUN` only from those observations. Also require
+anonymous HTTP access to the repository, README, default `main` and final
+commit.
+
+### 8C. Recheck controls and run the mandatory post-public scan
+
+Re-query branch protection and rulesets and compare them with the pre-change snapshot.
+Record `BRANCH_PROTECTION_AFTER_VISIBILITY_CHANGE: NOT_RUN`. If a
+protection or ruleset present before the visibility change was lost or disabled,
+restore the same effective protection. If none existed before, record that fact
+and do not create a new rule without a separately approved decision. Never allow
+force-push or branch deletion while restoring an existing rule.
+
+Verify `secret scanning availability and enabled state: NOT_RUN` and
+`push protection availability and enabled state: NOT_RUN`; enable each feature
+when GitHub exposes it for this repository. Record an unavailable feature as
+unavailable, not PASS-by-intent.
+
+Finally, make a fresh credential-disabled anonymous mirror of the now-Public
+repository, verify its advertised refs and `$finalSha`, and rerun the trusted scanner across every ref and the full history. Record
+`post-public FULL_HISTORY_SECRET_SCAN: NOT_RUN`; completion requires PASS and
+zero validated real secrets. This post-public scan is mandatory and occurs
+after the visibility, anonymous-access, protection and security-feature checks.
+Demo credentials, if required, remain outside Git and are not part of repository
+access.
+
+## 9. Close the post-merge gate and re-run document gates
+
+Fill the template only when steps 1–8 all refer to the same `$finalSha`. Then
 run:
 
 ```powershell

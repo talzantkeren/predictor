@@ -8,7 +8,9 @@ const migration = readFileSync(
     "supabase/migrations/20260828100000_slice9_system_actor_legacy_promotion_contract.sql",
   ),
   "utf8",
-).trim();
+)
+  .replace(/\r\n?/gu, "\n")
+  .trim();
 
 describe("legacy system-actor promotion migration", () => {
   it("keeps the deployment helper private, invoker-rights and fail-closed", () => {

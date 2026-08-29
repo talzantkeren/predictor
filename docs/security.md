@@ -716,7 +716,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
   ומשחרר lease תחת תקציב 120 השניות.
 - לבצע Chrome native 200% על candidate SHA ולתעד תוצאה; CSS zoom אינו תחליף.
-- לבצע חזרה אנושית 10–15 דקות ולמסור גישת evaluator מחוץ ל־repository.
+- לבצע חזרה אנושית 10–15 דקות; לאחר כל השערים להעביר את repository ל־Public,
+  לאמת anonymous README/main/final SHA ו־clean clone, ולמסור רק גישת Demo
+  מחוץ ל־repository אם היא נדרשת.
 
 הוראות owner המדויקות וקובצי המסירה מרוכזים ב־
 [`evaluator-runbook.md`](./evaluator-runbook.md). עד להשלמתן הן נשארות

@@ -84,7 +84,7 @@ multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מ
 | Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | הסרת Preview ללא Reveal ו־Preview verification |
 | Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final acceptance רק אחרי merge; לא נוסה כאן |
 | Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | 19 migrations נשארו local-only; לא נפרסו כאן |
-| Evaluator access | `S9-REQ-003` | TRACKED_BY_RECORD | זהות וגישה מחוץ ל־Git |
+| Public repository access | `S9-REQ-003` | TRACKED_BY_RECORD | לאחר כל השערים: visibility Public, ‏anonymous README/main/final SHA ו־clean clone; Demo access נשאר מחוץ ל־Git אם נדרש |
 | Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | הרצה מדודה נפרדת |
 | Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias אחרי merge בלבד |
 

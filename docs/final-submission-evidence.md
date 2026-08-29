@@ -3,14 +3,14 @@
 Status: `OWNER_ACTION_REQUIRED`.
 
 המסמך מפריד בין CI אמיתי שנצפה, עובדות read-only היסטוריות, ובין שער
-Production/evaluator יחיד שחייב owner אנושי. אין כאן credential, ערך env, זהות
-evaluator או claim על Hosted שלא נצפה. Draft PR #14 נשאר פתוח, Draft ולא ממוזג.
+Production/Public יחיד. אין כאן credential, ערך env, זהות evaluator או claim
+על Hosted שלא נצפה. Draft PR #14 נשאר פתוח, Draft ולא ממוזג.
 
 ```text
 Final candidate SHA: <final-sha>
 Final CI run: <final-run-id>
 Final Production SHA: <final-sha>
-Evaluator access: OWNER_ACTION_REQUIRED
+Public repository access: OWNER_ACTION_REQUIRED
 Hosted migration parity: OWNER_ACTION_REQUIRED
 ```
 
@@ -93,10 +93,10 @@ migrations מרוחקות, בעוד 19 migrations של Slice 9 נשארו local-
 
 | שער | פעולה מדויקת | סטטוס |
 | --- | --- | --- |
-| Final Production and evaluator closeout | agent מבצע לאחר merge את `docs/runbooks/slice-9-req-003-final-production-review.md`: final/main SHA ו־merge, CI, Hosted migrations/env scopes, Production+incognito ושערי מסמכים. owner מספק מחוץ ל־Git רק זהות evaluator מאושרת ושיטת Demo access מאושרת | OWNER_ACTION_REQUIRED |
+| Final Production and Public closeout | agent מבצע לאחר merge את `docs/runbooks/slice-9-req-003-final-production-review.md`: final/main SHA ו־merge, CI, Hosted migrations/env scopes, Production+incognito, snapshot הגנות, מעבר ל־Public, גישה אנונימית/clone ושערי מסמכים. אישור owner לפרסום ול־author metadata התקבל; גישת Demo, אם נדרשת, נשארת מחוץ ל־Git | OWNER_ACTION_REQUIRED |
 
 התבנית הריקה נמצאת ב־
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md`. אין לסמן את הרשומה
-VERIFIED לפני שכל הראיות מתייחסות לאותו SHA. PR #14 לא ימוזג, לא יסומן Ready,
-לא יאושר ולא יקבל auto-merge במסגרת המשימה הנוכחית; ה־runbook מתחיל רק אחרי
-merge מורשה שנעשה מחוץ למשימה זו.
+VERIFIED לפני שכל הראיות מתייחסות לאותו SHA. אישור owner ל־merge ולפרסום
+התקבל ב־29.8.2026, אך אין לסמן Ready או למזג לפני ששערי pre-merge המתועדים
+עברו על ה־final SHA; ה־runbook מתחיל רק אחרי merge תקין.

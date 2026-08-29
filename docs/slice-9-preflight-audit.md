@@ -1,5 +1,11 @@
 # ביקורת שער שחרור לפני Slice 9
 
+> עדכון 29.8.2026: ‏`S9-TDEC-001` נפתח מחדש והוחלף בהחלטת owner מותנית
+> לפרסם את המאגר כ־Public לאחר secret/PII audit, ‏merge reviewed, ‏final
+> Production ובדיקות אנונימיות. אזכורי private repository ו־evaluator access
+> בהמשך המסמך הם ראיה היסטורית נכונה לזמן התצפית ואינם חוזה המסירה הנוכחי;
+> החוזה הקנוני העדכני נמצא ב־`docs/technical-plan.md` וב־S9-REQ-003.
+
 | שדה | ערך |
 | --- | --- |
 | תאריך ביקורת | 26 באוגוסט 2026, `Asia/Jerusalem` |

@@ -3,12 +3,13 @@
 Status: `OWNER_ACTION_REQUIRED`.
 
 זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק חמש רשומות
-פתוחות**, אך רק ארבע דורשות פעולה או קלט אנושיים; S9-DEF-012 executable כולו
-בידי agent לאחר merge. שתי רשומות שנסגרו נשמרות ברשימה לצורך traceability.
-בצעו את השערים הפתוחים על אותו final SHA, אך אל תסמנו PASS
-לפני תצפית אמיתית. אין למזג, לאשר, להעביר ל־Ready או להפעיל auto-merge ב־PR
-#14. אין לפתוח, להעתיק, לצלם או לשמור secret, כתובת נמען, זהות evaluator,
-סיסמה, cookie, signed URL או payload של provider.
+פתוחות**, אך רק שלוש דורשות פעולה או קלט אנושיים; S9-DEF-012 ו־S9-REQ-003
+executable בידי agent לאחר merge. שתי רשומות שנסגרו נשמרות ברשימה לצורך
+traceability. בצעו את השערים הפתוחים על אותו final SHA, אך אל תסמנו PASS לפני
+תצפית אמיתית. אישור owner להעביר ל־Ready, למזג ולפרסם כבר התקבל, אך אין לבצע
+Ready/merge לפני שכל שערי pre-merge המתועדים עברו על אותו exact candidate SHA;
+auto-merge ו־direct push אסורים. אין לפתוח, להעתיק, לצלם או לשמור secret,
+כתובת נמען, סיסמה, cookie, signed URL או payload של provider.
 
 ## 1. S9-DEF-025 — נסגר
 
@@ -50,27 +51,31 @@ npm.cmd run test:a11y:native-scale
 npx.cmd vitest run src/lib/admin-loading-accessibility.test.ts
 ```
 
-## 3. S9-REQ-003 — final Production וגישת evaluator (agent + קלט owner אחד)
+## 3. S9-REQ-003 — final Production ופרסום Public
 
 **איפה:** PowerShell; GitHub Actions/PR; Supabase Production SQL Editor; Vercel
-Deployments; חלון Chrome Incognito; GitHub Settings → Collaborators and teams.
+Deployments; חלון Chrome Incognito; GitHub Settings → General, Branches/Rulesets
+ו־Code security and analysis.
 
-**קלט owner יחיד (כ־2 דקות):** למסור מחוץ ל־Git את זהות GitHub המאושרת של
-evaluator ואת שיטת ה־out-of-band המאושרת לגישת Demo. אין למסור credential
-ב־Git או בראיה.
+**קלט owner:** אישור הפרסום וה־author metadata התקבל ב־29.8.2026. אין צורך
+בזהות GitHub של evaluator. שיטת גישת Demo, אם נדרשת, נשארת out-of-band ואין
+למסור credential ב־Git או בראיה.
 
 **פעולת agent לאחר merge:** לבצע מתחילתו ועד סופו את
 `docs/runbooks/slice-9-req-003-final-production-review.md`: להקפיא את
 final/main SHA ואת merge commit, לקשור אליו CI ירוק בכל שלושת ה־jobs, להשוות
 Hosted migrations, לשמור env names/scopes, לקשור את Production לאותו Source
-SHA, לאמת immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, להזמין את
-הזהות שסופקה כ־read-only ולקבל ממנה אישור. אין לבצע דבר מזה כל עוד PR #14
-Draft; ה־runbook אינו נותן הרשאת merge.
+SHA, לאמת immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, לשמור snapshot
+של הגנות GitHub, להעביר ל־Public, לאמת README/default `main`/final SHA ו־clean
+clone ללא credentials, ואז לבדוק מחדש protection/rulesets ו־secret
+scanning/push protection ולבצע rescan מלא לאחר הפרסום. כל עוד שערי pre-merge
+לא עברו, PR #14 נשאר Draft; לאחר שיעברו, ההרשאה שכבר ניתנה מאפשרת Ready
+ו־reviewed merge.
 
 **ראיה לשמור:** למלא
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md` ולשמור רק את קובצי
-ה־CI/migrations/env/Production המצונזרים שה־runbook מגדיר. זהות evaluator
-וסיסמאות Demo נשארות מחוץ ל־Git.
+ה־CI/migrations/env/Production/GitHub המצונזרים שה־runbook מגדיר. סיסמאות Demo
+נשארות מחוץ ל־Git.
 
 **אימות לאחר הפעולה:** 
 
@@ -165,8 +170,9 @@ git status --short
 
 ## 7. S9-REQ-002 — חזרה אנושית רציפה 10–15 דקות
 
-**איפה:** Production הסופי, ה־PPTX
-`presentation/predictor1-final-project.pptx`, שתי sessions מורשות ושלוש תמונות
+**איפה:** production build מקומי של ה־exact candidate SHA; קישור Production
+הציבורי נפתח read-only רק לפי התסריט. ה־PPTX
+`presentation/predictor1-final-project.pptx`, שתי sessions מורשות ותמונות
 `presentation/fallback/` פתוחות מראש.
 
 **פעולה יחידה:** presenter אנושי מבצע פעם אחת את
@@ -175,8 +181,9 @@ git status --short
 לא נצפה. משך נדרש: 10:00–15:00.
 
 **ראיה לשמור:** למלא את כל השורות ב־`presentation/evaluator-checklist.md` ואת
-השורה האנושית ב־`presentation/rehearsal-log.md`: final SHA, זמן התחלה/סיום,
-משך, 9/9 slides, Production/GitHub, fallback ותוצאה; ללא account/credential.
+השורה האנושית ב־`presentation/rehearsal-log.md`: candidate SHA, זמן התחלה/סיום,
+משך, כל שקפי הקובץ הסופי שנבחר, Production/GitHub, fallback ותוצאה; ללא
+account/credential.
 
 **אימות לאחר הפעולה:** 
 

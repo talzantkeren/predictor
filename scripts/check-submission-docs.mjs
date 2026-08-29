@@ -1,4 +1,6 @@
 import { access, readFile } from "node:fs/promises";
+import http from "node:http";
+import https from "node:https";
 import path from "node:path";
 
 const online = process.argv.includes("--online");
@@ -21,8 +23,6 @@ const documentPaths = [
   "presentation/demo-script.md",
   "presentation/rehearsal-log.md",
 ];
-const privateRepositoryUrl = "https://github.com/talzantkeren/predictor";
-
 function invariant(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -47,29 +47,45 @@ function stripFragmentAndQuery(target) {
   return target.split("#", 1)[0].split("?", 1)[0];
 }
 
+function requestExternalUrl(url, redirects = 0) {
+  invariant(redirects <= 10, `External submission link redirected too many times: ${url}`);
+
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const transport = target.protocol === "https:" ? https : http;
+    const request = transport.get(
+      target,
+      { headers: { "user-agent": "Predictor1-submission-link-check/1.0" } },
+      (response) => {
+        const status = response.statusCode ?? 0;
+        const location = response.headers.location;
+        response.resume();
+        response.once("end", () => {
+          if (status >= 300 && status < 400 && location) {
+            resolve(requestExternalUrl(new URL(location, target).toString(), redirects + 1));
+            return;
+          }
+          resolve({ effectiveUrl: target.toString(), status });
+        });
+      },
+    );
+    request.setTimeout(20_000, () => {
+      request.destroy(new Error(`External submission link timed out: ${url}`));
+    });
+    request.once("error", reject);
+  });
+}
+
 async function checkExternalUrl(url) {
   if (/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/u.test(url)) {
     return { url, status: "LOCAL_ONLY" };
   }
 
-  const response = await fetch(url, {
-    method: "GET",
-    redirect: "follow",
-    signal: AbortSignal.timeout(20_000),
-    headers: { "user-agent": "Predictor1-submission-link-check/1.0" },
-  });
-
-  if (response.ok) {
-    await response.body?.cancel();
+  const response = await requestExternalUrl(url);
+  if (response.status >= 200 && response.status < 300) {
     return { url, status: response.status };
   }
 
-  if (url === privateRepositoryUrl && response.status === 404) {
-    await response.body?.cancel();
-    return { url, status: "PRIVATE_AUTH_REQUIRED" };
-  }
-
-  await response.body?.cancel();
   throw new Error(`External submission link failed: ${url} (${response.status})`);
 }
 
@@ -245,9 +261,12 @@ invariant(
   "Submission docs contain a server-secret assignment.",
 );
 
-const externalResults = online
-  ? await Promise.all([...externalLinks].sort().map((url) => checkExternalUrl(url)))
-  : [];
+const externalResults = [];
+if (online) {
+  for (const url of [...externalLinks].sort()) {
+    externalResults.push(await checkExternalUrl(url));
+  }
+}
 
 console.log(
   `Submission docs verified: ${documentPaths.length} documents, ${localLinks.length} local links, ${externalLinks.size} external links${online ? " checked online" : " inventoried"}.`,

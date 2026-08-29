@@ -2,19 +2,20 @@
 
 Status: `NOT_RUN`.
 
-This file is intentionally empty of claims. Fill it only while executing
-`docs/runbooks/slice-9-req-003-final-production-review.md`; never store secrets,
-evaluator identity, Demo credentials, cookies, signed URLs, or environment
-values.
+This file records only the two owner decisions already observed below. Every
+operational field stays `NOT_RUN`/`NOT_CAPTURED` until the authenticated agent
+executes `docs/runbooks/slice-9-req-003-final-production-review.md`; never store
+secrets, Demo credentials, cookies, signed URLs, or environment values.
 
 Executor: authenticated post-merge agent.
 
-## Owner input — supplied out of band only
+## Owner decision and out-of-band Demo access
 
 ```text
-approved evaluator identity received: NOT_RUN
-approved Demo access method received: NOT_RUN
-identity or credential recorded in Git: NOT_RUN
+Public publication approval received: APPROVED — 2026-08-29
+technical author metadata publication accepted: ACCEPTED — 2026-08-29
+approved Demo access method received, if required: PRIVATE_SUBMISSION_FIELD_ONLY — 2026-08-29
+credential recorded in Git: NO
 ```
 
 ## Final identity
@@ -91,14 +92,47 @@ financial operation absent: NOT_RUN
 timestamp: NOT_CAPTURED
 ```
 
-## Evaluator
+## Pre-public publication audit
 
 ```text
-evaluator repository access: NOT_RUN
+audit final SHA: <final-sha>
+trusted scanner and version: NOT_CAPTURED
+complete worktree scan including ignored secret-bearing candidates: NOT_RUN
+every advertised branch/tag/pull-request ref mirrored: NOT_RUN
+advertised ref and commit counts: NOT_CAPTURED
+nonzero scanned commit count validated: NOT_RUN
+pre-public FULL_HISTORY_SECRET_SCAN: NOT_RUN
+pre-public raw finding count: NOT_CAPTURED
+pre-public validated real-secret count: NOT_CAPTURED
+false-positive dispositions complete: NOT_RUN
+ENV_EXAMPLE_PLACEHOLDERS_ONLY: NOT_RUN
+PR descriptions and comments audit: NOT_RUN
+ACTIONS_LOGS_AND_ARTIFACTS_AUDIT: NOT_RUN
+Actions runs/logs/artifacts counts: NOT_CAPTURED
+inaccessible non-public Actions payload count: NOT_CAPTURED
+Releases and Issues audit: NOT_RUN
+evidence files and screenshots audit: NOT_RUN
+pre-public publication audit result: NOT_RUN
+```
+
+## Public repository
+
+```text
+repository visibility PUBLIC: NOT_RUN
+anonymous repository HTTP access: NOT_RUN
 README/local-run instructions visible: NOT_RUN
-out-of-band Demo access supplied: NOT_RUN
-confirmation timestamp: NOT_CAPTURED
-identity or credential recorded here: NOT_RUN
+default branch main visible: NOT_RUN
+anonymous final SHA parity: NOT_RUN
+credential-disabled git ls-remote: NOT_RUN
+anonymous clean clone: NOT_RUN
+BRANCH_PROTECTION_AFTER_VISIBILITY_CHANGE: NOT_RUN
+secret scanning availability and enabled state: NOT_RUN
+push protection availability and enabled state: NOT_RUN
+post-public FULL_HISTORY_SECRET_SCAN: NOT_RUN
+post-public validated real-secret count: NOT_CAPTURED
+out-of-band Demo access supplied, if required: NOT_RUN
+verification timestamp: NOT_CAPTURED
+credential recorded here: NOT_RUN
 ```
 
 ## Final verification

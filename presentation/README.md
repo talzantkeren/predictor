@@ -43,8 +43,9 @@ Production נפתח בסיום כקישור ציבורי נפרד בלבד; אי
 - Repository: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 
 פותחים את שני הקישורים רק בסיום, בלשוניות נפרדות. ב־Production מציגים את עמוד
-ה־Demo הציבורי בלבד; אין login או mutation. גישת הבוחן למאגר הפרטי נבדקת
-בנפרד ואינה מוסקת מתגובת HTTP אנונימית.
+ה־Demo הציבורי בלבד; אין login או mutation. לאחר שער הפרסום גישת הבוחן למאגר
+מאומתת אנונימית מול README, ‏default `main`, ‏final SHA ו־clean clone ללא
+credentials.
 ל־Preview של PR #14 אין URL יציב ואין callback קבוע. הוא מיועד ל־smoke ציבורי
 בלבד; Auth לא נתמך ולא מאומת בו.
 

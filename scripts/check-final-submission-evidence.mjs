@@ -33,16 +33,16 @@ for (const expected of [
   "39 migrations",
   "20260825000000_revoke_rls_event_trigger_rpc_access.sql",
   "19 migrations של Slice 9 נשארו local-only",
-  "Evaluator access",
+  "Public repository access",
   "Hosted migration parity",
-  "Final Production and evaluator closeout",
+  "Final Production and Public closeout",
   "slice-9-req-003-final-production-review.md",
   "S9-REQ-003-owner-template.md",
 ]) {
   invariant(evidence.includes(expected), `Final-submission evidence is missing: ${expected}`);
 }
 
-const ownerRows = ["Final Production and evaluator closeout"];
+const ownerRows = ["Final Production and Public closeout"];
 for (const row of ownerRows) {
   const pattern = new RegExp(`\\| ${row.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")} \\|[^\\n]+\\| OWNER_ACTION_REQUIRED \\|`, "u");
   invariant(pattern.test(evidence), `Owner gate is not explicitly OAR: ${row}`);
@@ -51,7 +51,7 @@ for (const row of ownerRows) {
 const oarRows = evidence.match(/^\|[^\n]+\|[^\n]+\| OWNER_ACTION_REQUIRED \|$/gmu) ?? [];
 invariant(oarRows.length === 1, `Expected exactly one owner-action row, found ${oarRows.length}.`);
 invariant(
-  !/\| Final Production and evaluator closeout \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence),
+  !/\| Final Production and Public closeout \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence),
   "The external final gate was marked complete without owner evidence.",
 );
 invariant(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(evidence), "Final-submission evidence resembles a JWT.");
@@ -68,5 +68,5 @@ for (const stale of [
 }
 
 console.log(
-  "Final-submission register verified: observed CI is recorded and one consolidated Production/evaluator owner action remains.",
+  "Final-submission register verified: observed CI is recorded and one consolidated Production/Public owner action remains.",
 );
