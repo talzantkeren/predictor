@@ -361,7 +361,11 @@ requireText(
 );
 requireText(
   rehearsalLog.toString("utf8"),
-  ["OWNER_ACTION_REQUIRED", "<candidate-sha>", "10:00–15:00"],
+  [
+    "VERIFIED — OWNER_REPORTED_PASS",
+    "4b77e2412336ed1151849c5db8d05d5947a46e45",
+    "OWNER_REPORTED_WITHIN_10:00–15:00",
+  ],
   rehearsalLogPath,
 );
 requireText(
@@ -387,8 +391,8 @@ requireText(
 requireText(
   evaluatorChecklist.toString("utf8"),
   [
-    "OWNER_ACTION_REQUIRED",
-    "<candidate-sha>",
+    "VERIFIED — OWNER_REPORTED_PASS",
+    "4b77e2412336ed1151849c5db8d05d5947a46e45",
     "13/13",
     "18/18",
     "Predictor1_Final_Presentation_HE.pptx",

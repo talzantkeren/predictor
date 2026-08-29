@@ -708,18 +708,20 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 ## סיכונים שיוריים ופעולות owner למסירה
 
 הגבולות המקומיים והאוטומטיים אינם הופכים פעולה Hosted או אנושית ל־PASS. נכון
-ל־28 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
+ל־30 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
 
 - לבצע confirmation/recovery עם השירות המובנה המאושר ונמען שהוא organization
   member; רק אם delivery זה נכשל לשקול custom SMTP. ‏Production URL לבדו אינו
   ראיית Email.
 - לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
   ומשחרר lease תחת תקציב 120 השניות.
-- לבצע Chrome native 200% על candidate SHA ולתעד תוצאה; CSS zoom אינו תחליף.
-- לבצע חזרה אנושית 10–15 דקות; לאחר כל השערים להעביר את repository ל־Public,
-  לאמת anonymous README/main/final SHA ו־clean clone, ולמסור רק גישת Demo
-  מחוץ ל־repository אם היא נדרשת.
+- Chrome native 200% וחזרה אנושית 10–15 דקות נסגרו ב־30.8 לפי דיווח owner על
+  candidate `4b77e24`. התוצאה אינה מייחסת ל־agent תצפית, screenshot או זמן
+  מדויק שלא נשמרו.
+- לאחר כל שערי final Production להעביר את repository ל־Public, לאמת anonymous
+  README/main/final SHA ו־clean clone, ולמסור רק גישת Demo מחוץ ל־repository
+  אם היא נדרשת.
 
 הוראות owner המדויקות וקובצי המסירה מרוכזים ב־
-[`evaluator-runbook.md`](./evaluator-runbook.md). עד להשלמתן הן נשארות
+[`evaluator-runbook.md`](./evaluator-runbook.md). שלוש רשומות final עדיין
 `OWNER_ACTION_REQUIRED`; הן אינן מצדיקות החלשת RLS, בדיקות או מצב Demo.

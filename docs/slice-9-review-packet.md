@@ -50,31 +50,35 @@
 | S9-DEF-015 | VERIFIED | Bidi_Control נדחה ב־application+DB וטקסט מעורב מוצג בבידוד. | `20260827180000_slice9_bidi_text_hardening.sql`; `untrusted-text.ts`; `isolated-text.tsx`; schemas/UI | bidi/membership pgTAP; untrusted/isolated/auth/league/member tests; `e2e/leagues.spec.ts` | `docs/evidence/slice-9/w6/S9-DEF-015.md` |
 | S9-DEF-016 | VERIFIED | skip link ב־invite מצביע תמיד ל־main יחיד ובר־focus. | invite page; `skip-to-main-link.tsx`; invite bootstrap/header | `e2e/join-and-proofs.spec.ts` guest/auth × valid/unavailable | `docs/evidence/slice-9/w6/S9-DEF-016.md` |
 | S9-DEF-020 | VERIFIED | unavailable invite משמר escape בטוח ל־Dashboard/logout רק למשתמש מחובר. | invite page; invite bootstrap; unavailable component | `e2e/join-and-proofs.spec.ts` malformed/expired/revoked × guest/auth | `docs/evidence/slice-9/w6/S9-DEF-020.md` |
-| S9-DEF-022 | OWNER_ACTION_REQUIRED | שם link, contrast ויעדי 21/36/42px תוקנו; matrix מלאה מכסה 8 routes + rejection בחמישה רוחבים ובקירוב 200%. רק Chrome native Zoom=200% נשאר. | loading components; auth/header/admin controls; manager request card; `e2e/accessibility-matrix.spec.ts` | exact-SHA build+scan; matrix ‏14/14; loading ‏2/2; 108 screenshots וסריקת דגימות | `docs/evidence/slice-9/w6/S9-DEF-022.md` |
+| S9-DEF-022 | VERIFIED | שם link, contrast ויעדי 21/36/42px תוקנו; matrix מלאה מכסה 8 routes + rejection בחמישה רוחבים. ב־30.8 ה־owner אישר PASS ב־Chrome Menu Zoom=200% בשלושת המסכים, keyboard-only וללא clipping/overlap/page scroll; זו ראיית `OWNER_REPORTED` ללא screenshot שמור. | loading components; auth/header/admin controls; manager request card; `e2e/accessibility-matrix.spec.ts` | exact-SHA build+scan; matrix ‏14/14; loading ‏2/2; forced scale ‏10/10; owner-reported native zoom PASS | `docs/evidence/slice-9/w6/S9-DEF-022.md` |
 | S9-DEF-024 | VERIFIED | runner מכשיל server errors; `AppLink` מונע prefetch ספקולטיבי, שמירת prediction ממתינה ל־RSC POST+idle, ו־teardown מחנה דפים ב־`about:blank` וסוגר contexts בסדר בטוח. | `scripts/run-e2e.ts`; `playwright-server-log.ts`; `response-streams.ts`; stream-safe fixture; `app-link.tsx`; `prediction-lock.spec.ts` | `playwright-server-log.test.ts`; `playwright-response-streams.test.ts`; חמש prediction-lock repeats; full 38-scenario E2E | `docs/evidence/slice-9/w6/S9-DEF-024.md`; `docs/evidence/slice-9/w6/S9-DEF-024-final-head-recurrence.md` |
 | S9-DEF-013 | VERIFIED | ספר הפרויקט נגזר ממקור אחד; package entries נשמרים בסדר וב־`ZIP_STORED` כדי לקבל אותם bytes גם ב־Python/zlib שונים. | `project-book-source.md`; `generate-project-book.py`; `project-book.docx`; workflow | `project-book-contract.test.ts`; checks ב־Python 3.12+3.14; Word/Poppler render inspection של 5/5 עמודים | `docs/evidence/slice-9/w7/S9-DEF-013.md`; `docs/evidence/slice-9/w7/S9-DEF-013-python-runtime-determinism.md` |
 | S9-DEF-014 | VERIFIED | policy מגדיר Production/Local Auth ומסווג Preview כ־public smoke ללא Auth. | `README.md`; `docs/deployment.md`; deployment-docs contract | `deployment-docs-contract.test.ts`; focused auth tests; URL wildcard scan | `docs/evidence/slice-9/w7/S9-DEF-014.md` |
-| S9-REQ-002 | OWNER_ACTION_REQUIRED | 13/13 שקפי המאגר הם ראיית reproducibility; המצגת הרשמית שנבחרה כוללת 18 שקפים ונשמרת byte-for-byte. render/overflow עברו, אך חזרה אנושית רציפה 10–15 דקות על 18/18 עדיין NOT_RUN. | internal deck/source/notes; external selected-deck manifest; `timing-guide.md`; `demo-script.md`; fallback PNGs | `presentation:check`; external PPTX render/overflow inspection; lifecycle E2E | `docs/evidence/slice-9/w7/S9-REQ-002.md` |
+| S9-REQ-002 | VERIFIED | 13/13 שקפי המאגר הם ראיית reproducibility; המצגת הרשמית כוללת 18 שקפים ונשמרת byte-for-byte. render/overflow עברו, וב־30.8 ה־owner אישר חזרה בטווח 10–15 דקות על 18/18, עם 5/5 fallback ופתיחת Production/GitHub. משך מדויק ו־screenshot לא נשמרו. | internal deck/source/notes; external selected-deck manifest; `timing-guide.md`; `demo-script.md`; fallback PNGs | `presentation:check`; external PPTX render/overflow inspection; lifecycle E2E; owner-reported rehearsal PASS | `docs/evidence/slice-9/w7/S9-REQ-002.md` |
 | S9-REQ-004 | VERIFIED | README/testing/security/scale/evaluator והספר סונכרנו; manifest נפרד מקפיא את שלושת בינארי ההגשה החיצוניים בלי לשנות generators. | submission docs; project-book source/DOCX; external byte manifest; `scripts/check-submission-docs.mjs` | `docs:submission:check -- --online`; project-book contract/render; full local gates | `docs/evidence/slice-9/w7/S9-REQ-004.md` |
 | S9-REQ-003 | OWNER_ACTION_REQUIRED | runbook יחיד סוגר final Production/Public/secret audit/anonymous clone, ואז מרכיב LINKS, תיק ארבעה קבצים ו־ZIP עם byte/hash/extract/reopen/link/secret QA. אישורי owner התקבלו; הביצוע עדיין NOT_RUN. | `final-submission-evidence.md`; final-production/Public/package runbook; owner-runbook/submission checkers | runs 33090719466, 33097585902, 33097590476; `submission:evidence:check`; `owner-runbooks:check` | `docs/evidence/slice-9/w8/S9-REQ-003.md`; owner template לידו |
 | S9-REQ-005 | VERIFIED | Hosted policy נקראה בלבד; app הותאם לתקרת 72 bytes; ‏28 Security ו־20 Performance findings קיבלו disposition ו־`rls_auto_enable` הוקשח במיגרציה קדימה. | `20260825000000_revoke_rls_event_trigger_rpc_access.sql`; final hardening register; Advisor/Auth exports; checker | post-fix Advisors; ‏87 Auth Vitest; ‏641 Vitest; ‏1502 pgTAP; ‏624 multi-session; build/types/drift | `docs/evidence/slice-9/w8/S9-REQ-005.md`; שלושת exports לידו |
 
 ## גבול review
 
-ממצאי owner אינם waiver. חמש הרשומות שנותרו — S9-DEF-004, ‏S9-DEF-012,
-‏S9-DEF-022, ‏S9-REQ-002 ו־S9-REQ-003 — נשארות
-`OWNER_ACTION_REQUIRED` עד evidence מתאים; המניין המחייב נשאר 20 `VERIFIED`
-ו־5 `OWNER_ACTION_REQUIRED`.
+ממצאי owner אינם waiver. שלוש הרשומות שנותרו — S9-DEF-004, ‏S9-DEF-012
+ו־S9-REQ-003 — נשארות `OWNER_ACTION_REQUIRED` עד evidence מתאים; המניין
+המחייב הוא 22 `VERIFIED` ו־3 `OWNER_ACTION_REQUIRED`.
 
 אישור owner המותנה להעביר את PR #14 ל־Ready, למזג ולפרסם את המאגר התקבל
 ב־29.8.2026, אך אינו משנה סטטוס ואינו מתיר auto-merge או direct push. לפני
-Ready/merge חייבים לעבור על אותו candidate SHA החלק ה־pre-merge המתועד של
-S9-DEF-004, בדיקת S9-DEF-022, חזרת S9-REQ-002 ושלושת CI jobs הנקובים. לאחר
-merge נשארים לביצוע החלק הסופי של S9-DEF-004, ‏S9-DEF-012 ו־S9-REQ-003 על
-final/main SHA.
+Ready/merge חייבים לכלול את החלק ה־pre-merge המתועד של S9-DEF-004, בדיקת
+S9-DEF-022, חזרת S9-REQ-002 ושלושת CI jobs הנקובים. Chrome והחזרה עברו לפי
+דיווח owner על application/deck candidate `4b77e24`; ה־Hosted Auth pre-merge
+עבר בנפרד על Production alias קיים, ו־source SHA לא נלכד — אין לייחס אותו
+ל־`4b77e24`. Commit הסגירה שאחריו מוגבל למסמכי evidence, ‏generators/checkers,
+חוזה הבדיקה של הספר ולספר המאגר הנגזר, בלי שינוי קוד product runtime,
+‏migrations, ‏E2E, fallback או המצגת הרשמית; עליו נדרשת ריצת exact-SHA ירוקה.
+לאחר merge נשארים לביצוע החלק הסופי של
+S9-DEF-004, ‏S9-DEF-012 ו־S9-REQ-003 על final/main SHA.
 
 אין לייחס ל־Local הוכחת Hosted, אין להשתמש ב־Preview כראיית Production ואין
 לשנות workflow/test/config כדי להסתיר failure. מעבר ל־Public מותר רק בתוך
 runbook ‏S9-REQ-003 לאחר final Production, סריקות pre-public הנדרשות וכל יתר
 שערי הקדם; לאחר המעבר נדרשים אימות אנונימי, בדיקת הגנות וסריקה חוזרת. עד שכל
-חמש הרשומות נסגרות אין להכריז `READY_TO_SUBMIT`.
+שלוש הרשומות נסגרות אין להכריז `READY_TO_SUBMIT`.

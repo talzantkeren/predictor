@@ -140,7 +140,7 @@ for (const forbidden of ["Slice 10", "RELEASE_READY", "דוח פיננסי אמ�
 }
 
 for (const expected of [
-  "גרסה 1.3",
+  "גרסה 1.4",
   "PASS — מטריצת RULES מלאה",
   "PASS — מטריצת DATA מלאה",
   "PASS — מטריצת FLOWS מלאה",
@@ -189,7 +189,7 @@ for (const expected of [
   "13/13",
   "18/18",
   "Predictor1_Final_Presentation_HE.pptx",
-  "OWNER_ACTION_REQUIRED",
+  "OWNER_REPORTED_PASS",
 ]) {
   invariant(
     presentationReadme.includes(expected) || rehearsalLog.includes(expected),
@@ -208,7 +208,7 @@ const trackedOwnerRecordIds = [
 for (const id of trackedOwnerRecordIds) {
   invariant(ownerActions.includes(id), `Owner-actions document is missing: ${id}`);
 }
-for (const expected of ["בדיוק חמש רשומות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
+for (const expected of ["בדיוק שלוש רשומות", "איפה", "ראיה לשמור", "אימות לאחר הפעולה"]) {
   invariant(ownerActions.includes(expected), `Owner-actions document is missing contract text: ${expected}`);
 }
 const deliveryRecordIds = [
@@ -231,13 +231,14 @@ const ownerLedgerRows = currentLedgerRows.filter((line) =>
 );
 invariant(currentLedgerRows.length === 25, `Expected 25 delivery rows, found ${currentLedgerRows.length}.`);
 invariant(
-  verifiedLedgerRows.length === 20 && ownerLedgerRows.length === 5,
-  `Expected 20 VERIFIED and 5 OWNER_ACTION_REQUIRED rows, found ${verifiedLedgerRows.length}/${ownerLedgerRows.length}.`,
+  verifiedLedgerRows.length === 22 && ownerLedgerRows.length === 3,
+  `Expected 22 VERIFIED and 3 OWNER_ACTION_REQUIRED rows, found ${verifiedLedgerRows.length}/${ownerLedgerRows.length}.`,
 );
 for (const [id, status] of [
   ["S9-REQ-005", "VERIFIED"],
   ["S9-DEF-025", "VERIFIED"],
-  ["S9-DEF-022", "OWNER_ACTION_REQUIRED"],
+  ["S9-DEF-022", "VERIFIED"],
+  ["S9-REQ-002", "VERIFIED"],
 ]) {
   invariant(
     currentLedgerRows.some((row) => row.startsWith(`| ${id} |`) && row.includes(`| ${status} |`)),
@@ -248,7 +249,7 @@ for (const [id, status] of [
     `Review packet has the wrong final status for ${id}.`,
   );
 }
-for (const id of ["S9-DEF-004", "S9-DEF-012", "S9-DEF-022", "S9-REQ-002", "S9-REQ-003"]) {
+for (const id of ["S9-DEF-004", "S9-DEF-012", "S9-REQ-003"]) {
   invariant(
     ownerLedgerRows.some((row) => row.startsWith(`| ${id} |`)),
     `Expected open delivery record is missing: ${id}`,

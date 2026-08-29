@@ -47,11 +47,11 @@ regression חדש שהיה נכשל ללא התיקון.
 | S9-DEF-015 | P3 | W6 | שמות לא־מהימנים מאפשרים bidi spoofing ואינם מבודדים | VERIFIED | §10, `S9-DEF-015` | `docs/evidence/slice-9/w6/S9-DEF-015.md` | `33a80f3925ed4eca59ee3ac20e6f878b93e78cfe` | כל Bidi_Control נדחה ב־application+DB וטקסט mixed נשמר ומבודד. ‏193/193 focused, ‏617/617 Vitest, ‏16/16 focused DB, ‏1443/1443 DB ו־2/2 Playwright עברו. |
 | S9-DEF-016 | P3 | W6 | skip link ב־invite מחובר מצביע ליעד חסר | VERIFIED | §10, `S9-DEF-016` | `docs/evidence/slice-9/w6/S9-DEF-016.md` | `3ed8a1b62fad7dac24c2da2035cc79de9fbe0a0a` | יעד יחיד, גלוי ובר־focus לכל guest/auth × valid/unavailable; regression עבר 4/4 ב־Desktop/Pixel. |
 | S9-DEF-020 | P3 | W6 | invite unavailable מאבד escape למשתמש מחובר | VERIFIED | §10, `S9-DEF-020` | `docs/evidence/slice-9/w6/S9-DEF-020.md` | `251b87f76bb35f46cc79dc4f161660e06fbc714f` | guest/auth × malformed/expired/revoked עברו 4/4 ב־Desktop/Pixel; Dashboard/logout ניתנים רק ל־session מאומת וללא נתוני resource. |
-| S9-DEF-022 | P3 | W6 | פערי נגישות קטנים ב־loading/forms/targets | OWNER_ACTION_REQUIRED | §10, `S9-DEF-022` | `docs/evidence/slice-9/w6/S9-DEF-022.md` | `2decde7e9244a6a0a55baf81b809cdb66858b370`, `1ce8f9d8c77fb6a50598f4062bcda12b4004f31a`, `ab0cf8749fd7d529db1967aded95f302a9179e04`, `1ce4fca9665609f85c52179874db45322443dc88` | המטריצה הרגילה עברה 14/14; חמישה תהליכי Chromium עם `--force-device-scale-factor=2`, ‏`viewport:null`, raster×2 וכל חוזי keyboard/name/contrast/44px/layout עברו 10/10. forced DSF משנה device scale אך לא את HostZoomMap/page zoom שמפעיל reflow נפרד; לכן נשאר spot-check של כ־4 דקות בלבד ב־Chrome Menu Zoom=200% על שלושה מסכים, לא מטריצה ידנית מלאה. |
+| S9-DEF-022 | P3 | W6 | פערי נגישות קטנים ב־loading/forms/targets | VERIFIED | §10, `S9-DEF-022` | `docs/evidence/slice-9/w6/S9-DEF-022.md` | `2decde7e9244a6a0a55baf81b809cdb66858b370`, `1ce8f9d8c77fb6a50598f4062bcda12b4004f31a`, `ab0cf8749fd7d529db1967aded95f302a9179e04`, `1ce4fca9665609f85c52179874db45322443dc88`, `4b77e2412336ed1151849c5db8d05d5947a46e45` | המטריצה הרגילה עברה 14/14 ו־forced scale עבר 10/10. ב־30.8.2026 ה־owner אישר PASS ב־Chrome Menu Zoom=200% על admin matches, members+invalid rejection ו־settings, keyboard-only, focus גלוי וללא clipping/overlap/page scroll. זו ראיית `OWNER_REPORTED`; שעה, גרסה ו־screenshot לא נשמרו. |
 | S9-DEF-024 | P3 | W6 | full E2E ירוק משאיר server error לא מוסבר | VERIFIED | §10, `S9-DEF-024` + supplement | `docs/evidence/slice-9/w6/S9-DEF-024.md`, `docs/evidence/slice-9/w6/S9-DEF-024-final-head-recurrence.md`, `docs/evidence/slice-9/w7/S9-REQ-004.md` | `1bc326dde52c7162337485fda134003719d1592c`, `056f6af4cb88415c1b18eef72a870da47acc456f` | ה־runner הכשיל גם recurrence ב־session זה ולא הציג 36/38 כ־PASS; אחרי reset ובידוד מתהליך מתחרה, focused עבר 4/4 והמטריצה המלאה עברה 38/38 ללא WebServer error. |
 | S9-DEF-013 | P2 | W7 | ספר הפרויקט derived סותר את המקור הקנוני | VERIFIED | §10, `S9-DEF-013` + supplement | `docs/evidence/slice-9/w7/S9-DEF-013.md`, `docs/evidence/slice-9/w7/S9-DEF-013-python-runtime-determinism.md` | `867da06b9a2459eb6be9a042377fa394f3eca976`, `93cc78aea82299760df9143f06db51008c6ddb4e`, `5751a56bea59f0587264c3d96ee1723d76f5daa5` | `docs:book:check` regenerates to temp and byte-compares the DOCX; Vitest runs that executable gate, ו־CI/`verify` enforce it with Python 3.12. Final isolated `verify` passed. |
 | S9-DEF-014 | P3 | W7 | Redirect allowlist ו־README אינם מתארים את Preview הנוכחי | VERIFIED | §10, `S9-DEF-014` | `docs/evidence/slice-9/w7/S9-DEF-014.md` | `dc0673acc14db431f67bd582b5a10c60c10858a7`, `15b2ff2e3fe33258f01d6046f82044ea9f9158ce` | אין host נגזר־branch במסמכי evaluator: Production/Local callbacks מדויקים, ללא wildcard; Preview Auth unsupported/unverified וללא origin יציב. חוזה docs עבר 88/88. |
-| S9-REQ-002 | P1 | W7 | מצגת, demo script וחזרה של 10–15 דקות | OWNER_ACTION_REQUIRED | §11, `S9-REQ-002` | `docs/evidence/slice-9/w7/S9-REQ-002.md` | `c52393d654f63906a4561231d1943e38de2437d1`, `7a087986493ec1e421cc7db81df246717a84a98b`, `93e2055c0ae5ba4f1e458714cc41dc0384cf5e33`, `ba464a88f897e82654501afeb267bc7a3a78ee28` | 13/13 שקפי המאגר והרינדורים נשארים QA דטרמיניסטי. ה־owner בחר מצגת חיצונית בת 18 שקפים לתיק ההגשה; hash שלה קובע, והמגבלות הגלויות נשמרות byte-for-byte. 18/18 רונדרו ללא overflow, אך חזרה אנושית רציפה 10–15 דקות על הקובץ הנבחר עדיין NOT_RUN. |
+| S9-REQ-002 | P1 | W7 | מצגת, demo script וחזרה של 10–15 דקות | VERIFIED | §11, `S9-REQ-002` | `docs/evidence/slice-9/w7/S9-REQ-002.md` | `c52393d654f63906a4561231d1943e38de2437d1`, `7a087986493ec1e421cc7db81df246717a84a98b`, `93e2055c0ae5ba4f1e458714cc41dc0384cf5e33`, `ba464a88f897e82654501afeb267bc7a3a78ee28`, `4b77e2412336ed1151849c5db8d05d5947a46e45` | 13/13 שקפי המאגר נשארים QA דטרמיניסטי והמצגת הרשמית נשמרת byte-for-byte. ב־30.8.2026 ה־owner אישר חזרה בטווח 10–15 דקות על 18/18, עם 5/5 fallback ופתיחת Production/GitHub. זו ראיית `OWNER_REPORTED`; משך מדויק, timestamps ו־screenshot לא נשמרו. |
 | S9-REQ-004 | P2 | W7 | חבילת מסמכי הגשה מסונכרנת | VERIFIED | §11, `S9-REQ-004` | `docs/evidence/slice-9/w7/S9-REQ-004.md` | `219c31bb28cdfa90e873168675c23849e2baade7`, `5751a56bea59f0587264c3d96ee1723d76f5daa5`, `eb66c0951f6c2bfad65e570a0b5e65bf393c04d6` | סנכרון מסמכי המאגר וה־generators נשאר VERIFIED. שלושת בינארי ההגשה החיצוניים נבחרו וה־hashes הוקפאו, אך copy/LINKS/ZIP QA נשאר תחת S9-REQ-003 ולא מיוחס לסטטוס זה. |
 | S9-REQ-003 | P1 | W8 | ראיית הגשה סופית ופרסום Public | OWNER_ACTION_REQUIRED | §11, `S9-REQ-003` | `docs/evidence/slice-9/w8/S9-REQ-003.md` | `1e3b9968c54edca78bab72ffefa491cbd2e0454f`, `450ece51b5cfd4f051e745b46c4bfde0aa9bd6b2`, `2f705dc4633877637c5286c9ca623f3f12b1af17` | ה־post-merge runbook ממפה exact-SHA CI, Hosted parity, Production, Public ו־anonymous clone. לאחריהם בלבד נוצרים LINKS, תיק ארבעת הקבצים וה־ZIP ועוברים byte/hash/extract/reopen/link/secret QA. אישור owner לפרסום, ל־author metadata ולבינאריים התקבל; הביצוע עדיין NOT_RUN. |
 | S9-REQ-005 | P2 | W8 | hardening וראיית בדיקה סופית | VERIFIED | §11, `S9-REQ-005` | `docs/evidence/slice-9/w8/S9-REQ-005.md`, `docs/evidence/slice-9/w8/S9-REQ-005-hosted-auth-policy.md`, `docs/evidence/slice-9/w8/S9-REQ-005-security-advisor.md`, `docs/evidence/slice-9/w8/S9-REQ-005-performance-advisor.md` | `8b30d9ce2e5969c9e25d3ae15cb1c72458199f66`, `34316109119fd076552751ace1e8cb24498d882c` | Hosted policy נקראה בלבד; app הותאם ל־8 תווים/72 UTF-8 bytes ו־leaked-password נשאר accepted risk. כל 28 Security ו־20 Performance findings קיבלו disposition. migration קדימה הקשיח `rls_auto_enable`; post-fix Advisors, types/drift, ‏1502/1502 pgTAP ו־624/624 multi-session עברו. |
@@ -77,9 +77,9 @@ Checkpoint `4ee7bedbb096c8dcd1112324bf9b317ba5cf4712` נבדק ב־27.8.2026 ל�
 | submission contracts | PASS — hardening, sports secret boundary, presentation, owner runbooks, final evidence, 15-document/34-local-link/5-external-link online check |
 | project book | PASS — regeneration דטרמיניסטית; 5/5 pages הומרו read-only דרך Word 16 + Poppler ונבדקו חזותית ללא clipping/overlap/table/glyph/header/footer defect; ה־LibreOffice renderer המועדף לא היה זמין מקומית |
 
-בדיקת native Chrome 200%, ‏Hosted/Production, delivery, evaluator והרצה אנושית
-לא הוסקו מן המטריצה. לאחר סגירת S9-REQ-005 ו־S9-DEF-025 נשארות חמש פעולות
-owner, אחת לכל רשומה פתוחה. מצב המסירה הנוכחי הוא 20 `VERIFIED` ו־5
+בדיקת native Chrome 200% והרצת המצגת האנושית לא הוסקו מן המטריצה; שתיהן
+נסגרו בנפרד ב־30.8.2026 על בסיס דיווח owner מפורש. לאחר סגירתן נשארות שלוש
+רשומות final-Production פתוחות. מצב המסירה הנוכחי הוא 22 `VERIFIED` ו־3
 `OWNER_ACTION_REQUIRED`.
 
 ### Recurrence על final candidate ותיקון קדימה
@@ -125,12 +125,12 @@ header/footer. באותו checkpoint היסטורי המניין היה 18 `VERI
 | --- | --- | --- | --- |
 | S9-REQ-005 | VERIFIED | `34316109119fd076552751ace1e8cb24498d882c` | Hosted Auth נקרא בלבד; כל 48 findings קיבלו disposition; migration hardening קדימה, types/drift, ‏1502 pgTAP ו־624 multi-session אומתו. |
 | S9-DEF-025 | VERIFIED | `47f29afc4ed1b4e22bc328350a6072d1f9ed5170` | `SPORTS_API_KEY` נשאר Sensitive ו־Production-only ללא קריאת value; Preview READY עבר Manual smoke והמשכיות Cron נצפתה בקריאה בלבד. |
-| S9-DEF-022 | OWNER_ACTION_REQUIRED | `1ce8f9d8c77fb6a50598f4062bcda12b4004f31a` | כל המטריצה האוטומטית ותיקוני המוצר עברו; נשארה רק תצפית Chrome native Zoom=200% לפי הראיה. |
+| S9-DEF-022 | VERIFIED | `4b77e2412336ed1151849c5db8d05d5947a46e45` | כל המטריצה האוטומטית עברה; ה־owner אישר גם Chrome native Zoom=200% בשלושת המסכים. זו ראיית `OWNER_REPORTED` ללא screenshot שמור. |
 
-לא בוצעו S9-DEF-004, ‏S9-DEF-012 או S9-REQ-003, משום שהם תלויים בפריסת
-Production הסופית לאחר merge. גם S9-REQ-002 ו־S9-DEF-022 נשארים פתוחים; לכן
-המניין המחייב הוא 20 `VERIFIED` ו־5 `OWNER_ACTION_REQUIRED`. ‏PR #14 נשאר
-Draft ולא מוזג.
+לא בוצעו החלק הסופי של S9-DEF-004, ‏S9-DEF-012 או S9-REQ-003, משום שהם תלויים
+בפריסת Production הסופית לאחר merge. S9-REQ-002 ו־S9-DEF-022 נסגרו ב־30.8
+לפי דיווח owner; לכן המניין המחייב הוא 22 `VERIFIED` ו־3
+`OWNER_ACTION_REQUIRED`. ‏PR #14 נשאר Draft עד exact-SHA CI של commit הסגירה.
 
 הרצות הסיום נשמרות בלי למחוק כשל: `verify` ראשון עבר את כל השערים עד E2E אך
 נכשל 36/38 עם WebServer error; focused ראשון אחרי הכשל נכשל 0/4 בגלל cleanup
@@ -311,13 +311,13 @@ Chrome Zoom=200% נשארות פעולות הבעלים המתועדות ולא 
 | --- | --- | --- | --- |
 | S9-DEF-004 | OWNER_ACTION_REQUIRED | Hosted Email Enabled; built-in sender ללא custom SMTP; שתי הודעות נמסרו. לאחר הכשל הראשון, ה־owner דיווח על מעבר same-browser מלא של callback, עדכון סיסמה, replay denial ו־old/new login. זו ראיית pre-merge מסוננת מסוג `OWNER_REPORTED`; לא נשמרו recipient, link, credential, cookie או screenshot. | לאחר final deploy נדרש capture מלא נוסף על final SHA: configuration, signup/confirmation, known-vs-unknown, cooldown/429, callback cleanup ו־recovery. ה־owner מסייע רק בפעולות inbox/browser שאינן ניתנות לביצוע בידי agent. |
 | S9-DEF-012 | OWNER_ACTION_REQUIRED | ה־runbook וה־template מציינים את המסך/SQL/עמודות הבטוחות לכל artifact, וה־checker עבר. | אין קלט owner; 0 דקות. לאחר final deploy ה־agent ממתין ל־tick טבעי ומקשר job→response→terminal run→released lease. |
-| S9-DEF-022 | OWNER_ACTION_REQUIRED | מטריצה רגילה 14/14, loading ‏2/2 ו־forced-browser-scale ‏10/10 עברו. ה־DSF הכפוי אומת בשורת הפקודה, DPR, raster ו־`visualViewport`, וכל בדיקות keyboard/focus/names/contrast/targets/layout עברו בחמישה רוחבים. | Chrome Menu Zoom=200% spot-check בלבד על admin matches, members+invalid rejection ו־settings — כ־4 דקות. לבדוק focus, clipping/overlap ו־horizontal page scroll; אין צורך לחזור על contrast/names/targets או חמשת הרוחבים. |
-| S9-REQ-002 | OWNER_ACTION_REQUIRED | 13/13 שקפי המאגר נשארים ראיית reproducibility. ה־owner בחר מצגת חיצונית בת 18 שקפים; 18/18 רונדרו ו־overflow QA עבר, וה־bytes נשמרים ללא שינוי. | חזרה אנושית רציפה על 18/18 והשלמת checklist/log — 10–15 דקות. |
+| S9-DEF-022 | VERIFIED | מטריצה רגילה 14/14, loading ‏2/2 ו־forced-browser-scale ‏10/10 עברו. ב־30.8 ה־owner אישר Chrome Menu Zoom=200% PASS על admin matches, members+invalid rejection ו־settings, עם keyboard/focus וללא clipping/overlap/page scroll. | אין פעולה נוספת; ראיית הסגירה היא `OWNER_REPORTED` וללא screenshot/שעה/גרסה שמורים. |
+| S9-REQ-002 | VERIFIED | 13/13 שקפי המאגר נשארים ראיית reproducibility והבינארי הרשמי נשמר ללא שינוי. ב־30.8 ה־owner אישר חזרה בטווח 10–15 דקות על 18/18, עם 5/5 fallback ופתיחת Production/GitHub. | אין פעולה נוספת; ראיית הסגירה היא `OWNER_REPORTED` וללא משך מדויק/timestamps/screenshot שמורים. |
 | S9-REQ-003 | OWNER_ACTION_REQUIRED | runbook/template מכינים exact-SHA CI, migration parity, designation readiness, immutable Production, incognito, protection snapshot, ‏Public/anonymous, ‏clean-clone והרכבת תיק/ZIP; checker gates עברו וה־operational gate לא הורץ. | אישור owner לפרסום, ל־author metadata ולשלושת הבינאריים הרשמיים התקבל ב־29.8.2026. אין עוד צורך בזהות evaluator; שיטת Demo access, אם נדרשת, נשארת מחוץ ל־Git. ה־agent מבצע את יתר הסגירה לאחר merge/final deploy. |
 
 אישור owner להעביר את PR #14 מ־Draft, למזג ולפרסם לאחר כל השערים התקבל
 ב־29.8.2026. ההרשאה מותנית בתצפיות האמיתיות המתועדות ואינה הופכת שער חסר
-ל־PASS. המצב נשאר 20 `VERIFIED` ו־5 `OWNER_ACTION_REQUIRED`.
+ל־PASS. המצב כעת 22 `VERIFIED` ו־3 `OWNER_ACTION_REQUIRED`.
 
 ### שערים שנצפו בסשן הזה
 
@@ -328,6 +328,7 @@ Chrome Zoom=200% נשארות פעולות הבעלים המתועדות ולא 
 | `npm run verify` — ריצה מלאה חוזרת | PASS — lint; strict typecheck; ‏55 files/656 Vitest; כל שערי evidence/hardening/runbooks/Sports; ‏35 files/1638 pgTAP; scale rows ‏51/51/51/26; generated types current; book/submission/presentation read-only checks; build; שתי סריקות של 53 client artifacts; ‏42/42 Playwright ב־9.8 דקות. |
 | `npm run build` — ריצה נפרדת | PASS — env validation, Next.js production compile, TypeScript, page collection ו־5/5 static generation. |
 
-S9-DEF-004 אינו נסגר על סמך delivery בלבד; S9-DEF-022 אינו נסגר על סמך
-forced device scale; ו־S9-DEF-012/S9-REQ-003 אינם נסגרים לפני final Production
-SHA. אלה גבולות ראיה מכוונים, לא waiver.
+S9-DEF-004 אינו נסגר על סמך delivery בלבד, ו־S9-DEF-012/S9-REQ-003 אינם
+נסגרים לפני final Production SHA. ‏S9-DEF-022 נסגר בנפרד על בסיס דיווח owner
+על native page zoom ולא על forced device scale בלבד. אלה גבולות ראיה מכוונים,
+לא waiver.

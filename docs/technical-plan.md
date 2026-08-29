@@ -1544,7 +1544,9 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 - `S9-REQ-001` — lifecycle מלא לפי ההחלטות לעיל. סדר התלות הוא
   `DEF-002→{DEF-003,DEF-008}→REQ-001`; acceptance כולל את כל guard/matrix/
   concurrency של DEF-005 ואת active-members list של DEF-021.
-- `S9-REQ-002` — deck, demo script וחזרה מוכחת של 10–15 דקות.
+- `S9-REQ-002` — deck, demo script וחזרה מוכחת של 10–15 דקות. נסגר ב־30.8
+  כ־`VERIFIED — OWNER_REPORTED_PASS` על 18/18, עם 5/5 fallback ופתיחת
+  Production/GitHub; משך מדויק ו־screenshot לא נשמרו.
 - `S9-REQ-003` — final CI/deployment SHA, ‏Production incognito, פרסום המאגר
   ל־Public וגישה אנונימית ל־README/default `main`/final SHA ו־clean clone;
   גישת Demo, אם נדרשת, נמסרת מחוץ ל־Git.
@@ -1565,9 +1567,9 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 להוסיף להם מספר סטודנט. `docs/project-book.docx` ו־
 `presentation/predictor1-final-project.pptx` נשארים ראיית reproducibility של
 המאגר ואינם הבינאריים הסופיים שנבחרו. חזרת `S9-REQ-002` נמדדת על המצגת
-הנבחרת בת 18 השקפים. בחירת הקובץ והסכמה למגבלות המספור, speaker notes
-והקישורים כטקסט אינן חזרה ואינן PASS. תיק ההגשה, `LINKS.txt` וה־ZIP נשארים
-`NOT_RUN` עד final SHA ופרסום Public.
+הנבחרת בת 18 השקפים. בחירת הקובץ לבדה והסכמה למגבלות המספור, speaker notes
+והקישורים כטקסט אינן חזרה; החזרה נסגרה בנפרד ב־30.8 לפי דיווח owner מפורש.
+תיק ההגשה, `LINKS.txt` וה־ZIP נשארים `NOT_RUN` עד final SHA ופרסום Public.
 
 #### Technical decision ledger
 
@@ -1577,8 +1579,9 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
 | `S9-TDEC-002` | `RESOLVED`, 26.8.2026 | `SPORTS_API_KEY` הוא Production-only; Production היא `api-football`, ו־Preview/Local/CI הם Manual ללא key וללא live canary. בידוד מכסה בין credentials אינו מאומת ואין רכישת subscription נוסף רק ל־Preview. שינוי Hosted והראיות אומתו ב־DEF-025 ב־28.8.2026 |
 | `S9-TDEC-003` | `RESOLVED`, 26.8.2026 | נשמר manifest provenance ב־[`docs/course-source.md`](./course-source.md); ה־PDF המדויק נמסר בנפרד ולא נכלל ב־Git ללא הרשאת redistribution מפורשת |
 | `S9-TDEC-004` | `RESOLVED — ACCEPTED RESIDUAL RISK`, 26.8.2026 | אין שדרוג plan רק עבור leaked-password protection ואין lookup בצד הלקוח; validation של שמונה תווים לפחות ועד 72 בתים בקידוד UTF-8, rate limits, recovery enumeration-safe אחרי DEF-001, monitoring ו־Demo-only הם mitigations. מדיניות Hosted ו־Advisor אומתו ב־REQ-005 ב־28.8.2026. reopen triggers: plan מתאים מסיבה אחרת, נתונים רגישים יותר, incident/credential-stuffing evidence או דרישת evaluator |
+| `S9-TDEC-005` | `RESOLVED — OWNER-REPORTED HUMAN EVIDENCE ACCEPTED`, 30.8.2026 | ה־owner קיבל את רשימות הבדיקה המלאות, אישר שהבדיקה והחזרה עברו, ולאחר מכן הורה פעמיים להשלים את הסגירה. לכן `S9-DEF-022` ו־`S9-REQ-002` מסומנים `VERIFIED — OWNER_REPORTED` על מועמד היישום/המצגת `4b77e2412336ed1151849c5db8d05d5947a46e45`. אין בכך טענה לתצפית agent, לגרסת Chrome, למשך מדויק, ל־timestamps או ל־screenshot שלא נשמרו. ההכרעה אינה סוגרת Auth/Cron/Public/final-SHA ואינה מחלישה שער אוטומטי. היא נפתחת מחדש אם תופיע ראיה סותרת. commit הסגירה שאחריה מוגבל לראיות, תיעוד, generators/checkers, חוזה בדיקה וספר פנימי, ללא שינוי קוד product runtime, ‏UI או בינארי רשמי, וחייב לעבור CI מלא על ה־SHA המדויק שלו. |
 
-כל ארבע ההחלטות הטכניות סגורות ואפס פתוחות. הפרסום ל־Public מותר רק לפי החוזה
+כל חמש ההחלטות הטכניות סגורות ואפס פתוחות. הפרסום ל־Public מותר רק לפי החוזה
 המותנה של `S9-TDEC-001`; אין לרכוש plan רק עבור `S9-TDEC-004` או להפעיל canary ספק חי ב־Preview. שינוי scope של
 Vercel וראיית password/Advisors אומתו ב־28.8.2026 תחת `S9-DEF-025` ו־
 `S9-REQ-005`. Branch control, Preview

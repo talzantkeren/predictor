@@ -97,22 +97,22 @@ reproducibility. קובצי ההגשה הרשמיים הם
 4. לפתוח את ספר הפרויקט, security, scale ו־testing ולהצליב אותם מול אותו SHA.
 5. לתעד תוצאה מצונזרת בלבד; כשל קישור, access או בדיקה נשאר כשל.
 
-## חמשת שערי המסירה שעדיין פתוחים
+## שלושת שערי המסירה שעדיין פתוחים ושתי בדיקות owner שנסגרו
 
 | שער | פעולה מדויקת | ראיה מותרת |
 | --- | --- | --- |
 | Hosted Email | השירות המובנה (2/h, organization members בלבד) מאושר ל־Demo; למסור כתובת mailbox מורשית ולקבל link, וה־agent מריץ את `docs/runbooks/slice-9-def-004-hosted-auth.md`; אין רכישת SMTP נדרשת | למלא את `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; ללא recipient, link או credential |
 | Hosted Cron | לבצע פעם אחת את `docs/runbooks/slice-9-def-012-production-cron.md` אחרי final deploy | למלא `docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md`; רק response/run/lease columns מסוננים |
-| page zoom spot-check | Chrome Zoom=200% על candidate: keyboard ב־admin matches, ‏members/error ו־settings; אין clipping/overlap/page overflow | zoom, גרסת Chrome, שלושת המסכים, PASS/FAIL; מטריצת forced DSF מלאה כבר מתועדת ב־S9-DEF-022 |
-| חזרה | לבצע ולתעד 10–15 דקות על 18/18 שקפי `Predictor1_Final_Presentation_HE.pptx` לפי `presentation/rehearsal-log.md`; 13/13 שבמאגר הם QA פנימי בלבד | SHA, hash מצגת, משך, קישורים, fallback ותוצאה |
+| page zoom spot-check — CLOSED | ב־30.8 ה־owner אישר Chrome Zoom=200% PASS על candidate `4b77e24`: keyboard ב־admin matches, ‏members/error ו־settings; אין clipping/overlap/page overflow | `OWNER_REPORTED`; ללא שעה, גרסה או screenshot שמורים; המטריצה האוטומטית מתועדת ב־S9-DEF-022 |
+| חזרה — CLOSED | ב־30.8 ה־owner אישר חזרה בטווח 10–15 דקות על 18/18 שקפי `Predictor1_Final_Presentation_HE.pptx`, עם 5/5 fallback ופתיחת Production/GitHub | `OWNER_REPORTED`; ללא משך מדויק, timestamps או screenshot שמורים |
 | Public/final SHA | לאחר merge ו־Production סופי להעביר את המאגר ל־Public, לאמת README/default `main`/final SHA ו־clean clone ללא credentials; גישת Demo, אם נדרשת, נמסרת מחוץ ל־Git | מצב anonymous access, ‏SHA וקישור בלבד; אין credential |
 
 שער ה־Vercel Sports נסגר ב־28 באוגוסט 2026: `SPORTS_API_KEY` נשאר Sensitive
 ו־Production-only, ו־Preview/Local/CI נשארו Manual ללא key. זו תצפית שכבר
 נשמרה ב־`S9-DEF-025`, לא פעולת owner שנותרה.
 
-כל חמש הרשומות נשארות `OWNER_ACTION_REQUIRED` עד לתצפית המתאימה; אישור owner
-או כוונה עתידית אינם הופכים אף אחת ל־PASS. לפני merge חלים שערי ה־pre-merge
-לעיל; לאחר merge חלים שערי Hosted/Production/Public על final/main SHA. אין
-להציג real money או AI runtime, ואין להכריז `READY_TO_SUBMIT` לפני סגירת כל
-החמישה.
+שלוש הרשומות Hosted/Production/Public נשארות `OWNER_ACTION_REQUIRED` עד
+לתצפית המתאימה. בדיקת Chrome והחזרה נסגרו על בסיס דיווח owner מפורש; אין
+לייחס להן תצפית agent או artifact שלא נשמר. לאחר merge חלים שלושת השערים
+הפתוחים על final/main SHA. אין להציג real money או AI runtime, ואין להכריז
+`READY_TO_SUBMIT` לפני סגירת כל שלוש הרשומות הפתוחות.

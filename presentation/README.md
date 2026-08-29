@@ -111,5 +111,7 @@ npm.cmd run test:e2e:run -- e2e/lifecycle.spec.ts --project=desktop-chromium
 לפני מסירה יש לפתוח את 13/13 תמונות הרינדור הפנימיות לצורך QA, ואת 18/18
 שקפי המצגת הנבחרת לצורך החזרה הרשמית. עובדים לפי המסלול המתאים ב־
 `timing-guide.md`, ממלאים את `evaluator-checklist.md`, פותחים ידנית את שני
-הקישורים וממלאים את `rehearsal-log.md` מול אותו candidate SHA. עד לביצוע
-החזרה האנושית, S9-REQ-002 נשאר `OWNER_ACTION_REQUIRED`.
+הקישורים וממלאים את `rehearsal-log.md` מול אותו candidate SHA. ב־30.8.2026
+ה־owner אישר שהחזרה עברה בטווח 10–15 דקות על 18/18, עם 5/5 fallback ופתיחת
+Production ו־GitHub. התוצאה מתועדת כ־`VERIFIED — OWNER_REPORTED_PASS`; משך
+מדויק, timestamps ו־screenshot לא נשמרו וה־agent לא טוען שצפה בחזרה.

@@ -1,7 +1,9 @@
 # Checklist לבוחן ולחזרה האנושית
 
-סטטוס: `OWNER_ACTION_REQUIRED` עד להשלמת שורת החזרה האנושית על ה־SHA המדויק
-שמוגש. אין בקובץ credentials או מידע אישי; פרטי חשבונות נמסרים מחוץ ל־Git.
+סטטוס: `VERIFIED — OWNER_REPORTED_PASS` על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`. אין בקובץ credentials או מידע
+אישי; פרטי חשבונות נמסרים מחוץ ל־Git. ה־checkboxes להלן נשארים חוזה שימוש
+חוזר ואינם טענה שכל checkbox נלכד בנפרד; ראיית הסגירה היא שורת הדיווח המסוננת.
 
 ## לפני הפעלת הטיימר
 
@@ -86,8 +88,9 @@
 
 | Candidate SHA | התחלה/סיום (Asia/Jerusalem) | משך | 18/18 שקפים | UI מקומי | 5/5 תמונות גיבוי | Production | GitHub | הסברי בוחן | בסיס תצפית | תוצאה/הערה מסוננת |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `<candidate-sha>` | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | OWNER_ACTION_REQUIRED |
+| `4b77e2412336ed1151849c5db8d05d5947a46e45` | NOT_CAPTURED — owner לא שמר זמן מדויק | `OWNER_REPORTED_WITHIN_10:00–15:00` | PASS — OWNER_REPORTED 18/18 | OWNER_REPORTED_FALLBACK_USED; פרטי UI חי לא נשמרו | PASS — OWNER_REPORTED 5/5 | PASS — OWNER_REPORTED_OPENED | PASS — OWNER_REPORTED_OPENED | PASS — OWNER_REPORTED; פירוט מילולי לא נשמר | OWNER_REPORTED; agent לא צפה ולא נשמר screenshot | VERIFIED — OWNER_REPORTED_PASS |
 
-רק המציג והבוחן האנושיים רשאים להחליף את השורה. checkbox שנכשל משאיר את
-הרשומה פתוחה ומחייב לציין את הפעולה המדויקת שחסרה; אין להסתיר כשל באמצעות
-שינוי בדיקה, workflow, מצגת או checklist.
+השורה מולאה מתוך אישור owner מפורש מ־30.8.2026. ה־agent לא צפה בחזרה, וזמני
+התחלה/סיום, משך מדויק ו־screenshot לא נשמרו; אין כאן claim אחר. כשל עתידי או
+ראיה סותרת מחייבים לפתוח מחדש את הרשומה, ולא להסתירם באמצעות שינוי בדיקה,
+workflow, מצגת או checklist.

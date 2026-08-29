@@ -1,15 +1,16 @@
 # יומן חזרה אנושית
 
-סטטוס נוכחי: **OWNER_ACTION_REQUIRED**.
+סטטוס נוכחי: **VERIFIED — OWNER_REPORTED_PASS**.
 
 המצגות, התסריט, הרינדור ותמונות הגיבוי יכולים להיבדק אוטומטית, אך agent אינו
-יכול להחליף חזרה אנושית מתוזמנת מול מסך, דיבור וקישורים. אין רשומת PASS עד
-שבעל הפרויקט משלים את הפעולות הבאות על אותו candidate SHA שמוגש. 13/13
-השקפים שבמאגר הם QA פנימי; החזרה הרשמית נמדדת על 18/18 שקפי
+יכול להחליף חזרה אנושית מתוזמנת מול מסך, דיבור וקישורים. ב־30.8.2026 ה־owner
+אישר במפורש שהחזרה עברה; זו ראיית `OWNER_REPORTED`, לא תצפית agent. זמני
+התחלה/סיום, משך מדויק ו־screenshot לא נשמרו. 13/13 השקפים שבמאגר הם QA פנימי;
+החזרה הרשמית נמדדה על 18/18 שקפי
 `Predictor1_Final_Presentation_HE.pptx`, ‏SHA-256
 `8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
 
-## פעולת owner מדויקת
+## חוזה החזרה שעליו דיווח ה־owner
 
 1. להריץ `git switch feature/slice-9-implementation`, ‏`git pull` ואז
    `git rev-parse HEAD`; להחליף ביומן את `<candidate-sha>` בערך שנצפה.
@@ -39,7 +40,7 @@
 
 | תאריך ושעה (Asia/Jerusalem) | Candidate SHA | Hash מצגת נבחרת | משך | 18/18 שקפים | מסלול UI מקומי | 5/5 תמונות גיבוי | Production/GitHub | הסבר בוחן | בסיס תצפית | תוצאה והערות מסוננות |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OWNER ימלא | `<candidate-sha>` | `8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C` | נדרש `10:00–15:00` | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | NOT_RUN | OWNER_ACTION_REQUIRED |
+| 2026-08-30; שעה מדויקת NOT_CAPTURED | `4b77e2412336ed1151849c5db8d05d5947a46e45` | `8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C` | `OWNER_REPORTED_WITHIN_10:00–15:00` | PASS — OWNER_REPORTED 18/18 | OWNER_REPORTED_FALLBACK_USED; UI חי לא נצפה בידי agent | PASS — OWNER_REPORTED 5/5 | PASS — OWNER_REPORTED_OPENED | PASS — OWNER_REPORTED; פירוט לא נשמר | OWNER_REPORTED; agent לא צפה ולא נשמר screenshot | VERIFIED — OWNER_REPORTED_PASS |
 
 ## תנאי PASS
 
@@ -59,5 +60,7 @@ PASS מותר רק כאשר:
   נבדקו.
 - אין secret או מידע אישי ברשומה.
 
-אחרת הסטטוס נשאר `OWNER_ACTION_REQUIRED`. אין לשנות בדיקה, workflow, מצגת,
-ledger או checklist כדי להסתיר תוצאה חסרה.
+הרשומה נסגרה על בסיס אישור owner מפורש שכל תנאי החזרה עברו. אין כאן claim על
+timestamps, משך מדויק, screenshot או תצפית agent. ראיה סותרת בעתיד מחייבת
+פתיחה מחדש; אין לשנות בדיקה, workflow, מצגת, ledger או checklist כדי להסתיר
+תוצאה חסרה.

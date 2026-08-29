@@ -2,10 +2,11 @@
 
 Status: `OWNER_ACTION_REQUIRED`.
 
-זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק חמש רשומות
-פתוחות**, אך רק שלוש דורשות פעולה או קלט אנושיים; S9-DEF-012 ו־S9-REQ-003
-executable בידי agent לאחר merge. שתי רשומות שנסגרו נשמרות ברשימה לצורך
-traceability. בצעו את השערים הפתוחים על אותו final SHA, אך אל תסמנו PASS לפני
+זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק שלוש רשומות
+פתוחות**: S9-DEF-004, ‏S9-DEF-012 ו־S9-REQ-003. שתי רשומות pre-merge נוספות
+נסגרו ב־30.8.2026 לפי דיווח owner ונשמרות ברשימה לצורך traceability.
+S9-DEF-012 ו־S9-REQ-003 executable בידי agent לאחר merge. בצעו את השערים
+הפתוחים על אותו final SHA, אך אל תסמנו PASS לפני
 תצפית אמיתית. אישור owner להעביר ל־Ready, למזג ולפרסם כבר התקבל, אך אין לבצע
 Ready/merge לפני שכל שערי pre-merge המתועדים עברו על אותו exact candidate SHA;
 auto-merge ו־direct push אסורים. אין לפתוח, להעתיק, לצלם או לשמור secret,
@@ -22,26 +23,20 @@ auto-merge ו־direct push אסורים. אין לפתוח, להעתיק, לצל
 אין פעולת owner שנותרה לרשומה זו. אין להריץ listing גולמי שעלול לכלול עמודת
 value.
 
-## 2. S9-DEF-022 — spot-check קצר של Chrome page zoom
+## 2. S9-DEF-022 — נסגר בדיווח owner
+
+Status: `VERIFIED — OWNER_REPORTED_PASS` ב־30.8.2026 על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`.
 
 מטריצת forced browser scale מלאה כבר עברה 10/10 על
-360/390/768/1024/1440, עם `--force-device-scale-factor=2`, ‏DPR 2 ובלי
-viewport emulation. היא כוללת שמות, contrast, סדר/focus, יעדי 44×44,
-clipping/overlap/overflow וכל מצב rejection. דגל device scale אינו אותו
-מנגנון כמו פקד page zoom, ולכן נשארת רק בדיקת rounding/reflow קצרה.
+360/390/768/1024/1440. בנוסף, ה־owner אישר שב־Chrome רגיל נבחר Menu → Zoom →
+`200%`, ובוצע מעבר keyboard-only על `/admin/matches`, ‏
+`/leagues/<owned-league>/members` כולל invalid rejection, ועל
+`/leagues/<owned-league>/settings`. ה־focus נשאר גלוי ולא נצפו clipping,
+overlap או horizontal page scroll.
 
-**איפה:** Chrome רגיל, על production build מקומי של ה־final SHA; Menu → Zoom →
-`200%`. אין להשתמש ב־CSS zoom או ב־DevTools Device Toolbar/device emulation.
-
-**פעולה יחידה (כ־4 דקות):** לעבור keyboard-only על `/admin/matches`, ‏
-`/leagues/<owned-league>/members` ו־`/leagues/<owned-league>/settings` כאשר
-Zoom נשאר 200%. בכל מסך לבדוק focus גלוי, שאין control/text חתוך או חופף ושאין
-horizontal page scroll. ב־members לעבור ב־Tab את כל scroller הניווט ולהפעיל
-את rejection הפסול המתועד; textarea, ‏help+error ו־alert חייבים להישאר גלויים.
-
-**ראיה לשמור:** צילום מצונזר אחד של members/error ו־
-`S9-DEF-022/01-chrome-page-zoom-200-spot-check.txt` עם SHA, גרסת Chrome,
-שלושת שמות המסכים ו־PASS/FAIL בלבד.
+**בסיס הראיה:** `OWNER_REPORTED`. שילוב Chrome של ה־agent לא היה זמין; שעה
+מדויקת, גרסת Chrome ו־screenshot לא נשמרו, ולכן הרשומה אינה טוענת להם.
 
 **אימות לאחר הפעולה:** Local Supabase בלבד.
 
@@ -167,7 +162,10 @@ npm.cmd run owner-runbooks:check
 git status --short
 ```
 
-## 7. S9-REQ-002 — חזרה אנושית רציפה 10–15 דקות
+## 7. S9-REQ-002 — נסגר בדיווח owner
+
+Status: `VERIFIED — OWNER_REPORTED_PASS` ב־30.8.2026 על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`.
 
 **איפה:** production build מקומי של ה־exact candidate SHA; קישור Production
 הציבורי נפתח read-only רק לפי התסריט. `Predictor1_Final_Presentation_HE.pptx`
@@ -175,24 +173,28 @@ git status --short
 מראש. המצגת בת 13 השקפים שבמאגר היא QA פנימי בלבד; hash המצגת הרשמית הוא
 `8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
 
-**פעולה יחידה:** presenter אנושי מבצע פעם אחת את
+**תוצאה שדווחה:** presenter אנושי ביצע פעם אחת את
 המסלול הרשמי ב־`presentation/timing-guide.md` ואת
 `presentation/demo-script.md` עם timer רציף, בלי database mutation שמזייף
 שלב מוצרי. במקרה outage עוברים לתמונת fallback המתאימה תוך 20 שניות
-ומצהירים מה לא נצפה. משך נדרש: 10:00–15:00 ו־18/18 שקפים.
+ומצהירים מה לא נצפה. ה־owner אישר משך בתוך 10:00–15:00, ‏18/18 שקפים, 5/5
+fallback ופתיחת Production ו־GitHub.
 
-**ראיה לשמור:** למלא את כל השורות ב־`presentation/evaluator-checklist.md` ואת
-השורה האנושית ב־`presentation/rehearsal-log.md`: candidate SHA, זמן התחלה/סיום,
-משך, כל שקפי הקובץ הסופי שנבחר, Production/GitHub, fallback ותוצאה; ללא
+**בסיס הראיה:** `OWNER_REPORTED`. ה־agent לא צפה בחזרה; זמן התחלה/סיום, משך
+מדויק ו־screenshot לא נשמרו. התוצאה המסוננת נמצאת ב־
+`presentation/evaluator-checklist.md` וב־`presentation/rehearsal-log.md` ללא
 account/credential.
 
 **אימות לאחר הפעולה:** 
 
 ```powershell
 npm.cmd run presentation:check
-npm.cmd run docs:submission:check -- --online
+npm.cmd run docs:submission:check
 git diff --check
 ```
 
-לאחר חמש הרשומות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל
+האימות `docs:submission:check -- --online` נדחה בכוונה עד לאחר שהמאגר
+פורסם ואומת אנונימית; הוא אינו יכול לעבור כל עוד המאגר Private.
+
+לאחר שלוש הרשומות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל
 ל־PASS על בסיס כוונה, צילום חסר או תוצאה מ־SHA אחר.

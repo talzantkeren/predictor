@@ -17,7 +17,7 @@ const workflow = readFileSync(
 
 describe("derived project book contract", () => {
   it("uses rerun counts and the current Slice 8/9 state", () => {
-    expect(source).toContain("גרסה 1.3");
+    expect(source).toContain("גרסה 1.4");
     expect(source).toContain("PASS — מטריצת RULES מלאה");
     expect(source).toContain("PASS — מטריצת DATA מלאה");
     expect(source).toContain("PASS — מטריצת FLOWS מלאה");

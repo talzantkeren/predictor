@@ -691,7 +691,10 @@ indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב
 הרוחבים 360/390/768/1024/1440. ה־gate מאמת את שורת הפקודה, ‏DPR 2,
 `visualViewport.scale=1`, raster כפול והיעדר viewport emulation, ומריץ את כל
 המסכים והחוזים של המטריצה. מאחר ש־Chromium מפריד בין device scale לבין
-HostZoomMap/page zoom, נשאר spot-check קצר של שלושה מסכים עם Chrome Zoom=200%.
+HostZoomMap/page zoom, נדרש גם spot-check קצר של שלושה מסכים עם Chrome
+Zoom=200%. ב־30.8.2026 ה־owner אישר PASS על candidate `4b77e24` בשלושת
+המסכים, keyboard-only וללא clipping/overlap/page scroll. זו ראיית
+`OWNER_REPORTED`; גרסה, שעה ו־screenshot לא נשמרו.
 
 רגרסיית `e2e/accessibility-matrix.spec.ts` מריצה בנוסף את דפי הכניסה הציבוריים
 `/`, ‏`/login`, ‏`/register` ו־`/forgot-password` בכל אחד מהרוחבים

@@ -80,12 +80,12 @@ multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מ
 
 | Gate | רשומה | Status | גבול |
 | --- | --- | --- | --- |
-| Chrome page zoom 200% | `S9-DEF-022` | TRACKED_BY_RECORD | forced browser-scale matrix עברה; נשאר spot-check אנושי קצר של פקד Zoom בשלושה מסכים |
+| Chrome page zoom 200% | `S9-DEF-022` | TRACKED_BY_RECORD | הרשומה המקורית `S9-DEF-022` נסגרה `VERIFIED — OWNER_REPORTED_PASS`: forced browser-scale matrix עברה; ב־30.8 ה־owner אישר native Chrome Menu Zoom=200% PASS בשלושת המסכים. ללא screenshot/שעה/גרסה שמורים |
 | Vercel secret scope | `S9-DEF-025` | TRACKED_BY_RECORD | הסרת Preview ללא Reveal ו־Preview verification |
 | Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final acceptance רק אחרי merge; לא נוסה כאן |
 | Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | 19 migrations נשארו local-only; לא נפרסו כאן |
 | Public repository access | `S9-REQ-003` | TRACKED_BY_RECORD | לאחר כל השערים: visibility Public, ‏anonymous README/main/final SHA ו־clean clone; Demo access נשאר מחוץ ל־Git אם נדרש |
-| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | המצגת הרשמית שנבחרה כוללת 18 שקפים; 13 השקפים שבמאגר הם QA פנימי. נדרשת הרצה אנושית מדודה 10–15 דקות על 18/18 |
+| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | הרשומה המקורית `S9-REQ-002` נסגרה `VERIFIED — OWNER_REPORTED_PASS`: המצגת הרשמית כוללת 18 שקפים; ב־30.8 ה־owner אישר חזרה בטווח 10–15 דקות על 18/18, 5/5 fallback ופתיחת הקישורים. משך מדויק לא נשמר |
 | Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias אחרי merge בלבד |
 
 ## ראיות
