@@ -1,0 +1,200 @@
+# פעולות owner לסגירת Slice 9
+
+Status: `OWNER_ACTION_REQUIRED`.
+
+זהו סדר העבודה המהיר ביותר לפתיחת התלויות. נשארו כאן **בדיוק שלוש רשומות
+פתוחות**: S9-DEF-004, ‏S9-DEF-012 ו־S9-REQ-003. שתי רשומות pre-merge נוספות
+נסגרו ב־30.8.2026 לפי דיווח owner ונשמרות ברשימה לצורך traceability.
+S9-DEF-012 ו־S9-REQ-003 executable בידי agent לאחר merge. בצעו את השערים
+הפתוחים על אותו final SHA, אך אל תסמנו PASS לפני
+תצפית אמיתית. אישור owner להעביר ל־Ready, למזג ולפרסם כבר התקבל, אך אין לבצע
+Ready/merge לפני שכל שערי pre-merge המתועדים עברו על אותו exact candidate SHA;
+auto-merge ו־direct push אסורים. אין לפתוח, להעתיק, לצלם או לשמור secret,
+כתובת נמען, סיסמה, cookie, signed URL או payload של provider.
+
+## 1. S9-DEF-025 — נסגר
+
+`VERIFIED` ב־28 באוגוסט 2026. רשומת ה־Sensitive הקיימת צומצמה ל־Production
+בלבד באמצעות עדכון target בלבד, בלי לקרוא, להדפיס, למשוך או להזין מחדש את
+הערך. Preview חדש הגיע ל־READY ועבר smoke במצב Manual ללא key; סריקות bundle
+ולוגים עברו, ונצפתה המשכיות Cron ב־Production בקריאה בלבד. המטריצה המסוננת
+נמצאת ב־`docs/evidence/slice-9/w5/S9-DEF-025-environment-scope-matrix.md`.
+
+אין פעולת owner שנותרה לרשומה זו. אין להריץ listing גולמי שעלול לכלול עמודת
+value.
+
+## 2. S9-DEF-022 — נסגר בדיווח owner
+
+Status: `VERIFIED — OWNER_REPORTED_PASS` ב־30.8.2026 על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`.
+
+מטריצת forced browser scale מלאה כבר עברה 10/10 על
+360/390/768/1024/1440. בנוסף, ה־owner אישר שב־Chrome רגיל נבחר Menu → Zoom →
+`200%`, ובוצע מעבר keyboard-only על `/admin/matches`, ‏
+`/leagues/<owned-league>/members` כולל invalid rejection, ועל
+`/leagues/<owned-league>/settings`. ה־focus נשאר גלוי ולא נצפו clipping,
+overlap או horizontal page scroll.
+
+**בסיס הראיה:** `OWNER_REPORTED`. שילוב Chrome של ה־agent לא היה זמין; שעה
+מדויקת, גרסת Chrome ו־screenshot לא נשמרו, ולכן הרשומה אינה טוענת להם.
+
+**אימות לאחר הפעולה:** Local Supabase בלבד.
+
+```powershell
+npm.cmd run test:e2e -- e2e/accessibility-matrix.spec.ts
+npm.cmd run test:a11y:native-scale
+npx.cmd vitest run src/lib/admin-loading-accessibility.test.ts
+```
+
+## 3. S9-REQ-003 — final Production ופרסום Public
+
+**איפה:** PowerShell; GitHub Actions/PR; Supabase Production SQL Editor; Vercel
+Deployments; חלון Chrome Incognito; GitHub Settings → General, Branches/Rulesets
+ו־Code security and analysis.
+
+**קלט owner:** אישור הפרסום וה־author metadata התקבל ב־29.8.2026. אין צורך
+בזהות GitHub של evaluator. שיטת גישת Demo, אם נדרשת, נשארת out-of-band ואין
+למסור credential ב־Git או בראיה.
+
+**פעולת agent לאחר merge:** לבצע מתחילתו ועד סופו את
+`docs/runbooks/slice-9-req-003-final-production-review.md`: להקפיא את
+final/main SHA ואת merge commit, לקשור אליו CI ירוק בכל שלושת ה־jobs, להשוות
+Hosted migrations, לשמור env names/scopes, לקשור את Production לאותו Source
+SHA, לאמת immutable URL ו־alias ב־incognito כ־HTTP 200/Demo-only, לשמור snapshot
+של הגנות GitHub, להעביר ל־Public, לאמת README/default `main`/final SHA ו־clean
+clone ללא credentials, ואז לבדוק מחדש protection/rulesets ו־secret
+scanning/push protection ולבצע rescan מלא לאחר הפרסום. כל עוד שערי pre-merge
+לא עברו, PR #14 נשאר Draft; לאחר שיעברו, ההרשאה שכבר ניתנה מאפשרת Ready
+ו־reviewed merge.
+
+**ראיה לשמור:** למלא
+`docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md` ולשמור רק את קובצי
+ה־CI/migrations/env/Production/GitHub המצונזרים שה־runbook מגדיר. סיסמאות Demo
+נשארות מחוץ ל־Git.
+
+**אימות לאחר הפעולה:** 
+
+```powershell
+gh run view <final-run-id> --json databaseId,attempt,headSha,status,conclusion,jobs,url
+gh pr view 14 --json number,isDraft,state,headRefOid,mergeCommit,mergedAt,url
+npm.cmd run submission:evidence:check
+npm.cmd run owner-runbooks:check
+npm.cmd run docs:submission:check -- --online
+```
+
+## 4. S9-DEF-012 — tick טבעי אחד של Production Cron (agent אחרי merge)
+
+**איפה:** Vercel → predictor → Deployments → Production → Source; Supabase
+Dashboard → SQL Editor → New query.
+
+**קלט owner:** אין. לאחר merge ו־Production deploy, סוכן מאומת מבצע את
+`docs/runbooks/slice-9-def-012-production-cron.md`: להוכיח SHA, migration
+`20260827170000`, job יחיד `predictor-sports-sync` עם timeout 45s, ואז להמתין
+ל־tick טבעי ולחבר response בטוח אחד ל־terminal `sync_runs` יחיד ול־lease
+משוחרר. אין להפעיל route עם secret, לשנות schedule או ליצור Cron שני.
+
+**ראיה לשמור:** למלא
+`docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md`; לשמור בחבילת owner את
+חמשת הארטיפקטים `S9-DEF-012/01-...` עד `05-...` המוגדרים ב־runbook, ורק את
+העמודות המסוננות. אפשר לבצע את פעולות 5–6 בזמן ההמתנה ל־tick.
+
+**אימות לאחר הפעולה:** Local Supabase בלבד.
+
+```powershell
+npm.cmd run test -- src/app/api/cron/sync/route.test.ts src/features/sync/orchestrator.test.ts
+npx.cmd --no-install supabase test db supabase/tests/slice9-sync-cron-budget.test.sql supabase/tests/sync-api-football.test.sql
+npm.cmd run owner-runbooks:check
+```
+
+## 5. S9-REQ-005 — Hosted password policy ו־Advisors
+
+Status: `VERIFIED` ב־28.8.2026. אין owner action שנותרה.
+
+ה־Management API וה־CLI נקראו בפועל ללא שינוי Auth וללא חשיפת credential.
+הפער 8–128 מול תקרת GoTrue של 72 בתים תוקן בקוד ובבדיקות. כל 28 ממצאי
+Security Advisor הראשוניים וכל 20 ממצאי Performance Advisor קיבלו disposition.
+שתי אזהרות `rls_auto_enable` תוקנו ב־migration קדימה מבודד וה־Advisor הורץ
+מחדש; leaked-password protection נצפה כבוי ונשאר accepted risk של
+`S9-TDEC-004`.
+
+**ראיה:** `docs/evidence/slice-9/w8/S9-REQ-005.md` ושלושת קובצי ה־export
+המקושרים ממנו. הם מכילים רק שדות allowlisted ותוצאות מסוננות, ללא
+project/account IDs או ערכי secret.
+
+**אימות הרשומה:**
+
+```powershell
+npm.cmd run hardening:check
+npm.cmd run lint
+git diff --check
+```
+
+## 6. S9-DEF-004 — Hosted confirmation/recovery
+
+**איפה:** Supabase Production → Authentication → URL Configuration, SMTP
+Settings, Email Templates, Rate Limits; Chrome private profile על Production;
+mailbox disposable מאושר.
+
+ה־Email provider נצפה Enabled, השירות המובנה פעיל במכסה של שתי הודעות לשעה
+ולא נדרשת רכישת SMTP. שני callback entries היסטוריים של Preview עדיין קיימים;
+agent יסיר אותם לאחר merge דרך URL Configuration בלי secret.
+
+**Checkpoint לפני merge:** הושלם לפי דיווח owner ב־29.8.2026. ה־owner יזם
+recovery חדש דרך Production באותו מכשיר ודיווח על callback, עדכון סיסמה,
+replay denial, old-password denial ו־new-password login. הכתובת, הקישור,
+ה־cookies והסיסמאות לא נשמרו. UTC מדויק ו־artifact דפדפן לא נלכדו.
+
+**פעולת agent:** לבצע את
+`docs/runbooks/slice-9-def-004-hosted-auth.md`. לאחר merge להסיר את ה־Preview
+callbacks ולצלם מחדש confirmation/recovery/known-unknown/429 על final SHA.
+ה־owner נדרש רק לאשר את בקשת ה־final ולהשלים את קישור ה־mailbox באותו דפדפן;
+אין לשמור כתובת, password, callback query או provider response.
+
+**ראיה לשמור:** למלא
+`docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; לשמור בחבילת owner את
+הארטיפקטים המצונזרים `S9-DEF-004/01-...` עד `10-...` לפי ה־runbook.
+
+**אימות לאחר הפעולה:** Local Supabase/Mailpit בלבד.
+
+```powershell
+npm.cmd run test:e2e -- e2e/auth.spec.ts
+npm.cmd run owner-runbooks:check
+git status --short
+```
+
+## 7. S9-REQ-002 — נסגר בדיווח owner
+
+Status: `VERIFIED — OWNER_REPORTED_PASS` ב־30.8.2026 על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`.
+
+**איפה:** production build מקומי של ה־exact candidate SHA; קישור Production
+הציבורי נפתח read-only רק לפי התסריט. `Predictor1_Final_Presentation_HE.pptx`
+בת 18 השקפים, שתי sessions מורשות ותמונות `presentation/fallback/` פתוחות
+מראש. המצגת בת 13 השקפים שבמאגר היא QA פנימי בלבד; hash המצגת הרשמית הוא
+`8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
+
+**תוצאה שדווחה:** presenter אנושי ביצע פעם אחת את
+המסלול הרשמי ב־`presentation/timing-guide.md` ואת
+`presentation/demo-script.md` עם timer רציף, בלי database mutation שמזייף
+שלב מוצרי. במקרה outage עוברים לתמונת fallback המתאימה תוך 20 שניות
+ומצהירים מה לא נצפה. ה־owner אישר משך בתוך 10:00–15:00, ‏18/18 שקפים, 5/5
+fallback ופתיחת Production ו־GitHub.
+
+**בסיס הראיה:** `OWNER_REPORTED`. ה־agent לא צפה בחזרה; זמן התחלה/סיום, משך
+מדויק ו־screenshot לא נשמרו. התוצאה המסוננת נמצאת ב־
+`presentation/evaluator-checklist.md` וב־`presentation/rehearsal-log.md` ללא
+account/credential.
+
+**אימות לאחר הפעולה:** 
+
+```powershell
+npm.cmd run presentation:check
+npm.cmd run docs:submission:check
+git diff --check
+```
+
+האימות `docs:submission:check -- --online` נדחה בכוונה עד לאחר שהמאגר
+פורסם ואומת אנונימית; הוא אינו יכול לעבור כל עוד המאגר Private.
+
+לאחר שלוש הרשומות הפתוחות, כל failure נשאר גלוי ברשומה שלו. אין להמיר כשל
+ל־PASS על בסיס כוונה, צילום חסר או תוצאה מ־SHA אחר.

@@ -849,7 +849,7 @@ select throws_ok(
 select pg_temp.set_proof_actor('62000000-0000-4000-8000-000000000002');
 select is(
   (select proofs -> 0 ->> 'id'
-   from public.get_my_join_requests()
+   from public.get_my_join_requests_page()
    where request_id = (select request_id from proof_test_context where label = 'league-a')),
   '81000000-0000-4000-8000-000000000005',
   'safe proof history uses uploaded_at DESC then id DESC and omits deleted rows'

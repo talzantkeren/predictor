@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
+import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { AppHeader } from "@/features/auth/components/app-header";
 import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
 import { getInviteAccessTokenHash } from "@/features/membership/invite-access-server";
@@ -213,38 +215,60 @@ export default async function InvitePage({
   params: Promise<{ publicId: string }>;
 }) {
   const { publicId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const authenticatedNavigation = user ? <AppHeader /> : undefined;
 
   if (!isValidInvitePublicId(publicId)) {
-    return <UnavailableInvite />;
+    return (
+      <UnavailableInvite
+        authenticatedNavigation={authenticatedNavigation}
+      />
+    );
   }
 
   const tokenHash = await getInviteAccessTokenHash(publicId);
   if (!tokenHash) {
-    return <InviteBootstrap publicId={publicId} />;
+    return (
+      <InviteBootstrap
+        authenticatedNavigation={authenticatedNavigation}
+        publicId={publicId}
+      />
+    );
   }
 
-  const supabase = await createClient();
   const result = await resolveInvite(supabase, publicId, tokenHash);
 
   if (result.status !== "found") {
-    return <InviteBootstrap publicId={publicId} />;
+    return (
+      <InviteBootstrap
+        authenticatedNavigation={authenticatedNavigation}
+        publicId={publicId}
+      />
+    );
   }
 
   const resolution = result.data;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      {resolution.viewerState !== "guest" ? <AppHeader /> : null}
-      <main className="px-4 py-8 sm:px-6 sm:py-12">
-      <InviteFragmentScrubber />
-      <div className="mx-auto max-w-3xl space-y-6">
+      {resolution.viewerState !== "guest" ? <AppHeader /> : <SkipToMainLink />}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="px-4 py-8 outline-none sm:px-6 sm:py-12"
+      >
+        <InviteFragmentScrubber />
+        <div className="mx-auto max-w-3xl space-y-6">
         <section
           aria-labelledby="invite-title"
           className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
         >
           <p className="text-sm font-semibold text-blue-700">הזמנה לליגה פרטית</p>
           <h1 id="invite-title" className="mt-2 break-words text-3xl font-bold tracking-tight">
-            {resolution.leagueName}
+            <IsolatedText>{resolution.leagueName}</IsolatedText>
           </h1>
           <dl className="mt-5 grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
             <div>
@@ -270,7 +294,7 @@ export default async function InvitePage({
             <div className="mt-5">
               <h2 className="font-bold">הוראות Demo</h2>
               <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-700">
-                {resolution.demoPaymentInstructions}
+                <IsolatedText>{resolution.demoPaymentInstructions}</IsolatedText>
               </p>
             </div>
           ) : null}
@@ -297,7 +321,7 @@ export default async function InvitePage({
             <InviteViewerPanel resolution={resolution} publicId={publicId} />
           </div>
         </section>
-      </div>
+        </div>
       </main>
     </div>
   );

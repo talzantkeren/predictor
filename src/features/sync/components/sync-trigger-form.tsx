@@ -22,8 +22,8 @@ export function SyncTriggerForm() {
         <div>
           <h2 className="font-bold text-blue-950">הפעלה ידנית מאובטחת</h2>
           <p className="mt-1 text-sm leading-6 text-blue-900">
-            ההפעלה עוקפת את חלון הזמן בלבד. היא עדיין כפופה ל־lease ול־fencing,
-            ולעולם אינה חושפת מפתח ספק לדפדפן.
+            במסלול הידני נשמר קטלוג Demo מקומי ללא קריאת רשת. ספק חי עדיין
+            כפוף ל־lease ול־fencing, ומפתח הספק לעולם אינו נחשף לדפדפן.
           </p>
         </div>
         <button

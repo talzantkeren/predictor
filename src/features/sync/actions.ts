@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAuthenticatedUser } from "@/features/auth/session";
 import { getSystemAdminAuthorization } from "@/features/scoring/queries";
+import { getSyncSkipReasonLabel } from "@/features/sync/display";
 import { runSportsSync } from "@/features/sync/orchestrator";
 import { getSportsSyncEnv } from "@/lib/env";
 
@@ -51,19 +52,19 @@ export async function triggerSportsSyncAction(
     if (result.status === "succeeded") {
       return {
         status: "success",
-        message: "הסנכרון הושלם. יומן הריצות עודכן.",
+        message:
+          result.reason === "MANUAL_APPLIED"
+            ? "קטלוג ההדגמה הידני נשמר. יומן הריצות עודכן."
+            : result.reason === "MANUAL_NO_CHANGE"
+              ? "קטלוג ההדגמה הידני כבר מעודכן. יומן הריצות עודכן."
+              : "הסנכרון הושלם. יומן הריצות עודכן.",
         runId: result.runId,
       };
     }
     if (result.status === "skipped") {
       return {
         status: "skipped",
-        message:
-          result.reason === "CONCURRENT_ATTEMPT"
-            ? "ריצה אחרת כבר פעילה; לא נשלחה קריאה נוספת לספק."
-            : result.reason === "MANUAL_PROVIDER"
-              ? "המערכת מוגדרת לספק ידני ולכן לא נשלחה קריאת רשת."
-              : "לא הייתה עבודה שמועד ביצועה הגיע.",
+        message: getSyncSkipReasonLabel(result.reason),
         ...(result.runId ? { runId: result.runId } : {}),
       };
     }

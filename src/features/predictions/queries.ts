@@ -3,20 +3,70 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getUtcDateRange } from "@/features/predictions/display";
 import type {
   EligibleLeague,
+  EligibleLeaguePage,
   LeagueMatchItem,
   LeagueMatchList,
   MatchDetail,
   MatchListFilter,
+  MatchStatus,
   OwnPrediction,
 } from "@/features/predictions/types";
+import {
+  eligibleLeaguePageRpcSchema,
+  matchDetailContextRpcSchema,
+  matchSelectionContextRpcSchema,
+  revealedPredictionPageRpcSchema,
+  type MatchContextRpcRow,
+  type MatchDetailContextRpcRow,
+} from "@/features/predictions/schemas";
+import {
+  buildKeysetPage,
+  getPostgrestKeysetFilter,
+  type KeysetCursor,
+} from "@/lib/keyset-pagination";
 import type { Database } from "@/types/database.generated";
 
-const MAX_MATCHES_PER_SEASON = 500;
-const MATCH_QUERY_LIMIT = MAX_MATCHES_PER_SEASON + 1;
-const MAX_LEAGUES_PER_USER = 100;
-const MAX_ACTIVE_MEMBERS_PER_LEAGUE = 200;
+const MATCH_PAGE_SIZE = 25;
+const ELIGIBLE_LEAGUE_PAGE_SIZE = 20;
+const REVEALED_PREDICTION_PAGE_SIZE = 25;
 
 type PredictionRow = Database["public"]["Tables"]["predictions"]["Row"];
+type LeagueMatchResultRow =
+  Database["public"]["Views"]["league_match_results"]["Row"];
+type ValidLeagueMatchResultRow = LeagueMatchResultRow & {
+  id: string;
+  round_number: number;
+  kickoff_at: string;
+  status: MatchStatus;
+  home_team_id: string;
+  home_team_name: string;
+  away_team_id: string;
+  away_team_name: string;
+};
+
+const matchStatuses = [
+  "scheduled",
+  "live",
+  "finished",
+  "postponed",
+  "canceled",
+] as const satisfies readonly MatchStatus[];
+
+function isValidLeagueMatchResultRow(
+  row: LeagueMatchResultRow,
+): row is ValidLeagueMatchResultRow {
+  return (
+    typeof row.id === "string" &&
+    Number.isSafeInteger(row.round_number) &&
+    typeof row.kickoff_at === "string" &&
+    typeof row.status === "string" &&
+    (matchStatuses as readonly string[]).includes(row.status) &&
+    typeof row.home_team_id === "string" &&
+    typeof row.home_team_name === "string" &&
+    typeof row.away_team_id === "string" &&
+    typeof row.away_team_name === "string"
+  );
+}
 
 function mapOwnPrediction(
   prediction: Pick<
@@ -56,6 +106,7 @@ export async function getLeagueMatchList(
   leagueId: string,
   userId: string,
   filter: MatchListFilter,
+  cursor?: KeysetCursor,
 ): Promise<
   | { status: "found"; data: LeagueMatchList }
   | { status: "not-found" }
@@ -73,13 +124,14 @@ export async function getLeagueMatchList(
   if (!league) return { status: "not-found" };
 
   let matchesQuery = supabase
-    .from("matches")
+    .from("league_match_results")
     .select(
-      "id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
+      "league_id, id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team_id, home_team_name, home_team_short_name, away_team_id, away_team_name, away_team_short_name",
     )
-    .eq("season_id", league.season_id)
+    .eq("league_id", league.id)
     .order("kickoff_at", { ascending: true })
-    .limit(MATCH_QUERY_LIMIT);
+    .order("id", { ascending: true })
+    .limit(MATCH_PAGE_SIZE + 1);
 
   if (filter?.kind === "round") {
     matchesQuery = matchesQuery.eq("round_number", filter.round);
@@ -90,8 +142,13 @@ export async function getLeagueMatchList(
       .lt("kickoff_at", range.end);
   }
 
-  const [membershipResult, clock, matchesResult, roundsResult] =
-    await Promise.all([
+  if (cursor) {
+    matchesQuery = matchesQuery.or(
+      getPostgrestKeysetFilter("kickoff_at", "ascending", cursor),
+    );
+  }
+
+  const [membershipResult, clock, matchesResult] = await Promise.all([
       supabase
         .from("league_members")
         .select("status")
@@ -100,34 +157,24 @@ export async function getLeagueMatchList(
         .maybeSingle(),
       getPredictionDatabaseTime(supabase),
       matchesQuery,
-      supabase
-        .from("matches")
-        .select("round_number")
-        .eq("season_id", league.season_id)
-        .order("round_number", { ascending: true })
-        .limit(MATCH_QUERY_LIMIT),
     ]);
 
   if (
     membershipResult.error ||
     !clock ||
     matchesResult.error ||
-    !matchesResult.data ||
-    roundsResult.error ||
-    !roundsResult.data
+    !matchesResult.data
   ) {
     return { status: "error" };
   }
 
-  if (
-    matchesResult.data.length > MAX_MATCHES_PER_SEASON ||
-    roundsResult.data.length > MAX_MATCHES_PER_SEASON
-  ) {
+  if (!matchesResult.data.every(isValidLeagueMatchResultRow)) {
     return { status: "error" };
   }
 
   const viewerIsActiveMember = membershipResult.data?.status === "active";
-  const matchIds = matchesResult.data.map((match) => match.id);
+  const visibleMatchRows = matchesResult.data.slice(0, MATCH_PAGE_SIZE);
+  const matchIds = visibleMatchRows.map((match) => match.id);
   const predictionsResult =
     viewerIsActiveMember && matchIds.length > 0
       ? await supabase
@@ -138,7 +185,7 @@ export async function getLeagueMatchList(
           .eq("league_id", leagueId)
           .eq("user_id", userId)
           .in("match_id", matchIds)
-          .limit(MAX_MATCHES_PER_SEASON)
+          .limit(MATCH_PAGE_SIZE)
       : { data: [], error: null };
 
   if (predictionsResult.error || !predictionsResult.data) {
@@ -151,28 +198,6 @@ export async function getLeagueMatchList(
     if (!mapped) return { status: "error" };
     predictionsByMatchId.set(prediction.match_id, mapped);
   }
-
-  const matches: LeagueMatchItem[] = matchesResult.data.map((match) => ({
-    id: match.id,
-    roundNumber: match.round_number,
-    kickoffAt: match.kickoff_at,
-    predictionsLockedAt: match.predictions_locked_at,
-    status: match.status,
-    providerStatus: match.provider_status,
-    homeScore: match.home_score,
-    awayScore: match.away_score,
-    homeTeam: {
-      id: match.home_team.id,
-      name: match.home_team.name,
-      shortName: match.home_team.short_name,
-    },
-    awayTeam: {
-      id: match.away_team.id,
-      name: match.away_team.name,
-      shortName: match.away_team.short_name,
-    },
-    ownPrediction: predictionsByMatchId.get(match.id) ?? null,
-  }));
 
   return {
     status: "found",
@@ -187,10 +212,32 @@ export async function getLeagueMatchList(
       viewerIsActiveMember,
       viewerIsManager: league.manager_id === userId,
       databaseNow: clock,
-      roundOptions: [
-        ...new Set(roundsResult.data.map((match) => match.round_number)),
-      ],
-      matches,
+      matches: buildKeysetPage(
+        matchesResult.data,
+        MATCH_PAGE_SIZE,
+        (match): LeagueMatchItem => ({
+          id: match.id,
+          roundNumber: match.round_number,
+          kickoffAt: match.kickoff_at,
+          predictionsLockedAt: match.predictions_locked_at,
+          status: match.status,
+          providerStatus: match.provider_status,
+          homeScore: match.home_score,
+          awayScore: match.away_score,
+          homeTeam: {
+            id: match.home_team_id,
+            name: match.home_team_name,
+            shortName: match.home_team_short_name,
+          },
+          awayTeam: {
+            id: match.away_team_id,
+            name: match.away_team_name,
+            shortName: match.away_team_short_name,
+          },
+          ownPrediction: predictionsByMatchId.get(match.id) ?? null,
+        }),
+        (match) => ({ at: match.kickoff_at, id: match.id }),
+      ),
     },
   };
 }
@@ -244,171 +291,199 @@ export async function getPredictionWriteAuthorization(
   return { status: "authorized" as const };
 }
 
+function mapMatchContext(row: MatchContextRpcRow): MatchDetail["match"] {
+  return {
+    id: row.match_id,
+    roundNumber: row.round_number,
+    kickoffAt: row.kickoff_at,
+    predictionsLockedAt: row.predictions_locked_at,
+    status: row.match_status,
+    providerStatus: row.provider_status,
+    homeScore: row.home_score,
+    awayScore: row.away_score,
+    homeTeam: {
+      id: row.home_team_id,
+      name: row.home_team_name,
+      shortName: row.home_team_short_name,
+    },
+    awayTeam: {
+      id: row.away_team_id,
+      name: row.away_team_name,
+      shortName: row.away_team_short_name,
+    },
+  };
+}
+
+function mapContextOwnPrediction(
+  row: MatchDetailContextRpcRow,
+): OwnPrediction | null {
+  if (
+    row.own_prediction_id === null ||
+    row.own_predicted_home_score === null ||
+    row.own_predicted_away_score === null ||
+    row.own_predicted_outcome === null ||
+    row.own_prediction_created_at === null ||
+    row.own_prediction_updated_at === null
+  ) {
+    return null;
+  }
+
+  return {
+    id: row.own_prediction_id,
+    predictedHomeScore: row.own_predicted_home_score,
+    predictedAwayScore: row.own_predicted_away_score,
+    predictedOutcome: row.own_predicted_outcome,
+    createdAt: row.own_prediction_created_at,
+    updatedAt: row.own_prediction_updated_at,
+  };
+}
+
+async function getEligibleLeaguePage(
+  supabase: SupabaseClient<Database>,
+  matchId: string,
+  cursor?: KeysetCursor,
+) {
+  const { data, error } = await supabase.rpc(
+    "get_match_eligible_leagues_page",
+    {
+      p_match_id: matchId,
+      p_page_size: ELIGIBLE_LEAGUE_PAGE_SIZE,
+      ...(cursor
+        ? {
+            p_cursor_created_at: cursor.at,
+            p_cursor_league_id: cursor.id,
+          }
+        : {}),
+    },
+  );
+  const parsed = eligibleLeaguePageRpcSchema.safeParse(data);
+  if (error || !parsed.success) return null;
+
+  return buildKeysetPage(
+    parsed.data,
+    ELIGIBLE_LEAGUE_PAGE_SIZE,
+    (league): EligibleLeague => ({
+      id: league.league_id,
+      name: league.league_name,
+      status: league.league_status,
+    }),
+    (league) => ({
+      at: league.league_created_at,
+      id: league.league_id,
+    }),
+  );
+}
+
 export async function getMatchDetail(
   supabase: SupabaseClient<Database>,
   matchId: string,
   userId: string,
-  requestedLeagueId?: string,
+  options: {
+    requestedLeagueId?: string;
+    eligibleLeagueCursor?: KeysetCursor;
+    revealedPredictionCursor?: KeysetCursor;
+  } = {},
 ): Promise<
   | { status: "found"; data: MatchDetail }
   | {
       status: "selection-required";
       match: MatchDetail["match"];
-      eligibleLeagues: EligibleLeague[];
+      eligibleLeagues: EligibleLeaguePage;
       databaseNow: string;
     }
   | { status: "not-found" }
   | { status: "error" }
 > {
-  const [matchResult, clock, membershipsResult] = await Promise.all([
-    supabase
-      .from("matches")
-      .select(
-        "id, season_id, round_number, kickoff_at, predictions_locked_at, status, provider_status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(id, name, short_name), away_team:teams!matches_away_team_id_fkey(id, name, short_name)",
-      )
-      .eq("id", matchId)
-      .maybeSingle(),
-    getPredictionDatabaseTime(supabase),
-    supabase
-      .from("league_members")
-      .select("league_id")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(MAX_LEAGUES_PER_USER),
-  ]);
-
-  if (
-    matchResult.error ||
-    membershipsResult.error ||
-    !membershipsResult.data ||
-    !clock
-  ) {
-    return { status: "error" };
-  }
-  if (!matchResult.data) return { status: "not-found" };
-
-  const match = matchResult.data;
-  const membershipLeagueIds = membershipsResult.data.map(
-    (membership) => membership.league_id,
+  const eligibleLeagues = await getEligibleLeaguePage(
+    supabase,
+    matchId,
+    options.eligibleLeagueCursor,
   );
-  if (membershipLeagueIds.length === 0) return { status: "not-found" };
+  if (!eligibleLeagues) return { status: "error" };
 
-  const { data: leagues, error: leaguesError } = await supabase
-    .from("leagues")
-    .select("id, name, status")
-    .in("id", membershipLeagueIds)
-    .eq("season_id", match.season_id)
-    .order("created_at", { ascending: true })
-    .limit(MAX_LEAGUES_PER_USER);
+  const selectedLeagueId =
+    options.requestedLeagueId ??
+    (options.eligibleLeagueCursor === undefined &&
+    eligibleLeagues.items.length === 1 &&
+    !eligibleLeagues.hasMore
+      ? eligibleLeagues.items[0]?.id
+      : undefined);
 
-  if (leaguesError || !leagues) return { status: "error" };
-  if (leagues.length === 0) return { status: "not-found" };
+  if (!selectedLeagueId) {
+    const { data, error } = await supabase.rpc(
+      "get_match_selection_context",
+      { p_match_id: matchId },
+    );
+    const parsed = matchSelectionContextRpcSchema.safeParse(data);
+    if (error || !parsed.success) return { status: "error" };
+    const context = parsed.data[0];
+    if (!context) return { status: "not-found" };
 
-  const eligibleLeagues: EligibleLeague[] = leagues.map((league) => ({
-    id: league.id,
-    name: league.name,
-    status: league.status,
-  }));
-  const mappedMatch: MatchDetail["match"] = {
-    id: match.id,
-    roundNumber: match.round_number,
-    kickoffAt: match.kickoff_at,
-    predictionsLockedAt: match.predictions_locked_at,
-    status: match.status,
-    providerStatus: match.provider_status,
-    homeScore: match.home_score,
-    awayScore: match.away_score,
-    homeTeam: {
-      id: match.home_team.id,
-      name: match.home_team.name,
-      shortName: match.home_team.short_name,
-    },
-    awayTeam: {
-      id: match.away_team.id,
-      name: match.away_team.name,
-      shortName: match.away_team.short_name,
-    },
-  };
-
-  const selectedLeague = requestedLeagueId
-    ? eligibleLeagues.find((league) => league.id === requestedLeagueId)
-    : eligibleLeagues.length === 1
-      ? eligibleLeagues[0]
-      : undefined;
-
-  if (requestedLeagueId && !selectedLeague) return { status: "not-found" };
-  if (!selectedLeague) {
     return {
       status: "selection-required",
-      match: mappedMatch,
+      match: mapMatchContext(context),
       eligibleLeagues,
-      databaseNow: clock,
+      databaseNow: context.database_time,
     };
   }
 
-  const { data: activeMembers, error: membersError } = await supabase
-    .from("league_members")
-    .select("user_id")
-    .eq("league_id", selectedLeague.id)
-    .eq("status", "active")
-    .order("approved_at", { ascending: true })
-    .limit(MAX_ACTIVE_MEMBERS_PER_LEAGUE);
-
-  if (membersError || !activeMembers) return { status: "error" };
-  const activeMemberIds = activeMembers.map((member) => member.user_id);
-  if (!activeMemberIds.includes(userId)) return { status: "not-found" };
-
-  const { data: predictions, error: predictionsError } = await supabase
-    .from("predictions")
-    .select(
-      "id, user_id, predicted_home_score, predicted_away_score, predicted_outcome, created_at, updated_at",
-    )
-    .eq("league_id", selectedLeague.id)
-    .eq("match_id", matchId)
-    .in("user_id", activeMemberIds)
-    .order("updated_at", { ascending: true })
-    .limit(MAX_ACTIVE_MEMBERS_PER_LEAGUE);
-
-  if (predictionsError || !predictions) return { status: "error" };
-  const predictionUserIds = predictions.map((prediction) => prediction.user_id);
-  const profilesResult =
-    predictionUserIds.length > 0
-      ? await supabase
-          .from("profiles")
-          .select("id, display_name")
-          .in("id", predictionUserIds)
-          .limit(MAX_ACTIVE_MEMBERS_PER_LEAGUE)
-      : { data: [], error: null };
-
-  if (profilesResult.error || !profilesResult.data) return { status: "error" };
-  const displayNames = new Map(
-    profilesResult.data.map((profile) => [profile.id, profile.display_name]),
+  const { data: detailData, error: detailError } = await supabase.rpc(
+    "get_match_detail_context",
+    { p_match_id: matchId, p_league_id: selectedLeagueId },
   );
+  const parsedDetail = matchDetailContextRpcSchema.safeParse(detailData);
+  if (detailError || !parsedDetail.success) return { status: "error" };
+  const detail = parsedDetail.data[0];
+  if (!detail) return { status: "not-found" };
 
-  let ownPrediction: OwnPrediction | null = null;
-  const revealedPredictions = [];
-  for (const prediction of predictions) {
-    const mapped = mapOwnPrediction(prediction);
-    const displayName = displayNames.get(prediction.user_id);
-    if (!mapped || !displayName) return { status: "error" };
-    if (prediction.user_id === userId) ownPrediction = mapped;
-    revealedPredictions.push({
-      ...mapped,
-      userId: prediction.user_id,
-      displayName,
-      isViewer: prediction.user_id === userId,
-    });
-  }
+  const { data: revealedData, error: revealedError } = await supabase.rpc(
+    "get_revealed_predictions_page",
+    {
+      p_league_id: selectedLeagueId,
+      p_match_id: matchId,
+      p_page_size: REVEALED_PREDICTION_PAGE_SIZE,
+      ...(options.revealedPredictionCursor
+        ? {
+            p_cursor_created_at: options.revealedPredictionCursor.at,
+            p_cursor_prediction_id: options.revealedPredictionCursor.id,
+          }
+        : {}),
+    },
+  );
+  const parsedRevealed = revealedPredictionPageRpcSchema.safeParse(revealedData);
+  if (revealedError || !parsedRevealed.success) return { status: "error" };
 
   return {
     status: "found",
     data: {
-      league: selectedLeague,
+      league: {
+        id: detail.league_id,
+        name: detail.league_name,
+        status: detail.league_status,
+      },
       eligibleLeagues,
-      match: mappedMatch,
-      databaseNow: clock,
-      ownPrediction,
-      revealedPredictions,
+      match: mapMatchContext(detail),
+      databaseNow: detail.database_time,
+      ownPrediction: mapContextOwnPrediction(detail),
+      revealedPredictions: buildKeysetPage(
+        parsedRevealed.data,
+        REVEALED_PREDICTION_PAGE_SIZE,
+        (prediction) => ({
+          id: prediction.prediction_id,
+          userId: prediction.user_id,
+          displayName: prediction.display_name,
+          isViewer: prediction.user_id === userId,
+          predictedHomeScore: prediction.predicted_home_score,
+          predictedAwayScore: prediction.predicted_away_score,
+          predictedOutcome: prediction.predicted_outcome,
+          createdAt: prediction.created_at,
+          updatedAt: prediction.updated_at,
+        }),
+        (prediction) => ({
+          at: prediction.created_at,
+          id: prediction.prediction_id,
+        }),
+      ),
     },
   };
 }

@@ -65,6 +65,28 @@ describe("API-Football domain normalization", () => {
     expect(longFallback.shortName.length).toBeLessThanOrEqual(30);
   });
 
+  it.each(["\u202a", "\u202e", "\u2067", "\u2069"])(
+    "rejects bidi control %j in provider team and round labels",
+    (control) => {
+      expect(() =>
+        mapApiFootballTeam({ id: 999997, name: `Future ${control}Team` }),
+      ).toThrow("could not be normalized safely");
+      expect(() => parseApiFootballRound(`Regular ${control}Season - 1`)).toThrow(
+        "could not be normalized safely",
+      );
+    },
+  );
+
+  it("keeps legitimate mixed Hebrew and Latin provider labels", () => {
+    expect(
+      mapApiFootballTeam({ id: 999996, name: "Maccabi תל אביב Academy" })
+        .providerName,
+    ).toBe("Maccabi תל אביב Academy");
+    expect(parseApiFootballRound("שלב Playoff - 1").label).toBe(
+      "שלב Playoff - 1",
+    );
+  });
+
   it("preserves all 26 recorded round labels and marks future stages for review", () => {
     const rounds = roundsEnvelope.response.map(parseApiFootballRound);
     expect(rounds).toHaveLength(26);

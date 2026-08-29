@@ -9,20 +9,32 @@ import {
   invokeMembershipRpc,
 } from "@/features/membership/rpc";
 import {
-  dashboardJoinRequestsRpcSchema,
+  activeLeagueMemberPageRpcSchema,
+  dashboardJoinRequestPageRpcSchema,
   inviteMetadataRpcSchema,
   inviteResolutionRpcSchema,
+  managerJoinRequestPageRpcSchema,
   unavailableInviteResolutionRpcSchema,
-  managerJoinRequestsRpcSchema,
 } from "@/features/membership/schemas";
 import type {
+  ActiveLeagueMember,
+  ActiveLeagueMemberPage,
   InviteMetadata,
   InviteResolution,
   JoinRequestDashboardItem,
+  JoinRequestDashboardPage,
   LeagueInviteSettings,
   ManagerJoinRequestItem,
+  ManagerJoinRequestPage,
 } from "@/features/membership/types";
+import {
+  buildKeysetPage,
+  type KeysetCursor,
+} from "@/lib/keyset-pagination";
 import type { Database } from "@/types/database.generated";
+
+const JOIN_REQUEST_PAGE_SIZE = 25;
+const ACTIVE_MEMBER_PAGE_SIZE = 25;
 
 export async function resolveInvite(
   supabase: SupabaseClient<Database>,
@@ -135,31 +147,61 @@ export async function getLeagueInviteSettings(
 
 export async function getMyJoinRequests(
   supabase: SupabaseClient<Database>,
+  cursor?: KeysetCursor,
 ): Promise<
-  | { ok: true; data: JoinRequestDashboardItem[] }
-  | { ok: false; data: [] }
+  | { ok: true; data: JoinRequestDashboardPage }
+  | { ok: false; data: JoinRequestDashboardPage }
 > {
   const { data, error } = await invokeMembershipRpc(
     supabase,
-    "get_my_join_requests_v2",
+    "get_my_join_requests_page",
+    {
+      p_page_size: JOIN_REQUEST_PAGE_SIZE,
+      ...(cursor
+        ? {
+            p_cursor_created_at: cursor.at,
+            p_cursor_request_id: cursor.id,
+          }
+        : {}),
+    },
   );
 
   if (error) {
-    return { ok: false, data: [] };
+    return {
+      ok: false,
+      data: { items: [], hasMore: false, nextCursor: null },
+    };
   }
 
-  const parsed = dashboardJoinRequestsRpcSchema.safeParse(data);
+  const parsed = dashboardJoinRequestPageRpcSchema.safeParse(data);
   return parsed.success
-    ? { ok: true, data: parsed.data }
-    : { ok: false, data: [] };
+    ? {
+        ok: true,
+        data: buildKeysetPage(
+          parsed.data,
+          JOIN_REQUEST_PAGE_SIZE,
+          (request): JoinRequestDashboardItem => request,
+          (request) => ({ at: request.createdAt, id: request.requestId }),
+        ),
+      }
+    : {
+        ok: false,
+        data: { items: [], hasMore: false, nextCursor: null },
+      };
 }
 
 export async function getManagerJoinRequests(
   supabase: SupabaseClient<Database>,
   leagueId: string,
   userId: string,
+  cursor?: KeysetCursor,
+  status?: ManagerJoinRequestItem["status"],
 ): Promise<
-  | { status: "found"; league: { id: string; name: string }; requests: ManagerJoinRequestItem[] }
+  | {
+      status: "found";
+      league: { id: string; name: string };
+      requests: ManagerJoinRequestPage;
+    }
   | { status: "not-found" }
   | { status: "error" }
 > {
@@ -174,13 +216,88 @@ export async function getManagerJoinRequests(
 
   const { data, error } = await invokeMembershipRpc(
     supabase,
-    "get_manager_join_requests",
-    { p_league_id: leagueId },
+    "get_manager_join_requests_page",
+    {
+      p_league_id: leagueId,
+      p_page_size: JOIN_REQUEST_PAGE_SIZE,
+      ...(status ? { p_status: status } : {}),
+      ...(cursor
+        ? {
+            p_cursor_created_at: cursor.at,
+            p_cursor_request_id: cursor.id,
+          }
+        : {}),
+    },
   );
   if (error) return { status: "error" };
 
-  const parsed = managerJoinRequestsRpcSchema.safeParse(data);
+  const parsed = managerJoinRequestPageRpcSchema.safeParse(data);
   return parsed.success
-    ? { status: "found", league: { id: league.id, name: league.name }, requests: parsed.data }
+    ? {
+        status: "found",
+        league: { id: league.id, name: league.name },
+        requests: buildKeysetPage(
+          parsed.data,
+          JOIN_REQUEST_PAGE_SIZE,
+          (request): ManagerJoinRequestItem => request,
+          (request) => ({ at: request.createdAt, id: request.requestId }),
+        ),
+      }
+    : { status: "error" };
+}
+
+export async function getActiveLeagueMembersPage(
+  supabase: SupabaseClient<Database>,
+  leagueId: string,
+  userId: string,
+  cursor?: KeysetCursor,
+): Promise<
+  | {
+      status: "found";
+      league: { id: string; name: string };
+      members: ActiveLeagueMemberPage;
+      viewerIsManager: boolean;
+    }
+  | { status: "not-found" }
+  | { status: "error" }
+> {
+  const { data: league, error: leagueError } = await supabase
+    .from("leagues")
+    .select("id, name, manager_id")
+    .eq("id", leagueId)
+    .maybeSingle();
+
+  if (leagueError) return { status: "error" };
+  if (!league) return { status: "not-found" };
+
+  const { data, error } = await invokeMembershipRpc(
+    supabase,
+    "get_active_league_members_page",
+    {
+      p_league_id: leagueId,
+      p_page_size: ACTIVE_MEMBER_PAGE_SIZE,
+      ...(cursor
+        ? {
+            p_cursor_approved_at: cursor.at,
+            p_cursor_membership_id: cursor.id,
+          }
+        : {}),
+    },
+  );
+  if (error) return { status: "error" };
+
+  const parsed = activeLeagueMemberPageRpcSchema.safeParse(data);
+  return parsed.success
+    ? {
+        status: "found",
+        league: { id: league.id, name: league.name },
+        members: buildKeysetPage(
+          parsed.data,
+          ACTIVE_MEMBER_PAGE_SIZE,
+          (member): ActiveLeagueMember => member,
+          (member) => ({ at: member.approvedAt, id: member.membershipId }),
+        ),
+        viewerIsManager: league.manager_id === userId,
+      }
     : { status: "error" };
 }

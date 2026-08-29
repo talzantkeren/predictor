@@ -1,13 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { SkipToMainLink } from "@/components/ui/skip-to-main-link";
 import { parseInviteSecretFragment } from "@/features/membership/invite-fragment";
 import { hashInviteToken } from "@/features/membership/invite-token";
 import { UnavailableInvite } from "@/features/membership/components/unavailable-invite";
 
-export function InviteBootstrap({ publicId }: { publicId: string }) {
+export function InviteBootstrap({
+  authenticatedNavigation,
+  publicId,
+}: {
+  authenticatedNavigation?: ReactNode;
+  publicId: string;
+}) {
   const router = useRouter();
   const [unavailable, setUnavailable] = useState(false);
 
@@ -55,24 +62,33 @@ export function InviteBootstrap({ publicId }: { publicId: string }) {
   }, [publicId, router]);
 
   if (unavailable) {
-    return <UnavailableInvite />;
+    return (
+      <UnavailableInvite authenticatedNavigation={authenticatedNavigation} />
+    );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
-      <section
-        aria-labelledby="invite-loading-title"
-        aria-live="polite"
-        className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <SkipToMainLink />
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-screen px-4 py-8 outline-none sm:px-6 sm:py-12"
       >
-        <p className="text-sm font-semibold text-blue-700">Predictor1</p>
-        <h1 id="invite-loading-title" className="mt-2 text-3xl font-bold">
-          מאמתים את קישור ההזמנה
-        </h1>
-        <p className="mt-3 leading-7 text-slate-600">
-          רגע אחד, פרטי ההזמנה נטענים באופן מאובטח.
-        </p>
-      </section>
-    </main>
+        <section
+          aria-labelledby="invite-loading-title"
+          aria-live="polite"
+          className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+        >
+          <p className="text-sm font-semibold text-blue-700">Predictor1</p>
+          <h1 id="invite-loading-title" className="mt-2 text-3xl font-bold">
+            מאמתים את קישור ההזמנה
+          </h1>
+          <p className="mt-3 leading-7 text-slate-600">
+            רגע אחד, פרטי ההזמנה נטענים באופן מאובטח.
+          </p>
+        </section>
+      </main>
+    </div>
   );
 }

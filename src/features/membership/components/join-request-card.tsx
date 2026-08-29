@@ -1,5 +1,6 @@
-import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ProofUploadForm } from "@/features/files/components/proof-upload-form";
 import {
   formatMembershipDate,
   getJoinRequestStatusLabel,
@@ -17,7 +18,7 @@ export function JoinRequestCard({ request }: { request: JoinRequestDashboardItem
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="break-words text-lg font-extrabold text-ink">
-            {request.leagueName}
+            <IsolatedText>{request.leagueName}</IsolatedText>
           </h3>
           <p className="mt-1 text-sm text-ink-muted">
             נפתחה ב־
@@ -58,7 +59,7 @@ export function JoinRequestCard({ request }: { request: JoinRequestDashboardItem
       {request.status === "rejected" && request.rejectionReason ? (
         <p className="mt-3 rounded-xl border border-error-200 bg-error-50 p-3 text-sm leading-6 text-error-900">
           <span className="font-bold">סיבת הדחייה: </span>
-          {request.rejectionReason}
+          <IsolatedText>{request.rejectionReason}</IsolatedText>
         </p>
       ) : null}
 

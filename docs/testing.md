@@ -10,9 +10,9 @@ Playwright קורא ממנו בזמן הריצה רק את כתובת ה־API ו
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | נרמול ואימות Email, אורך סיסמה, התאמת סיסמאות, trim וגבולות שם תצוגה, allowlist ל־redirects ומיפוי שגיאות Auth בטוח |
+| Vitest | נרמול ואימות Email, אורך סיסמה, התאמת סיסמאות, trim וגבולות שם תצוגה, allowlist ל־redirects; תוצאה זהה ל־success/unknown address; מיפוי typed ל־429, outage ו־callback invalid/expired/reused/session mismatch בלי provider copy |
 | pgTAP | מבנה `profiles`, FK, constraints כולל Unicode whitespace, מקרי metadata/fallback, התנהגות `updated_at`, RLS, column grants, הרשאות פונקציות, self access וחסימת משתמש זר/anon |
-| Playwright | חסימת אורח, אכיפת מינימום סיסמה ישירות ב־Auth, הרשמה ואישור בהקשר דפדפן חדש עם login ידני, Dashboard, עדכון פרופיל, redirects של משתמש מחובר ועוין, חסימה אחרי logout, הודעת mismatch ושחזור PKCE תקף, מחיקת recovery marker ובידוד קריאה/כתיבה בין שני משתמשים |
+| Playwright | חסימת אורח, אכיפת מינימום סיסמה ישירות ב־Auth, הרשמה ואישור בהקשר דפדפן חדש עם login ידני, Dashboard, עדכון פרופיל, redirects של משתמש מחובר ועוין; שחזור ידוע/לא־ידוע עם copy זהה, delivery דרך Mailpit, mismatch בין דפדפנים, callback באותו דפדפן, עדכון, replay שנדחה, logout, דחיית הסיסמה הישנה והתחברות בחדשה; בידוד קריאה/כתיבה בין משתמשים |
 | Visual | עברית ו־RTL, labels, autocomplete, focus states והיעדר overflow ב־390px וב־1440px |
 
 ### הרצה מקומית
@@ -46,7 +46,20 @@ npm run test:e2e:preview
 ה־API המקומי ונשלף קישור PKCE. בדיקת האישור פותחת אותו תחילה ב־browser context
 חדש ומוודאת שהכתובת אושרה ושאפשר להתחבר ידנית. בדיקת השחזור מוודאת שבהקשר חדש
 מוצגת הנחיה מדויקת, ואז מבקשת ופותחת קישור חדש באותו context. כך CI מכסה גם
-את מגבלת PKCE, נשאר דטרמיניסטי ואינו שולח Email אמיתי.
+את מגבלת PKCE, נשאר דטרמיניסטי ואינו שולח Email אמיתי. ה־URL הרגיש נשמר רק
+בזיכרון הבדיקה; trace, screenshots, video ו־DOM error snapshot כבויים. לאחר
+העדכון הבדיקה פותחת שוב את אותו callback, מאמתת `recovery-link-reused`, בודקת
+שה־session נסגר, שהסיסמה הישנה נדחית ושהחדשה מתקבלת.
+
+### Slice 9 W2 — תוצאות Auth ו־recovery
+
+ב־26 באוגוסט 2026 הורצו לאחר השינוי `auth-flow-results.test.ts` יחד עם
+`auth-rules.test.ts` — 96/96 עברו — ולאחר build הורצה `auth.spec.ts` בשני
+הפרויקטים — 6/6 עברו. הראיה המסוננת והפקודות המדויקות נמצאות ב־
+[`docs/evidence/slice-9/w2/S9-DEF-001.md`](./evidence/slice-9/w2/S9-DEF-001.md).
+המסירה ב־Hosted, חשבון disposable, rate limit וה־callback origins נשארים gate
+נפרד שאינו PASS עד לביצוע owner; ראו
+[`S9-DEF-004.md`](./evidence/slice-9/w2/S9-DEF-004.md).
 
 ## Slice 2: יצירת ליגה, ניקוד ופרסי Demo
 
@@ -152,8 +165,9 @@ npm run test:e2e
 ## Slice 5: משחקים, ניחושים, נעילה וחשיפה
 
 בדיקות Slice 5 משתמשות רק ב־Supabase המקומי וב־fixtures שנוצרים בתוך transaction
-או בתוך מכולת PostgreSQL המקומית. אין קריאה לספק Sports, אין המתנה אמיתית עד
-kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־seed הקבוע הוא Demo ידני בלבד;
+או בתוך מכולת PostgreSQL המקומית. אין קריאה לספק Sports ואין שימוש בשעון
+הדפדפן כגבול קבלה. בדיקות Slice 5 הרגילות אינן ממתינות ל־kickoff; בדיקת W1
+הייעודית משתמשת בכמה חיבורי PostgreSQL אמיתיים כדי לחצות אותו. ה־seed הקבוע הוא Demo ידני בלבד;
 בדיקות הניחושים יוצרות קבוצות ומשחקים משלהן ולכן אינן תלויות בו.
 
 ### מטריצת כיסוי
@@ -161,19 +175,21 @@ kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־see
 | שכבה | כיסוי |
 | --- | --- |
 | Vitest | parsing קשיח של ציונים שלמים 0–30; דחיית ריק/שלילי/31/fraction; מיפוי חמשת הסטטוסים ומצבי open/editable/locked/unavailable; `draft`/`open`/`active` לעומת `completed`/`archived`; גבול millisecond לפני/בדיוק/אחרי; countdown טהור עם יחיד/רבים תקינים; UTC→`Asia/Jerusalem` ואזור זמן נוסף; גבולות תאריך DST; round/date search params; allowlist לנתיבי המשחקים ומיפוי `PREDICTION_LOCKED` בטוח |
-| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; `now()` ו־`now()+1 second`; exact/after lock; scheduled/postponed לעומת live/finished/canceled; `completed`/`archived` read-only ו־FORBIDDEN אטום לזר; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
+| pgTAP | enum/generated outcome, schema/checks/unique/indexes, RLS/grants/function privileges/`search_path`; active create/update/retry ושינוי `updated_at`; HOME/DRAW/AWAY; season consistency גם בכתיבה privileged; direct INSERT/UPDATE/DELETE denial; בדיוק/אחרי kickoff ו־fixture עתידי מרווח; scheduled/postponed לעומת live/finished/canceled; `completed`/`archived` read-only ו־FORBIDDEN אטום לזר; pending proof/approval, rejected, removed, outsider, other league ו־cross-season denial; owner-only לפני kickoff, שתי שורות לחברים פעילים ב־/אחרי kickoff ואפס לזר; late join; stale RPC replay; `points=0` וכל metadata הניקוד `NULL` |
 | Playwright | שני חברים מאומתים ב־Desktop Chrome/UTC וב־Pixel 5/`Asia/Jerusalem`; רשימת משחקים וכל חמשת הסטטוסים/תוצאה/שעה מקומית/נעילה; create→refresh timestamp→edit; `Promise.all` כפול שמחזיר שורה אחת; UI, תוכן ה־RSC ו־PostgREST שמסתירים ניחוש אחר לפני kickoff; שינוי kickoff מקומי לעבר ללא sleep; stale create/edit וה־RPC הישיר נדחים; reveal לשני החברים; outsider ולאחר מכן pending requester מקבלים not-found ואפס שורות; RTL וללא overflow |
 | Manual/Preview | כניסה כחבר פעיל, בדיקת רשימה ומסנן, שמירה ועריכה, שעה מוחלטת + timezone, stale-tab בטוח וחשיפה בשני חשבונות. Preview דורש שה־migrations החדשות יוחלו בפרויקט Supabase המורשה לפני בדיקה מאומתת |
 
-`now()` של PostgreSQL קבוע בתוך transaction של pgTAP. לכן fixture עם
-`kickoff_at := now()` מוכיח דחייה מדויקת, ו־`now() + interval '1 second'`
-מוכיח הרשאה ללא `sleep`. Playwright משנה fixture סינתטי ל־דקה בעבר דרך helper
+`now()` של PostgreSQL קבוע בתוך transaction ולכן אינו סמכות תקינה ל־commit
+שהמתין על lock. ה־RPC דוגם `clock_timestamp()` אחרי נעילת match; fixture עם
+`kickoff_at := now()` עדיין מוכיח דחייה מדויקת, ו־fixture עתידי מרווח מוכיח
+הרשאה רגילה ללא תלות במשך ה־suite. Playwright משנה fixture סינתטי לדקה בעבר דרך helper
 שמקבל UUIDs קנוניים בלבד, דורש בדיוק `UPDATE 1` ואינו מדפיס stderr. כך גם טופס
 שכבר פתוח נבדק מול זמן המסד בפעולת השמירה.
 
-pgTAP הוא חיבור יחיד ואינו מוכיח race רשת אמיתי. unique constraint, נעילת שורת
-המשחק וה־upsert נבדקים במסד; Playwright מוסיף שתי קריאות `save_prediction`
-מקבילות עם `Promise.all` ומאמת שנשארת רשומה יחידה.
+`predictions.test.sql` הוא חיבור יחיד; ה־unique constraint, נעילת שורת המשחק
+וה־upsert נבדקים בו, ו־Playwright מוסיף שתי קריאות `save_prediction` מקבילות.
+ה־race על זמן נבדק בנפרד ב־`slice9-time-serialization.test.sql` עם dblink
+אסינכרוני ו־row lock אמיתי — לא באמצעות `Promise.all` או שעון Node.
 
 ה־seed הקבוע כולל רק מועדים עתידיים (`scheduled`, `postponed`, `canceled`) ולכן
 אינו נועל מיד את חוקי הניקוד. trigger `enforce_scoring_rule_lock` עדיין בוחן את
@@ -204,15 +220,16 @@ npm run test:e2e -- prediction-lock.spec.ts
 | שכבה | כיסוי |
 | --- | --- |
 | Vitest | specification executable בדיקתי לסיווג HOME/DRAW/AWAY ול־exact/correct/wrong ב־3/1/0 ובחוקים מותאמים; Zod ל־finished/canceled וציונים 0–30; מיפוי שגיאת kickoff ושם חסר בטוחים; חלוקת אחוזי מקומות משותפים ב־basis points ללא floating point |
-| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; exact, בית, חוץ, תיקו וטעות; דחיית `finished` לפני kickoff ללא mutation; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, ספירת הגשות רק אחרי kickoff, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
-| DB concurrency | שני חיבורי `dblink` אמיתיים מפעילים `score_match` ו־`save_prediction` במקביל. ה־score נועל match בלבד; השמירה ממתינה לו ומסתיימת ב־`PREDICTION_LOCKED` הצפוי, ללא deadlock או lock timeout |
+| pgTAP | schema/RLS/grants של `system_admins`; בדיקת admin עצמי; חתימה והרשאות מדויקות של `score_match`; delegate פרטי ללא Data API grant; exact, בית, חוץ, תיקו וטעות; דחיית `finished` לפני kickoff ללא mutation; חוקים שונים לשתי ליגות באותו משחק; retry ששומר נקודות/metadata/timestamps/audit; correction שמחליף; cancel שמאפס flags ונקודות בלי למחוק; `security_invoker` leaderboard, ספירת הגשות רק אחרי kickoff, חבר ללא ניחוש, exact כתצוגה בלבד ודירוג 1,1,3; denial ל־anon/authenticated, actor חסר/זר ודירוג ליגה זרה |
+| DB concurrency | probes אמיתיים של `dblink` מפעילים `score_match` ו־`save_prediction` במקביל ללא deadlock; probe נוסף מחזיק תחילה shared registry ואחר כך את מפתח הליגה המדויק, ומוכיח ב־`pg_locks` שקריאת `score_match` הישירה ממתינה על כל שכבה לפני הניקוד |
 | Playwright | מנהל מערכת מאומת מזין 2–1 דרך `/admin/matches`; משתמש רגיל נדחה גם מהנתיב וגם מקריאת RPC ישירה; `/leagues/[leagueId]/standings` מציג לחבר דירוג 1,1,3 ב־Desktop וב־Mobile; RTL וללא overflow |
 
-בדיקת המקביליות משתמשת רק במכולת PostgreSQL המקומית וב־credentials המקומיים
-הקבועים של Supabase CLI. היא חוסמת זמנית את שורת actor של audit כדי ליצור סדר
-מתוזמן: `score_match` מחזיקה את match, ובאותו זמן `save_prediction` מחזיקה את
-league ואת membership וממתינה ל־match. שחרור החסימה מוכיח ששני התהליכים
-מסתיימים בלי מעגל נעילות. אין להריץ את קובץ הבדיקה מול פרויקט linked/hosted.
+בדיקות המקביליות משתמשות רק במכולת PostgreSQL המקומית וב־credentials המקומיים
+הקבועים של Supabase CLI. probe הניקוד הוותיק חוסם זמנית את שורת actor של audit
+כדי לתזמן `score_match` מול `save_prediction`; probe ה־Slice 9 מחזיק במפורש
+registry ואז league advisory key ומזהה את ההמתנה המדויקת ב־`pg_locks`.
+שחרור החסימות מוכיח שהפעולות מסתיימות ללא מעגל נעילות. אין להריץ את קובצי
+הבדיקה מול פרויקט linked/hosted.
 
 קובץ `src/features/scoring/__tests__/scoring-specification.ts` הוא חוזה בדיקתי
 בלבד ואינו מיובא בקוד הייצור. הוא מגן על דוגמאות SCORE-01/02 ועל מטריצת
@@ -227,27 +244,68 @@ npm exec -- supabase test db supabase/tests/scoring.test.sql
 npm run test:e2e -- scoring.spec.ts
 ```
 
-## Slice 7: Cron ו־observability במסלול ידני
+### S9-DEF-008 — החזרת ownership ידני ל־API-Football
 
-סעיף זה מתעד את baseline הידני שנמסר לפני Slice 7b. בדיקות הרגרסיה שלו עדיין
-משתמשות רק ב־Manual provider וב־Supabase המקומי; המסלול החי וה־planner שנוסף
-לאחר מכן מתועדים בסעיף Slice 7b להלן.
+הגבול החדש אינו מקבל match ID סמכותי מהטופס. Server Component לוכד את ה־UUID
+שנטען מהמסד, ה־mutation דורשת confirmation ו־resource AuthZ, ורק RPC מצומצמת
+ל־service role משנה ownership. הבדיקות משמרות את התוצאה הנוכחית עד snapshot
+ספק מאומת עתידי; אין קריאת רשת חיה לספק.
+
+| שכבה | כיסוי |
+| --- | --- |
+| Vitest | confirmation literal מדויק; missing/null/blank/forged נדחים; קוד provider-ownership ממופה להודעה בטוחה |
+| pgTAP | חתימה, `SECURITY DEFINER`, `search_path`, grants ו־actor קבוע; ordinary user/actor חסר או מבוטל; API-Football בלבד; completed/archived fail-closed; result/status/version/provider metadata/latch/predictions נשמרים; clear ראשון typed+audit יחיד ו־replay typed ללא timestamp/audit נוסף |
+| dblink | sessions PostgreSQL אמיתיות עם timeouts חסומים מוכיחות duplicate clear יחיד, clear מול apply מגודר שלא מאבד תוצאה ומאפשר provider resume, revocation מול clear ללא deadlock, ו־`create_league` אמיתי שממתין על shared registry כאשר clear כבר גילה את העונה וממתין על שורת ליגה |
+| Playwright | Desktop Chrome ו־Pixel 5: checkbox confirmation, focus על שגיאה, יעד UUID שנלכד בשרת מול hidden `matchId` מזויף, direct-RPC denial למשתמש רגיל, תיקון provider-owned ואז clear, תוצאה/ניקוד/provenance/latch נשמרים, audit יחיד, RTL וללא overflow |
+
+הרצה ממוקדת בזמן פיתוח, על Supabase מקומי בלבד:
+
+```powershell
+npm run test -- src/features/scoring/schemas.test.ts src/features/scoring/errors.test.ts
+npm exec -- supabase test db supabase/tests/manual-override-clear.test.sql supabase/tests/manual-override-clear-concurrency.test.sql
+npm run test:e2e -- e2e/scoring.spec.ts
+```
+
+הרצה ממוקדת שנצפתה ב־27.8.2026 על schema שנבנה מחדש מקומית:
+
+```text
+manual-override-clear.test.sql + manual-override-clear-concurrency.test.sql:
+91/91 PASS
+scoring.test.sql + sync-api-football.test.sql: 148/148 PASS
+schemas.test.ts + errors.test.ts: 26/26 PASS
+e2e/scoring.spec.ts: Desktop Chrome 1/1, Pixel 5 1/1 PASS
+```
+
+גם generated DB types היו זהים ל־schema, `tsc --noEmit`, ESLint וה־production
+build הסתיימו ב־exit 0. הפירוט המדויק והכשלים הראשונים שתוקנו נשמרים ב־
+`docs/evidence/slice-9/w3/S9-DEF-008.md`.
+
+## Slice 7 baseline ו־S9-DEF-003: Cron במסלול ידני
+
+ה־baseline שנמסר ב־Slice 7 החזיר `skipped/MANUAL_PROVIDER`. S9-DEF-003 הסיר את
+ה־RPC הישן והחליף אותו ב־import מקומי, חסום ואידמפוטנטי של
+`manual-catalog-v1`. בדיקות הרגרסיה משתמשות רק ב־Manual provider וב־Supabase
+המקומי; המסלול החי וה־planner מתועדים בסעיף Slice 7b להלן.
 
 ### מטריצת כיסוי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest | נרמול כל חמשת הסטטוסים, ניקוי score חי, דחיית status לא מוכר, תוצאה finished, cancel, תיקון ו־retry; החרגה מלאה וללא mutation של `is_manually_overridden`; זהויות provider כפולות; env חסר/malformed ו־manual בלבד; השוואת Route וסיווג שגיאות בטוח; `status` בלבד כמבחין כשל וקוד דילוג ניטרלי; מיפוי שורת query וגבול admin client `server-only` |
-| pgTAP | enum/table/columns/comments/checks/index; RLS/grants וקריאת admin לעומת משתמש רגיל; חתימת RPC, `SECURITY DEFINER`, `search_path` ו־EXECUTE service-only; actor חסר/malformed/שהוסר ללא כתיבת `sync_runs` או `audit_logs`; שורה סופית `MANUAL_PROVIDER` ללא שינוי matches/predictions; שתי sessions אמיתיות שמוכיחות `CONCURRENT_ATTEMPT`, אחריו `MANUAL_PROVIDER`, ושאין advisory lock דולף |
-| Route | method/content-type, secret חסר/שגוי, env חסר, actor שנדחה ושגיאת DB לא צפויה; אין קריאת gateway לפני הרשאה, קריאה אחת בלבד בהצלחה, HTTP 200 לדילוג ותגובות `private, no-store` ללא secret/actor/SQL |
-| Playwright | secret חסר ושגוי מחזירים 401 ומספר שורות DB אינו משתנה; secret נכון יוצר בדיוק שורה סופית אחת; מנהל רואה ב־`/admin/sync` את `MANUAL_PROVIDER` כסיבת דילוג, משתמש רגיל מקבל not-found; Desktop Chrome ו־Pixel 5, RTL וללא overflow |
+| Vitest | parity מדויק של 6 teams ו־5 matches בין adapter ל־manifest, rejection של catalog זר, payload יחיד ל־gateway ו־APPLIED/NO_CHANGE/CONFLICT; validator UTC דוחה תאריך קלנדרי בלתי אפשרי; Route נשאר מסונן ו־server-only |
+| pgTAP | הסרת ה־RPC הישן; wrapper payload-only מסוג `SECURITY DEFINER`; core מלא `SECURITY INVOKER` ללא grant ל־PUBLIC/anon/authenticated/service role; actor חסר/malformed/שהוסר ללא mutation; זמן owner-only מפורש מוכיח APPLIED לפני kickoff ו־conflict אחריו; parity לכל שדות הזהות וה־provider; APPLIED/replay/audit/run counts; conflict אטומי ל־provider-owned/drift/latch/completed/archived; prediction קיים אינו מפריע ל־catalog replay זהה; create/correct חוסם שינוי זהות עם prediction או latch |
+| dblink | שתי sessions אמיתיות מוכיחות שסדר `leagues → matches` חוסם completion-vs-create ו־completion-vs-catalog. מרוץ ה־catalog קורא ל־core המלא בזמן בטוח קבוע, ולכן lifecycle guard ולא תאריך ההרצה מסביר את ה־conflict ואת שורת ה־run הסופית |
+| Route | method/content-type, secret חסר/שגוי, env חסר, actor שנדחה ושגיאת DB לא צפויה; אין קריאת gateway לפני הרשאה, קריאה אחת בלבד בהצלחה ותגובות `private, no-store` ללא secret/actor/SQL |
+| Playwright | provider outage אינו משפיע על Manual; Cron משחזר leaf חסר, replay מהמסך מחזיר no-change, שתי שורות terminal נשמרות, אין browser request לספק; מסך מנהל יוצר match עם UUID יציב ו־replay אינו יוצר כפילות |
 
-בדיקת המקביליות ב־`supabase/tests/sync.test.sql` פותחת חיבור control, חיבור
-שמחזיק `pg_advisory_xact_lock` וחיבור service-role שקורא ל־RPC. היא פועלת רק
-מול מכולת PostgreSQL החד־פעמית של Supabase CLI, מתקינה ומסירה principal
-סינתטי ושתי שורות run committed, ואינה מורשית מול `--linked` או hosted. קריאת
-RPC רגילה בתוך transaction הבדיקה מתבצעת רק אחרי תרחיש המקביליות כדי שה־xact
-lock של pgTAP עצמו לא ישבש את שתי ה־sessions.
+קריאות ה־public RPC ב־pgTAP וב־Playwright משתמשות תמיד בזמן המסד האמיתי. מאחר
+שלאחר kickoff קטלוג חסר חייב להיכשל סגור, הבדיקות מקבלות רק אחד משני outcomes
+עקביים (`MANUAL_APPLIED` עם כל ה־rows וה־audit, או conflict אטומי) ואינן מסיקות
+את ההחלטה מ־`started_at`/`finished_at`. אין test header או clock override ציבורי.
+
+בדיקת המקביליות ב־`supabase/tests/manual-match-concurrency.test.sql` פותחת שתי
+sessions מקומיות דרך dblink ומסנכרנת אותן בעזרת advisory locks בדיקה. היא פועלת
+רק מול מכולת PostgreSQL החד־פעמית של Supabase CLI, מתקינה ומסירה נתוני בדיקה,
+ואינה מורשית מול `--linked` או hosted.
 
 ה־E2E runner מייצר `CRON_SECRET` אקראי בזיכרון לכל הרצה ומעביר אותו רק
 לתהליכי build, server ו־Playwright. actor מקומי קבוע נוצר ב־seed; הסוד, actor
@@ -258,8 +316,8 @@ header ו־admin key אינם נכתבים לדוח או ל־stdout. קריאת 
 
 ```powershell
 npm run test -- src/app/api/cron/sync/route.test.ts src/features/sports/sync-planner.test.ts src/features/sync/display.test.ts src/features/sync/errors.test.ts src/features/sync/queries.test.ts
-npm exec -- supabase test db supabase/tests/sync.test.sql
-npm run test:e2e -- e2e/sync.spec.ts
+npm exec -- supabase test db supabase/tests/sync.test.sql supabase/tests/manual-match-fallback.test.sql supabase/tests/manual-match-concurrency.test.sql
+npm run test:e2e -- e2e/sync.spec.ts e2e/scoring.spec.ts
 ```
 
 ## Slice 7b: API-Football Sync חי עם fixtures מוקלטים
@@ -273,12 +331,64 @@ provider-owned שהוא מציג נזרעים ישירות במסד המקומי
 
 | שכבה | כיסוי |
 | --- | --- |
-| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After`, retry/backoff/jitter חסומים, `Accept`, ביטול body שלא נצרך, quota headers ו־redaction ללא key/URL |
+| Vitest client | envelope array/object errors, invalid JSON/schema, paging, duplicate IDs, 8 MiB cap, abort/timeout, 403, 429, 499/5xx, `Retry-After` קצר שמבצע retry מוצלח ו־45/120/date שחוזרים מיד כ־rate limit, hint חסום ל־3,600, retry/backoff/jitter חסומים, `Accept`, ביטול body שלא נצרך, quota תקין בלבד ו־redaction ללא key/URL/header גולמי |
 | Vitest adapter | league 383, כל 14 team IDs והמיפוי העברי, codes כפולים, unknown team fallback, 26 round labels, future-stage review, NS/FT, כל status מתועד, live score→null, `score.fulltime`, score חסר, AET/PEN review ו־UTC consistency |
-| Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, fixturesSeen עד 1,000, operator notes עד 100 עם overflow marker, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion |
+| Vitest planning | catalog/targeted/reconciliation plans, no-due, quota backoff, batches של עד 20 IDs, עד 20 קבוצות ועד 50 fixtures ל־apply, fixturesSeen עד 1,000, operator notes עד 100 עם overflow marker, קבוצה חדשה מתוך fixture, retry/correction ו־manual override exclusion; provider/planner/apply/finalize מקבלים קודים נפרדים, safe counters וללא secret/PII, ו־finalizer שנכשל נקרא פעם אחת בלבד |
 | pgTAP | schema/RLS/grants; browser denial; actor validation; claim מקביל בשתי sessions אמיתיות; `NOT_DUE` ללא row; force cooldown/backoff; reclaim ו־abandoned run; generation/token/provider/run/expiry fencing; atomic apply/finalize; בידוד regression בתוך batch; ביטול מוקדם ללא חשיפת ניחוש; reactivation עם איפוס metadata/leaderboard; provider-ID upsert idempotent; Demo isolation; AET review והחרגה מ־targeted; FT/correction/retry דרך `score_match` ואודיט source |
 | Route/Action | Cron auth/content type/env; manual/API-Football/not-due/concurrent/success/failure; קריאת orchestration יחידה; trigger של system admin בלבד; safe response ללא סוד/token/generation |
 | Playwright | ordinary user מול system admin, status page ו־manual trigger, שורות observability שנזרעו ישירות, provider AET fixture שנזרע ומוצג כ־"דורש בדיקה" בלי לפתוח prediction, ו־Desktop/Pixel RTL. אין כאן fake live-provider flow; הפרדת key נבדקת non-vacuously ב־build API-Football עם sentinel וסריקת HTML/client artifacts לפני הפעלת השרת ב־manual. |
+
+S9-DEF-010 מוסיף pgTAP דטרמיניסטי עם 25 stale ומשחק live אחד. שלושה claims
+עוקבים חייבים לבחור targeted → catalog → reconciliation, לשמור live בראש
+מכסת 20, generation מונוטוני ו־tokens שונים, ולסיים דרך fencing הקיים.
+`NOT_DUE` ו־`PROVIDER_BACKOFF` אינם מוסיפים run; בדיקת orchestrator מאמתת שגם
+transport, apply ו־finalize אינם נקראים כאשר ה־claim מחזיר `NOT_DUE`.
+
+S9-DEF-011 מכסה את מסלול ברירת המחדל של שלושה ניסיונות ב־Vitest,
+orchestration/finalize ללא provider חי, ו־pgTAP שמוכיח שמירת quota, ‏backoff
+מדויק וחסימת scheduled/force. הפקודות והפלט המצונזר נמצאים ב־
+[`docs/evidence/slice-9/w5/S9-DEF-011.md`](./evidence/slice-9/w5/S9-DEF-011.md).
+
+S9-DEF-012 מוסיף fake transport של שלושה ניסיונות בני 7 שניות תחת שעון Vitest
+מבוקר; הוא נכשל סופית אחרי 21.75 שניות לוגיות ומוכיח finalize יחיד. בדיקת
+Route קושרת את 30/45/60/120, ו־pgTAP מתקין fixture של job ישן ללא HTTP, מוכיח
+rename/timeout/preservation/idempotency/duplicate denial וכן denial אפקטיבי
+ל־Data API. ראיית Hosted לאחר deploy נשארת owner action מפורשת ב־
+[`docs/evidence/slice-9/w5/S9-DEF-012.md`](./evidence/slice-9/w5/S9-DEF-012.md).
+
+S9-DEF-018 מוסיף fixture מדויק של שורת RPC ‏`NOT_DUE/FORCE_COOLDOWN` ל־parser
+הטהור, בדיקת orchestrator ללא transport/apply/finalize, Route ‏200 ו־Action
+עם copy cooldown. ‏pgTAP מאמת את השורה האמיתית ואת היעדר שורת run חדשה. parser
+הופרד ממודול ה־admin כדי ש־import sentinel יישאר ללא allowlist חדש. הראיה ב־
+[`docs/evidence/slice-9/w5/S9-DEF-018.md`](./evidence/slice-9/w5/S9-DEF-018.md).
+
+### Slice 9 W1 — serialization וזמן מסד
+
+`supabase/tests/slice9-time-serialization.test.sql` פותח חיבור control, holder,
+worker ו־system-admin אמיתיים אל PostgreSQL המקומי. הוא צופה ב־
+`wait_event_type = 'Lock'`, חוצה גבול לפי `clock_timestamp()` של המסד ורק אז
+משחרר את השורה.
+119 assertions מכסים: שמירת ניחוש שמתחילה לפני kickoff ומשתחררת אחריו; ביטול
+שחוצה kickoff ו־reactivation עתידי; ביטול מוקדם שמועדו המקורי חל; latch גם תחת
+manual override; apply אמיתי שמחזיק match במקביל ל־`save_prediction` שמחזיק את
+prefix הנעילות league/member, עם probe עצמאי שמוכיח ב־`NOWAIT` ששורות ה־prefix
+טרם ננעלו על ידי apply; due של reconciliation; forced cooldown; provider
+backoff; lease expiry/reclaim; claimant זכאי שממתין שלוש שניות ועדיין מקבל יותר
+מ־118 שניות זמינות; ו־120 שניות מדויקות מ־`sync_runs.started_at`. לכל waiter יש
+`statement_timeout`/`lock_timeout`, והבדיקה שוללת deadlock או timeout.
+
+הרצה ממוקדת שנצפתה ב־26.8.2026:
+
+```powershell
+npx supabase test db supabase/tests/slice9-time-serialization.test.sql
+npx supabase test db supabase/tests/predictions.test.sql
+npx supabase test db supabase/tests/scoring.test.sql
+npx supabase test db supabase/tests/sync-api-football.test.sql
+npm run types:check
+```
+
+התוצאות שנצפו: 119/119, 81/81, 73/73 ו־75/75 בהתאמה, ו־generated types ללא
+drift. אין להריץ את ה־dblink suite מול פרויקט linked/Hosted.
 
 ### הרצה
 
@@ -358,9 +468,13 @@ npm run test:e2e
   עקבי ל־`summary`, כפתור Auth ראשי ב־`action` ושדה Auth לבן עם
   `control-border`. בדיקות הזרימה המלאות נשארות אותן בדיקות ולא מוחלפות
   בבדיקות צבע.
-- `npm run test:e2e` כולל build עם sentinel server-only וסריקת
-  `test:client-secrets` לפני הפעלת השרת; אין צורך בהרצה נפרדת שאינה קשורה
-  לאותו build.
+- `npm run test:e2e` כולל build עם sentinel server-only וסריקת primitive
+  `test:client-secrets:scan` לפני הפעלת השרת. `npm run test:client-secrets`
+  הוא שער עצמאי שבונה וסורק בעצמו; `npm run verify` מריץ אותו במפורש ואז מפעיל
+  סריקה ישירה נוספת ואת `test:e2e:run` מול אותו build. ה־build שומר ב־`.next`
+  חוזה סינתטי לא־סודי הכולל `BUILD_ID`; הסריקה הישירה נכשלת אם החוזה חסר,
+  שייך ל־build ישן או אינו תואם ל־sentinel הסינתטי. כך גם CI וגם verify
+  אוכפים את הסריקה בלי build כפול ובלי להסתמך על משתנה process מצעד קודם.
 
 ## Slice 8: דוח מנהל לא־כספי
 
@@ -405,3 +519,232 @@ npm run test:e2e -- e2e/reports.spec.ts
   בדסקטופ וב־Pixel 5, כולל AuthZ, current/final והיעדר overflow.
 - client-secret scan עבר על 50 build artifacts. לא בוצעה קריאת ספק חיה,
   mutation Hosted, deploy או merge.
+
+## Slice 9 — S9-DEF-007: עריכת הגדרות ליגה
+
+| שכבה | כיסוי ממוקד ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| Vitest | 45/45: validators, UTC עד microseconds, שנת אפס/זמן לא סופי, scoring/prizes, version/error adapters ו־lock helper |
+| pgTAP | 56/56: schema/check/ACL, ללא UPDATE ישיר או admin policy רחב, manager/admin/foreign/revoked/opaque denial, valid/invalid/stale/replay, join close, exact timestamp, locks/status/audit |
+| dblink | 75/75: conflicting וגם identical writers, validation לפני lock, details fast path, fixture-first/settings-first, latch, waiter שחוצה kickoff עם DB time טרי וביטול admin מתחרה |
+| Playwright | 2/2 ב־Desktop Chrome וב־Pixel 5: RTL/overflow, validation→version carry, שמירה/replay, `.123456` אחרי reload, outsider/admin isolation, active/completed, keyboard focus ויעדי מגע 44px |
+
+הפקודות, פלטי ה־PASS, reset מקומי, parity של generated types, build ו־
+`git diff --check` מתועדים ללא ערכי סוד ב־
+`docs/evidence/slice-9/w3/S9-DEF-007.md`. לא בוצעו בדיקות Hosted או mutation
+בפרויקט linked.
+
+## Slice 9 — S9-REQ-001 checkpoints 4–8
+
+השלמה, review ויישוב נבדקים מול Supabase מקומי seeded בלבד. ה־fixtures
+סינתטיים ונגללים לאחור; אין provider חי, linked project, proof content או
+secret אמיתי. בדיקת provider משתמשת payload מצומצם שנבנה בתוך pgTAP.
+
+| שכבה | כיסוי ממוקד ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| pgTAP completion | 23/23: exact manager/foreign, terminal/review/scoring gates, rollback אטומי, snapshots, שתי בקשות pending, proof/history/audit, replay, manual decision ו־frozen list/detail |
+| pgTAP review/reconciliation | 30/30: ACL/actor, AET+replay, FT-while-pending, stale resolution, mixed active/completed, completion unblocked, apply/dismiss/replay, manual correction ו־fixture ללא snapshot |
+| Vitest | 571/571 מלא; מתוכם 36/36 ב־scoring schemas כוללים finished/canceled review ו־apply/dismiss validation |
+| pgTAP מלא | 1277/1277 ב־23 קבצים לאחר forward reset מקומי seeded |
+| Playwright regression | `e2e/scoring.spec.ts` עבר 2/2 ב־Desktop וב־Mobile לאחר תיקון copy; lifecycle E2E המלא נשאר checkpoint 8 ואינו נטען כאן |
+| Gates | lint, typecheck, generated-types drift, DB lint, build וסריקת 52 client artifacts עברו |
+
+Checkpoint 6 מוסיף RPC תחום של חברים פעילים בלבד ו־UI משותף למנהל ולחבר
+פעיל. pgTAP ממוקד עבר 9/9 ומוכיח return shape ללא email/user ID/proof,
+הרשאת manager/member, דחייה אטומה של ליגה זרה, cursor תקין והיעדר UPDATE ישיר.
+Vitest מלא עבר 572/572 ו־pgTAP מלא עבר 1286/1286 ב־24 קבצים. תרחיש
+`e2e/pagination.spec.ts` עבר 2/2 ב־Desktop וב־Mobile ומוכיח 25+2 שורות,
+keyboard/RTL/no-overflow, היעדר manager controls לחבר פעיל ו־not-found לליגה
+זרה. אין בתרחיש פעולת removal/reactivation או קריאת proof.
+
+Checkpoint 7 מוסיף שתי בדיקות dblink אמיתיות עם backends נפרדים. הראשונה
+עברה 74/74 ומכסה manual-vs-scheduled activation, ‏tick מאוחר, effective-active
+בגבול prediction, completion מול upload/finalize/approve/reject ו־double
+completion. השנייה עברה 35/35 ומכסה provider FT מול review, replay אחרי הכרעת
+מנהל מערכת, active exact מול completed non-exact וליגה ללא predictions,
+ליגה ללא snapshot ו־fixture חדש אחרי completion. יחד הן עברו 109/109; בדיקת
+Route נוספת מוכיחה compensation של object נגזר כאשר completion מנצח לפני
+finalize. המטריצה המלאה עברה 573/573 Vitest ו־1395/1395 pgTAP ב־26 קבצים.
+
+תיקון attribution של הביקורת מוסיף binding פרטי ל־system actor. תיקון F10
+מוסיף designation יחיד `sports_sync` ו־fallback לקריאה בלבד: בדיקת activation
+מוחקת את ה־binding, מאשרת בקשת הצטרפות בליגה שכבר חצתה kickoff ומוכיחה שה־
+boundary מצליח ומייחס את האודיט ל־actor המיועד עוד לפני קריאת Cron. היא גם
+מאמתת ACL, דחיית replacement שקט, היעדר ניחוש של admin רגיל, cascade בעת
+revocation ו־rotation מפורש. בדיקת ה־lifecycle מאמתת שב־scheduled וב־business-boundary
+ה־`audit_logs.actor_id` הוא principal המערכת, בעוד החבר המפעיל נשמר רק ב־
+`metadata.triggering_actor_id`. probe מרובה־חיבורים מחזיק את tuple ה־binding
+ומחייב boundary בליגה אחרת להסתיים לפני שחרורו; כך חזרה לנעילת binding אחרי
+league תיכשל ולא תוכל להחזיר את היפוך הסדר מול Cron.
+
+חוזה owner-runbook של F10 מקבע גם את שער ה־pre-traffic שאינו יכול להיווצר
+מסכימה בלבד: שלושת הסמנים `exactly_one_designated_actor`,
+`boundary_binding_ready` ו־`sync_actor_matches_designation` חייבים להופיע
+ב־runbook, ב־checker ובתבנית value-free. הסרת §3A או אחד משדות הראיה מכשילה
+גם את `owner-runbooks:check` וגם את בדיקת Vitest הבלתי תלויה.
+
+תיקון promotion של F10 אינו נשען עוד על UPDATE חד־פעמי שאינו פוגש fixture
+מקומי. בדיקת activation מנקה designation, יוצרת binding legacy ישיר, מפעילה
+את `slice9_promote_legacy_boundary_binding()` ומוכיחה designation+binding תואמים
+וכן replay idempotent. בדיקת Vitest נפרדת מחייבת שהקריאה לחוזה תישאר המשפט
+האחרון ב־migration הקדמית.
+
+תיקון הביקורת המאוחר מוסיף את
+`supabase/tests/slice9-league-lock-scope.test.sql`. הוא מחזיק transaction של
+`save_prediction` ושל completion אידמפוטנטי בליגה A, מוכיח שפעולה באותה ליגה
+ממתינה וש־save/completion בליגה B מסתיימות לפני commit של A. assertions
+מבניים מאמתים את שמונת גבולות ה־lifecycle, היעדר ה־global lock מן completion,
+סדר registry→league keys בכותבי catalog ו־shared registry ב־`create_league`.
+חבילת multi-session המלאה כוללת אחד־עשר קבצי dblink: keyset pagination, league
+settings, manual match, manual override clear, scoring, league-lock scope,
+lifecycle, review, system-actor retention, database-time serialization ו־
+API-Football sync.
+
+תיקון F8 מוסיף `slice9-review-registry-barrier.test.sql` עם חמישה backends.
+creator מחזיק shared registry ומוסיף ליגה לא־מחויבת, resolver נדרש להמתין על
+ה־registry לפני discovery, ולאחר commit הוא נדרש להחזיק גם את מפתח הליגה
+החדשה לפני שהוא ממתין על ליגה קיימת; completion מקביל נדרש להמתין על אותו
+מפתח. מול הסכימה שלפני migration הבדיקה נכשלה ב־6 מתוך 27 assertions, לרבות
+היעדר ההמתנה על registry והיעדר מפתח הליגה החדשה; לאחר migration עברה 27/27.
+assertion מבני נוסף מקבע במפורש barrier→`public.leagues` discovery→league
+keys; הזזת ה־discovery מעל המחסום נכשלת גם בלי להסתמך על תזמון המירוץ.
+
+תיקון הכניסה הישירה ל־`public.score_match` משתמש באותו prefix של
+registry→discovery→league keys ומעביר את המימוש הקודם ל־delegate פרטי ללא
+Data API grant. `slice9-league-lock-scope.test.sql` מפעיל את ה־RPC בחיבור נפרד,
+מחזיק תחילה shared registry ואחר כך את מפתח הליגה המדויק, ומוודא שה־backend
+ממתין על כל אחד מהם לפני שהוא מצליח. מוטציה מקומית שהחליפה את ה־wrapper
+בקריאה ישירה ל־delegate נכשלה ב־3 מתוך 59 assertions: השומר המבני ושתי
+המתנות ה־advisory.
+
+`slice9-system-actor-retention.test.sql` מקבע מבנית שבכל חמשת כותבי ה־scoring
+שתלויים ב־helper הסדר הוא required registry/league locks→actor
+retain→delegate, ומוכיח בחיבורי dblink
+אמיתיים ש־delete מקביל מ־`system_admins` ממתין ל־`FOR KEY SHARE` של helper
+פרטי ללא Data API grant. הסרת retain מאחד ה־wrappers מכשילה את ספירת 5/5;
+הסרת `FOR KEY SHARE` מן ה־helper מאפשרת ל־revocation לעבור ומכשילה את ה־wait.
+בדיקת ה־sync מקבעת את שרשרת הקריאות executable עד `public.score_match` ולא
+מסתפקת במחרוזת מתוך הערה, וכן מקבעת שקבוצת הליגות החיצונית כוללת את עונת
+הספק ואת עונות המשחקים הקיימים מן ה־payload. בדיקת ה־promotion בונה גם מצב
+מכוון של designation ו־legacy binding שונים ומחייבת `SYSTEM_ACTOR_MISMATCH`
+בלי לשנות אף אחד מהם.
+
+תיקון F9 מוסיף `slice9-reconciliation-wrapper.test.sql`. הבדיקה משנה זמנית את
+שם ה־delegate ומוכיחה ש־work item חסר מחזיר `RECONCILIATION_NOT_FOUND` לפני
+שה־delegate נפתר. במירוץ dblink נפרד ה־wrapper מגלה ליגה A וממתין על המפתח
+שלה, בעוד backend אחר מעביר את הרשומה לליגה B; לאחר השחרור הקריאה החוזרת
+נכשלת סגור והרשומה נשארת pending. בדיקה נוספת דוחה decision ‏`NULL`. מול
+הסכימה שלפני migration נכשלו 5 מתוך 23 assertions וה־delegate סימן בפועל את
+הרשומה של ליגה B כ־`dismissed`; לאחר migration עברו 23/23.
+
+תיקון F6 מחליף שש טענות `not exists` היפותטיות ב־18 assertions מול fixture
+אמיתי של `public.rls_auto_enable()` ו־event trigger ‏`ensure_rls`, בתוך
+transaction שנגלל לאחור. הבדיקה משנה בנפרד SECURITY INVOKER, ‏search path,
+קישור trigger וכל אחד מארבעת grants, ומוכיחה שה־guard המתאים מחזיר false.
+לאחר הקמת מצב Hosted פגיע היא מפעילה את חוזה התחזוקה הפרטי שנוצר ורץ באותה
+migration, ואז מאמתת SECURITY DEFINER/path ריק, קישור trigger שמור והיעדר
+EXECUTE ל־PUBLIC/anon/authenticated/service_role. היעדר האובייקט המקומי נבדק
+כ־no-op מפורש ואינו משמש עוד כראיית pass. שתי בדיקות Vitest משוות את שתי
+פקודות ההקשחה ל־migration המקורית ומחייבות שקריאת החוזה תהיה המשפט האחרון
+ב־migration החדשה, אחרי ביטול grants; הסרת ה־auto-application נכשלת גם אם
+הפונקציה עצמה נשארה תקינה.
+
+תיקון F11 מחבר ישירות את `submission:evidence:check`, ‏`hardening:check`,
+`owner-runbooks:check`, ‏`sports:secret-boundaries`, ‏`scale:plans` ו־
+`test:client-secrets:scan` גם ל־CI וגם ל־`npm run verify`. בדיקת חוזה סטטית
+נכשלת אם אחד השערים מוסר, מוזז ל־job חסר תלות, או אם scale plans רצים אחרי
+כיבוי Supabase. חמש בדיקות התנהגות מריצות את סורק ה־artifacts בתיקיות build
+מבודדות: build נקי עובר, בעוד sentinel ב־client chunk, חוזה חסר, `BUILD_ID`
+ישן או sentinel סביבתי שאינו תואם נכשלים סגור בלי להדפיס את ה־sentinel.
+
+Checkpoint 8 מוסיף `e2e/lifecycle.spec.ts`, שמבצע דרך המוצר בלבד את המעבר
+Draft → Open → Active/current → Completed/final ואת תיקון ה־post-completion,
+ה־freeze וה־reconciliation המפורש. setup ישיר מוגבל לקטלוג ריק ולהרשאת
+system-admin ואינו מזייף אף שלב גלוי. התרחיש עבר 1/1 בנפרד ב־Desktop וב־Pixel
+5. הוא חשף ותיקן פער audit שמנע completion אחרי דיווח Manual דרך המסך;
+רגרסיית pgTAP ייעודית ושלושה קבצים ממוקדים עברו 131/131. לאחר התיקון המטריצה
+המלאה עברה 573/573 Vitest ו־1400/1400 pgTAP ב־27 קבצים, וה־client scan עבר על
+52 artifacts שנבנו עם sentinel סינתטי.
+
+### Slice 9 W6 — S9-DEF-015 bidi hardening
+
+| שכבה | כיסוי ותוצאה ב־27 באוגוסט 2026 |
+| --- | --- |
+| Vitest ממוקד | 193/193: כל 12 תווי `Bidi_Control` המסוכנים, RLO/LRE/RLI/PDI בגבולות display/league/provider, טקסט ארוך ומעורב עברית/ערבית/Latin, ו־DOM מדויק של `<bdi dir="auto">` |
+| pgTAP ממוקד | 16/16 בקובץ החדש; יחד עם exact-contract של membership עברו 114/114. ‏11 constraints validated, טקסט מעורב נשמר וכל עמודת תצוגה דוחה controls |
+| Playwright | `e2e/leagues.spec.ts` עבר 2/2 ב־Desktop Chrome וב־Pixel 5: RLO נדחה דרך Server Action, ושם mixed תקין עטוף ב־`bdi dir="auto"` בסיכום וב־Dashboard ללא overflow |
+| Gates | reset קדימה מקומי, types:db/types:check, ‏lint, typecheck ו־build עברו; Vitest מלא 617/617 ו־pgTAP מלא 1443/1443 |
+
+DB lint הוחזר בהצלחה עבור `public`/`private`; הפלט ממשיך לכלול findings ידועים
+של פונקציות pgTAP תחת schema ‏`extensions`, ואינו מייחס אותם למיגרציית המוצר.
+
+### Slice 9 W6 — semantic loading ושגיאת דחייה
+
+שני מסכי ה־loading של מנהל המערכת נבדקים ב־Vitest כ־busy regions בעלי שם,
+ללא `aria-live`/`role=status` כפול ועם כיבוד reduced motion. תרחיש
+`e2e/join-and-proofs.spec.ts` שולח דרך ה־UI סיבת דחייה שנדחית רק בגבול השרת,
+ומאמת שה־textarea מקבל focus, ‏`aria-invalid`, תיאור help+error יחיד ו־focus
+indicator; כפתור הדחייה נמדד כיעד 44×44 CSS px לפחות ב־Desktop וב־Pixel 5.
+בדיקת scaling מתועדת בנפרד בראיית S9-DEF-022 ואינה משתמשת ב־CSS zoom. נוסף
+ה־gate `npm run test:a11y:native-scale`: חמישה תהליכי Chromium נפתחים עם
+`--force-device-scale-factor=2`, ‏`viewport: null` וחלון native לכל אחד מן
+הרוחבים 360/390/768/1024/1440. ה־gate מאמת את שורת הפקודה, ‏DPR 2,
+`visualViewport.scale=1`, raster כפול והיעדר viewport emulation, ומריץ את כל
+המסכים והחוזים של המטריצה. מאחר ש־Chromium מפריד בין device scale לבין
+HostZoomMap/page zoom, נדרש גם spot-check קצר של שלושה מסכים עם Chrome
+Zoom=200%. ב־30.8.2026 ה־owner אישר PASS על candidate `4b77e24` בשלושת
+המסכים, keyboard-only וללא clipping/overlap/page scroll. זו ראיית
+`OWNER_REPORTED`; גרסה, שעה ו־screenshot לא נשמרו.
+
+רגרסיית `e2e/accessibility-matrix.spec.ts` מריצה בנוסף את דפי הכניסה הציבוריים
+`/`, ‏`/login`, ‏`/register` ו־`/forgot-password` בכל אחד מהרוחבים
+360/390/768/1024/1440, בשני פרויקטי Chromium. באותם רוחבים נבדקים גם
+`/admin/matches`, ‏`/admin/sync`, ‏members ו־settings מורשים עם fixture מקומי,
+ומצב rejection שנדחה בגבול השרת. בכל שילוב נבדקים axe WCAG A/AA, יחס contrast
+מכריע או חישוב CSS מפורש ל־finding מסוג `partially obscured`, שם נגיש לא־ריק,
+סדר Tab זהה לסדר DOM גם סביב תחנות UA פנימיות, focus indicator גלוי, 44×44
+לכל יעד פעולה או label קליקבילי מקושר, RTL, ‏overflow ו־reduced motion. אין
+פטור גורף לקישורי inline.
+
+המטריצה חשפה ותיקנה קישור Auth בגובה 21px, קישור מותג ללא שם ב־mobile, טקסט
+UTC ביחס 4.37:1, skip link בגובה 36px וקישורי מנהל בגובה 42px. בנוסף רץ בשני
+הפרויקטים קירוב reflow של viewport ‏720×450 עם DPR 2 ו־screen זהה, שמפיק
+raster של 1440×900; הוא מריץ שוב את שמונת המסכים ואת מצב rejection, אך אינו
+Chrome native Zoom. הריצה הנקייה על `2decde7` עברה 14/14 ללא skip והפיקה 108
+screenshots זמניים תחת `tmp/final-accessibility`.
+
+### Slice 9 W6 — WebServer error signal
+
+`scripts/run-e2e.ts` מעביר את פלט Playwright המקומי כרגיל אך מכשיל run שבו
+מופיעה שורת `[WebServer] … Error:`; test count ירוק אינו יכול עוד להסתיר server
+error. תרחיש `prediction-lock` ממתין בסוף בלבד להשלמת response streams לפני
+סגירת contexts. הרגרסיה הצרה שוחזרה תחילה עם `destination stream closed early`,
+ולאחר התיקון עברה שלוש פעמים רצופות ב־Desktop וב־Mobile ללא WebServer error.
+
+פקודות ההרצה והפלטים המצונזרים נשמרים ב־
+`docs/evidence/slice-9/w4/S9-REQ-001.md`. מרוצי dblink של lifecycle נדרשים
+בנפרד ב־checkpoint 7; הצלחת הבדיקות האטומיות כאן אינה מוצגת כראיית race.
+
+## Snapshot מסירה — S9-REQ-004
+
+המטריצה הבאה נמדדה מחדש ב־27 באוגוסט 2026 מול Supabase מקומי בלבד, אחרי
+סנכרון מסמכי ההגשה. ספירות checkpoint מדויקות נשמרות בראיות ההיסטוריות ואינן
+מוצגות כאן כטוטאל נוכחי, משום שה־suite ממשיך לגדול.
+
+| שכבה | תוצאה טרייה | הערה |
+| --- | --- | --- |
+| Vitest | PASS — RULES suite מלאה | ללא רשת ספק וללא credential אמיתי |
+| pgTAP | PASS — DATA suite מלאה | `Result: PASS`; מסד מקומי בלבד |
+| Playwright | PASS — FLOWS matrix מלאה | Desktop Chrome ו־Mobile Chromium; lifecycle מוצרי מלא; הריצה נקייה מ־`[WebServer] Error` |
+
+ריצת Playwright קודמת סיימה את assertions המוצריים אך נכשלה בצדק משום שה־runner
+זיהה `The destination stream closed early`. ה־lifecycle המתין לאחר מכן לסיום
+שני RSC response streams לפני סגירת contexts. הרגרסיה הממוקדת עברה 2/2,
+והמטריצה המלאה החוזרת עברה ללא אות server error. אין להציג את הספירה
+הראשונה כ־PASS.
+
+בדיקת `repository-path-hygiene.test.ts` עוברת על כל קובץ טקסט tracked ומכשילה
+נתיבי home/workspace מוחלטים של macOS, Linux, WSL ו־Windows עם דיווח
+`file:line`. דוגמאות הבדיקה מורכבות בזמן ריצה כדי שה־guard יסרוק גם את המקור
+של עצמו בלי allowlist. פלטים היסטוריים משתמשים ב־`<repo>` או ב־placeholder של
+runtime מקומי ואינם מפרסמים את פרופיל המפתח.

@@ -39,7 +39,7 @@ export function ProfileForm({ displayName }: { displayName: string }) {
           aria-describedby={
             state.fieldErrors?.displayName ? "display-name-error" : "display-name-help"
           }
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <p id="display-name-help" className="mt-1 text-sm text-ink-muted">
           בין 2 ל־50 תווים. זהו השדה היחיד שניתן לערוך בפרופיל.

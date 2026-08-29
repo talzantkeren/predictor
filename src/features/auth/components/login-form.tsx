@@ -1,18 +1,20 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { useActionState } from "react";
 
 import { loginAction, type AuthActionState } from "@/features/auth/actions";
+import type { AuthFlowPresentation } from "@/features/auth/auth-flow-results";
+import { PASSWORD_MAX_UTF8_BYTES } from "@/features/auth/schemas";
 
 import { FieldError, FormMessage } from "./form-message";
 
 export function LoginForm({
   nextPath,
-  statusMessage,
+  statusPresentation,
 }: {
   nextPath: string;
-  statusMessage?: string;
+  statusPresentation?: AuthFlowPresentation;
 }) {
   const initialState: AuthActionState = { status: "idle" };
   const [state, formAction, pending] = useActionState(loginAction, initialState);
@@ -21,7 +23,11 @@ export function LoginForm({
   return (
     <form action={formAction} noValidate className="space-y-5">
       <input type="hidden" name="next" value={nextPath} />
-      {statusMessage ? <FormMessage kind="success">{statusMessage}</FormMessage> : null}
+      {statusPresentation ? (
+        <FormMessage kind={statusPresentation.kind}>
+          {statusPresentation.message}
+        </FormMessage>
+      ) : null}
       {state.message ? <FormMessage kind="error">{state.message}</FormMessage> : null}
 
       <div>
@@ -37,7 +43,7 @@ export function LoginForm({
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>
@@ -49,7 +55,7 @@ export function LoginForm({
           </label>
           <Link
             href="/forgot-password"
-            className="text-sm font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
+            className="inline-flex min-h-11 items-center text-sm font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
           >
             שכחתי סיסמה
           </Link>
@@ -61,9 +67,10 @@ export function LoginForm({
           autoComplete="current-password"
           dir="ltr"
           minLength={8}
+          maxLength={PASSWORD_MAX_UTF8_BYTES}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="password-error" messages={fieldErrors.password} />
       </div>

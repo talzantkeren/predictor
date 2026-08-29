@@ -1,4 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   fillPasswordWithoutReportValue,
@@ -74,6 +76,17 @@ test.describe("league creation and isolation", () => {
       /league-name-error/,
     );
 
+    await first.page.getByLabel("שם הליגה").fill("ליגת \u202eSpoof");
+    await first.page.getByLabel("סכום השתתפות Demo באגורות").fill("2500");
+    await first.page.getByLabel("תוצאה מדויקת").fill("5");
+    await first.page.getByLabel("כיוון נכון").fill("2");
+    await first.page.getByLabel("כיוון שגוי").fill("0");
+    await first.page.getByRole("button", { name: "יצירת ליגה", exact: true }).click();
+    await expect(
+      first.page.getByText("שם הליגה מכיל תווי בקרה, כיווניות או מפרידי שורה"),
+    ).toBeVisible();
+    await expect(first.page).toHaveURL(/\/leagues\/new$/);
+
     await first.page.getByLabel("שם הליגה").fill(leagueName);
     await first.page.getByLabel("תיאור").fill("ליגה פרטית לבדיקת Slice 2");
     await first.page.getByLabel("סכום השתתפות Demo באגורות").fill("2500");
@@ -114,7 +127,9 @@ test.describe("league creation and isolation", () => {
     const leagueUrl = new URL(first.page.url());
     const leagueId = leagueUrl.pathname.split("/").at(-1);
     expect(leagueId).toMatch(/^[0-9a-f-]{36}$/);
-    await expect(first.page.getByRole("heading", { name: leagueName })).toBeVisible();
+    const leagueHeading = first.page.getByRole("heading", { name: leagueName });
+    await expect(leagueHeading).toBeVisible();
+    await expect(leagueHeading.locator('bdi[dir="auto"]')).toHaveText(leagueName);
     await expect(
       first.page.getByRole("navigation", { name: "ניווט בליגה" }),
     ).toBeVisible();
@@ -126,7 +141,11 @@ test.describe("league creation and isolation", () => {
     await expect(first.page.getByText("40%")).toBeVisible();
 
     await first.page.goto("/dashboard");
-    await expect(first.page.getByRole("link", { name: new RegExp(leagueName) })).toBeVisible();
+    const leagueCard = first.page.getByRole("link", {
+      name: new RegExp(leagueName),
+    });
+    await expect(leagueCard).toBeVisible();
+    await expect(leagueCard.locator('h3 bdi[dir="auto"]')).toHaveText(leagueName);
 
     // A shared league link opened while logged out must return to that league
     // after login, not fall back to the dashboard.
@@ -141,7 +160,7 @@ test.describe("league creation and isolation", () => {
     await returningPage.getByRole("button", { name: "התחברות" }).click();
     await expect(returningPage).toHaveURL(new RegExp(`/leagues/${leagueId}$`));
     await expect(returningPage.getByRole("heading", { name: leagueName })).toBeVisible();
-    await returning.close();
+    await closeContextsAfterResponseStreams([returning]);
 
     const second = await registerConfirmedUser({
       browser,
@@ -158,7 +177,6 @@ test.describe("league creation and isolation", () => {
     await expect(second.page.getByRole("heading", { name: "הדף לא נמצא" })).toBeVisible();
     await expect(second.page.getByText(leagueName)).toHaveCount(0);
 
-    await first.context.close();
-    await second.context.close();
+    await closeContextsAfterResponseStreams([first.context, second.context]);
   });
 });

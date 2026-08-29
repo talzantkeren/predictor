@@ -4,7 +4,9 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   addActiveLeagueMemberInDisposableLocalDatabase,
@@ -89,6 +91,14 @@ async function createLeague(page: Page, leagueName: string) {
 }
 
 test.describe("manager-only non-monetary reports", () => {
+  let leagueStatusCleanupId: string | undefined;
+
+  test.afterEach(() => {
+    if (!leagueStatusCleanupId) return;
+    setLeagueStatusInDisposableLocalDatabase(leagueStatusCleanupId, "open");
+    leagueStatusCleanupId = undefined;
+  });
+
   test("renders exact counts and isolated current/final fixtures only to the exact manager", async ({
     browser,
     page,
@@ -114,6 +124,7 @@ test.describe("manager-only non-monetary reports", () => {
       contextOptions,
     });
     const leagueId = await createLeague(manager.page, targetLeagueName);
+    leagueStatusCleanupId = leagueId;
     const managerId = await getUserId(managerEmail, password);
 
     const member = await registerConfirmedUser({
@@ -172,7 +183,7 @@ test.describe("manager-only non-monetary reports", () => {
         url.searchParams.get("next") === `/leagues/${leagueId}/reports`
       );
     });
-    await guest.close();
+    await closeContextsAfterResponseStreams([guest]);
 
     await manager.page.goto(`/leagues/${leagueId}`);
     const reportsLink = manager.page.getByRole("link", {
@@ -268,9 +279,11 @@ test.describe("manager-only non-monetary reports", () => {
       manager.page.getByRole("heading", { name: "דירוג נוכחי" }),
     ).toHaveCount(0);
 
-    await manager.context.close();
-    await member.context.close();
-    await otherManager.context.close();
-    await requester.context.close();
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      member.context,
+      otherManager.context,
+      requester.context,
+    ]);
   });
 });

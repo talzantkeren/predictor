@@ -1,10 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { FormMessage } from "@/features/auth/components/form-message";
+import {
+  FieldError,
+  FormMessage,
+} from "@/features/auth/components/form-message";
 import {
   approveJoinRequestAction,
   type JoinDecisionActionState,
@@ -43,12 +47,23 @@ export function ManagerJoinRequestCard({
     rejectJoinRequestAction,
     initialState,
   );
+  const rejectionReasonRef = useRef<HTMLTextAreaElement>(null);
+  const reasonHelpId = `reason-help-${request.requestId}`;
+  const reasonErrorId = `reason-error-${request.requestId}`;
+  const reasonErrors = rejectState.fieldErrors?.reason;
+  const hasReasonError = Boolean(reasonErrors?.length);
 
   useEffect(() => {
     if (approveState.status === "success" || rejectState.status === "success") {
       router.refresh();
     }
   }, [approveState.status, rejectState.status, router]);
+
+  useEffect(() => {
+    if (hasReasonError) {
+      rejectionReasonRef.current?.focus();
+    }
+  }, [hasReasonError, reasonErrors]);
 
   const isPending = request.status === "pending_approval";
 
@@ -57,7 +72,7 @@ export function ManagerJoinRequestCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="break-words text-lg font-black text-ink">
-            {request.requesterDisplayName}
+            <IsolatedText>{request.requesterDisplayName}</IsolatedText>
           </h2>
           <p className="mt-1 text-sm text-ink-muted">
             נפתחה ב־
@@ -84,7 +99,7 @@ export function ManagerJoinRequestCard({
       {request.status === "rejected" && request.rejectionReason ? (
         <p className="mt-4 rounded-xl border border-error-200 bg-error-50 p-3 text-sm leading-6 text-error-900">
           <span className="font-extrabold">סיבת הדחייה: </span>
-          {request.rejectionReason}
+          <IsolatedText>{request.rejectionReason}</IsolatedText>
         </p>
       ) : null}
 
@@ -114,23 +129,22 @@ export function ManagerJoinRequestCard({
               סיבת דחייה
             </label>
             <textarea
+              ref={rejectionReasonRef}
               id={`reason-${request.requestId}`}
               name="reason"
               required
               minLength={3}
               maxLength={300}
               rows={3}
-              aria-describedby={`reason-help-${request.requestId}`}
+              aria-invalid={hasReasonError}
+              aria-describedby={`${reasonHelpId}${hasReasonError ? ` ${reasonErrorId}` : ""}`}
+              aria-errormessage={hasReasonError ? reasonErrorId : undefined}
               className="w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none focus:border-focus focus:ring-2 focus:ring-navy-200"
             />
-            <p id={`reason-help-${request.requestId}`} className="text-xs leading-5 text-ink-muted">
+            <p id={reasonHelpId} className="text-xs leading-5 text-ink-muted">
               הסיבה תוצג למבקש/ת. אין לכלול מידע רגיש.
             </p>
-            {rejectState.fieldErrors?.reason?.map((message) => (
-              <p key={message} role="alert" className="text-sm text-error-900">
-                {message}
-              </p>
-            ))}
+            <FieldError id={reasonErrorId} messages={reasonErrors} />
             {rejectState.message ? (
               <FormMessage kind={rejectState.status === "success" ? "success" : "error"}>
                 {rejectState.message}

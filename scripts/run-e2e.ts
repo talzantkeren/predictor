@@ -1,7 +1,9 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
+
+import { containsUnexpectedWebServerError } from "@/lib/playwright-server-log";
 
 type LocalSupabaseStatus = {
   API_URL?: unknown;
@@ -20,15 +22,36 @@ const npmNeedsShell = !npmCliPath && process.platform === "win32";
 const skipBuild = process.argv.includes("--skip-build");
 const serveOnly = process.argv.includes("--serve-only");
 const externalSmoke = process.argv.includes("--external-smoke");
+const nativeScaleAudit = process.argv.includes("--native-scale-audit");
+const clientSecretCheckOnly = process.argv.includes(
+  "--client-secret-check-only",
+);
 const playwrightArguments = process.argv
   .slice(2)
   .filter(
     (argument) =>
       argument !== "--skip-build" &&
       argument !== "--serve-only" &&
-      argument !== "--external-smoke",
+      argument !== "--external-smoke" &&
+      argument !== "--native-scale-audit" &&
+      argument !== "--client-secret-check-only",
   );
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+const clientSecretScanContractPath = join(
+  process.cwd(),
+  ".next",
+  "client-secret-scan-contract.json",
+);
+
+if (
+  clientSecretCheckOnly &&
+  (skipBuild || serveOnly || externalSmoke || externalBaseUrl)
+) {
+  console.error(
+    "The client-secret gate is a local build check and cannot be combined with E2E mode flags.",
+  );
+  process.exit(1);
+}
 
 if (externalBaseUrl && !externalSmoke) {
   console.error(
@@ -42,12 +65,20 @@ if (externalSmoke && !externalBaseUrl) {
   process.exit(1);
 }
 
+if (nativeScaleAudit && (externalSmoke || externalBaseUrl || serveOnly)) {
+  console.error(
+    "The native-scale accessibility audit requires the local production build and cannot use external or serve-only mode.",
+  );
+  process.exit(1);
+}
+
 function getProcessEnvironment() {
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
     // Playwright otherwise writes an automatic DOM/URL error snapshot. Slice
     // 3 exercises bearer-token URLs, so failure artifacts must omit page state.
     PLAYWRIGHT_NO_COPY_PROMPT: "1",
+    ...(nativeScaleAudit ? { S9_NATIVE_SCALE_AUDIT: "1" } : {}),
   };
 
   if (process.platform === "win32" && process.env.LOCALAPPDATA) {
@@ -69,16 +100,112 @@ function getProcessEnvironment() {
 
 const processEnvironment = getProcessEnvironment();
 
-function run(args: string[], env: NodeJS.ProcessEnv) {
+function run(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  options: { rejectWebServerErrors?: boolean } = {},
+) {
   const result = spawnSync(npmCommand, [...npmArgumentPrefix, ...args], {
     cwd: process.cwd(),
+    encoding: "utf8",
     env,
+    maxBuffer: 16 * 1024 * 1024,
     shell: npmNeedsShell,
-    stdio: "inherit",
+    stdio: options.rejectWebServerErrors
+      ? ["inherit", "pipe", "pipe"]
+      : "inherit",
   });
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : "";
+  const stderr = typeof result.stderr === "string" ? result.stderr : "";
+
+  if (options.rejectWebServerErrors) {
+    process.stdout.write(stdout);
+    process.stderr.write(stderr);
+  }
 
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
+  }
+
+  if (
+    options.rejectWebServerErrors &&
+    containsUnexpectedWebServerError(`${stdout}\n${stderr}`)
+  ) {
+    console.error(
+      "Playwright emitted an unexpected local web-server error; the passing test count is not sufficient evidence.",
+    );
+    process.exit(1);
+  }
+}
+
+function writeClientSecretScanContract(syntheticSentinel: string) {
+  if (!/^sports-client-sentinel-[a-f0-9]{48}$/u.test(syntheticSentinel)) {
+    console.error("Could not create the synthetic client-secret scan contract.");
+    process.exit(1);
+  }
+
+  const buildId = readFileSync(
+    join(process.cwd(), ".next", "BUILD_ID"),
+    "utf8",
+  ).trim();
+  if (!buildId) {
+    console.error("The client-secret build did not produce a build ID.");
+    process.exit(1);
+  }
+
+  writeFileSync(
+    clientSecretScanContractPath,
+    `${JSON.stringify({
+      version: 1,
+      buildId,
+      syntheticSentinel,
+    })}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+}
+
+async function runPlaywright(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  options: { rejectWebServerErrors: boolean },
+) {
+  const child = spawn(npmCommand, [...npmArgumentPrefix, ...args], {
+    cwd: process.cwd(),
+    env,
+    shell: npmNeedsShell,
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+  const output: string[] = [];
+
+  child.stdout.on("data", (chunk: Buffer) => {
+    const value = chunk.toString("utf8");
+    output.push(value);
+    process.stdout.write(value);
+  });
+  child.stderr.on("data", (chunk: Buffer) => {
+    const value = chunk.toString("utf8");
+    output.push(value);
+    process.stderr.write(value);
+  });
+
+  const status = await new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+
+  if (status !== 0) {
+    process.exit(status);
+  }
+
+  if (
+    options.rejectWebServerErrors &&
+    containsUnexpectedWebServerError(output.join(""))
+  ) {
+    console.error(
+      "Playwright emitted an unexpected local web-server error; the passing test count is not sufficient evidence.",
+    );
+    process.exit(1);
   }
 }
 
@@ -150,8 +277,14 @@ if (!skipBuild && !externalBaseUrl) {
     SPORTS_API_KEY: clientSecretSentinel,
     CLIENT_SECRET_SENTINEL: clientSecretSentinel,
   };
+  rmSync(clientSecretScanContractPath, { force: true });
   run(["run", "build"], sentinelBuildEnvironment);
-  run(["run", "test:client-secrets"], sentinelBuildEnvironment);
+  writeClientSecretScanContract(clientSecretSentinel);
+  run(["run", "test:client-secrets:scan"], sentinelBuildEnvironment);
+}
+
+if (clientSecretCheckOnly) {
+  process.exit(0);
 }
 
 if (serveOnly && !externalBaseUrl) {
@@ -159,7 +292,7 @@ if (serveOnly && !externalBaseUrl) {
   process.exit(0);
 }
 
-run(
+void runPlaywright(
   [
     "exec",
     "--",
@@ -169,4 +302,8 @@ run(
     ...playwrightArguments,
   ],
   environment,
-);
+  { rejectWebServerErrors: !externalBaseUrl },
+).catch(() => {
+  console.error("Playwright could not be started.");
+  process.exit(1);
+});

@@ -139,8 +139,8 @@ schema, RLS, הרשאות, routes, Server Actions או חוקים עסקיים.
 
 ### 10. סגירה
 
-לאחר Preview ואישור חזותי מעדכנים את technical plan, testing, README וספר
-הפרויקט, סוגרים Slice 7c וממשיכים ל־Slice 8.
+הערת ארכיון: לאחר Preview ואישור חזותי עודכנו technical plan, testing, README
+וספר הפרויקט; Slice 7c נסגר ו־Slice 8 בוצע לאחריו. זו אינה הנחיית השלב הבא.
 
 ## שאלות הביקורת
 

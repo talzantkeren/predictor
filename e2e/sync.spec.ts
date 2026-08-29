@@ -3,13 +3,16 @@ import {
   expect,
   type BrowserContextOptions,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
 
 import {
   countSyncRunsInDisposableLocalDatabase,
   grantSystemAdminInDisposableLocalDatabase,
+  manualCatalogAttemptIsPersistedInDisposableLocalDatabase,
+  removeManualCatalogLeafFromDisposableLocalDatabase,
   removeProviderPredictionLockFixtureFromDisposableLocalDatabase,
   removeSyncFixturesFromDisposableLocalDatabase,
+  restoreManualCatalogLeafInDisposableLocalDatabase,
   seedProviderPredictionLockFixtureInDisposableLocalDatabase,
   seedSyncObservabilityRunsInDisposableLocalDatabase,
   type ProviderPredictionLockFixtureIds,
@@ -106,11 +109,21 @@ async function callSyncRoute(authorization?: string, method = "POST") {
 
 test.describe("Sports Sync observability and provider prediction lock", () => {
   let cleanup:
-    | { runIds: string[]; systemAdminUserId: string }
+    | {
+        auditActorId: string;
+        manualCatalogAuditCount: 0 | 1;
+        runIds: string[];
+        systemAdminUserId: string;
+      }
     | undefined;
   let providerCleanup: ProviderPredictionLockFixtureIds | undefined;
+  let manualCatalogLeafMissing = false;
 
   test.afterEach(() => {
+    if (manualCatalogLeafMissing) {
+      restoreManualCatalogLeafInDisposableLocalDatabase();
+      manualCatalogLeafMissing = false;
+    }
     if (providerCleanup) {
       removeProviderPredictionLockFixtureFromDisposableLocalDatabase(
         providerCleanup,
@@ -122,13 +135,14 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
     cleanup = undefined;
   });
 
-  test("records one authorized skip, hides it from a normal user, and renders an RTL admin status", async ({
+  test("persists and replays the Manual catalog without browser provider traffic", async ({
     browser,
     page,
     request,
   }, testInfo) => {
     const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) {
+    const syncActorId = process.env.SYNC_SYSTEM_ACTOR_ID;
+    if (!cronSecret || !syncActorId || !canonicalUuidPattern.test(syncActorId)) {
       throw new Error("Local Cron configuration is unavailable.");
     }
 
@@ -165,6 +179,12 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       concurrent: crypto.randomUUID(),
     };
     seedSyncObservabilityRunsInDisposableLocalDatabase(observabilityRunIds);
+    cleanup = {
+      auditActorId: syncActorId,
+      manualCatalogAuditCount: 0,
+      runIds: Object.values(observabilityRunIds),
+      systemAdminUserId: adminUserId,
+    };
     providerCleanup = {
       competitionId: crypto.randomUUID(),
       seasonId: crypto.randomUUID(),
@@ -177,6 +197,12 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       providerCleanup,
       ordinaryUserId,
     );
+    const browserProviderRequests: string[] = [];
+    admin.page.on("request", (browserRequest) => {
+      if (/api-football|api-sports/i.test(browserRequest.url())) {
+        browserProviderRequests.push(browserRequest.url());
+      }
+    });
 
     const beforeUnauthorized = countSyncRunsInDisposableLocalDatabase();
     const wrongMethod = await callSyncRoute(`Bearer ${cronSecret}`, "GET");
@@ -193,22 +219,42 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
     }
     expect(countSyncRunsInDisposableLocalDatabase()).toBe(beforeUnauthorized);
 
+    removeManualCatalogLeafFromDisposableLocalDatabase();
+    manualCatalogLeafMissing = true;
     const authorized = await callSyncRoute(`Bearer ${cronSecret}`);
     const payload = (await authorized.json()) as SyncRouteResponse;
-    expect(authorized.status).toBe(200);
-    expect(payload.data).toMatchObject({
-      status: "skipped",
-      reason: "MANUAL_PROVIDER",
-    });
-    expect(typeof payload.data?.runId).toBe("string");
     const runId = payload.data?.runId;
     if (typeof runId !== "string" || !canonicalUuidPattern.test(runId)) {
       throw new Error("The manual Sync attempt returned an invalid run ID.");
     }
-    cleanup = {
-      runIds: [runId, ...Object.values(observabilityRunIds)],
-      systemAdminUserId: adminUserId,
-    };
+    cleanup.runIds.push(runId);
+    const catalogOutcome =
+      payload.data?.status === "succeeded" &&
+      payload.data.reason === "MANUAL_APPLIED"
+        ? "applied"
+        : payload.data?.status === "failed" &&
+            payload.data.reason === "MANUAL_CATALOG_CONFLICT"
+          ? "conflict"
+          : null;
+    if (catalogOutcome) {
+      cleanup.manualCatalogAuditCount = catalogOutcome === "applied" ? 1 : 0;
+    }
+    expect(catalogOutcome).not.toBeNull();
+    if (!catalogOutcome) {
+      throw new Error("The Manual catalog returned an unexpected outcome.");
+    }
+    expect(authorized.status).toBe(catalogOutcome === "applied" ? 200 : 503);
+    expect(
+      manualCatalogAttemptIsPersistedInDisposableLocalDatabase({
+        outcome: catalogOutcome,
+        runId,
+        systemActorId: syncActorId,
+      }),
+    ).toBe(true);
+    if (catalogOutcome === "conflict") {
+      restoreManualCatalogLeafInDisposableLocalDatabase();
+    }
+    manualCatalogLeafMissing = false;
     expect(countSyncRunsInDisposableLocalDatabase()).toBe(
       beforeUnauthorized + 1,
     );
@@ -219,12 +265,15 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
     ).toBeVisible();
     const runCard = admin.page.locator("article").filter({ hasText: runId });
     await expect(runCard).toHaveCount(1);
-    await expect(runCard.getByText("דולג", { exact: true })).toBeVisible();
-    await expect(runCard.getByText(/סיבת דילוג:/)).toBeVisible();
     await expect(
-      runCard.getByText("המערכת מוגדרת למסלול ידני ללא ספק חי"),
+      runCard.getByText(catalogOutcome === "applied" ? "הושלם" : "נכשל", {
+        exact: true,
+      }),
     ).toBeVisible();
-    await expect(runCard.getByText(/פרטי כשל:/)).toHaveCount(0);
+    await expect(runCard.getByText(/סיבת דילוג:/)).toHaveCount(0);
+    await expect(runCard.getByText(/פרטי כשל:/)).toHaveCount(
+      catalogOutcome === "applied" ? 0 : 1,
+    );
     await expect(
       admin.page.locator("article").filter({ hasText: observabilityRunIds.succeeded }).getByText("הושלם", { exact: true }),
     ).toBeVisible();
@@ -237,7 +286,9 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
 
     await admin.page.getByRole("button", { name: "הפעלת סנכרון" }).click();
     await expect(
-      admin.page.getByText("המערכת מוגדרת לספק ידני ולכן לא נשלחה קריאת רשת."),
+      admin.page.getByText(
+        "קטלוג ההדגמה הידני כבר מעודכן. יומן הריצות עודכן.",
+      ),
     ).toBeVisible();
     const actionStatus = admin.page.getByRole("status");
     const actionText = await actionStatus.textContent();
@@ -246,6 +297,10 @@ test.describe("Sports Sync observability and provider prediction lock", () => {
       throw new Error("The manual admin trigger did not return a safe run ID.");
     }
     cleanup.runIds.push(actionRunId);
+    expect(countSyncRunsInDisposableLocalDatabase()).toBe(
+      beforeUnauthorized + 2,
+    );
+    expect(browserProviderRequests).toEqual([]);
 
     await ordinary.page.goto("/leagues/new");
     const seasonOptions = ordinary.page.locator("#league-season option");

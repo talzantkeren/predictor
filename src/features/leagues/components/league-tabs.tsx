@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 type LeagueSection =
   | "overview"
@@ -12,24 +12,32 @@ const commonItems: { key: LeagueSection; label: string; suffix: string }[] = [
   { key: "overview", label: "סקירה", suffix: "" },
   { key: "matches", label: "משחקים וניחושים", suffix: "/matches" },
   { key: "standings", label: "טבלת דירוג", suffix: "/standings" },
+  { key: "members", label: "חברים", suffix: "/members" },
 ];
 
 const managerItems: { key: LeagueSection; label: string; suffix: string }[] = [
-  { key: "members", label: "חברים", suffix: "/members" },
   { key: "reports", label: "דוחות", suffix: "/reports" },
   { key: "settings", label: "הגדרות", suffix: "/settings" },
 ];
+
+const settingsItem = managerItems[managerItems.length - 1];
 
 export function LeagueTabs({
   leagueId,
   active,
   isManager,
+  canManageSettings = isManager,
 }: {
   leagueId: string;
   active: LeagueSection;
   isManager: boolean;
+  canManageSettings?: boolean;
 }) {
-  const items = isManager ? [...commonItems, ...managerItems] : commonItems;
+  const items = isManager
+    ? [...commonItems, ...managerItems]
+    : canManageSettings && settingsItem
+      ? [settingsItem]
+      : commonItems;
 
   return (
     <div className="relative border-b border-line bg-white">

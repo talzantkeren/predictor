@@ -24,11 +24,13 @@ import {
   isValidInviteTokenHash,
 } from "@/features/membership/invite-token";
 import {
+  activeLeagueMemberPageRpcSchema,
   createdInviteRpcSchema,
-  dashboardJoinRequestsRpcSchema,
+  dashboardJoinRequestPageRpcSchema,
   inviteMetadataRpcSchema,
   inviteResolutionRpcSchema,
-  managerJoinRequestsRpcSchema,
+  managerJoinRequestPageRpcSchema,
+  parseJoinRequestStatusFilter,
   rejectJoinRequestInputSchema,
   unavailableInviteResolutionRpcSchema,
 } from "@/features/membership/schemas";
@@ -256,7 +258,7 @@ describe("membership RPC response validation", () => {
   });
 
   it("limits proof history and validates dashboard rows", () => {
-    const result = dashboardJoinRequestsRpcSchema.safeParse([
+    const result = dashboardJoinRequestPageRpcSchema.safeParse([
       {
         request_id: "26000000-0000-4000-8000-000000000032",
         league_name: "ליגת חברים",
@@ -276,7 +278,7 @@ describe("membership RPC response validation", () => {
   });
 
   it("maps manager rows without retaining proof-internal fields", () => {
-    const result = managerJoinRequestsRpcSchema.parse([
+    const result = managerJoinRequestPageRpcSchema.parse([
       {
         request_id: "26000000-0000-4000-8000-000000000032",
         requester_display_name: "מבקשת בדיקה",
@@ -308,6 +310,32 @@ describe("membership RPC response validation", () => {
     expect(JSON.stringify(result)).not.toContain("sha256");
   });
 
+  it("accepts only the privacy-safe active-member directory shape", () => {
+    const member = {
+      membership_id: "26000000-0000-4000-8000-000000000034",
+      display_name: "חברת ליגה",
+      approved_at: timestamp,
+    };
+
+    expect(activeLeagueMemberPageRpcSchema.parse([member])).toEqual([
+      {
+        membershipId: member.membership_id,
+        displayName: member.display_name,
+        approvedAt: member.approved_at,
+      },
+    ]);
+    expect(
+      activeLeagueMemberPageRpcSchema.safeParse([
+        {
+          ...member,
+          user_id: "26000000-0000-4000-8000-000000000035",
+          email: "private@example.com",
+          proof_path: "private/proof.webp",
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
   it("requires a bounded single-line rejection reason", () => {
     const base = {
       leagueId: publicId,
@@ -317,6 +345,18 @@ describe("membership RPC response validation", () => {
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "לא תקין" }).success).toBe(true);
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "x" }).success).toBe(false);
     expect(rejectJoinRequestInputSchema.safeParse({ ...base, reason: "שורה\nנוספת" }).success).toBe(false);
+    expect(
+      rejectJoinRequestInputSchema.safeParse({
+        ...base,
+        reason: "סיבה \u202ehidden",
+      }).success,
+    ).toBe(false);
+    expect(
+      rejectJoinRequestInputSchema.safeParse({
+        ...base,
+        reason: "סיבת Demo mixed 2026",
+      }).success,
+    ).toBe(true);
   });
 });
 
@@ -443,4 +483,28 @@ describe("safe membership errors", () => {
     expect(fallback).toBe("לא ניתן להשלים את הפעולה כרגע. יש לנסות שוב.");
     expect(fallback).not.toContain("invite_links");
   });
+});
+
+describe("manager queue URL filters", () => {
+  it("normalizes only the exact empty status to an omitted filter", () => {
+    expect(parseJoinRequestStatusFilter("")).toEqual({
+      success: true,
+      data: undefined,
+    });
+    expect(parseJoinRequestStatusFilter(undefined)).toEqual({
+      success: true,
+      data: undefined,
+    });
+    expect(parseJoinRequestStatusFilter("pending_approval")).toEqual({
+      success: true,
+      data: "pending_approval",
+    });
+  });
+
+  it.each([[""], " ", null, "unknown"])(
+    "rejects ambiguous or malformed status input: %j",
+    (value) => {
+      expect(parseJoinRequestStatusFilter(value)).toEqual({ success: false });
+    },
+  );
 });

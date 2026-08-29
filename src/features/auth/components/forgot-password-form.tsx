@@ -2,27 +2,35 @@
 
 import { useActionState } from "react";
 
+import { forgotPasswordAction } from "@/features/auth/actions";
 import {
-  forgotPasswordAction,
-  type AuthActionState,
-} from "@/features/auth/actions";
+  getRecoveryRequestPresentation,
+  type AuthFlowPresentation,
+  type RecoveryRequestState,
+} from "@/features/auth/auth-flow-results";
 
 import { FieldError, FormMessage } from "./form-message";
 
-export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }) {
-  const initialState: AuthActionState = { status: "idle" };
+export function ForgotPasswordForm({
+  statusPresentation,
+}: {
+  statusPresentation?: AuthFlowPresentation;
+}) {
+  const initialState: RecoveryRequestState = { outcome: "IDLE" };
   const [state, formAction, pending] = useActionState(
     forgotPasswordAction,
     initialState,
   );
-  const fieldErrors = state.fieldErrors ?? {};
-  const message = state.message ?? statusMessage;
+  const fieldErrors =
+    state.outcome === "VALIDATION_ERROR" ? state.fieldErrors : {};
+  const presentation =
+    getRecoveryRequestPresentation(state.outcome) ?? statusPresentation;
 
   return (
     <form action={formAction} noValidate className="space-y-5">
-      {message ? (
-        <FormMessage kind={state.status === "error" ? "error" : "info"}>
-          {message}
+      {presentation ? (
+        <FormMessage kind={presentation.kind}>
+          {presentation.message}
         </FormMessage>
       ) : null}
 
@@ -39,7 +47,7 @@ export function ForgotPasswordForm({ statusMessage }: { statusMessage?: string }
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>

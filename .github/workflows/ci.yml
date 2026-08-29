@@ -35,8 +35,16 @@ jobs:
           node-version: "24.16.0"
           cache: npm
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install document dependencies
+        run: python -m pip install -r docs/requirements-docs.txt
 
       - name: Run lint
         run: npm run lint
@@ -46,6 +54,24 @@ jobs:
 
       - name: Run unit tests
         run: npm run test
+
+      - name: Check deterministic project book
+        run: npm run docs:book:check
+
+      - name: Check submission document drift
+        run: npm run docs:submission:check
+
+      - name: Check final submission evidence
+        run: npm run submission:evidence:check
+
+      - name: Check final hardening evidence
+        run: npm run hardening:check
+
+      - name: Check owner runbooks
+        run: npm run owner-runbooks:check
+
+      - name: Check Sports secret boundaries
+        run: npm run sports:secret-boundaries
 
       - name: Run production build
         run: npm run build
@@ -72,6 +98,9 @@ jobs:
 
       - name: Run pgTAP tests
         run: npm run test:db
+
+      - name: Check representative scale plans
+        run: npm run scale:plans
 
       - name: Lint database schema
         run: npm exec -- supabase db lint --local --schema public,private --level warning --fail-on error
@@ -106,8 +135,14 @@ jobs:
       - name: Start local Supabase
         run: npm exec -- supabase start > /dev/null
 
-      - name: Run E2E core flows
-        run: npm run test:e2e
+      - name: Check client artifacts for server-only secrets
+        run: npm run test:client-secrets
+
+      - name: Re-run the direct client artifact scan
+        run: npm run test:client-secrets:scan
+
+      - name: Run E2E core flows against the checked build
+        run: npm run test:e2e:run
 
       - name: Stop local Supabase
         if: always()

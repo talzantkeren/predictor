@@ -12,7 +12,7 @@ export default async function UpdatePasswordPage() {
   const cookieStore = await cookies();
 
   if (cookieStore.get("predictor_recovery")?.value !== "active") {
-    redirect("/forgot-password?status=recovery-error");
+    redirect("/forgot-password?status=recovery-link-invalid");
   }
 
   return (

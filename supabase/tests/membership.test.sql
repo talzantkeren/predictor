@@ -191,6 +191,7 @@ select results_eq(
     ('invite_links', 'invite_links_lifecycle_check'),
     ('invite_links', 'invite_links_token_hash_check'),
     ('join_requests', 'join_requests_decision_lifecycle_check'),
+    ('join_requests', 'join_requests_rejection_reason_bidi_controls_check'),
     ('payment_proofs', 'payment_proofs_deleted_at_check'),
     ('payment_proofs', 'payment_proofs_mime_type_check'),
     ('payment_proofs', 'payment_proofs_sha256_check'),
@@ -354,7 +355,7 @@ select is(
        'revoke_invite',
        'resolve_invite',
        'submit_join_request',
-       'get_my_join_requests',
+       'get_my_join_requests_page',
        'get_join_request_upload_context',
        'consume_proof_upload_rate_limit',
        'finalize_payment_proof',
@@ -399,10 +400,24 @@ select ok(
     'private.join_request_eligibility' in
     pg_get_functiondef('public.resolve_invite(uuid,text)'::regprocedure)
   ) > 0
-  and position(
-    'private.join_request_eligibility' in
-    pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
-  ) > 0,
+  and (
+    position(
+      'private.join_request_eligibility' in
+      pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
+    ) > 0
+    or (
+      position(
+        'private.slice9_submit_join_request_without_activation_guard' in
+        pg_get_functiondef('public.submit_join_request(uuid,text)'::regprocedure)
+      ) > 0
+      and position(
+        'private.join_request_eligibility' in
+        pg_get_functiondef(
+          'private.slice9_submit_join_request_without_activation_guard(uuid,text)'::regprocedure
+        )
+      ) > 0
+    )
+  ),
   'one private admission rule is reused by resolution and submission'
 );
 
@@ -417,7 +432,7 @@ select ok(
        'revoke_invite',
        'resolve_invite',
        'submit_join_request',
-       'get_my_join_requests',
+       'get_my_join_requests_page',
        'get_join_request_upload_context',
        'consume_proof_upload_rate_limit',
        'finalize_payment_proof',
@@ -446,7 +461,7 @@ select results_eq(
         'revoke_invite',
         'resolve_invite',
         'submit_join_request',
-        'get_my_join_requests',
+        'get_my_join_requests_page',
         'get_join_request_upload_context',
         'consume_proof_upload_rate_limit',
         'finalize_payment_proof',
@@ -461,7 +476,7 @@ select results_eq(
     ('finalize_payment_proof', false),
     ('get_join_request_upload_context', false),
     ('get_league_invite_metadata', false),
-    ('get_my_join_requests', false),
+    ('get_my_join_requests_page', false),
     ('resolve_invite', true),
     ('revoke_invite', false),
     ('submit_join_request', false)
@@ -486,7 +501,7 @@ select is(
        'revoke_invite',
        'resolve_invite',
        'submit_join_request',
-       'get_my_join_requests',
+       'get_my_join_requests_page',
        'get_join_request_upload_context',
        'consume_proof_upload_rate_limit',
        'finalize_payment_proof',
@@ -511,7 +526,7 @@ select ok(
         'revoke_invite',
         'resolve_invite',
         'submit_join_request',
-        'get_my_join_requests',
+        'get_my_join_requests_page',
         'get_join_request_upload_context',
         'consume_proof_upload_rate_limit',
         'finalize_payment_proof',
@@ -534,7 +549,7 @@ select ok(
         'revoke_invite',
         'resolve_invite',
         'submit_join_request',
-        'get_my_join_requests',
+        'get_my_join_requests_page',
         'get_join_request_upload_context',
         'consume_proof_upload_rate_limit',
         'finalize_payment_proof',

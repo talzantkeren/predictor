@@ -4,121 +4,106 @@ import { z } from "zod";
 
 import { getDatabaseSyncError, SyncError } from "@/features/sync/errors";
 import type { ApiFootballApplyBatch } from "@/features/sports/sync-planner";
-import type {
-  ClaimedSportsSync,
-  RecordedSyncAttempt,
-  SportsSyncClaim,
-} from "@/features/sync/types";
+import type { ManualCatalogPayload } from "@/features/sports";
+import { parseSportsSyncClaimRow } from "@/features/sync/claim-contract";
+import type { ClaimedSportsSync, ManualCatalogApplication } from "@/features/sync/types";
 import { createSystemActorAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database.generated";
 
-const recordedAttemptSchema = z
+const activationSummarySchema = z
   .object({
-    result_id: z.string().uuid(),
-    result_provider: z.literal("manual"),
-    result_status: z.literal("skipped"),
-    result_started_at: z.string().datetime({ offset: true }),
-    result_finished_at: z.string().datetime({ offset: true }),
-    result_code: z.enum(["CONCURRENT_ATTEMPT", "MANUAL_PROVIDER"]),
+    activated_count: z.number().int().nonnegative(),
+    late_count: z.number().int().nonnegative(),
+    recorded_at: z.string().datetime({ offset: true }),
   })
-  .transform(
-    (row): RecordedSyncAttempt => ({
-      id: row.result_id,
-      provider: row.result_provider,
-      status: row.result_status,
-      startedAt: row.result_started_at,
-      finishedAt: row.result_finished_at,
-      reason: row.result_code,
-    }),
-  );
+  .refine((summary) => summary.late_count <= summary.activated_count)
+  .transform((summary) => ({
+    activatedCount: summary.activated_count,
+    lateCount: summary.late_count,
+    recordedAt: summary.recorded_at,
+  }));
 
-export async function recordManualSyncAttempt(systemActorId: string) {
+export async function activateDueLeagues(systemActorId: string) {
   const admin = createSystemActorAdminClient(systemActorId);
-  const { data, error } = await admin.rpc("record_sync_attempt");
+  const { data, error } = await admin.rpc("activate_due_leagues");
 
-  if (error) {
-    throw getDatabaseSyncError(error);
-  }
+  if (error) throw getDatabaseSyncError(error);
 
-  const parsed = recordedAttemptSchema.safeParse(
+  const parsed = activationSummarySchema.safeParse(
     Array.isArray(data) && data.length === 1 ? data[0] : null,
   );
-  if (!parsed.success) {
-    throw new SyncError("SYNC_UNAVAILABLE", 503);
-  }
-
+  if (!parsed.success) throw new SyncError("SYNC_UNAVAILABLE", 503);
   return parsed.data;
 }
 
-const claimRowSchema = z.object({
-  result_outcome: z.enum(["CLAIMED", "NOT_DUE", "CONCURRENT_ATTEMPT"]),
-  result_run_id: z.string().uuid().nullable(),
-  result_provider: z.literal("api-football"),
-  result_sync_kind: z
-    .enum(["catalog", "targeted", "reconciliation"])
-    .nullable(),
-  result_generation: z.number().int().positive().nullable(),
-  result_token: z.string().uuid().nullable(),
-  result_locked_until: z.string().datetime({ offset: true }).nullable(),
-  result_fixture_ids: z.array(z.string().regex(/^[1-9]\d*$/)).max(20),
-  result_code: z
-    .enum(["NOT_DUE", "PROVIDER_BACKOFF", "CONCURRENT_ATTEMPT"])
-    .nullable(),
-});
-
-function parseClaimRow(value: unknown): SportsSyncClaim | null {
-  const parsed = claimRowSchema.safeParse(value);
-  if (!parsed.success) return null;
-  const row = parsed.data;
-
-  if (
-    row.result_outcome === "CLAIMED" &&
-    row.result_run_id &&
-    row.result_sync_kind &&
-    row.result_generation &&
-    row.result_token &&
-    row.result_locked_until &&
-    row.result_code === null
-  ) {
-    const claim: ClaimedSportsSync = {
-      outcome: "CLAIMED",
+const manualCatalogApplicationSchema = z
+  .object({
+    result_run_id: z.string().uuid(),
+    result_status: z.enum(["succeeded", "failed"]),
+    result_code: z.enum([
+      "MANUAL_APPLIED",
+      "MANUAL_NO_CHANGE",
+      "MANUAL_CATALOG_CONFLICT",
+    ]),
+    result_started_at: z.string().datetime({ offset: true }),
+    result_finished_at: z.string().datetime({ offset: true }),
+    result_rows_inserted: z.number().int().nonnegative(),
+    result_teams_changed: z.number().int().nonnegative(),
+    result_matches_changed: z.number().int().nonnegative(),
+  })
+  .superRefine((row, context) => {
+    const validOutcome =
+      (row.result_status === "succeeded" &&
+        row.result_code !== "MANUAL_CATALOG_CONFLICT") ||
+      (row.result_status === "failed" &&
+        row.result_code === "MANUAL_CATALOG_CONFLICT");
+    if (!validOutcome) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Manual catalog status and result code disagree.",
+      });
+    }
+  })
+  .transform((row): ManualCatalogApplication => {
+    const details = {
       runId: row.result_run_id,
-      provider: row.result_provider,
-      syncKind: row.result_sync_kind,
-      generation: row.result_generation,
-      token: row.result_token,
-      lockedUntil: row.result_locked_until,
-      fixtureIds: row.result_fixture_ids,
+      startedAt: row.result_started_at,
+      finishedAt: row.result_finished_at,
+      rowsInserted: row.result_rows_inserted,
+      teamsChanged: row.result_teams_changed,
+      matchesChanged: row.result_matches_changed,
     };
-    return claim;
-  }
+    return row.result_status === "failed"
+      ? {
+          ...details,
+          status: "failed",
+          reason: "MANUAL_CATALOG_CONFLICT",
+        }
+      : {
+          ...details,
+          status: "succeeded",
+          reason:
+            row.result_code === "MANUAL_APPLIED"
+              ? "MANUAL_APPLIED"
+              : "MANUAL_NO_CHANGE",
+        };
+  });
 
-  if (
-    row.result_outcome === "NOT_DUE" &&
-    row.result_run_id === null &&
-    (row.result_code === "NOT_DUE" || row.result_code === "PROVIDER_BACKOFF")
-  ) {
-    return {
-      outcome: "NOT_DUE",
-      runId: null,
-      provider: row.result_provider,
-      reason: row.result_code,
-    };
-  }
+export async function applyManualFixtureCatalog(
+  systemActorId: string,
+  payload: ManualCatalogPayload,
+) {
+  const admin = createSystemActorAdminClient(systemActorId);
+  const { data, error } = await admin.rpc("apply_manual_fixture_catalog", {
+    p_payload: JSON.parse(JSON.stringify(payload)) as Json,
+  });
+  if (error) throw getDatabaseSyncError(error);
 
-  if (
-    row.result_outcome === "CONCURRENT_ATTEMPT" &&
-    row.result_run_id &&
-    row.result_code === "CONCURRENT_ATTEMPT"
-  ) {
-    return {
-      outcome: "CONCURRENT_ATTEMPT",
-      runId: row.result_run_id,
-      provider: row.result_provider,
-      reason: row.result_code,
-    };
-  }
-  return null;
+  const parsed = manualCatalogApplicationSchema.safeParse(
+    Array.isArray(data) && data.length === 1 ? data[0] : null,
+  );
+  if (!parsed.success) throw new SyncError("SYNC_UNAVAILABLE", 503);
+  return parsed.data;
 }
 
 export async function claimApiFootballSync(
@@ -132,7 +117,7 @@ export async function claimApiFootballSync(
   });
   if (error) throw getDatabaseSyncError(error);
 
-  const parsed = parseClaimRow(
+  const parsed = parseSportsSyncClaimRow(
     Array.isArray(data) && data.length === 1 ? data[0] : null,
   );
   if (!parsed) throw new SyncError("SYNC_UNAVAILABLE", 503);
@@ -188,11 +173,13 @@ export async function finalizeApiFootballSync(
         operatorNotes: string[];
         quotaRemaining: number | null;
       }
-    | {
+      | {
         status: "failed";
         errorCode: string;
         errorMessageSafe: string;
+        fixturesSeen: number;
         retryAfterSeconds: number | null;
+        quotaRemaining: number | null;
         operatorNotes: string[];
       },
 ) {
@@ -213,10 +200,10 @@ export async function finalizeApiFootballSync(
     p_error_message_safe: nullableText(
       result.status === "failed" ? result.errorMessageSafe : null,
     ),
-    p_fixtures_seen: result.status === "succeeded" ? result.fixturesSeen : 0,
+    p_fixtures_seen: result.fixturesSeen,
     p_operator_notes: result.operatorNotes,
     p_quota_remaining: nullableNumber(
-      result.status === "succeeded" ? result.quotaRemaining : null,
+      result.quotaRemaining,
     ),
     p_retry_after_seconds:
       result.status === "failed"

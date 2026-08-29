@@ -1,5 +1,6 @@
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form";
+import { getRecoveryStatusPresentation } from "@/features/auth/auth-flow-results";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,7 @@ export default async function ForgotPasswordPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const statusMessage = status
-    ? {
-        "recovery-error":
-          "הקישור אינו תקף או שפג תוקפו. אפשר לבקש קישור חדש.",
-        "recovery-browser-mismatch":
-          "לא ניתן להשלים את השחזור בדפדפן הזה. יש לבקש כאן קישור חדש ולפתוח אותו באותו דפדפן.",
-      }[status]
-    : undefined;
+  const statusPresentation = getRecoveryStatusPresentation(status);
 
   return (
     <AuthCard
@@ -28,7 +22,7 @@ export default async function ForgotPasswordPage({
         href: "/login",
       }}
     >
-      <ForgotPasswordForm statusMessage={statusMessage} />
+      <ForgotPasswordForm statusPresentation={statusPresentation} />
     </AuthCard>
   );
 }

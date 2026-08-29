@@ -131,12 +131,10 @@ describe("Slice 0 environment validation", () => {
     ).toEqual({
       CRON_SECRET: "local-cron-secret",
       SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
-      SPORTS_API_PROVIDER: "manual",
-      SPORTS_API_KEY: undefined,
     });
   });
 
-  it("defaults an omitted Cron provider to the manual path", () => {
+  it("does not parse provider configuration at the Cron authentication boundary", () => {
     const inputWithoutProvider: Record<string, string | undefined> = {
       ...validInput,
     };
@@ -151,8 +149,6 @@ describe("Slice 0 environment validation", () => {
     ).toEqual({
       CRON_SECRET: "local-cron-secret",
       SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
-      SPORTS_API_PROVIDER: "manual",
-      SPORTS_API_KEY: undefined,
     });
   });
 
@@ -169,28 +165,21 @@ describe("Slice 0 environment validation", () => {
     ).toThrow();
   });
 
-  it("requires a key at the Cron boundary for API-Football", () => {
-    expect(() =>
-      parseCronEnv({
-        ...validInput,
-        SPORTS_API_PROVIDER: "api-football",
-        CRON_SECRET: "local-cron-secret",
-        SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
-      }),
-    ).toThrow();
-
+  it("leaves API-Football key validation to the post-activation provider boundary", () => {
     expect(
       parseCronEnv({
         ...validInput,
         SPORTS_API_PROVIDER: "api-football",
-        SPORTS_API_KEY: "recorded-test-key",
         CRON_SECRET: "local-cron-secret",
         SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
       }),
-    ).toMatchObject({
-      SPORTS_API_PROVIDER: "api-football",
-      SPORTS_API_KEY: "recorded-test-key",
+    ).toEqual({
+      CRON_SECRET: "local-cron-secret",
+      SYNC_SYSTEM_ACTOR_ID: "70000000-0000-4000-8000-000000000007",
     });
+    expect(() =>
+      parseSportsSyncEnv({ SPORTS_API_PROVIDER: "api-football" }),
+    ).toThrow();
   });
 
   it("validates the shared admin-trigger provider boundary", () => {

@@ -13,6 +13,7 @@ import {
   displayNameSchema,
   forgotPasswordSchema,
   loginSchema,
+  PASSWORD_MAX_UTF8_BYTES,
   registerSchema,
   updatePasswordSchema,
 } from "@/features/auth/schemas";
@@ -77,11 +78,58 @@ describe("display-name validation", () => {
 
   it("accepts exactly fifty characters", () => {
     expect(displayNameSchema.safeParse("א".repeat(50)).success).toBe(true);
+    expect(
+      displayNameSchema.safeParse("Tal כהן Academy".padEnd(50, "א")).success,
+    ).toBe(true);
   });
 
   it("rejects more than fifty characters", () => {
     expect(displayNameSchema.safeParse("א".repeat(51)).success).toBe(false);
   });
+
+  it("matches the Hosted Auth 72-byte password ceiling", () => {
+    expect(PASSWORD_MAX_UTF8_BYTES).toBe(72);
+    expect(
+      loginSchema.safeParse({
+        email: "user@example.com",
+        password: "a".repeat(72),
+      }).success,
+    ).toBe(true);
+    expect(
+      loginSchema.safeParse({
+        email: "user@example.com",
+        password: "a".repeat(73),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("counts the password ceiling in UTF-8 bytes, including Hebrew", () => {
+    const exactlySeventyTwoBytes = `${"a".repeat(70)}א`;
+
+    expect(new TextEncoder().encode(exactlySeventyTwoBytes)).toHaveLength(72);
+    expect(
+      updatePasswordSchema.safeParse({
+        password: exactlySeventyTwoBytes,
+        passwordConfirmation: exactlySeventyTwoBytes,
+      }).success,
+    ).toBe(true);
+    expect(
+      updatePasswordSchema.safeParse({
+        password: `${exactlySeventyTwoBytes}a`,
+        passwordConfirmation: `${exactlySeventyTwoBytes}a`,
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each(["\u202a", "\u202e", "\u2067", "\u2069"])(
+    "rejects invisible bidi control %j while keeping legitimate mixed scripts",
+    (control) => {
+      expect(
+        displayNameSchema.safeParse(`Tal ${control}כהן`).success,
+      ).toBe(false);
+      expect(displayNameSchema.safeParse("Tal כהן 2026").success).toBe(true);
+    },
+  );
 });
 
 describe("safe authentication redirects", () => {

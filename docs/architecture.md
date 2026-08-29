@@ -148,7 +148,7 @@ Route Handlers שמורים למסלולים שבהם HTTP הוא חלק מהח�
 
 Supabase Auth מנהל session ב־secure cookies באמצעות `@supabase/ssr`. אין לשמור access token ידנית ב־`localStorage`, אין להעביר Bearer token לשירות Backend נפרד ואין CORS פנימי, מפני שאין גבול origin נוסף.
 
-ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת token. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
+ב־Slice 1 שיטת ההזדהות היחידה היא Email + Password, כולל אישור Email ושחזור סיסמה. מוטציות טפסי Auth עוברות ב־Server Actions עם Zod ומשתמשות ב־Server client; ה־Browser client נשאר תשתית זמינה אך אינו גבול האכיפה. כל לקוחות Supabase מקבלים את טיפוס `Database` שנוצר מה־schema. ספק האימייל המובנה ב־Free tier אינו מאפשר תבניות `token_hash`, ולכן זרימת ה־session נשארת PKCE ודורשת את הדפדפן שיזם את הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר את הכתובת ומפנה להתחברות ידנית; שחזור כזה מסביר לבקש קישור חדש בדפדפן הנוכחי. בקשת שחזור משתמשת בתוצאה typed ו־account-neutral: success וכתובת לא מוכרת שקולים, בעוד cooldown ו־outage נשארים actionable בלי לחשוף קיום חשבון. ה־callback מציג רק סטטוסים allowlisted ל־invalid/expired/reused/session mismatch/provider unavailable; replay מיידי באותו דפדפן מזוהה בעזרת digest חד־כיווני קצר־חיים שאינו גבול הרשאה. ב־Slice 3 return path של invite נשמר להרשמה ב־cookie קצר־חיים, HttpOnly ומוגבל ל־`/auth/confirm`; כתובת ה־callback שנשלחת לספק האימייל נטולת token. ה־callback מאמת ומוחק את ה־cookie. מדיניות Supabase Auth אוכפת מינימום 8 תווים גם כאשר עוקפים את ה־UI. `proxy.ts` מרענן את ה־session, והרשאה בשרת מסתמכת על משתמש שאומת מול Supabase ולא על מצב React, cookie גולמי או `getSession()` בלבד.
 
 גישת invite נפרדת מ־Auth session: הדפדפן קורא secret רק מ־URL Fragment,
 מחשב SHA-256 באמצעות Web Crypto ומחליף אותו דרך Route Handler same-origin. השרת
@@ -255,8 +255,10 @@ Slice 8 אינו משנה lifecycle: הוא קורא את הסטטוס הקיי�
 
 `scheduled` ↔ `postponed` → `live` → `finished`, או `scheduled/postponed` →
 `canceled`. ספק רשאי להחזיר משחק שבוטל ל־`scheduled`/`postponed` רק כאשר לא
-נרשמה התחלה: אין `predictions_locked_at`, המועד החדש בעתיד והמשחק אינו
-`manual override`. מעבר כזה הוא reactivation מפורש ולא regression רגיל.
+נרשמה התחלה: אין `predictions_locked_at`, גם המועד הקנוני השמור וגם המועד החדש
+בעתיד, והמשחק אינו `manual override`. מעבר כזה הוא reactivation מפורש ולא
+regression רגיל. ההכרעה נעשית תחת נעילת שורת המשחק ולפי wall-clock מסדי טרי;
+מועד שמור שכבר חל הופך ל־latch ואינו מוחלף במועד ספק עתידי.
 
 `kickoff_at` הוא גבול הזמן הראשי. `predictions_locked_at` הוא latch נוסף שנקבע
 רק לאחר שהמערכת כבר התירה חשיפה לפי המועד או צפתה במצב שמוכיח התחלה/הפסקה/
@@ -278,10 +280,47 @@ Slice 8 אינו משנה lifecycle: הוא קורא את הסטטוס הקיי�
 
 ### 10.2 `score_match`
 
-פונקציית PostgreSQL אטומית מקבלת משחק ותוצאה מאומתת, נועלת את רשומת המשחק, מעלה `result_version` כאשר התוצאה השתנתה ומבצעת `UPDATE ... FROM` לכל הניחושים של המשחק בכל הליגות.
+גבול PostgreSQL אטומי מקבל משחק ותוצאה מאומתת. ה־wrapper הציבורי, המותר רק
+ל־`service_role`, מאמת actor, לוקח מחסום registry בלעדי, מגלה את כל הליגות
+בעונת המשחק ולוקח את מפתחות ה־advisory שלהן בסדר יציב. לאחר ההמתנות הוא מאמת
+מחדש את אותו actor ומחזיק את שורת `system_admins` ב־`FOR KEY SHARE` עד commit;
+אותו חוזה חל גם על יצירה/תיקון ידניים, הכרעת review, reconciliation של ליגה
+שהושלמה ו־API-Football batch. רק לאחר מכן delegate
+פרטי ללא Data API grant נועל את רשומת המשחק, מעלה `result_version` כאשר
+התוצאה השתנתה ומבצע overwrite דטרמיניסטי לניחושים שהותר לנקד. כך ליגה שנוצרת
+במקביל אינה יכולה להופיע ב־snapshot מאוחר של הניקוד בלי שהמפתח שלה מוחזק.
+הניקוד האוטומטי חל רק על ליגות שאינן `completed`: תוצאה חדשה או מתוקנת אינה
+רשאית לשכתב בשקט snapshot, ניקוד או דירוג סופי של ליגה שהושלמה.
 
-לאחר השגת נעילת המשחק הפונקציה דוגמת את זמן מסד הנתונים ודוחה מעבר ל־
-`finished` כאשר `now() < kickoff_at`. ביטול לפני מועד המשחק נשאר חוקי ואינו
+תוצאת ספק שאינה בטוחה לזמן החוקי נשמרת ב־`match_result_reviews` לפי
+`(match_id, result_version)`. הכרעת system admin לוקחת מחסום registry בלעדי
+לפני גילוי ליגות העונה, נועלת את מפתחות הליגה שנמצאו ואז match→review, מקבלת
+רק review ממתין של הגרסה הנוכחית, וכותבת אטומית תוצאה חוקית קנונית או ביטול.
+stale version, replay, actor זר או תיקון ספק מקביל נדחים ללא mutation. לאחר
+ההכרעה `score_match` מנקד מחדש רק ליגות שאינן `completed`; לכל ליגה שהושלמה
+ושאכן מכילה את המשחק ב־`league_match_snapshots` נוצרת רשומת
+`league_match_reconciliations` עמידה וייחודית לפי
+`(league_id, match_id, result_version)`.
+
+רק גבול system-admin צר של reconciliation רשאי להחיל שינוי על תוצאה סופית.
+הוא גוזר את מזהה הליגה מן ה־work item ונכשל מיד אם הוא חסר, לוקח advisory key
+דו־חלקי לאותה ליגה, וקורא מחדש את הקישור תוך נעילת parent. שינוי שיוך בזמן
+ההמתנה נכשל סגור; משם הוא משלים
+match→snapshot→reconciliation לפי סדר הנעילות הקנוני, ורק אז מאמת ומפעיל את
+ה־delegate. ה־delegate מאמת
+שהגרסה pending ועדכנית ושה־snapshot הקפוא קיים, מעדכן את ה־snapshot ומבצע
+overwrite דטרמיניסטי לניחושי אותה ליגה בלבד. דחייה מסמנת את הרשומה
+`dismissed` בלי לשנות snapshot או ניקוד. משחק שנוסף לעונה אחרי completion אינו
+נכנס לסט הקפוא, אינו יוצר reconciliation ואינו משנה את הדוח הסופי. כל apply,
+dismiss ו־replay מתועדים; replay מוצלח הוא no-op ואינו מכפיל audit.
+
+בגבול ה־Manual, `create_or_correct_match` אינו מקבל status גנרי. יצירה או
+תיקון שמשפיעים על עונה עם ליגה `completed` חייבים לעבור באותו חוזה review/
+reconciliation; פעולה שאינה יכולה ליצור את הרשומות הגרסאיות הנדרשות נדחית
+בקוד `COMPLETED_RECONCILIATION_REQUIRED`.
+
+לאחר השגת נעילת המשחק הפונקציה דוגמת `clock_timestamp()` ודוחה מעבר ל־
+`finished` כאשר הדגימה מוקדמת מ־`kickoff_at`. ביטול לפני מועד המשחק נשאר חוקי ואינו
 מוחק ניחושים.
 
 לכל ניחוש:
@@ -293,6 +332,21 @@ Slice 8 אינו משנה lifecycle: הוא קורא את הסטטוס הקיי�
 הפונקציה **אינה** עושה `points = points + x`. לכן ריצה כפולה, retry או תיקון תוצאה אינם מכפילים ניקוד.
 
 תוצאה ידנית ותוצאה מספק עוברות באותו חוזה. `is_manually_overridden = true` מונע מ־Sync עתידי לדרוס תיקון עד שמנהל מערכת מסיר את הדגל.
+
+הסרת הדגל עוברת בגבול נפרד וצר: `ManualOverrideClearBoundary` לוכד את UUID
+המשחק שנקרא מהמסד ואינו מקבל מזהה authoritative מהטופס; לאחר session,
+confirmation והרשאת משאב, gateway מסוג `server-only` קורא ל־
+`clear_manual_match_override` באמצעות actor קבוע מ־header שרתי. ה־RPC זמינה
+רק ל־`service_role`, מאמתת מחדש את ה־actor, מקבלת רק שורת API-Football עם
+external ID מספרי תקין, לוקחת מחסום registry בלעדי לפני discovery, נועלת את
+ליגות העונה בסדר UUID ואז את המשחק ומוודאת שהעונה לא השתנתה. לכן יצירת ליגה
+מקבילה באותה עונה ממתינה ואינה יכולה להופיע רק בבדיקת ה־completed המאוחרת.
+מעבר ownership ממשי בעונה `completed`/`archived` נדחה עד
+מסלול reconciliation של W4. הפעולה משנה רק `is_manually_overridden` ו־
+`updated_at` ומוסיפה audit יחיד; היא אינה משנה status, scores, result version,
+provider provenance, prediction-lock latch או predictions. replay לאחר הסרה
+מחזיר no-op typed ואינו מזיז timestamp או מכפיל audit, וה־snapshot הבא של
+הספק רשאי לחזור למסלול apply הרגיל.
 
 הרחבה צרה של אותו חוזה מטפלת ב־reactivation מצד `api-football`: רק משחק
 `canceled` ללא latch, עם מועד עתידי מאומת ויעד `scheduled`/`postponed`, רשאי
@@ -368,7 +422,7 @@ RLS מופעלת על כל טבלה חשופה ל־Data API. השרת בודק �
 | `profiles` | ב־Slice 1 המשתמש קורא ומעדכן רק את הרשומה שלו; לאחר יצירת מודל החברות תתווסף קריאה לפרופילים של משתמשים בעלי זיקת ליגה מותרת |
 | `system_admins` | ללא גישת משתמש רגיל; ניהול שרת/DB בלבד |
 | ספורט גלובלי | authenticated read; כתיבה למנהל מערכת/secret בלבד |
-| `leagues`, חוקים ופרסים | חברים רואים; רק מנהל הליגה משנה ובכפוף לסטטוס |
+| `leagues`, חוקים ופרסים | חברים רואים; מנהל הליגה או מנהל מערכת דרך RPC צר לליגה מבוקשת משנים שדות מותרים ובכפוף לנעילה; אין למנהל מערכת policy רוחבי |
 | `invite_links` | אין גישה ישירה; מנהל מקבל metadata בטוח, ופתרון דורש public ID ו־hash תואמים דרך RPC מצומצם |
 | `join_requests` | המשתמש רואה את שלו; מנהל רואה בקשות של הליגה שלו |
 | `payment_proofs` | ב־Slice 3: בעל ההעלאה ומנהל הליגה המדויקת בלבד; גישת מנהל מערכת תתווסף רק עם מודל והרשאת תמיכה מפורשים |
@@ -464,10 +518,12 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
 1. ה־Handler מאמת content type ו־`CRON_SECRET`, וטוען principal שרת קבוע מתוך
    `SYNC_SYSTEM_ACTOR_ID`. manual trigger מאומת משתמש בזהות מנהל המערכת המחובר.
    בשני המקרים ה־actor נבדק שוב בתוך ה־RPC מול `system_admins`.
-2. claim RPC נועלת לזמן קצר את שורת `sync_leases` של `api-football`, בודקת אם
-   קטלוג, reconciliation או targeted refresh הם due, ומונעת lease מקביל.
+2. claim RPC נועלת לזמן קצר את שורת `sync_leases` של `api-football`, ורק אז
+   דוגמת `clock_timestamp()` טרי לבדיקת expiry, backoff, cooldown ו־due של
+   קטלוג, reconciliation או targeted refresh. ממתין אינו שומר החלטת זמן ישנה.
 3. claim מוצלח מגדיל `generation` מונוטוני, יוצר token UUID חדש שאינו ממוחזר,
-   יוצר `sync_runs.status='running'` ומגדיר `locked_until`. manual trigger רשאי
+   דוגם זמן issuance טרי, יוצר `sync_runs.status='running'` ומגדיר
+   `locked_until = started_at + 120 seconds`. manual trigger רשאי
    לעקוף due-window אך לא lease פעיל, provider backoff או cooldown עמיד של דקה
    בין ניסיונות force; כך לחיצות מנהל אינן יוצרות retry storm.
 4. אם lease קודם פג, ה־claim מסיים את הריצה הנטושה כ־`failed/LEASE_EXPIRED`
@@ -494,9 +550,38 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
 הוא תקין, provider-owned ואידמפוטנטי, והריצה הבאה משלימה אותו. תוצאה וניקוד של
 כל משחק נשארים אטומיים באותו batch.
 
-במצב `manual`, הזרימה הקיימת נשארת סופית וללא I/O: `record_sync_attempt()`
-כותבת `skipped/MANUAL_PROVIDER` או `skipped/CONCURRENT_ATTEMPT` ואינה משנה
-משחקים. בקשה לא מורשית אינה כותבת `sync_runs` או `audit_logs` בשני המצבים.
+שרשרת הזמן המתוזמנת קבועה ומדידה: provider client עד 30 שניות; `pg_net` עד
+45 שניות; Route Handler עם `maxDuration=60`; lease מסדי של 120 שניות. כך יש
+15 שניות בין תקציב הספק לתצפית החיצונית ועוד 15 שניות עד תקרת ה־Route, וכל
+המסלול נשאר מגודר לפני expiry. ‏60 שניות נתמכות גם ב־Hobby ללא Fluid compute
+לפי [התיעוד הרשמי של Vercel](https://vercel.com/docs/functions/configuring-functions/duration).
+Migration פרטית משנה רק את ה־job הקיים משם provider-specific לשם
+`predictor-sports-sync` ומ־10 ל־45 שניות, תוך שמירת target/Vault headers,
+schedule ו־active state; היא אינה יוצרת job חסר ואינה מחזירה command שעלול
+להכיל lookup סודי.
+
+במצב `manual`, הזרימה נשארת ללא HTTP לספק אך אינה עוד short-circuit. ה־adapter
+בונה את `manual-catalog-v1` הדטרמיניסטי והחסום, וה־gateway קורא פעם אחת ל־
+`apply_manual_fixture_catalog()`. זהו wrapper צר `SECURITY DEFINER` שמקבל payload
+בלבד, גוזר actor קבוע מה־gateway ומעביר אותו ל־core פרטי ללא הרשאת Data API.
+ה־core מאמת ונועל מחדש את ה־actor, נועל תחילה את כל הליגות של העונה בסדר UUID,
+אחר כך teams ו־matches בסדר קבוע, מאמת parity מלא וזהויות provider ריקות,
+ומכניס רק שורות חסרות לפי UUID. drift בשדות הקבועים, שורת provider-owned,
+latch על משחק catalog או השלמת catalog חסר בעונה שיש בה ליגה `completed` או
+`archived` נכשלים אטומית ואינם נדרסים. מיד לפני insert חסר ה־core דוגם זמן DB
+טרי; fixture חסר שהגיע למועדו אינו משוחזר כמשחק היסטורי לא־נעול. prediction
+כשלעצמו אינו מפריע ל־replay זהה;
+בגבול `create_or_correct_match`, שינוי זהות season/teams נחסם כאשר קיימים
+prediction או latch.
+
+כל קריאה תקינה שהגיעה ל־RPC אחרי בניית ה־payload השרתית יוצרת בדיוק שורת
+`sync_runs` סופית אחת. שינוי ממשי מחזיר `MANUAL_APPLIED`, replay זהה מחזיר
+`MANUAL_NO_CHANGE`, ו־conflict מחזיר `MANUAL_CATALOG_CONFLICT`; קודי ההצלחה
+מוחזרים מתוצאת ה־RPC ואינם נשמרים ב־`error_code`, שנשאר `null` כאשר
+`status='succeeded'`. רק mutation ראשון יוצר business audit. כשל config או
+validation לפני קריאת ה־RPC אינו invocation מסדי ולכן אינו מבטיח שורת run.
+`record_sync_attempt()` הוסר כדי שלא יישאר גבול Manual חלופי. בקשה לא מורשית
+אינה כותבת `sync_runs` או `audit_logs` בשני מסלולי הספק.
 
 ### 14.4 Due planner ומדיניות מכסה
 
@@ -506,11 +591,31 @@ advisory lock אינו lease לעבודה שחוצה RPC. מסלול API-Footbal
   ומחזורים נוספים.
 - משחקים חיים, משחקים שמועדיהם קרובים ומשחקים שעדיין אינם terminal אחרי
   kickoff מתרעננים בבקשת `ids` ממוקדת בערך פעם בדקה, עד 20 IDs לבקשה.
+- כאשר כמה סוגי עבודה due יחד, ה־claim מדרג את `targeted`, ‏`catalog` ו־
+  `reconciliation` לפי זמן ה־claim המגודר האחרון של כל סוג, ולא לפי הצלחה
+  בלבד. לכן כל סוג due נבחר בתוך לכל היותר שלושה claims זכאים עוקבים, גם אם
+  סוג קודם נכשל. lease פעיל, provider backoff או force cooldown משעים את
+  הספירה ואינם נעקפים. בתוך targeted, משחקי `live` קודמים לכל stale/near-live,
+  ואז נשמר סדר kickoff ו־external ID דטרמיניסטי במכסה של 20.
 - `provider_status` טרמינלי שאינו בר־ניקוד, ובפרט `AET`/`PEN`, הוא מקור review
   עמיד ואינו נשאר ב־targeted polling. הוא ממשיך להתגלות ב־reconciliation.
-- 429/`Retry-After` מעדכן `backoff_until`; quota headers נשמרים כאיתות תפעולי.
-  מדיניות threshold אוטומטית למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry
-  storm ואין polling כל 15 שניות.
+- 429 מסווג כ־`PROVIDER_RATE_LIMITED` לפני המתנה: `Retry-After` קצר יכול לקבל
+  retry בתוך תקציב ה־wall-clock, ואילו hint שאינו נכנס בתקציב מוחזר מיד בלי
+  שינה. רק מספר שניות שלם ולא־שלילי, חסום ל־`0..3600`, ו־quota remaining
+  שלם ולא־שלילי מועברים ל־finalize; headers גולמיים אינם נשמרים.
+  `backoff_until` נאכף גם ב־scheduled וגם ב־force. מדיניות threshold אוטומטית
+  למכסה נמוכה תתווסף רק עם ראיה תפעולית. אין retry storm ואין polling כל 15
+  שניות.
+- force נוסף בתוך דקת ה־cooldown חוזר מה־RPC כ־
+  `NOT_DUE/FORCE_COOLDOWN`. החוזה הזה הוא skip ניטרלי לכל אורך DB → gateway →
+  orchestration → Route/Action; אין provider I/O, ‏finalize או שורת run חדשה.
+- ה־orchestration מפרידה גבולות כשל: קודי `PROVIDER_*` נוצרים רק בשלב קריאת
+  הספק, `SYNC_PLAN_FAILED` בתכנון snapshot מנורמל, `SYNC_APPLY_FAILED` בכתיבת
+  batch ו־`SYNC_FINALIZE_FAILED` רק כאשר ה־finalizer עצמו נכשל. פרטי exception,
+  payload ושמות אינם עוברים ל־DB או לתוצאה. כשל provider/planner שומר
+  `fixtures_seen=0`; כשל apply שומר רק את `fixtures_seen`, המכסה וההערות שכבר
+  אומתו בתכנית. כשל finalizer אינו מפעיל finalizer שני, ולכן lease/run נשארים
+  לגידור ול־reclaim הקיים במקום לנסות mutation לא־מגודר.
 - ה־Base URL, league ID והעונה הם constants/configuration typed ולא קלט
   משתמש. ה־API key נשמר רק ב־Vercel עבור Next.js ואינו נשמר ב־Vault.
 
@@ -533,12 +638,14 @@ status לא מוכר מכשיל את ה־snapshot לפני mutation.
 נקבע כאשר נצפה live, `SUSP`, `INT`, `FT`, `AET` או `PEN`. עבור כל משפחת
 הביטול `CANC`/`ABD`/`AWD`/`WO`, הקוד החיצוני לבדו אינו מוכיח התחלה: latch
 נקבע רק אם היה latch קודם או שזמן המסד כבר הגיע למועד הקנוני השמור או למועד
-החדש המאומת מהספק (וב־fixture חדש — למועד החדש בלבד). כך שינוי מועד יחד עם
-ביטול אינו יכול להחזיר חשיפה לאחור, וביטול מוקדם אינו מפר את PRED-05.
+החדש המאומת מהספק (וב־fixture חדש — למועד החדש בלבד). החישוב נעשה לאחר נעילת
+שורת המשחק; גם כאשר `manual override` מונע שינוי תוצאה של הספק, ה־latch העצמאי
+נשמר. כך שינוי מועד יחד עם ביטול אינו יכול להחזיר חשיפה לאחור, וביטול מוקדם
+אינו מפר את PRED-05.
 
 `save_prediction`, RLS של החשיפה וה־UI בודקים latch בנוסף ל־`kickoff_at`.
 משחק `canceled` ללא latch יכול לעבור אוטומטית חזרה ל־`scheduled`/`postponed`
-רק עם kickoff עתידי; `score_match` מאפסת אטומית את metadata הניקוד למצב טרם
+רק כאשר גם ה־kickoff השמור וגם הנכנס עתידיים; `score_match` מאפסת אטומית את metadata הניקוד למצב טרם
 נוקד. finished, live או canceled עם latch אינם נפתחים מחדש. regression כזה
 אינו מפיל batch: מצב המשחק הבטוח נשמר, `provider_status` האחרון נשמר כראיית
 review ונוספת הערת מפעיל חסומה. `AET`/`PEN` מוצגים כ־"דורש בדיקה" על סמך
@@ -594,7 +701,7 @@ Services מחזירים error codes יציבים כגון:
 
 | איום | הגנה ראשית | בדיקת חובה |
 | --- | --- | --- |
-| שינוי ניחוש אחרי נעילה | תנאי `now() < kickoff_at` ב־DB/RLS | שנייה לפני/בדיוק/שנייה אחרי |
+| שינוי ניחוש אחרי נעילה | שורות league→member→match ננעלות, ואז `clock_timestamp() < kickoff_at` מוכרע ב־RPC; RLS מגן על הקריאה | לפני/בדיוק/אחרי וגם waiter שמתחיל לפני kickoff ומשתחרר אחריו |
 | צפייה בניחוש אחר לפני פתיחה | RLS תלוי זמן וחברות | שני משתמשים באותה ליגה לפני/אחרי |
 | IDOR בין ליגות | AuthZ לפי resource + RLS | החלפת `leagueId/requestId/proofId` |
 | קובץ זדוני או MIME מזויף | allowlist, magic bytes, decode/re-encode, private bucket | SVG/exe מוסווים וקובץ גדול נדחים; payload נלווה לתמונה תקינה אינו שורד את ה־re-encode |
@@ -603,9 +710,10 @@ Services מחזירים error codes יציבים כגון:
 | אישור כפול | transaction + unique + idempotency | שתי קריאות מקבילות |
 | ניקוד כפול | overwrite דטרמיניסטי + versions | אותה תוצאה פעמיים ותיקון תוצאה |
 | Cron מזויף או מקביל | secret + principal ייעודי ב־`system_admins`; manual משתמש ב־RPC הקצר הקיים ו־API-Football ב־row lease עם generation/token/expiry | secret/actor שגוי, claim מקביל, reclaim, token ישן ו־expiry בזמן apply |
-| שינוי מועד פותח ניחושים אחרי live | `predictions_locked_at` בלתי־הפיך ב־DB ומשולב ב־RPC/RLS/UI | live או suspension, reschedule לעתיד וניסיון שמירה/חשיפה |
+| שינוי מועד פותח ניחושים אחרי live/ביטול | `predictions_locked_at` בלתי־הפיך, זמן טרי תחת match lock, ושני גבולות kickoff ב־reactivation | ביטול/השעיה לפני ואחרי kickoff, reschedule לעתיד וניסיון שמירה/חשיפה |
 | worker ישן כותב אחרי reclaim | fencing נבדק בתחילת ובסוף apply/finalize תחת row lock | generation/token/provider שגויים ו־lease שפג |
 | עקיפה דרך Supabase Data API | RLS ו־grants לכל טבלה | קריאות ישירות עם publishable key |
+| bidi spoofing בשם משתמש/ליגה/ספק | Zod/provider normalization ו־DB checks דוחים Unicode `Bidi_Control`; רכיב תצוגה יחיד משתמש ב־`bdi dir="auto"` | Vitest לכל controls וטקסט מעורב, pgTAP לכל עמודות השם, Playwright ב־Desktop/Mobile |
 
 ## 19. סקייל בסיסי
 

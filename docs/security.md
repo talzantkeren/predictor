@@ -12,6 +12,11 @@
   Server Actions הן בקשות POST שאינן נשמרות ב־cache.
 - `/auth/confirm` מוחק את פרטי ה־token מהיעד, חוסם redirects שאינם ב־allowlist
   ומוסיף `Referrer-Policy: no-referrer`.
+- ה־callback אינו מחזיר הודעת ספק או query חופשי ל־UI. הוא ממפה קודי שגיאה
+  מוכרים ל־invalid/expired/reused/session-mismatch/provider-unavailable
+  allowlisted. digest חד־כיווני קצר־חיים ב־cookie `HttpOnly`, שמוגבל ל־
+  `/auth/confirm`, מאפשר לזהות replay מיידי באותו דפדפן; הוא diagnostic בלבד,
+  אינו כולל את הקוד הגולמי ואינו מקור AuthN/AuthZ.
 - קישורי Email משתמשים ב־PKCE. פתיחה מחוץ לדפדפן שיזם את הבקשה אינה יכולה
   להחליף את הקוד ב־session: באישור הכתובת המשתמש מופנה להתחברות ידנית, ובשחזור
   הוא מקבל הנחיה לבקש קישור חדש בדפדפן הנוכחי. היעד נגזר רק מ־origin ו־path
@@ -20,8 +25,9 @@
   שה־session נוצר בזרימת recovery, אך אינו מתועד או נחשב גבול הרשאה: לקוח HTTP
   יכול לזייף אותו. ה־Server Action מוחק את הסמן לאחר הצלחה או session לא תקף.
 - כל מוטציות Auth מאומתות מחדש ב־Server Actions באמצעות Zod. היישום דורש
-  כרגע סיסמה באורך 8–128 תווים. מדיניות Hosted חייבת להיבדק בראיה לקריאה
-  בלבד ולהישאר תואמת; אין להציג configuration חזק יותר כ־PASS לפני הראיה.
+  כרגע שמונה תווים לפחות ועד 72 בתים בקידוד UTF-8. תקרת הבתים מונעת פער מול
+  GoTrue גם בסיסמאות עבריות ורב־בתיות. מדיניות Hosted נבדקה בקריאה בלבד
+  ב־S9-REQ-005; אין להסיק ממנה בקרות חזקות יותר מאלה שנצפו.
 
 ## מדיניות סיסמאות וסיכון leaked-password — S9-TDEC-004
 
@@ -31,17 +37,24 @@ RISK**. הגנת leaked-password של Supabase אינה זמינה בתכנית 
 כ־hardening פנימי ולא כדרישת קורס ישירה. אין לממש lookup של סיסמה שנפרצה בצד
 הלקוח.
 
-- validation האפליקטיבי הנוכחי דורש 8–128 תווים. לפני שחרור, מדיניות הסיסמה
-  של Hosted נבדקת לקריאה בלבד ונשמרת תואמת לגבול הזה.
+- validation האפליקטיבי הנוכחי דורש שמונה תווים לפחות ועד 72 בתים בקידוד
+  UTF-8. מדיניות Hosted נבדקה לקריאה בלבד ונמצאה תואמת לגבול הזה.
 - אין טענה שדרישות character class מוגדרות כרגע. שינוי אורך מינימלי או דרישת
   character class מחייבים עדכון מסונכרן של Zod, העתקי ה־UI, הבדיקות ואימות
   חשבונות ה־Demo.
 - rate limits, שחזור enumeration-safe לאחר תיקון `S9-DEF-001`, ניטור והיקף
-  Demo-only הם בקרות מפצות. custom SMTP ואמינות recovery נשארים בנפרד תחת
-  `S9-DEF-004` ואינם נסגרים בהחלטה זו.
-- אין לטעון שמדיניות Hosted חזקה יותר הושלמה עד שראיה לקריאה בלבד מוכיחה
-  אותה. אימות זה נשאר acceptance פתוח של `S9-REQ-005` ואינו שינוי Auth ב־PR
-  התיעוד.
+  Demo-only הם בקרות מפצות. אמינות delivery/recovery ב־Hosted נשארת בנפרד תחת
+  `S9-DEF-004`: השירות המובנה 2/h מאושר להדגמה ל־organization member, ו־SMTP
+  אינו נדרש אלא אם ההדגמה נכשלת או נדרש נמען שרירותי.
+- אין לטעון שמדיניות Hosted חזקה יותר מן הראיה. הקריאה ב־28 באוגוסט 2026
+  אימתה מינימום שמונה, ללא character classes, תקרת Auth של 72 בתים והגנת
+  leaked-password כבויה; כל ממצאי ה־Advisors קיבלו disposition תחת
+  `S9-REQ-005`.
+- helper ה־event trigger האופציונלי `public.rls_auto_enable()` מוקשח רק אם הוא
+  קיים: `search_path=''` וכל EXECUTE של Data API מבוטל בלי לשנות את קישור
+  ה־trigger. חוזה התחזוקה הוא invoker-rights תחת `private`, ללא EXECUTE ACL
+  שאינו של ה־owner וללא גישה ל־PUBLIC, ‏`anon`, ‏`authenticated` או
+  `service_role`; ה־migration מפעילה אותו בהרשאות owner.
 
 הסיכון נפתח מחדש אם הפרויקט עובר לתכנית שכוללת את היכולת מסיבה אחרת, היקף
 המוצר מתרחב לנתונים רגישים מהותית יותר, מתרחש אירוע אבטחה או מתקבלת ראיית
@@ -61,9 +74,13 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ## פרטיות ושגיאות
 
-- שחזור סיסמה מחזיר תמיד הודעה עקבית שאינה מגלה אם כתובת Email רשומה.
-- הודעות UI ממופות מקודי Auth מוכרים; הודעות ספק, SQL ו־stack traces אינן
-  מוחזרות למשתמש.
+- הצלחת בקשת שחזור וכתובת שאינה קיימת מחזירות תוצאה typed זהה והודעה עקבית
+  שאינה מגלה אם כתובת Email רשומה. `429`/cooldown ממופה להמתנה ו־outage
+  ממופה ל־retry מאוחר; אלה כשלים תפעוליים ולא אות קיום חשבון.
+- הודעות UI ממופות מקודי Auth מוכרים בלבד; invalid, expired, replay ו־PKCE/
+  browser mismatch מובחנים בלי להחזיר הודעות ספק, SQL, stack traces או
+  `error_description`. הצלחה משתמשת ב־`role="status"` וכשל actionable ב־
+  `role="alert"`.
 - אין שימוש ב־`SUPABASE_SECRET_KEY` או ב־admin client בזרימות Auth/Profile.
 - CI משתמש רק ב־Supabase ו־Mailpit מקומיים ואינו מדפיס את פלט המפתחות של
   `supabase start`.
@@ -95,8 +112,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   ו־constraint) דוחות קישורים מפורשים — `http://`, `https://` או `www.` — וטקסט
   חופשי אחר אינו הופך לקישור בעמוד. השארית המקובלת: טקסט חופשי יכול לתאר העברה
   ידנית, וגילוי ה־Demo הקבוע מבהיר שמדובר בסימולציה בלבד.
-- שדות הטקסט של הליגה דוחים תווי בקרה ב־Zod וב־check constraints: שם הליגה הוא
-  חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים רק tab ומעברי שורה.
+- שדות הטקסט של הליגה דוחים תווי בקרה ו־Unicode `Bidi_Control` ב־Zod וב־check
+  constraints: שם הליגה הוא חד־שורתי לחלוטין, והתיאור והוראות ה־Demo מתירים
+  רק tab ומעברי שורה. טקסט עברי/Latin מעורב רגיל אינו נדחה.
 - allowlist ההפניות לאחר התחברות מקבל בדיוק את `/dashboard`, `/profile`,
   `/update-password`, `/leagues/new`, נתיב סיכום/הגדרות/משחקים/דירוג/דוחות של
   ליגה עם UUID תקין ונתיב `/matches/[matchId]` עם UUID תקין. query string של
@@ -106,12 +124,32 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - יצירת ליגה אינה אידמפוטנטית גלובלית: שליחה חוזרת מפורשת יוצרת ליגה חדשה
   ותקינה. ה־UI מנטרל double-submit באמצעות pending state ו־redirect לאחר הצלחה,
   ואין מצב חלקי או נסתר במסד.
-- trigger במסד מעלה את גרסת חוקי הניקוד בכל שינוי מותר, ודוחה שינוי לאחר
-  `locked_at` או כאשר `now()` של PostgreSQL הגיע ל־kickoff הראשון בעונת הליגה.
+- trigger במסד מעלה את גרסת חוקי הניקוד בכל שינוי מותר ודוחה כתיבה ישירה תחת
+  אותה נעילה בלתי הפיכה שמתוארת להלן: `locked_at`, סטטוס התחרות, latch של משחק
+  או `clock_timestamp()` שהגיע ל־kickoff הראשון בעונת הליגה.
 - סכום פרסים של 10000 bps ומיקומים רצופים נבדקים בתוך ה־RPC וגם ב־constraint
   trigger deferred שבודק את שני צדי העברה בין ליגות, כך שגם כתיבה privileged
   עתידית אינה יכולה להשאיר מצב חלקי.
 - אין שימוש ב־admin client או ב־`SUPABASE_SECRET_KEY` בזרימות Slice 2.
+
+### עריכת הגדרות ב־S9-DEF-007
+
+- קריאת מנהל מערכת אינה נשענת על policy רוחבי. ה־RPC הצר
+  `get_editable_league_settings(uuid)` גוזר `auth.uid()`, דורש מנהל הליגה או
+  שורה קיימת ב־`system_admins`, מסנן לליגה אחת ומחזיר מסמך שדות מצומצם באותה
+  תמונת statement. resource חסר, actor זר והרשאת admin שהוסרה מקבלים דחייה
+  אטומה ללא שם ליגה; רק מנהל הליגה קורא בנפרד את כלי ההזמנה.
+- `update_league_settings(...)` הוא `SECURITY DEFINER` עם `search_path = ''`,
+  schema qualification ו־EXECUTE ל־`authenticated` בלבד. אין UPDATE ישיר
+  לטבלאות ואין אמון ב־manager/admin/version מהלקוח. אחרי נעילת הליגה נבדקת שוב
+  שורת admin ב־`FOR KEY SHARE`; ביטול הרשאה מתחרה מסתדר אטומית.
+- payload מלא, UTC סופי, שנת אפס, טקסט, scoring ומסמך פרסים נבדקים לפני נעילת
+  rows. גרסאות settings/scoring נבדקות תחת הנעילה; stale נדחה, replay סמנטי
+  זהה נשאר no-op ללא audit נוסף, והמוטציה האמיתית כותבת גרסאות, פרסים ו־audit
+  באותה transaction.
+- רק שינוי scoring/prizes נועל את שורת season ואחר כך matches בסדר UUID. אחרי
+  ההמתנה נקרא `clock_timestamp()` ונבדקים kickoff ו־latch בלתי הפיך. שינוי
+  פרטים בלבד אינו נועל את קבוצת המשחקים; `completed`/`archived` read-only.
 
 ## הזמנות, בקשות, אסמכתאות והחלטות ב־Slices 3–4
 
@@ -232,7 +270,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ### Slice 4 — החלטת מנהל וחברות
 
-- תור הבקשות מתקבל רק דרך `get_manager_join_requests` לאחר התאמה מדויקת בין
+- תור הבקשות מתקבל רק דרך `get_manager_join_requests_page` לאחר התאמה מדויקת בין
   `auth.uid()` לבין `leagues.manager_id`. ה־DTO כולל שם תצוגה, מצב וסיכומי proof
   בטוחים בלבד; path, digest, token ופרטי Auth אינם מוחזרים.
 - `approve_join_request` ו־`reject_join_request` הם `SECURITY DEFINER` עם
@@ -266,7 +304,9 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורות הליגה, החברות והמשחק, דורש
   `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הליגה
   `completed`/`archived`, כאשר סטטוס המשחק אינו `scheduled`/`postponed`, או
-  כאשר `now() >= kickoff_at`. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
+  כאשר `clock_timestamp() >= kickoff_at`. דגימת ה־wall-clock מתבצעת רק אחרי
+  נעילת שורת המשחק, ולכן transaction שהתחיל לפני kickoff והמתין מעבר לו אינו
+  יכול לשמור. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
   זר מקבל `FORBIDDEN` זהה בלי ללמוד אם הליגה קיימת או read-only. ה־Action מבצע
   מחדש session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן או לסטטוס.
 - `predicted_outcome` הוא generated column. הלקוח שולח רק שני ציונים שלמים
@@ -290,7 +330,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| שינוי או יצירה אחרי נעילה | membership/match row locks + `now() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי ו־stale replay; Playwright מזיז kickoff לעבר ובודק stale create/edit + RPC |
+| שינוי או יצירה אחרי נעילה | lock order של league→membership→match ואז `clock_timestamp() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי, waiter מרובה־חיבורים שחוצה kickoff ו־stale replay; Playwright מזיז kickoff לעבר |
 | הצצה לניחוש אחר לפני הפתיחה | RLS חברות+זמן; שאילתות ממוקדות; אין hidden rows ב־payload | שני משתמשים: UI ללא שם/score ו־PostgREST מסונן מחזיר `[]`; אחרי kickoff שתי השורות נחשפות |
 | IDOR בין ליגות/עונות | Action AuthZ, RPC התאמת membership/season, consistency trigger ו־RLS | other league, cross-season, outsider ו־`?league=` זר נדחים; parent season change עם prediction נכשל |
 | זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
@@ -299,28 +339,57 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 ## תוצאות, ניקוד ודירוג ב־Slice 6
 
-- `system_admins` הוקדמה כטבלה מינימלית מוגנת. RLS מופעלת, אין policies ואין
+- `system_admins` הוקדמה כטבלה מינימלית מוגנת. `automation_purpose` אופציונלי
+  וחסום לערך היחיד `sports_sync`, עם unique חלקי שמונע שני principals
+  אוטומטיים. RLS מופעלת, אין policies ואין
   הרשאות טבלה ל־`anon`, ל־`authenticated` או ל־`service_role`. אין מסך CRUD;
   הענקה נעשית רק ב־seed מאובטח או migration ייעודית. `is_system_admin()` מחזירה
   למשתמש מאומת רק אם הזהות שלו קיימת בטבלה ואינה מאפשרת לשאול על משתמש אחר.
-- `applyManualResult` מבצעת session → Zod → בדיקת מנהל מערכת → אימות המשחק →
-  gateway שרתי → `score_match`. הטופס אינו שולח actor, role, points, גרסת תוצאה
-  או נתיב משאב סמכותי מלבד מזהה המשחק והתוצאה המבוקשת.
+- upgrade של Hosted שכבר מכיל binding פרטי מפעיל חוזה migration idempotent
+  שמקדם את אותו actor בלבד ל־`sports_sync`. החוזה הוא invoker-rights, ללא
+  EXECUTE ל־Data API, מחזיר no-op מפורש כאשר אין binding ונכשל סגור אם designation
+  קיים מצביע ל־actor אחר. pgTAP משחזר את מצב ה־legacy במקום להסתמך על seed.
+- מסך Slice 9 משתמש ב־`ManualMatchFormBoundary`: Server Component לוכד ב־inline
+  Server Action את operation ואת UUID היצירה שהשרת הנפיק או את match ID שנקרא
+  מהמסד, ואז קורא ל־`mutateManualMatch` המוגן ב־`server-only`. ה־helper מבצע
+  session → Zod → בדיקת מנהל מערכת → catalog קיים → gateway שרתי →
+  `create_or_correct_match`. הטופס אינו שולח operation/match ID authoritative,
+  actor, role, points או גרסת תוצאה. replay זהה עם אותו UUID הוא no-op, ו־payload
+  אחר לאותו UUID נכשל סגור.
+- החזרת ownership לספק משתמשת בגבול נפרד `ManualOverrideClearBoundary`: ה־
+  Server Action לוכד את match ID שנקרא מהמסד, דורש confirmation מפורש ומבצע
+  exact-resource AuthZ לפני gateway שרתי. `clear_manual_match_override` אינה
+  מקבלת actor/provider/result מהטופס; ה־actor מגיע מ־header פנימי ונבדק מחדש
+  מול `system_admins`. ה־RPC service-only מקבלת רק API-Football עם external ID
+  מספרי, לוקחת registry barrier בלעדי לפני גילוי העונה, נועלת leagues בסדר UUID
+  לפני match ומסרבת למעבר ממשי בעונה סופית. `create_league` משתתפת במחסום
+  shared ולכן אינה יכולה להוסיף phantom בין discovery לבדיקת completed.
+  היא משנה רק את דגל ה־override ואת `updated_at`, משמרת result/provenance/latch/
+  predictions ויוצרת audit יחיד; replay הוא no-op ללא timestamp/audit חדש.
 - `score_match` אינה ניתנת להרצה ל־`anon` או ל־`authenticated`; גם ברירת המחדל
   של `service_role` נשללת ומוענק לה `EXECUTE` מפורש ומצומצם בלבד. ה־admin client
   נשאר `server-only` ונצרך לניקוד רק דרך gateway ייעודי, לא כלקוח גנרי.
+- ה־wrapper הציבורי של `score_match` מאמת actor, לוקח את מחסום ה־registry
+  הבלעדי לפני גילוי ליגות העונה ואז נועל את מפתחות הליגה הממוינים. לאחר
+  ההמתנה הוא מאמת מחדש את actor ומחזיק את שורת `system_admins` ב־`FOR KEY
+  SHARE` עד commit. אותו post-wait retain נאכף ב־`create_or_correct_match`
+  ובהכרעת review, וכן אחרי מפתח הליגה של `reconcile_completed_league` ואחרי
+  registry+league keys של `apply_api_football_sync_batch`. ה־delegates נשארים
+  בסכמה `private`, ללא EXECUTE ל־Data API, ואינם רוכשים את המחסום מחדש.
 - מאחר שקריאת service-role אינה נושאת `auth.uid()` של המשתמש, ה־Action מעביר
   ללקוח השרת header פנימי וקבוע עם מזהה ה־session המאומת. המשתמש אינו יכול
   להגדיר אותו דרך הטופס. ה־RPC קוראת אותו מ־`request.headers`, דורשת UUID תקין
-  ומאמתת מחדש מול `system_admins` לפני lock או שינוי. כך ה־actor באודיט אינו
-  נלקח מקלט דפדפן, ושינוי הרשאה בין בדיקת ה־Action ל־RPC נכשל סגור.
+  ומאמתת מול `system_admins`; אחרי כל advisory wait ולפני delegate של כתיבת
+  scoring מתבצעים revalidation ו־`FOR KEY SHARE`. כך ה־actor באודיט אינו נלקח
+  מקלט דפדפן: revocation שכבר התחייבה מכשילה סגור, ו־revocation מאוחרת ממתינה
+  עד סיום הטרנזקציה המורשית.
 - מסלול ה־Cron של Slice 7 משתמש באותו header רק מתוך gateway server-only ועם
   `SYNC_SYSTEM_ACTOR_ID` של principal לא־אינטראקטיבי ייעודי. ה־principal מוקם
   באופן מאובטח לכל סביבה ב־`auth.users` וב־`system_admins`, אינו משמש ל־UI
   ואינו מגיע מהבקשה. env חסר, UUID שגוי או הסרת השורה מ־`system_admins`
   מכשילים את הריצה סגור; אין fallback ל־service-role ישן, לזהות אנושית או
   לקריאת SQL/pg_cron ללא context.
-- הפונקציה נועלת רק את שורת `matches`. היא קוראת את חוקי כל ליגה ללא
+- לאחר שה־wrapper מחזיק את מפתחות הליגה, ה־delegate נועל את שורת `matches`. הוא קורא את חוקי כל ליגה ללא
   `FOR UPDATE` ואינה נועלת `leagues`, ולכן אינה הופכת את סדר הנעילות הקיים של
   `save_prediction` (`leagues → league_members → matches`). התוצאה, גרסתה,
   כל שדות הניקוד וה־audit נכתבים באותה transaction. retry זהה הוא no-op ואינו
@@ -344,14 +413,17 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
 | משתמש רגיל מזין או מתקן תוצאה | Server Action מאמת session+admin; RPC היא service-only ומאמתת actor שוב | pgTAP ל־anon/authenticated/service actor חסר או זר; Playwright לקריאת RPC ישירה ולנתיב admin |
+| משתמש רגיל מסיר override או מזייף match ID בטופס | clear RPC service-only; Action לוכד UUID מה־row ומבצע resource AuthZ; actor נבדק מחדש במסד | pgTAP ל־grants/actor; Playwright לקריאת RPC ישירה ול־hidden `matchId` עוין שמכוון למשחק אחר |
+| clear מוחק תוצאה או מכפיל audit | UPDATE allowlisted לדגל+timestamp בלבד; no-op נבדק לפני mutation | snapshot pgTAP/E2E של status/scores/version/provenance/latch/predictions ואודיט יחיד אחרי replay |
+| clear מתחרה ב־provider apply או בביטול הרשאת admin | סדר `leagues(UUID) → actor retain → match`; apply נשאר `lease → run → match`; כל ההרשאות נבדקות אחרי המתנה | dblink אמיתי ל־clear/apply, שתי קריאות clear מקבילות ו־revocation/clear עם timeouts חסומים |
 | זיוף actor דרך הטופס או קריאת gateway לא מורשית | אין actor בקלט; header פנימי נוצר רק במודול `server-only`; `system_admins` ללא CRUD | בדיקות schema/grants/import boundary ו־actor שאינו בטבלה |
 | ניקוד כפול או שאריות מתוצאה קודמת | overwrite set-based לפי result/rule version בתוך transaction אחת | exact/outcome/wrong/draw, retry זהה, correction ו־cancel |
 | תוצאת סיום מוקדמת יוצרת totals תלויי־צופה | זמן DB אחרי match lock + דחיית `finished` לפני kickoff; אגרגטים מסננים לפי kickoff | pgTAP לתוצאה מוקדמת ללא mutation ולניחוש עתידי שאינו נספר גם לבעליו |
-| deadlock עם שמירת ניחוש | `score_match` נועלת match בלבד ואינה נועלת league/rules | pgTAP עם שני חיבורי `dblink` שמריצים `score_match` ו־`save_prediction` במקביל |
+| deadlock או phantom עם שמירת ניחוש/יצירת ליגה | wrapper של `score_match` מקבע `registry → league keys → match`; ה־delegate אינו רוכש registry/league מחדש; provider apply משתמש באותו prefix לפני `lease → run → match` | probes מרובי־חיבורים בודקים score/save וגם apply/save חופפים; probe ייעודי מחזיק registry ואז league key ומוכיח שה־RPC הישיר ממתין על שניהם |
 | דליפת דירוג בין ליגות | resource AuthZ + `security_invoker` + RLS | חבר באותה ליגה מצליח; outsider ומנהל מערכת שאינו חבר מקבלים אפס שורות/not-found |
 | שובר שוויון נוסף לא מאושר | `rank()` לפי points ואז correct outcomes בלבד | שניים במקום 1, הבא במקום 3; exact scores שונים אינם שוברים שוויון |
 
-## Sync ידני ו־Cron ב־Slice 7
+## Sync ידני ו־Cron לאחר S9-DEF-003
 
 - ה־Route `POST /api/cron/sync` דורש method ו־content type צפויים ומשווה את
   Bearer מול `CRON_SECRET` בזמן קבוע על digests באורך זהה. הסוד וה־Authorization
@@ -364,44 +436,60 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   ה־UUID ב־Vercel והסוד גם ב־Vercel וגם ב־Supabase Vault. migration ו־seed
   הייצור אינם מכילים סוד; ה־seed המקומי בלבד יוצר actor בדיקה.
 - ה־gateway היחיד צורך את admin client המשותף, מזריק
-  `x-predictor-system-actor`, וקורא פעם אחת ל־`record_sync_attempt()`. הפונקציה
-  היא `SECURITY DEFINER`, עם `search_path = ''`, שמות schema מלאים ו־EXECUTE
-  ל־`service_role` בלבד; היא מאמתת מחדש את actor מול `system_admins` לפני
-  נעילה או כתיבה.
+  `x-predictor-system-actor`, וקורא פעם אחת ל־`apply_manual_fixture_catalog()`.
+  הפונקציה היא wrapper צר `SECURITY DEFINER`, עם `search_path = ''`, שמות schema
+  מלאים ו־EXECUTE ל־`service_role` בלבד. היא גוזרת actor מה־header וקוראת ל־
+  `private.slice9_apply_manual_fixture_catalog_core(payload, actor, null)`. ה־
+  core הוא `SECURITY INVOKER`, חסר grant ל־PUBLIC/anon/authenticated/service role,
+  מאמת ונועל מחדש את actor אחרי advisory wait, ומחזיק את כל ה־preflight,
+  mutation, run וה־audit באותה transaction. רק owner בדיקות יכול להעביר לו זמן
+  מפורש וסופי; אין clock או actor בפרמטר של פונקציה granted. `record_sync_attempt()`
+  הוסר forward-only כדי שלא יישאר RPC service-role שמחזיר את outcome הישן
+  `MANUAL_PROVIDER`.
 - `sync_runs` מפעילה RLS באותה migration שבה נוצרה. `authenticated` מקבל
   `SELECT` בלבד וה־policy חושפת שורות למנהל מערכת; `anon`, משתמש רגיל ו־Data
   API service role אינם מקבלים CRUD ישיר. אין policy או grant ל־append ישיר;
   רק ה־RPC יכול להוסיף שורה.
 - הטרנספורט הוא `supabase-js` דרך PostgREST, ללא connection שמוצמד ל־Route.
-  לכן אין `pg_try_advisory_lock` ברמת session. ה־RPC משתמש רק
-  ב־`pg_try_advisory_xact_lock`, והמעט שהוא מגן עליו — הכרעת outcome וכתיבת
-  השורה — נמצא באותה transaction ומשתחרר אוטומטית.
-- ניסיון מורשה שהפסיד בנעילה נכתב סופית כ־`CONCURRENT_ATTEMPT`; ניסיון שזכה
-  נכתב כ־`MANUAL_PROVIDER`. שניהם `status='skipped'`, עם `finished_at`, ללא
-  `error_message_safe`, ומוחזרים ב־HTTP 200. `error_code` הוא שם legacy לקוד
-  תוצאה; מסך, query או alert מסווגים כשל רק לפי `status='failed'`.
+  אין session lock. ה־RPC הידני משתמש ב־advisory transaction lock קצר, ואז
+  נועל את כל הליגות המושפעות לפי UUID לפני teams ו־matches לפי UUID. אותו סדר
+  `leagues → matches` מונע מרוץ עם השלמת ליגה; catalog חסר אינו מושלם כאשר
+  קיימת ליגה `completed` או `archived` בעונה. לאחר ה־preflight והנעילות נדגם
+  זמן DB טרי; match חסר שמועדו כבר הגיע מחזיר conflict במקום לשחזר fixture
+  היסטורי בלי latch. replay מלא וזהה נשאר no-op בטוח גם לאחר המועד.
+- כל invocation תקין שהגיע ל־RPC אחרי בניית manifest השרתית נכתב בדיוק פעם אחת:
+  `succeeded` עם תוצאת RPC `MANUAL_APPLIED` או `MANUAL_NO_CHANGE`, או
+  `failed/MANUAL_CATALOG_CONFLICT`. ב־succeeded נשמר `error_code=null`; קוד
+  ההצלחה הוא שדה result typed ולא metadata של כשל. רק mutation ראשון כותב
+  `manual_catalog_applied` ל־audit. validation/config שנכשל לפני ה־RPC אינו
+  invocation מסדי ואינו יוצר run.
 - secret שגוי נעצר לפני ה־gateway; actor חסר, malformed או שהוסר נעצר בתוך
   ה־RPC לפני insert. אף אחד מהמקרים אינו כותב `sync_runs` או `audit_logs`.
   הקוד אינו מפיק לוג אפליקטיבי עם secret או actor; סטטוס בקשת ה־HTTP נשאר
   ב־runtime logs של הפלטפורמה לצורכי תפעול ומניעת ניפוח טבלה.
-- המסלול הידני אינו קורא ספק, אינו מעריך due-window, אינו יוצר `running`, אינו
-  מבצע upsert ואינו נוגע ב־`score_match`, במשחקים או בניחושים. מודול התכנון
-  הטהור של ספק עתידי אינו מיובא ל־Route.
+- המסלול הידני אינו קורא ספק, אינו מעריך due-window ואינו יוצר `running`. הוא
+  מייבא רק את חמשת המשחקים ושש הקבוצות הקבועים של `manual-catalog-v1`, לפי UUID
+  וללא merge לפי display name או provider identity. הוא אינו קורא
+  `score_match`; יצירה/תיקון תפעוליים הם גבול נפרד ומצומצם.
 
-### מטריצת איומים ובדיקות Slice 7
+### מטריצת איומים ובדיקות Manual לאחר S9-DEF-003
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
 | גילוי endpoint וניפוח לוג דרך secret שגוי | השוואה בזמן קבוע לפני gateway; אין כתיבת DB או לוג אפליקטיבי רגיש | Vitest ו־Playwright ל־secret חסר/שגוי ומספר שורות קבוע |
 | זיוף או ביטול actor | actor מ־env בלבד ואימות חוזר מול `system_admins` בתוך RPC | env tests ו־pgTAP ל־header חסר/malformed/actor שהוסר ללא `sync_runs` או `audit_logs` |
-| ריצה מקבילה מעבדת חלון פעמיים | xact lock לא־חוסם בתוך RPC יחיד; המפסיד רק מתעד `CONCURRENT_ATTEMPT` | שתי sessions אמיתיות ב־pgTAP, retry סדרתי ושחרור lock אחרי commit |
-| session lock דולף ל־pool | אין session-level advisory lock; Data API call יחיד | בדיקת הגדרת הפונקציה, `pg_locks` ותוצאה `MANUAL_PROVIDER` לאחר שחרור |
-| קוד דילוג מוצג או מנוטר ככשל | status הוא discriminator יחיד ו־DB comment מתעד את שם ה־legacy | Vitest ל־display/query ו־Playwright לטקסט ניטרלי ללא פרטי כשל |
+| import מתנגש בנתון קיים | manifest קבוע, row locks, parity מלא וללא merge בשם; ה־RPC מחזיר failed סופי ללא mutation | pgTAP ל־provider-owned, drift בשדות קבועים, latch ו־audit/run counts; prediction קיים עם replay זהה נשאר בטוח |
+| fixture קנוני חסר לאחר מועדו | זמן DB טרי אחרי lock/preflight ו־predicate פרטי; אין clock override במסלול granted | core owner-only בזמנים מפורשים מוכיח APPLIED לפני cutoff ו־conflict אטומי אחריו; public actual-clock מקבל רק outcomes עקביים |
+| תיקון מנסה לשנות זהות אחרי שימוש | שינוי season/teams נחסם אם קיימים prediction או latch; latch לעולם אינו מתנקה | pgTAP ל־prediction ול־latch כשני guards עצמאיים |
+| completion מתחרה ב־import או תיקון | סדר נעילות גלובלי `leagues` לפי UUID לפני `matches`; עונה completed נכשלת סגור | dblink בשתי sessions ל־completion-vs-create ול־completion-vs-catalog |
+| replay מכפיל catalog או audit | stable IDs, insert-missing בלבד ו־audit רק כאשר counters חיוביים | pgTAP ל־APPLIED ואז NO_CHANGE, parity 6/6 ו־5/5, run אחד לכל invocation |
+| דפדפן פונה לספק במסלול Manual | adapter מקומי ו־gateway server-only בלבד | Playwright עם provider outage ו־request trap ל־API-Football/API-Sports |
 | מסך תפעולי נחשף למשתמש רגיל | session AuthZ + `is_system_admin()` + RLS | pgTAP לקריאת admin/רגיל ו־Playwright ל־not-found למשתמש רגיל |
 
 ## API-Football Sync ו־fencing ב־Slice 7b
 
-- `SPORTS_API_KEY` הוא secret שרת בלבד. הוא אינו `NEXT_PUBLIC_*`, אינו נשמר
+- `SPORTS_API_KEY` הוא secret שרת בלבד ו־Production-only ב־Vercel. הוא אינו
+  מוזרק ל־Preview/Local/CI, אינו `NEXT_PUBLIC_*`, אינו נשמר
   ב־Supabase/Vault/DB/fixtures/logs ואינו מוחזר ללקוח. URL הייצור קבוע במודול
   `server-only`, ורק חמש צורות GET allowlisted קיימות; אין URL/league/season
   שרירותיים מקלט משתמש ולכן אין SSRF boundary חדש.
@@ -409,9 +497,11 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   `errors`, paging ו־Zod nested schemas, ודוחה IDs כפולים. errors נשמרים כקודים
   והודעות בטוחות; key, headers, URL מלא ו־payload אינם נכנסים ללוג או ל־DB.
 - 403 אינו retried. רק transport/timeout, 429, 499 ו־5xx של GET יכולים לקבל
-  עד שני retries נוספים בתוך תקציב wall-clock; `Retry-After` חסום ו־jitter
-  מונע herd. 429/`Retry-After` מפעיל backoff; quota headers נשמרים לתצפית בלי
-  להפעיל threshold שלא הוכח. Shared outbound
+  עד שני retries נוספים בתוך תקציב wall-clock; `Retry-After` קצר ו־jitter
+  מונעים herd. 429 עם hint שאינו נכנס בתקציב מסווג מיד כ־rate limit ואינו
+  מומר ל־timeout או לשינה ארוכה. רק hint שלם ולא־שלילי החסום ל־3,600 שניות
+  ו־quota remaining שלם ולא־שלילי נשמרים; headers גולמיים אינם עוברים את גבול
+  ה־client. ה־metadata מפעיל backoff ללא threshold מכסה שלא הוכח. Shared outbound
   IP של Vercel נשאר סיכון זמינות מתועד, לא סיבה לחשוף key או להוסיף proxy.
 - זהות provider נשענת רק על external ID. codes/names/venues אינם משמשים merge.
   התחרות, העונה, הקבוצות והמשחקים של API-Football נפרדים משורות Demo; payload
@@ -420,33 +510,49 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
   CRUD. claim/apply/finalize הן `SECURITY DEFINER`, `search_path=''`, שמות
   schema מלאים ו־EXECUTE ל־service_role בלבד. כל אחת מאמתת actor פנימי מול
   `system_admins`; manual trigger גוזר actor מה־session ואינו מקבל אותו בטופס.
-- claim מחזיק row lock רק לטרנזקציה קצרה. generation מונוטוני ו־token UUID
-  חדש מגדרים את העבודה אחרי HTTP. apply/finalize נועלים את אותה שורה ומאמתים
+- claim מחזיק row lock רק לטרנזקציה קצרה. רק לאחר הנעילה הוא דוגם wall-clock
+  טרי ומכריע expiry/due/backoff/cooldown; admitted run מקבל 120 שניות מלאות
+  מ־`started_at`. generation מונוטוני ו־token UUID חדש מגדרים את העבודה אחרי
+  HTTP. apply/finalize נועלים את אותה שורה ומאמתים
   provider/run/generation/token/expiry בתחילה; apply בודקת expiry שוב בסוף כך
   ש־commit אחרי expiry עושה rollback. reclaim מסיים run נטוש ומבטל token ישן.
 - apply מקבלת batch חסום, מאמתת כל field שוב, מדלגת על manual override
   וקוראת ל־`score_match` בתוך אותה transaction עבור `FT` עם `score.fulltime`
   תקין או עבור reactivation צר שמאפס scoring metadata. fixture עם regression
   לא־בטוח מבודד, שומר provider status והערת מפעיל חסומה ואינו מבטל peers.
+- provider/planner/apply/finalize מוקפים בגבולות catch נפרדים עם קודים
+  allowlisted. הודעת exception, SQL, stack, payload ושם קבוצה אינם נשמרים או
+  מוחזרים. planner לא־תקין אינו נחשב fixtures שנצפו; apply שומר רק metadata
+  שכבר עבר validation. כשל finalizer מוחזר כ־`SYNC_FINALIZE_FAILED` בלי ניסיון
+  finalization שני שעלול לעקוף fencing או להכפיל mutation.
 - `predictions_locked_at` הוא latch שאינו ניתן לאיפוס על ידי provider apply.
   `save_prediction`, RLS וה־UI בודקים אותו; live/SUSP/INT/FT/AET/PEN ואחריהם
   reschedule עתידי נשארים נעולים. CANC/ABD/AWD/WO נועלים רק אם DB time הגיע
-  למועד קנוני או שהיה latch קודם, ולכן ביטול מוקדם אינו מפר את PRED-05.
+  למועד קנוני/נכנס או שהיה latch קודם. ההכרעה מתבצעת תחת match row lock,
+  נשמרת גם כשהתוצאה בבעלות manual override, ו־reactivation דורש ששני המועדים
+  עדיין עתידיים; לכן ביטול מוקדם אינו מפר את PRED-05 ומועד עתידי אינו פותח
+  חשיפה שכבר החלה.
 - force של מנהל עוקף due-window בלבד. backoff נאכף תמיד ו־`last_forced_at`
   מגביל ניסיון ידני לניסיון אחד בדקה גם בין invocations/processes.
 - `/admin/sync` ו־manual trigger דורשים session ו־system-admin resource AuthZ.
   Server Action משתמשת בהגנת same-origin של Next.js, אינה שולחת secret
   לדפדפן וקוראת לאותה orchestration/lease. משתמש רגיל ומנהל ליגה מקבלים
   not-found/denial אטום.
+- סכימת extension ‏`cron` חסרת `USAGE` ל־anon/authenticated/service_role, ולכן
+  ACL ברירת מחדל שבבעלות `supabase_admin` אינו מאפשר להם לקרוא `cron.job` או
+  לזמן job. רק `postgres` מקבל USAGE/SELECT ו־EXECUTE המצומצמים שנדרשים ל־helper
+  הפרטי `configure_predictor_sync_cron()`; ל־helper אין EXECUTE ל־Data API,
+  `search_path=''`, והוא מחזיר קוד תוצאה קבוע בלבד — לעולם לא command, URL,
+  header או Vault value.
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
 | key ב־browser/log/fixture | server-only env, fixed client, redaction ו־sentinel build scan | env/client/unit; build עם sentinel וסריקת HTML/client artifacts; חיפוש repository |
 | SSRF או endpoint אסור | URL constant ו־methods purpose-specific בלבד | client tests לכל endpoint ושבירת query/ID לא קנוני |
 | payload גדול/לא תקין | streaming cap + Zod + DB batch/field validation | size/JSON/schema/unit ו־apply rollback ב־pgTAP |
-| שתי ריצות או worker ישן | row claim + generation/token/expiry, start/end fencing | concurrent claim, reclaim, wrong/stale/expired token |
+| שתי ריצות או worker ישן | row claim + זמן טרי אחרי lock + generation/token/expiry, start/end fencing | concurrent claim; due/cooldown/backoff/expiry waiter; reclaim; wrong/stale/expired token |
 | merge של Demo או קבוצה שגויה | provider IDs ו־unique indexes בלבד | name/code collision, Demo snapshot unchanged, codes כפולים |
-| חשיפה או פתיחה שגויה סביב ביטול | DB-time latch, PRED-05 RLS ו־reactivation צר | ביטול מוקדם בין שני משתמשים, איפוס scoring, leaderboard ו־save חוזר; live/SUSP/INT נשארים נעולים |
+| חשיפה או פתיחה שגויה סביב ביטול | DB-time latch תחת match lock, PRED-05 RLS ושני גבולות kickoff ב־reactivation | ביטול שחוצה kickoff, ביטול מוקדם שמועדו חל, manual override, reschedule עתידי ו־save חוזר |
 | ניקוד לא רשמי/כפול | FT+fulltime בלבד ו־`score_match` הקיימת | live/AET/PEN/score חסר, retry, correction ו־audit source |
 
 ## דוח מנהל לא־כספי ב־Slice 8
@@ -482,3 +588,140 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 | דוח חלקי או overflow במספר חריג | safe nonnegative integer בכל count; cap של 500 רק ברשימת standings | null/fraction/unsafe נכשלים, 501 count מתקבל ומסלול standings חריג נכשל סגור |
 | דירוג שונה מן המסך הציבורי לחברים | reuse של `getLeagueStandings`/view ללא sorting חדש | `1,1,3`, exact informational ושמות כפולים keyed by user ID |
 | שפה כספית או AI חודרת לדוח | allowlist שדות ו־UI קבוע לא־כספי | notice גלוי וחיפוש currency/percentage/AI/payment links בדסקטופ וב־Pixel 5 |
+
+## Slice 9 — lifecycle, review ויישוב תוצאה סופית
+
+- `start_league` ו־`complete_league` הם RPCs צרים; אין עדכון status גנרי.
+  השלמה דורשת את מנהל הליגה המדויק, נועלת את המשאב לפני children, ודוחה
+  atomically סט ריק, משחק שאינו terminal, review פתוח או ניקוד שאינו בגרסה
+  הנוכחית. snapshot מלא, סגירת שתי בקשות ה־pending וה־audit נכתבים באותה
+  transaction; proof, חברות והיסטוריה אינם נמחקים.
+- `league_match_results` הוא view מסוג `security_invoker`. בליגה שהושלמה הוא
+  מחזיר רק שורות `league_match_snapshots` ואת התוצאה הקפואה; תיקון canonical
+  או fixture מאוחר אינם משנים list/detail סופי.
+- מסלול התוצאה הידנית של המוצר שומר גם את אירוע הניקוד הקנוני וגם הכרעת
+  `match_manually_corrected` יחידה הקשורה ל־`result_version`. ההכרעה נכתבת רק
+  מתוך gateway ‏service-role של מנהל מערכת קבוע; replay אינו מכפיל אותה. כך
+  completion מקבל תוצאה ידנית שהוזנה במסך בלי להסתמך על status או ownership
+  בלבד. migration קדימה משלים רק אירוע היסטורי שתואם לגרסה הידנית הנוכחית.
+- AET/PEN נשמרים כ־`match_result_reviews(match_id,result_version)` pending.
+  provider replay אינו מכפיל שורה, ו־FT שמגיע בזמן review מעדכן candidate בלבד
+  ואינו עוקף הכרעת מנהל מערכת. `resolve_match_result_review` דורש fixed system
+  actor, לוקח registry בלעדי לפני גילוי ליגות העונה, נועל את כל מפתחות הליגה
+  שנמצאו ואז `match→review`, דוחה stale/replay, ומנקד אוטומטית רק ליגות שאינן
+  `completed/archived`.
+- כל תיקון canonical לגרסה חדשה יוצר reconciliation רק עבור snapshot קיים.
+  `reconcile_completed_league` מאמת קלט וקיום לפני delegate, לוקח advisory key
+  של הליגה שהתגלתה, וקורא מחדש את אותו work item כשהוא קשור לאותה ליגה תחת
+  נעילת parent. missing או remap בזמן ההמתנה נכשל סגור; לאחר נעילת הליגה הוא
+  משלים `match→snapshot→reconciliation` ורק אז נכנס ל־delegate; apply
+  דורש התאמה מלאה לגרסת canonical הנוכחית ומחליף deterministically את snapshot
+  וניקוד הליגה היחידה. dismiss סוגר work item בלי לשנות תוצאה. שני הנתיבים
+  service-role-only מאחורי session+system-admin וה־admin gateway הקיים; IDs
+  וגרסאות נלכדים ב־Server Component ונבדקים שוב במסד.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| provider עוקף review או replay מכפיל work | affected-league advisory keys, ‏match→review locks ו־unique version | AET, replay ו־FT-while-pending ב־pgTAP |
+| תיקון משכתב דירוג סופי בשקט | scorer מסנן completed ויוצר queue רק מ־snapshot | mixed active/completed, no-prediction ו־post-completion fixture |
+| actor זר או גרסה ישנה מכריעים | session AuthZ, fixed actor, service-only RPC ו־expected version | authenticated denial, missing actor, stale/replay |
+| יישוב ליגה אחת משנה ליגה אחרת | reconciliation league-scoped ו־snapshot composite FK | apply מול dismiss בשתי ליגות שחולקות match |
+| reconciliation נעל ליגה אחת אך work item הועבר לאחרת בזמן ההמתנה | post-lock re-read קשור ל־league ID המקורי ו־fail-closed לפני delegate | remap בשני backends נשאר pending ומחזיר `RECONCILIATION_NOT_FOUND` |
+
+## Slice 9 — ספריית חברים פעילים לקריאה בלבד
+
+- `/leagues/[leagueId]/members` זמין רק למנהל המדויק או לחבר פעיל באותה
+  ליגה. בדיקת RLS על הליגה קודמת ל־RPC, וה־RPC מאמת שוב את session actor מול
+  המשאב. משתמש זר ומנהל ליגה אחרת מקבלים not-found אטום.
+- `get_active_league_members_page` מחזיר רק membership ID פנימי לצורכי keyset,
+  שם תצוגה ומועד אישור. הוא אינו מחזיר user ID, email, Auth metadata,
+  join-request או proof data, והוא מוגבל ל־26 שורות עבור page size של 25.
+- EXECUTE ניתן ל־`authenticated` בלבד; אין grant ל־anon/service role ואין
+  UPDATE חדש על `league_members`. פעולות removal/reactivation אינן קיימות
+  ב־RPC, ב־query או במסך.
+- תור הבקשות וה־proof history נטענים רק אחרי שהשרת קבע שהצופה הוא המנהל.
+  חבר פעיל רואה את הספרייה בלבד. כל שמות התצוגה נעטפים דרך רכיב משותף שמפיק
+  `bdi dir="auto"`; application+DB דוחים controls בלתי־נראים.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| IDOR בין ליגות | RLS league read + resource check חוזר ב־RPC | manager/member מורשים ו־foreign manager נדחה ב־pgTAP וב־Playwright |
+| דליפת PII או proof | return shape ו־Zod strict allowlist | catalog shape, rejection של extra fields והיעדר email/manager UI בדפדפן |
+| הסרה/הפעלה מחדש דרך מסך הקריאה | אין mutation RPC/action/grant | UPDATE ישיר של authenticated נדחה; אין control ב־UI |
+
+## Slice 9 — בידוד טקסט לא־מהימן
+
+- `containsDangerousBidiControl` דוחה במפורש U+061C, ‏U+200E/U+200F,
+  U+202A–U+202E ו־U+2066–U+2069. Display name, שם/תיאור/הוראות ליגה וסיבת
+  דחייה נאכפים בגבול ה־Server Action; שמות team ו־round label נאכפים גם בנרמול
+  API-Football. הודעת הספק נשארת generic ואינה דולפת את הטקסט הבעייתי.
+- המיגרציה `20260827180000_slice9_bidi_text_hardening.sql` מוסיפה checks
+  validated ל־profiles, leagues, join_requests, competitions, seasons, teams,
+  sports_provider_rounds ו־matches. אין שינוי RLS/grant ואין ניקוי שקט של row
+  קיים: migration נכשלת סגור אם כבר נשמר control מסוכן.
+- `IsolatedText` הוא גבול התצוגה היחיד לשמות סביב rank, score, status ופעולות,
+  ומפיק `<bdi dir="auto">`. טקסט ארוך או מעורב עברית/ערבית/Latin נשאר חוקי;
+  controls בלתי־נראים אינם משמשים פתרון כיווניות.
+
+## Slice 9 — סדר נעילות lifecycle ומרוצי completion
+
+- mutation RPCs של approval, rejection, proof finalization ו־prediction
+  מגלים ומאשרים תחילה את המשאב, לוקחים את המפתח הדו־חלקי
+  `(2026090609, hashtext(league_id::text))`, מאמתים ונועלים מחדש את הליגה,
+  ורק אחר כך מעבירים ל־implementation הפרטי שנועל request/proof/member/match.
+  כך completion והפעולה המתחרה באותה ליגה משתמשים באותו סדר parent→child;
+  ליגות שונות אינן חולקות מפתח, והתנגשות hash גורמת רק להמתנת־יתר בטוחה.
+- wrappers זהים שומרים את effective-active guard בגבולות league-first של
+  invite, submit ו־completion. helper פרטי ללא Data API grant מקבע transition
+  מאוחר פעם אחת, נועל את חוקי הניקוד ב־first kickoff ושומר
+  `ACTIVATION_PERSIST_LATE` עם `recorded_at` אמיתי. אירוע כזה משתמש ב־system
+  actor הלא־אינטראקטיבי בעל designation יחיד `sports_sync`; caller רגיל נשמר
+  רק ב־`metadata.triggering_actor_id`. trigger מבוקר יוצר את cache ה־binding
+  בעת ההענקה, ו־lookup עסקי יכול ליפול לקריאת designation בלבד אם ה־cache חסר.
+  טבלת ה־binding וה־helpers הפרטיים חסרי grant לכל Data API role. mismatch נכשל
+  סגור והסרת `system_admins` מוחקת את הקישור ב־cascade; lookup נועל רק את שורת
+  ה־administrator ולעולם אינו כותב את tuple הקישור אחרי league lock, כדי לא להפוך את סדר
+  bind→league של Cron מול league→actor של boundary. כתיבת fixture מגשרת את כל
+  מפתחות הליגות המושפעות, ולכן aggregate ה־first kickoff אינו משתנה באמצע
+  ההכרעה. כותבי catalog שיכולים להוסיף fixture והכרעת review שמגלה את ליגות
+  העונה לוקחים קודם מחסום registry גלובלי צר; `create_league` מחזיקה אותו
+  במצב shared עד commit. הסדר הוא תמיד
+  registry→league keys→league rows, והמחסום אינו נלקח בשמירה או completion
+  רגילות.
+- ה־RPCs הציבוריים נשארים narrow, ‏`SECURITY DEFINER`, ‏`search_path=''`
+  ו־authenticated-only לפי החוזה הקודם. implementations שהוזזו ל־`private`
+  איבדו את כל grants של Data API; אין generic client או mutation חדש.
+- upload שקיבל context לפני completion עדיין חייב לעבור finalize. אם
+  completion נסגר ראשון, finalize מחזיר `REQUEST_NOT_UPLOADABLE`; ה־Route
+  מסווג זאת כדחיית DB ודאית ומוחק את אותו object נגזר. proof business row אינו
+  נוצר, ו־proof history קיים אינו נמחק.
+
+| איום | גבול אכיפה | בדיקה |
+| --- | --- | --- |
+| deadlock completion↔join/proof | per-league advisory + league→request→proof/member | backends נפרדים ל־finalize/approve/reject מול completion |
+| שתי השלמות יוצרות snapshot/audit כפול | per-league advisory + replay read-only | double completion יוצר changed אחד, replay אחד, snapshot/audit יחידים |
+| provider עוקף review במירוץ | registry לפני discovery + affected-league advisory + match→review + version | provider FT ממתין, מעדכן candidate בלבד, resolution יחיד ו־replay no-op |
+| ליגה לא קשורה נתקעת מאחורי save/completion | key נפרד לכל league; global registry רק ל־catalog ול־review discovery | save ו־completion בליגה B מסתיימים בעוד transaction בליגה A פתוחה |
+| חבר/מוזמן מיוחס בטעות כמי שביצע activation אוטומטי | private immutable system-actor binding; caller רק ב־metadata; fail-closed לפני bootstrap | actor מדויק, mismatch/revocation/rotation ו־binding-tuple race ב־pgTAP |
+| תיקון משנה completed או fixture מאוחר נכנס ל־final | snapshot-scoped reconciliation + composite FK + frozen read | exact/non-exact/no-prediction/no-snapshot ו־late fixture ב־dblink |
+
+## סיכונים שיוריים ופעולות owner למסירה
+
+הגבולות המקומיים והאוטומטיים אינם הופכים פעולה Hosted או אנושית ל־PASS. נכון
+ל־30 באוגוסט 2026 נשארות הפעולות הבאות, ללא secret ב־Git:
+
+- לבצע confirmation/recovery עם השירות המובנה המאושר ונמען שהוא organization
+  member; רק אם delivery זה נכשל לשקול custom SMTP. ‏Production URL לבדו אינו
+  ראיית Email.
+- לוודא בפריסת Vercel שה־Cron הסופי מחזיר response מסונן, מסיים run יחיד
+  ומשחרר lease תחת תקציב 120 השניות.
+- Chrome native 200% וחזרה אנושית 10–15 דקות נסגרו ב־30.8 לפי דיווח owner על
+  candidate `4b77e24`. התוצאה אינה מייחסת ל־agent תצפית, screenshot או זמן
+  מדויק שלא נשמרו.
+- לאחר כל שערי final Production להעביר את repository ל־Public, לאמת anonymous
+  README/main/final SHA ו־clean clone, ולמסור רק גישת Demo מחוץ ל־repository
+  אם היא נדרשת.
+
+הוראות owner המדויקות וקובצי המסירה מרוכזים ב־
+[`evaluator-runbook.md`](./evaluator-runbook.md). שלוש רשומות final עדיין
+`OWNER_ACTION_REQUIRED`; הן אינן מצדיקות החלשת RLS, בדיקות או מצב Demo.

@@ -1,5 +1,6 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   getLeagueRoleLabel,
@@ -24,7 +25,7 @@ export function LeagueCard({ league }: { league: LeagueDashboardItem }) {
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <h3 className="min-w-0 flex-1 break-words text-xl font-extrabold leading-7 text-ink">
-            {league.name}
+            <IsolatedText>{league.name}</IsolatedText>
           </h3>
           <StatusBadge tone={getStatusTone(league.status)}>
             {getLeagueStatusLabel(league.status)}
@@ -34,8 +35,8 @@ export function LeagueCard({ league }: { league: LeagueDashboardItem }) {
         <dl className="grid min-w-0 gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
           <div className="min-w-0">
             <dt className="text-ink-muted">עונה</dt>
-            <dd dir="auto" className="mt-1 break-words font-bold text-ink">
-              {league.seasonName}
+            <dd className="mt-1 break-words font-bold text-ink">
+              <IsolatedText>{league.seasonName}</IsolatedText>
             </dd>
           </div>
           <div className="min-w-0">

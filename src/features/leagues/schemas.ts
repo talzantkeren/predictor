@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
+
 const MAX_DATABASE_INTEGER = 2_147_483_647;
 const paymentLinkPattern = /(?:https?:\/\/|www\.)/i;
 // League names are single-line: C0/C1 controls and Unicode line/paragraph
@@ -88,16 +90,21 @@ export const leagueNameSchema = trimmedText(3, 80, {
   minimum: "שם הליגה חייב לכלול לפחות 3 תווים.",
   maximum: "שם הליגה יכול לכלול עד 80 תווים.",
 }).refine(
-  (value) => !singleLineControlCharactersPattern.test(value),
-  "שם הליגה מכיל תווי בקרה או מפרידי שורה שאינם מותרים.",
+  (value) =>
+    !singleLineControlCharactersPattern.test(value) &&
+    !containsDangerousBidiControl(value),
+  "שם הליגה מכיל תווי בקרה, כיווניות או מפרידי שורה שאינם מותרים.",
 );
 
 export const leagueDescriptionSchema = optionalTrimmedText(
   500,
   "התיאור יכול לכלול עד 500 תווים.",
 ).refine(
-  (value) => value === undefined || !multilineControlCharactersPattern.test(value),
-  "התיאור מכיל תווי בקרה שאינם מותרים.",
+  (value) =>
+    value === undefined ||
+    (!multilineControlCharactersPattern.test(value) &&
+      !containsDangerousBidiControl(value)),
+  "התיאור מכיל תווי בקרה או כיווניות שאינם מותרים.",
 );
 
 export const demoEntryFeeAgorotSchema = integerString(
@@ -105,6 +112,70 @@ export const demoEntryFeeAgorotSchema = integerString(
   MAX_DATABASE_INTEGER,
   "יש להזין סכום Demo שלם ולא־שלילי באגורות.",
 );
+
+const demoPaymentInstructionsSchema = optionalTrimmedText(
+  500,
+  "הוראות ה־Demo יכולות לכלול עד 500 תווים.",
+)
+  .refine(
+    (value) => value === undefined || !paymentLinkPattern.test(value),
+    "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
+  )
+  .refine(
+    (value) =>
+      value === undefined ||
+      (!multilineControlCharactersPattern.test(value) &&
+        !containsDangerousBidiControl(value)),
+    "הוראות ה־Demo מכילות תווי בקרה או כיווניות שאינם מותרים.",
+  );
+
+const utcDateTimeSchema = z.string().trim().transform((value, context) => {
+  if (value.length === 0) {
+    return null;
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/.exec(
+      value,
+    );
+
+  if (!match) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "יש להזין מועד UTC תקין או להשאיר את השדה ריק.",
+    });
+    return z.NEVER;
+  }
+
+  const [, year, month, day, hour, minute, second = "00", fraction = ""] =
+    match;
+  const milliseconds = fraction.slice(0, 3).padEnd(3, "0");
+  const parsed = new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.${milliseconds}Z`,
+  );
+  const componentsMatch =
+    Number(year) >= 1 &&
+    Number.isFinite(parsed.getTime()) &&
+    parsed.getUTCFullYear() === Number(year) &&
+    parsed.getUTCMonth() + 1 === Number(month) &&
+    parsed.getUTCDate() === Number(day) &&
+    parsed.getUTCHours() === Number(hour) &&
+    parsed.getUTCMinutes() === Number(minute) &&
+    parsed.getUTCSeconds() === Number(second) &&
+    parsed.getUTCMilliseconds() === Number(milliseconds);
+
+  if (!componentsMatch) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "יש להזין מועד UTC תקין או להשאיר את השדה ריק.",
+    });
+    return z.NEVER;
+  }
+
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}${
+    fraction.length > 0 ? `.${fraction}` : ""
+  }Z`;
+});
 
 export const scoringRulesSchema = z
   .object({
@@ -196,25 +267,34 @@ export const createLeagueSchema = z.object({
   description: leagueDescriptionSchema,
   seasonId: z.string().uuid("יש לבחור עונה תקינה."),
   demoEntryFeeAgorot: demoEntryFeeAgorotSchema,
-  demoPaymentInstructions: optionalTrimmedText(
-    500,
-    "הוראות ה־Demo יכולות לכלול עד 500 תווים.",
-  )
-    .refine(
-      (value) => value === undefined || !paymentLinkPattern.test(value),
-      "אין להזין קישור תשלום. מצב הקורס הוא Demo בלבד.",
-    )
-    .refine(
-      (value) =>
-        value === undefined || !multilineControlCharactersPattern.test(value),
-      "הוראות ה־Demo מכילות תווי בקרה שאינם מותרים.",
-    ),
+  demoPaymentInstructions: demoPaymentInstructionsSchema,
   allowLateJoin: z.boolean(),
   scoring: scoringRulesSchema,
   prizes: prizeRulesSchema,
 });
 
 export type CreateLeagueInput = z.infer<typeof createLeagueSchema>;
+
+export const updateLeagueSettingsSchema = z.object({
+  leagueId: z.string().uuid("מזהה הליגה אינו תקין."),
+  expectedSettingsVersion: integerString(
+    1,
+    MAX_DATABASE_INTEGER,
+    "גרסת ההגדרות אינה תקינה. יש לרענן את העמוד.",
+  ),
+  name: leagueNameSchema,
+  description: leagueDescriptionSchema,
+  demoEntryFeeAgorot: demoEntryFeeAgorotSchema,
+  demoPaymentInstructions: demoPaymentInstructionsSchema,
+  joinsCloseAt: utcDateTimeSchema,
+  allowLateJoin: z.boolean(),
+  scoring: scoringRulesSchema,
+  prizes: prizeRulesSchema,
+});
+
+export type UpdateLeagueSettingsInput = z.infer<
+  typeof updateLeagueSettingsSchema
+>;
 
 export type LeagueFieldErrors = Record<string, string[] | undefined>;
 

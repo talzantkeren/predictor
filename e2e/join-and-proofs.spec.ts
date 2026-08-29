@@ -6,7 +6,9 @@ import {
   type Locator,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 import sharp from "sharp";
 
 import { hashInviteToken } from "@/features/membership/invite-token";
@@ -168,6 +170,43 @@ async function assertLocatorCount(locator: Locator, expected: number) {
   } catch {
     throw new Error("Expected UI item count was not reached.");
   }
+}
+
+async function assertInviteSkipTarget(page: Page) {
+  const skipLink = page.getByRole("link", { name: "דילוג לתוכן הראשי" });
+  const mainTarget = page.locator("#main-content");
+
+  await expect(skipLink).toHaveCount(1);
+  await expect(mainTarget).toHaveCount(1);
+  await page.locator("body").press("Home");
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await expect
+    .poll(() =>
+      skipLink.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.top >= 0 && bounds.bottom <= window.innerHeight;
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("Enter");
+  await expect(mainTarget).toBeFocused();
+}
+
+async function assertUnavailableInviteNavigation(
+  page: Page,
+  authenticated: boolean,
+) {
+  await expect(
+    page.getByRole("link", { name: "חזרה לעמוד הראשי" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "הליגות שלי" })).toHaveCount(
+    authenticated ? 1 : 0,
+  );
+  await expect(page.getByRole("button", { name: "התנתקות" })).toHaveCount(
+    authenticated ? 1 : 0,
+  );
+  await assertInviteSkipTarget(page);
 }
 
 async function navigateToInvite(page: Page, url: string) {
@@ -334,6 +373,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     const leagueName = `ליגת תפוגה ${suffix}`;
     let managerContext: BrowserContext | undefined;
     let requesterContext: BrowserContext | undefined;
+    let expiredGuestContext: BrowserContext | undefined;
     let cleanupPublicId: string | undefined;
     let primaryFailure: unknown;
 
@@ -415,6 +455,16 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       );
 
       expireInviteInDisposableLocalDatabase(cleanupPublicId);
+      expiredGuestContext = await browser.newContext(secondaryContextOptions);
+      const expiredGuestPage = await expiredGuestContext.newPage();
+      await navigateToInvite(expiredGuestPage, invite);
+      await assertVisible(
+        expiredGuestPage.getByRole("heading", {
+          name: "קישור ההזמנה אינו זמין",
+        }),
+      );
+      await assertUnavailableInviteNavigation(expiredGuestPage, false);
+
       await requester.page
         .getByRole("button", { name: "פתיחת בקשת הצטרפות" })
         .click();
@@ -427,6 +477,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
           name: "קישור ההזמנה אינו זמין",
         }),
       );
+      await assertUnavailableInviteNavigation(requester.page, true);
 
       await manager.page.reload();
       await assertVisible(manager.page.getByText("פג תוקף", { exact: true }));
@@ -447,10 +498,16 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
         }
       }
 
-      await Promise.allSettled([
-        requesterContext?.close(),
-        managerContext?.close(),
-      ]);
+      const contextsForCleanup = [
+        expiredGuestContext,
+        requesterContext,
+        managerContext,
+      ].filter((context): context is BrowserContext => context !== undefined);
+      try {
+        await closeContextsAfterResponseStreams(contextsForCleanup);
+      } catch (error) {
+        cleanupFailure ??= error;
+      }
 
       if (cleanupFailure !== undefined && primaryFailure === undefined) {
         throw cleanupFailure;
@@ -502,6 +559,17 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     manager.page.on("pageerror", () => {
       managerConsoleErrorCount += 1;
     });
+    await page.goto("/invite/not-a-valid-public-id");
+    await assertVisible(
+      page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
+    );
+    await assertUnavailableInviteNavigation(page, false);
+    await manager.page.goto("/invite/not-a-valid-public-id");
+    await assertVisible(
+      manager.page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
+    );
+    await assertUnavailableInviteNavigation(manager.page, true);
+
     const leagueId = await createLeague(manager.page, leagueName);
     cleanupLeagueId = leagueId;
     const managerAccessToken = await signInForDataApi(
@@ -644,6 +712,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
+    await assertUnavailableInviteNavigation(page, false);
     const requesterRegistrationContext = await browser.newContext(
       secondaryContextOptions,
     );
@@ -652,6 +721,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       requesterRegistrationPage.getByRole("heading", { name: leagueName }),
     );
+    await assertInviteSkipTarget(requesterRegistrationPage);
     await assertVisible(
       requesterRegistrationPage.getByText("Demo בלבד — ללא כסף אמיתי"),
     );
@@ -692,6 +762,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       requester.page.getByRole("heading", { name: leagueName }),
     );
+    await assertInviteSkipTarget(requester.page);
     await assertVisible(requester.page.getByRole("link", { name: "הליגות שלי" }));
     await assertVisible(requester.page.getByRole("button", { name: "התנתקות" }));
 
@@ -864,6 +935,7 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     await assertVisible(
       outsider.page.getByRole("heading", { name: "קישור ההזמנה אינו זמין" }),
     );
+    await assertUnavailableInviteNavigation(outsider.page, true);
 
     const otherManager = await registerConfirmedUser({
       browser,
@@ -1039,6 +1111,75 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
       3,
     );
 
+    const pendingRequestCard = manager.page.locator("article").filter({
+      has: manager.page.getByRole("heading", { name: "מבקש הצטרפות" }),
+    });
+    const rejectionReason = pendingRequestCard.getByLabel("סיבת דחייה");
+    const rejectButton = pendingRequestCard.getByRole("button", {
+      name: "דחיית הבקשה",
+    });
+    await rejectionReason.fill(`סיבה ${String.fromCodePoint(0x202e)} נסתרת`);
+    await rejectButton.click();
+    await expect(rejectionReason).toBeFocused();
+    await expect(rejectionReason).toHaveAttribute("aria-invalid", "true");
+    const describedBy = await rejectionReason.getAttribute("aria-describedby");
+    expect(describedBy?.split(" ")).toHaveLength(2);
+    await expect(
+      pendingRequestCard.getByText(
+        "סיבת הדחייה מכילה תווי כיווניות בלתי־נראים שאינם מותרים.",
+      ),
+    ).toBeVisible();
+    await expect(pendingRequestCard.getByRole("alert")).toHaveCount(1);
+    const focusIsVisible = await rejectionReason.evaluate((textarea) => {
+      const style = getComputedStyle(textarea);
+      return (
+        style.boxShadow !== "none" ||
+        (style.outlineStyle !== "none" &&
+          Number.parseFloat(style.outlineWidth) > 0)
+      );
+    });
+    const rejectButtonAccessibility = await rejectButton.evaluate((button) => {
+      const parseColor = (value: string) => {
+        const channels = value.match(/[\d.]+/g)?.map(Number) ?? [];
+        return channels.length >= 3 ? channels.slice(0, 3) : [0, 0, 0];
+      };
+      const luminance = (channels: number[]) => {
+        const linear = channels.map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045
+            ? value / 12.92
+            : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+      const textLuminance = luminance(parseColor(getComputedStyle(button).color));
+      let background: Element | null = button;
+      let backgroundColor = "rgb(255, 255, 255)";
+      while (background) {
+        const candidate = getComputedStyle(background).backgroundColor;
+        if (!candidate.endsWith(", 0)")) {
+          backgroundColor = candidate;
+          break;
+        }
+        background = background.parentElement;
+      }
+      const backgroundLuminance = luminance(parseColor(backgroundColor));
+      const bounds = button.getBoundingClientRect();
+      return {
+        contrastRatio:
+          (Math.max(textLuminance, backgroundLuminance) + 0.05) /
+          (Math.min(textLuminance, backgroundLuminance) + 0.05),
+        height: bounds.height,
+        width: bounds.width,
+      };
+    });
+    expect(focusIsVisible).toBe(true);
+    expect(rejectButtonAccessibility.height).toBeGreaterThanOrEqual(44);
+    expect(rejectButtonAccessibility.width).toBeGreaterThanOrEqual(44);
+    expect(rejectButtonAccessibility.contrastRatio).toBeGreaterThanOrEqual(
+      4.5,
+    );
+
     await otherManager.page.goto(`/leagues/${leagueId}/members`);
     await assertVisible(
       otherManager.page.getByRole("heading", { name: "הדף לא נמצא" }),
@@ -1049,7 +1190,10 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     );
 
     await manager.page.getByRole("button", { name: "אישור וצירוף לליגה" }).click();
-    await assertVisible(manager.page.getByText("אושרה", { exact: true }));
+    const approvedRequestCard = manager.page.locator("article").filter({
+      has: manager.page.getByRole("heading", { name: "מבקש הצטרפות" }),
+    });
+    await assertVisible(approvedRequestCard.getByText("אושרה", { exact: true }));
 
     const replayApprovals = await Promise.all([
       callAuthenticatedRpc(managerAccessToken, "approve_join_request", {
@@ -1140,10 +1284,12 @@ test.describe("Slices 3 and 4 invite, proof, and manager decision", () => {
     );
     expect(directDelete.ok).toBe(false);
 
-    await manager.context.close();
-    await requester.context.close();
-    await outsider.context.close();
-    await otherManager.context.close();
+    await closeContextsAfterResponseStreams([
+      manager.context,
+      requester.context,
+      outsider.context,
+      otherManager.context,
+    ]);
     } finally {
       if (cleanupAccessToken && cleanupLeagueId) {
         await revokeActiveInviteForCleanup(

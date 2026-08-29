@@ -6,6 +6,7 @@ import {
   registerAction,
   type AuthActionState,
 } from "@/features/auth/actions";
+import { PASSWORD_MAX_UTF8_BYTES } from "@/features/auth/schemas";
 
 import { FieldError, FormMessage } from "./form-message";
 
@@ -35,7 +36,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           maxLength={50}
           aria-invalid={Boolean(fieldErrors.displayName)}
           aria-describedby={fieldErrors.displayName ? "display-name-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="display-name-error" messages={fieldErrors.displayName} />
       </div>
@@ -53,7 +54,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           dir="ltr"
           aria-invalid={Boolean(fieldErrors.email)}
           aria-describedby={fieldErrors.email ? "email-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="email-error" messages={fieldErrors.email} />
       </div>
@@ -69,9 +70,10 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           autoComplete="new-password"
           dir="ltr"
           minLength={8}
+          maxLength={PASSWORD_MAX_UTF8_BYTES}
           aria-invalid={Boolean(fieldErrors.password)}
           aria-describedby={fieldErrors.password ? "password-error" : undefined}
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError id="password-error" messages={fieldErrors.password} />
       </div>
@@ -87,11 +89,12 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           autoComplete="new-password"
           dir="ltr"
           minLength={8}
+          maxLength={PASSWORD_MAX_UTF8_BYTES}
           aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
           aria-describedby={
             fieldErrors.passwordConfirmation ? "password-confirmation-error" : undefined
           }
-          className="mt-2 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-white px-3 py-2 text-left text-ink outline-none transition focus:border-focus focus:ring-2 focus:ring-navy-200"
         />
         <FieldError
           id="password-confirmation-error"

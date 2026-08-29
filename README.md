@@ -5,20 +5,28 @@ Predictor1 היא אפליקציית Web בעברית וב־RTL לליגות פ�
 העברת פרסים כספיים או הצגה של מסמך פיננסי אמיתי.
 
 - Production: [https://predictor-swart.vercel.app](https://predictor-swart.vercel.app)
-- Slices 3–4 Preview: [https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app)
-- Slice 5 Preview: [https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app](https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app)
-- Slice 7c approved Preview: [https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app](https://predictor-git-codex-slice-7c-s3-polish-tals-projects-19902e47.vercel.app)
+- Preview smoke (Auth לא נתמך ולא מאומת): אין URL יציב; משתמשים רק ב־origin
+  המדויק של deployment נבחר בזמן הבדיקה, והוא אינו endpoint נתמך לאחר החלפת
+  ה־deployment או מחיקת הענף.
 - GitHub: [https://github.com/talzantkeren/predictor](https://github.com/talzantkeren/predictor)
 - Supabase project ref: `zthqqxsbtioaacvpmqna`
 
-מצב נוכחי: Slice 8 — דוח מנהל לא־כספי — הושלם ב־25 באוגוסט 2026. השלב הבא
-הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה. ראיות ה־Canary
-המסוננות נמצאות ב־
+קישורי Preview ישנים הם ראיה היסטורית בלבד ואינם endpoints נתמכים. ה־Preview
+שנוצר לכל PR משמש smoke ציבורי בלבד; Auth ב־Preview מסווג כרגע `לא נתמך / לא
+מאומת`. הפעלתו ל־QA פנימי דורשת allowlist זמני של callback מדויק, ללא wildcard,
+והרצת ראיה חדשה. החוזה המלא נמצא ב־
+[`docs/deployment.md`](./docs/deployment.md).
+
+מצב נוכחי: מימוש Slice 9 כולל lifecycle מלא, hardening וחבילת הצגה. ענף
+ה־candidate עדיין עובר את שערי המסירה הסופיים; פעולות owner שלא ניתנות
+לאוטומציה נשארות מסומנות ואינן מוצגות כ־PASS. הוראות evaluator בטוחות נמצאות
+ב־[`docs/evaluator-runbook.md`](./docs/evaluator-runbook.md), וראיות ה־Canary
+ההיסטוריות והמסוננות נמצאות ב־
 [`docs/evidence/api-football-canary-2026-08-24.md`](./docs/evidence/api-football-canary-2026-08-24.md).
 
-זרימת אישור Email אמיתי חזרה בהצלחה ל־Preview היציב ב־15 באוגוסט 2026 ושמרה את
-הקשר ההזמנה לאחר אישור ורענון. השלמת החלטת המנהל נדרשת להיבדק ידנית שוב לאחר כל
-שינוי ב־Preview; קישור הפריסה לבדו אינו הוכחה לסיום Slices 3–4.
+בדיקת Preview מ־15 באוגוסט 2026 היא ראיה היסטורית בלבד ואינה מתארת את ה־Preview
+הנוכחי. קישור פריסה לבדו אינו מוכיח Email confirmation, שחזור סיסמה או callback
+של הזמנה.
 
 ## דרישות
 
@@ -58,7 +66,7 @@ npm run dev
 | `CRON_SECRET` | server-only; סוד Bearer נפרד ל־`POST /api/cron/sync` |
 | `SYNC_SYSTEM_ACTOR_ID` | UUID server-only של principal לא־אינטראקטיבי ב־`system_admins` |
 | `SPORTS_API_PROVIDER=manual` | `manual` או `api-football`; ברירת המחדל וה־rollback הם manual |
-| `SPORTS_API_KEY` | server-only; נדרש רק ל־`api-football`, נשמר ב־Vercel ולא ב־Supabase Vault |
+| `SPORTS_API_KEY` | server-only ו־Production-only; נדרש רק ל־`api-football`, נשמר כ־Sensitive ב־Vercel ולא ב־Preview/Local/CI או ב־Supabase Vault |
 | `DEMO_MODE=true` | מצב ההדגמה של הקורס |
 
 `SUPABASE_SECRET_KEY` אינו מיובא ב־Auth/Profile/Leagues ואינו נשלח לדפדפן.
@@ -66,6 +74,8 @@ npm run dev
 `system_admins`. מסלול ה־Sync משתמש ב־principal נפרד וב־gateway מצומצם.
 `SPORTS_API_KEY` לעולם אינו נשלח לדפדפן, ל־Supabase או ללוג; בדיקות ו־CI
 משתמשים ב־recorded fixtures וב־fake transport ללא credential.
+שמות וטקסט תצוגה לא־מהימנים דוחים Unicode bidi controls ביישום ובמסד, ומוצגים
+בגבול `<bdi dir="auto">`; עברית/ערבית/Latin מעורבות רגילות נשארות חוקיות.
 
 ## זרימת Auth ופרופיל
 
@@ -84,6 +94,14 @@ npm run dev
 בקישור Mailpit ומסתיים בהתחברות מחדש עם הסיסמה החדשה. בגלל PKCE, השלמת session
 אוטומטית דורשת את הדפדפן שבו התחילה הבקשה. אישור שנפתח במכשיר אחר עדיין מאשר
 את הכתובת ומציג התחברות ידנית; בשחזור יש לבקש קישור חדש בדפדפן שבו ייפתח.
+
+בקשת שחזור מחזירה אותה הודעה ציבורית לכתובת מוכרת ולכתובת שאינה מוכרת.
+cooldown/`429` ושירות Email שאינו זמין מוצגים ככשל actionable, בלי לחשוף את
+תשובת Supabase. ה־callback ממפה רק תוצאות allowlisted: קישור לא תקין, פג
+תוקף, שכבר שימש, חוסר התאמה לדפדפן/PKCE או זמינות ספק. הצלחה מוצגת ב־
+`role="status"`; כשל שמצריך פעולה מוצג ב־`role="alert"`. אחרי עדכון סיסמה
+ה־session המקומי נסגר, הקישור שכבר נוצל נדחה, והמשתמש נדרש להתחבר בסיסמה
+החדשה.
 
 טפסי Auth נשלחים ל־Server Actions ומאומתים שם באמצעות Zod. בנוסף,
 `supabase/config.toml` והפרויקט המארח אוכפים מינימום של 8 תווים ברמת Supabase
@@ -176,28 +194,38 @@ API-Football המאוחרת אינה משנה את השורות האלה, ולא
 
 Slice 5 אינו כולל scoring, leaderboard או prize split; אלה נמסרו ב־Slice 6.
 Slice 7 הוסיף observability ו־Cron ידני. Slice 7b הוסיף קטלוג API-Football
-provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c מוסיף
-שפה חזותית אחידה ומיישם אותה בדשבורד, בתקציר הליגה, במשחקים ובדירוג בלי לשנות
-נתיבים או התנהגות עסקית; דוח מנהל לא־כספי הוא Slice 8 והקשחה, מסמכים והצגה
-הם Slice 9.
+provider-owned נפרד ואינו משנה או מתייג מחדש את קטלוג ה־Demo. Slice 7c הוסיף
+שפה חזותית אחידה לדשבורד, לתקציר הליגה, למשחקים ולדירוג. Slice 8 הוסיף דוח
+מנהל לא־כספי; Slice 9 השלים את מחזור החיים, ההקשחה וחבילת ההצגה בלי לשנות את
+גבול ה־Demo.
 
 ## זרימת Slice 6: תוצאות, ניקוד ודירוג
 
 הנתיבים החדשים מוגנים ודינמיים:
 
-- `/admin/matches` — זמין רק לזהות שמופיעה ב־`system_admins`; מאפשר להזין
-  תוצאה בתום הזמן החוקי או לבטל משחק. אין ממשק שמעניק הרשאת מנהל מערכת.
+- `/admin/matches` — זמין רק לזהות שמופיעה ב־`system_admins`; מאפשר ליצור או
+  לתקן משחק מתוך season ו־teams קיימים, כולל זמן UTC, סטטוס ותוצאה חוקית. אין
+  ממשק שמעניק הרשאת מנהל מערכת.
 - `/leagues/[leagueId]/standings` — זמין רק לחבר פעיל או למנהל הליגה ומציג
   נקודות, כיוונים נכונים, תוצאות מדויקות ומספר ניחושים. השוויון משתמש
   ב־competition ranking: מקומות 1,1,3 ולא `dense_rank`.
 
-`applyManualResult` מאמת session, קלט והרשאת מנהל מערכת בצד השרת, ואז קורא
-ל־`score_match` דרך gateway `server-only`. הפונקציה נועלת את המשחק בלבד,
-מעדכנת את התוצאה ואת ה־audit באותה transaction ומחליפה את שדות הניקוד של כל
-ניחוש לפי חוקי הליגה שלו. retry זהה אינו משנה נקודות או timestamps; תיקון
-מחשב מחדש; ביטול מאפס נקודות בלי למחוק ניחושים. `league_leaderboard` הוא
+`ManualMatchFormBoundary` לוכד בתוך Server Action מקומי את סוג הפעולה ואת UUID
+המשחק שהשרת הנפיק או טען. ה־Action קורא ל־`mutateManualMatch` המוגן ב־
+`server-only`, שמאמת session, Zod והרשאת מנהל מערכת ורק אז מפעיל RPC אטומי דרך
+gateway סגור. אין בטופס שדה authoritative של operation או match ID; replay עם
+אותו UUID הוא no-op. תיקון terminal משתמש בניקוד הקנוני, וביטול מאפס נקודות
+בלי למחוק ניחושים. עד מסירת reconciliation, כל יצירה או תיקון שמשפיעים על
+עונה עם ליגה `completed` או `archived` נכשלים סגור. `league_leaderboard` הוא
 `security_invoker` ונשען על RLS, ולכן זהות מערכת שאינה חברה בליגה אינה מקבלת
 גישה לדירוג רק מכוח תפקידה.
+
+במשחק שנושא זהות API-Football, מנהל מערכת יכול להחזיר ownership ידני לספק רק
+אחרי אישור מפורש. `ManualOverrideClearBoundary` לוכד בשרת את UUID המשחק, ולכן
+שדה `matchId` מוזרק מהדפדפן אינו קובע יעד. ההעברה מסירה רק את דגל ה־override:
+המצב, התוצאה, גרסתה, זהות/metadata הספק, latch הניחושים והניקוד נשמרים. ניסיון
+חוזר הוא no-op ללא audit נוסף, ורק snapshot ספק מאומת שמגיע לאחר מכן רשאי
+לעדכן את המשחק. משחק Demo ידני ללא provider identity אינו ניתן להעברה לספק.
 
 חלוקת פרסי Demo למקומות משותפים מחושבת במודול טהור ב־basis points. המערכת אינה
 מחלקת כסף, אינה מציגה פרסים כספיים אמיתיים ואינה פותחת את שער הציות.
@@ -207,13 +235,16 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 - `POST /api/cron/sync` מקבל JSON עם `Authorization: Bearer ...`, משווה את
   `CRON_SECRET` בזמן קבוע ומפעיל orchestration משותפת. ה־Route דק ואינו מכיל
   mapping, SQL או ניקוד.
-- `manual` שומר את התנהגות Slice 7: שורה סופית `MANUAL_PROVIDER` או
-  `CONCURRENT_ATTEMPT`, ללא ספק וללא שינוי משחקים.
+- `manual` אינו פונה לספק. הוא מחיל דרך RPC יחיד את חמשת המשחקים ושש הקבוצות
+  הקבועים של `manual-catalog-v1`: שינוי ראשון מחזיר `MANUAL_APPLIED`, replay
+  מחזיר `MANUAL_NO_CHANGE`, ו־conflict נכשל אטומית בלי merge לפי שם.
 - `api-football` מבצע claim due-aware ב־Data API. `NOT_DUE` אינו קורא לספק
   ואינו יוצר שורת run. claim מוצלח יוצר lease עמיד עם generation/token/expiry;
   provider HTTP מתבצע אחר כך ומחוץ לטרנזקציה.
 - ה־client server-only קורא רק league 383/season 2026 דרך endpoints allowlisted,
-  עם GET, timeout, body cap, Zod, paging, retries חסומים ו־quota headers.
+  עם GET, timeout, body cap, Zod, paging, retries חסומים ו־quota headers. תגובת
+  429 שה־`Retry-After` שלה אינו נכנס בתקציב מוחזרת מיד כ־rate limit, בלי שינה
+  ארוכה; hint עד 3,600 שניות ו־quota remaining תקין נשמרים לצורך backoff.
 - payload מנורמל בלבד עובר ב־batches ל־apply RPC. upsert נעשה לפי provider ID,
   `FT` בלבד עובר ל־`score_match` הקיימת, ו־manual override מדולג. apply/finalize
   דוחים token ישן או פג.
@@ -226,7 +257,8 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
   ושם העונה זהים.
 - `/admin/sync` זמין רק למנהל מערכת, מציג עד 100 ריצות, lifecycle, counters,
   quota והערות review בטוחות, ומאפשר trigger ידני באותה lease. רק
-  `status='failed'` הוא כשל.
+  `status='failed'` הוא כשל. ניסיון force נוסף בתוך דקה חוזר כ־skip
+  `FORCE_COOLDOWN`, אינו פונה לספק או יוצר run ומציג הודעת cooldown ניטרלית.
 
 ### הקמת principal ו־Cron
 
@@ -236,27 +268,40 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 `SYNC_SYSTEM_ACTOR_ID`, צרו ערך אקראי משלכם ל־`CRON_SECRET` ואל תשמרו אותו
 ב־Git. `npm run test:e2e` מזריק סוד אקראי חדש לכל הרצה אוטומטית.
 
-לכל סביבת hosted מבצעים את ההקמה ידנית ומאובטחת:
+לכל סביבת hosted מבצעים את ההקמה ידנית ומאובטחת, לפני פתיחת תעבורת משתמשים:
 
-1. יוצרים דרך Supabase Auth Admin, בסשן תפעולי מבוקר, משתמש לא־אינטראקטיבי
+1. משאירים את תעבורת האפליקציה סגורה ומחילים את כל ה־migrations. בסביבה קיימת
+   ה־migration מקדמת אטומית את ה־binding הישן ל־designation החדש.
+2. יוצרים דרך Supabase Auth Admin, בסשן תפעולי מבוקר, משתמש לא־אינטראקטיבי
    ייעודי. אין להפיץ או לשמור credential להתחברות; שומרים רק את ה־UUID שלו.
-2. מעניקים ל־UUID שורה ב־`system_admins` דרך ערוץ ניהול מבוקר. אין מסך UI
-   שמעניק הרשאה זו. הסרת השורה מבטלת מיד את יכולת ה־RPC.
-3. מגדירים ב־Vercel את `SYNC_SYSTEM_ACTOR_ID` ואת `CRON_SECRET` כמשתני
+3. מעניקים ל־UUID שורה ב־`system_admins` עם
+   `automation_purpose='sports_sync'` דרך ערוץ ניהול מבוקר. ה־trigger יוצר מיד
+   את ה־binding הפרטי. דורשים בדיוק designation אחד ו־binding תואם לפני deploy
+   של האפליקציה; אין מסך UI שמעניק הרשאה זו.
+4. מגדירים ב־Vercel את `SYNC_SYSTEM_ACTOR_ID` ואת `CRON_SECRET` כמשתני
    server-only. את אותו סוד Cron שומרים ב־Supabase Vault, לא ב־migration.
-4. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
+5. מגדירים Supabase Cron לבצע POST שמרני אל `/api/cron/sync`, עם
    `Content-Type: application/json` ו־Bearer שנקרא מ־Vault. אין לכתוב את הסוד
-   ב־SQL, ב־Git או בלוגים.
-5. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד ומוודאים במסך
-   `/admin/sync` שורת `MANUAL_PROVIDER`. אין לפרש אותה כסנכרון לוח ממשי.
+   ב־SQL, ב־Git או בלוגים. שם ה־job היחיד הוא `predictor-sports-sync`.
+6. פורסים ופותחים תעבורה רק אחרי בדיקת ה־designation וה־binding. tick ראשון
+   מאמת את אותה זהות אך אינו יוצר עוד את התנאי המוקדם להפעלת גבול. rotation
+   מתבצע בטרנזקציה תפעולית מבוקרת שמסירה את designation הישן ומעניקה
+   `sports_sync` למחליף לפני חידוש התעבורה; actor שני אינו מחליף אותו בשקט.
+7. כל עוד Production מוגדר `manual`, מפעילים ניסיון אחד, מוודאים בתוצאת הפעולה
+   העברית שהקטלוג הוחל או שכבר היה מעודכן, ובמסך `/admin/sync` מוודאים שורת
+   `succeeded/manual` סופית. קודי `MANUAL_APPLIED`/`MANUAL_NO_CHANGE` מוחזרים
+   לפעולה ואינם נשמרים ב־`error_code`, שנשאר `null` בהצלחה. זהו import של
+   catalog ה־Demo הקבוע בלבד, לא סנכרון ספק חי.
 
 ### Checklist להפעלת API-Football ב־Hosted — לא להריץ לפני merge מאושר
 
 1. לאשר את Draft PR ולמזג רק לאחר review ו־CI ירוק.
 2. להחיל את ה־migration forward-only על Hosted Supabase; אין לערוך migration
    קודמת ואין להריץ `supabase db reset --linked`.
-3. להגדיר ב־Vercel Sensitive Environment Variable את `SPORTS_API_KEY`, ולהגדיר
-   `SPORTS_API_PROVIDER=api-football`. אין להדפיס את המפתח ואין לשמור אותו ב־Vault.
+3. להגדיר ב־Vercel Production בלבד Sensitive Environment Variable בשם
+   `SPORTS_API_KEY`, ולהגדיר ב־Production בלבד
+   `SPORTS_API_PROVIDER=api-football`. ‏Preview/Local/CI נשארים `manual` ללא key
+   וללא live canary. אין להדפיס את המפתח ואין לשמור אותו ב־Vault.
 4. להשאיר `CRON_SECRET` ו־`SYNC_SYSTEM_ACTOR_ID` הקיימים. `CRON_SECRET` נשאר
    גם ב־Supabase Vault; ה־Sports key אינו נכנס ל־Cron SQL.
 5. לבצע deploy ולאמת שאין Sports key ב־HTML, client bundle או runtime response.
@@ -267,8 +312,11 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 8. לאמת ששש קבוצות וחמשת משחקי ה־Demo נשארו ללא external IDs וללא שינוי.
 9. לאמת ש־Cron ללא secret/עם secret שגוי מחזיר 401 ואינו מוסיף run/audit.
 10. לאמת lifecycle/counters/operator notes ב־`/admin/sync`.
-11. לעדכן את job ה־Supabase Cron הקיים לפי שמו; אין ליצור job כפול. לשנות tick
-    לכדקה רק לאחר שה־deployment בריא.
+11. migration ‏`20260827170000_slice9_sync_cron_budget.sql` משנה את שם ה־job
+    הישן ל־`predictor-sports-sync` ומעלה רק את `timeout_milliseconds` מ־10,000
+    ל־45,000 תוך שמירת ה־URL, ‏Vault lookup, headers, schedule ו־active state.
+    היא נכשלת סגור על job כפול או command לא מוכר ואינה יוצרת job בסביבה שבה
+    הוא חסר. אין ליצור job שני. לשנות tick לכדקה רק לאחר שה־deployment בריא.
 12. לבצע canary: `NS` → live → prediction נשאר נעול → `FT` מתוך
     `score.fulltime` → scoring דטרמיניסטי → leaderboard.
 13. לבדוק retry זהה, correction `FT→FT` ו־manual override מול refresh.
@@ -277,9 +325,22 @@ provider-owned נפרד ואינו משנה או מתייג מחדש את קטל
 15. rollback תפעולי הוא `SPORTS_API_PROVIDER=manual` ו־redeploy. הוא אינו מוחק
     provider data ואינו מחזיר migration לאחור.
 
-דוגמת Cron קיימת נשארת POST עם `Content-Type: application/json` ו־Bearer
-שנקרא מ־Vault. יש לערוך את ה־schedule של ה־job הקיים ל־`* * * * *` דרך כלי
-הניהול המאושר בלבד; אין להעתיק secret ל־SQL או ליצור job נוסף.
+חוזה התקציב הוא 30 שניות ל־provider client, ‏45 שניות לתצפית `pg_net`, ‏60
+שניות ל־Route ו־120 שניות ל־lease. ‏`maxDuration=60` נתמך גם בגבול Hobby
+הישן לפי [מסמך משך ה־Functions הרשמי של Vercel](https://vercel.com/docs/functions/configuring-functions/duration),
+ולכן אינו תלוי בהפעלת Fluid compute. לאחר apply/deploy יש לאמת דרך Dashboard
+שאכן קיים job פעיל יחיד בשם הנייטרלי, בלי להציג את ה־command או headers, ולקשר
+response מתוזמן עם `runId` לשורת `sync_runs` סופית ול־lease משוחרר. שאילתת
+הראיה המסוננת נמצאת ב־`docs/evidence/slice-9/w5/S9-DEF-012.md`.
+
+ב־`/admin/sync` יש לפרש את קודי הכשל לפי השלב: `PROVIDER_*` מצביע על transport,
+authentication, rate limit או חוזה response; ‏`SYNC_PLAN_FAILED` מצביע על
+snapshot מנורמל שאינו עקבי; ‏`SYNC_APPLY_FAILED` מצביע על batch מסדי שנדחה;
+ו־`SYNC_FINALIZE_FAILED` מצביע על כשל בסגירת ה־run. בשני האחרונים אין לנסות
+לתקן payload מתוך הלוגים או להריץ SQL ידני: ממתינים ל־lease expiry/reclaim,
+בודקים את ה־run הבא ואת בריאות ה־DB, ורק אז מפעילים retry מורשה. `fixtures_seen`
+הוא 0 בכשל provider/planner; בכשל apply הוא מספר ה־fixtures בתכנית המאומתת.
+לעולם אין להעתיק לראיה exception, payload, headers, key או שמות לא־מהימנים.
 
 ## Slice 7c: Design System ורענון UI
 
@@ -301,8 +362,8 @@ readonly, accent סמנטי לקישור הזמנה ומצבי focus/disabled ה
 שינוי בנתונים, בהרשאות או בהתנהגות העסקית. `viewerIsManager` הוא ערך תצוגה
 שנגזר בשרת לצורך tabs בלבד ואינו מחליף הרשאה על המשאב.
 ה־Preview של Slice 7c עבר בדיקות רספונסיביות ואישור חזותי ב־25 באוגוסט 2026.
-Slice 8 — דוח מנהל לא־כספי — הושלם; Slice 9 סוגר את lifecycle וממשיך
-ל־Hardening ולמסמכי ההגשה.
+היסטוריית העיצוב נשמרת כאן; מצב ה־candidate העדכני כולל גם את Slice 8 ואת
+מחזור החיים המוצרי של Slice 9 המתואר להלן.
 
 ## Slice 8: דוח מנהל לא־כספי
 
@@ -317,14 +378,43 @@ Slice 8 — דוח מנהל לא־כספי — הושלם; Slice 9 סוגר את
 מקבלים not-found אטום גם אם הם מנחשים את ה־URL. tab "דוחות" מוצג למנהל בלבד,
 אך האכיפה נעשית מחדש בשרת ותחת RLS.
 
-Slice 8 קורא את סטטוס הליגה ואינו משנה אותו. זרימות המוצר שמקדמות ליגה
-מ־`open` ל־`active` ומ־`active` ל־`completed` מתוכננות ל־Slice 9; בדיקת המצב
-הסופי ב־Slice 8 היא fixture מקומי לבדיקת rendering ולא תחליף ל־Action הזה.
+הדוח עצמו נשאר query-only ואינו משנה את סטטוס הליגה. Slice 9 הוסיף את פעולות
+המוצר שמקדמות ליגה מ־`open` ל־`active` ומ־`active` ל־`completed`; תרחיש
+Playwright מלא מגיע אל "דירוג נוכחי" ו־"דירוג סופי" דרך אותן פעולות UI.
 
 הדוח הוא מידע בלבד. אין בו AI, דמי השתתפות, קופה, תשלום או עיבוד תשלום, פרס
 כספי, אחוזי פרס, payout מדומה, currency symbol או payment link. הוא query-only,
 משתמש ב־Supabase user client וב־`getLeagueStandings` הקיים, ואינו מוסיף
 migration, RPC, Action, dependency או שימוש ב־admin client.
+
+## Slice 9: lifecycle והגדרות ליגה
+
+מנהל/ת הליגה יכול/ה להפעיל ליגה פתוחה לפני המשחק הראשון. בתחילת כל tick של
+Cron הסנכרון הקיים מתבצע גם fallback אטומי ואידמפוטנטי להפעלה לפי kickoff,
+לפני בחירת provider או I/O חיצוני. כשל ספק אינו מונע הפעלה; persistence מאוחר
+נרשם בנפרד ואינו מוצג כאילו עמד ב־deadline. ה־tick המאומת קושר בטבלה פרטית
+את ה־principal הלא־אינטראקטיבי הקבוע. אם גבול עסקי של חבר/ה או מוזמן/ת מגלה
+איחור, `audit_logs.actor_id` נשאר אותו system actor והמשתמש/ת המפעיל/ה נשמר/ת
+רק ב־`metadata.triggering_actor_id`; אין ייחוס אוטומציה למשתמש רגיל.
+
+השלמת ליגה מותרת רק כשכל המשחקים terminal, אין review פתוח והניקוד בגרסה
+הנוכחית. באותה transaction מוקפא snapshot וניסגרות שתי בקשות ההצטרפות הפתוחות
+בסיבת `LEAGUE_COMPLETED`; הוכחות, חברות, היסטוריה ו־audit נשמרים. תיקון תוצאה
+אחרי השלמה יוצר reconciliation מפורש ואינו משכתב את הדירוג הסופי בשקט.
+
+`/leagues/[leagueId]/members` מציג למנהל/ת או לחבר/ה פעיל/ה רשימת חברים פעילים
+בלבד, ב־keyset pagination, ללא Email, מזהה Auth או נתוני proof. אין במסך פעולה
+להסרה או להפעלה מחדש.
+
+`/leagues/[leagueId]/settings` מאפשר למנהל/ת הליגה לערוך את הפרטים המותרים,
+מועד סגירת ההצטרפות, חוקי הניקוד וחלוקת פרסי ה־Demo. מנהל/ת מערכת מורשה/ית
+יכול/ה לפתוח רק את נתיב ההגדרות של ליגה שהתבקשה במפורש; גישה זו אינה מוסיפה
+את הליגה ל־Dashboard ואינה מציגה קישור הזמנה או כלי ניהול חברים.
+
+חוקי הניקוד ופרסי ה־Demo ננעלים יחד ובאופן בלתי הפיך עם תחילת התחרות לפי זמן
+מסד הנתונים, סטטוס הליגה או latch של משחק. פרטים שאינם תחרותיים נשארים ניתנים
+לעריכה עד `completed`; ליגה שהושלמה או אורכבה היא לקריאה בלבד. הסכומים
+והפרסים נשארים סימולציית Demo בלבד — אין במסך קישור תשלום, גבייה או העברת כסף.
 
 ### Mailpit
 
@@ -334,23 +424,28 @@ Supabase CLI לוכד הודעות מקומיות ב־Mailpit. הכתובת מו
 שולח Email אמיתי.
 
 שירות ה־Email המובנה של Supabase hosted מיועד לניסוי, מוגבל בקצב וזמין על
-בסיס best-effort. לפני שימוש אמיתי יידרש SMTP ייעודי; מגבלה זו אינה נעקפת
-בפריסת הקורס.
+בסיס best-effort. ה־snapshot המסונן של 26 באוגוסט 2026 אינו מציג custom SMTP
+ומגביל delivery לנמעני team; לכן זרימת arbitrary-recipient ב־Hosted עדיין
+אינה ראיית PASS. לפני הדגמת evaluator יש להגדיר custom SMTP או מנגנון מסירה
+מאושר אחר, ואז לבצע בחשבון disposable מורשה את הזרימה המלאה המתועדת ב־
+`docs/evidence/slice-9/w2/S9-DEF-004.md`. אין להכניס credential או סיסמת בדיקה
+למאגר.
 
 ## הגדרות Redirect ב־Supabase hosted
 
-ב־Authentication → URL Configuration יש להגדיר ללא wildcard רחב:
+| סביבה | origin שהאפליקציה מקבלת | callback ב־Supabase | יכולת נוכחית |
+| --- | --- | --- | --- |
+| Production | `https://predictor-swart.vercel.app` | `https://predictor-swart.vercel.app/auth/confirm` | חוזה ההגשה הציבורי |
+| Local | `http://localhost:3000` | `http://localhost:3000/auth/confirm` | נתמך ב־Supabase המקומי וב־Mailpit |
+| Local חלופי | `http://127.0.0.1:3000` | `http://127.0.0.1:3000/auth/confirm` | רק כשה־loopback הזה נבחר במפורש |
+| Preview | אין origin יציב במסמכי המאגר; Vercel מנפיקה origin מדויק לכל deployment | אינו רשום כ־callback | smoke ציבורי זמני; Auth לא נתמך ולא מאומת |
 
-- Site URL: `https://predictor-swart.vercel.app`
-- Redirect URL: `http://localhost:3000/auth/confirm`
-- Redirect URL: `https://predictor-swart.vercel.app/auth/confirm`
-- Redirect URL: `https://predictor-git-feature-slice-1-auth-tals-projects-19902e47.vercel.app/auth/confirm`
-- Redirect URL: `https://predictor-git-feature-slice-3-joi-bfc58f-tals-projects-19902e47.vercel.app/**`
-- Redirect URL: `https://predictor-git-feature-slice-5-mat-fb0a0f-tals-projects-19902e47.vercel.app/**`
-
-טפסי ההרשמה והשחזור משתמשים ב־origin הנוכחי. סביבות ה־Preview של PR #4 ו־PR
-#5 מגדירות `NEXT_PUBLIC_APP_URL` ל־branch alias היציב שלהן, וה־aliases המדויקים
-מופיעים ב־allowlist; `Site URL` נשאר כתובת ה־Production.
+ה־allowlist האפליקטיבי וה־Redirect URLs של Supabase הם שני גבולות נפרדים:
+הראשון מונע בחירת Host שרירותי, אך אינו הופך Preview ל־callback מורשה אצל
+Supabase. אין callback עם `/**`, אין alias ישן שנתמך, ואין הבטחה ש־Auth עובד
+ב־Preview. הוראות configuration, ניקוי וריצת QA מפורטות ב־
+[`docs/deployment.md`](./docs/deployment.md); ראיית Production/local Hosted
+התלויה במסירת Email נשארת תחת `S9-DEF-004` ואינה נסגרת בסעיף תיעודי זה.
 
 ## Migrations וטיפוסים
 
@@ -388,6 +483,11 @@ npm run verify
 
 פירוט מטריצת הבדיקות נמצא ב־[`docs/testing.md`](./docs/testing.md), וגבולות
 האבטחה של Auth, פרופילים וליגות ב־[`docs/security.md`](./docs/security.md).
+חבילת ההצגה נמצאת ב־[`presentation/README.md`](./presentation/README.md), וספר
+הפרויקט הנגזר נמצא ב־[`docs/project-book.docx`](./docs/project-book.docx).
+אלה ראיות reproducibility של המאגר; הבינאריים הרשמיים שנבחרו לתיק ההגשה
+החיצוני מתועדים ב־[`docs/final-submission-evidence.md`](./docs/final-submission-evidence.md)
+ונשמרים byte-for-byte מחוץ ל־Git.
 
 ## פריסה
 

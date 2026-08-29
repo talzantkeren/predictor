@@ -174,11 +174,12 @@ export async function registerConfirmedUser({
 
   await expect
     .poll(() => {
-      const completedUrl = new URL(page.url());
+      const callbackUrl = new URL(page.url());
       return (
-        completedUrl.pathname === "/login" &&
-        completedUrl.searchParams.get("status") === "confirmation-completed" &&
-        completedUrl.searchParams.get("next") === null
+        callbackUrl.pathname === "/login" &&
+        callbackUrl.searchParams.get("status") ===
+          "confirmation-session-mismatch" &&
+        callbackUrl.searchParams.get("next") === null
       );
     })
     .toBe(true);

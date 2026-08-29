@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 
 export function AuthCard({
   eyebrow = "Predictor1",
@@ -33,7 +33,7 @@ export function AuthCard({
             <Link
               href={footer.href}
               prefetch={false}
-              className="font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
+              className="inline-flex min-h-11 items-center font-bold text-navy-700 underline-offset-4 hover:underline focus-visible:rounded"
             >
               {footer.linkLabel}
             </Link>

@@ -18,6 +18,7 @@ import type {
   SportsSyncPlan,
   SportsTeam,
 } from "@/features/sports/types";
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
 
 export const API_FOOTBALL_PROVIDER_ID = "api-football" as const;
 export const API_FOOTBALL_LEAGUE_ID = "383";
@@ -79,6 +80,9 @@ export class ApiFootballNormalizationError extends Error {
 }
 
 function safeProviderName(value: string) {
+  if (containsDangerousBidiControl(value)) {
+    throw new ApiFootballNormalizationError();
+  }
   const normalized = value
     .normalize("NFC")
     .replace(/[\u0000-\u001f\u007f]/g, " ")

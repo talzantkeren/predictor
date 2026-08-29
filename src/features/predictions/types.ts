@@ -1,4 +1,5 @@
 import type { Database } from "@/types/database.generated";
+import type { KeysetPage } from "@/lib/keyset-pagination";
 
 export type MatchStatus = Database["public"]["Enums"]["match_status"];
 export type LeagueStatus = Database["public"]["Enums"]["league_status"];
@@ -49,8 +50,7 @@ export type LeagueMatchList = {
   viewerIsActiveMember: boolean;
   viewerIsManager: boolean;
   databaseNow: string;
-  roundOptions: number[];
-  matches: LeagueMatchItem[];
+  matches: KeysetPage<LeagueMatchItem>;
 };
 
 export type EligibleLeague = {
@@ -59,17 +59,21 @@ export type EligibleLeague = {
   status: LeagueStatus;
 };
 
+export type EligibleLeaguePage = KeysetPage<EligibleLeague>;
+
 export type RevealedPrediction = OwnPrediction & {
   userId: string;
   displayName: string;
   isViewer: boolean;
 };
 
+export type RevealedPredictionPage = KeysetPage<RevealedPrediction>;
+
 export type MatchDetail = {
   league: EligibleLeague;
-  eligibleLeagues: EligibleLeague[];
+  eligibleLeagues: EligibleLeaguePage;
   match: Omit<LeagueMatchItem, "ownPrediction">;
   databaseNow: string;
   ownPrediction: OwnPrediction | null;
-  revealedPredictions: RevealedPrediction[];
+  revealedPredictions: RevealedPredictionPage;
 };

@@ -4,12 +4,17 @@ import {
   type BrowserContextOptions,
   type Page,
   test,
-} from "@playwright/test";
+} from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   addActiveLeagueMemberInDisposableLocalDatabase,
+  attachApiFootballIdentityToScoringMatchInDisposableLocalDatabase,
   grantSystemAdminInDisposableLocalDatabase,
   moveMatchKickoffToPastInDisposableLocalDatabase,
+  readManualMatchBoundaryPersistenceInDisposableLocalDatabase,
+  readManualOverrideClearPersistenceInDisposableLocalDatabase,
   removeScoringFixturesFromDisposableLocalDatabase,
   seedScoringMatchInDisposableLocalDatabase,
   type ScoringMatchFixtureIds,
@@ -124,6 +129,25 @@ async function attemptDirectScoreAsUser(
   });
 }
 
+async function attemptDirectClearAsUser(
+  accessToken: string,
+  matchId: string,
+) {
+  const { publishableKey, url } = getLocalSupabaseConfiguration();
+  return fetchSensitiveUrl(
+    `${url}/rest/v1/rpc/clear_manual_match_override`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_match_id: matchId }),
+    },
+  );
+}
+
 function getContextOptions(projectName: string): BrowserContextOptions {
   const descriptor = projectName.startsWith("mobile-")
     ? devices["Pixel 5"]
@@ -153,7 +177,11 @@ async function createLeague(page: Page, leagueName: string) {
 
 test.describe("manual results and competition-ranked standings", () => {
   let cleanup:
-    | { ids: ScoringMatchFixtureIds; systemAdminUserId: string }
+    | {
+        ids: ScoringMatchFixtureIds;
+        manualMatchId?: string;
+        systemAdminUserId: string;
+      }
     | undefined;
 
   test.afterEach(() => {
@@ -268,19 +296,179 @@ test.describe("manual results and competition-ranked standings", () => {
 
     await admin.page.goto("/admin/matches");
     await expect(
-      admin.page.getByRole("heading", { name: "ניהול תוצאות" }),
+      admin.page.getByRole("heading", { name: "ניהול משחקים ותוצאות" }),
     ).toBeVisible();
+    const createSection = admin.page.locator("section").filter({
+      has: admin.page.getByRole("heading", {
+        name: "יצירת משחק מקטלוג קיים",
+      }),
+    });
+    const createForm = createSection.locator("form");
+    await expect(
+      admin.page.locator('input[name="operation"], input[name="matchId"]'),
+    ).toHaveCount(0);
+    const manualMatchId = await createForm.getAttribute("data-manual-match-id");
+    if (!manualMatchId || !canonicalUuidPattern.test(manualMatchId)) {
+      throw new Error("The server-issued Manual match ID was invalid.");
+    }
+    cleanup.manualMatchId = manualMatchId;
+    await createSection.getByLabel("עונה קיימת").selectOption(
+      "26000000-0000-4000-8000-000000000027",
+    );
+    await createSection.getByLabel("קבוצת בית קיימת").selectOption(ids.homeTeamId);
+    await createSection.getByLabel("קבוצת חוץ קיימת").selectOption(ids.awayTeamId);
+    await createSection.getByLabel("מועד פתיחה (UTC)").fill("2099-10-17T16:00");
+    await createForm.evaluate((form, attackerMatchId) => {
+      for (const [name, value] of [
+        ["operation", "correct"],
+        ["matchId", attackerMatchId],
+      ]) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        input.dataset.e2eUntrustedContext = "true";
+        form.append(input);
+      }
+    }, ids.matchId);
+    await createSection.getByRole("button", { name: "יצירת משחק ידני" }).click();
+    await expect(
+      createSection.getByText("המשחק נוצר ונשמר בבעלות ידנית."),
+    ).toBeVisible();
+    expect(
+      readManualMatchBoundaryPersistenceInDisposableLocalDatabase({
+        attackerMatchId: ids.matchId,
+        awayTeamId: ids.awayTeamId,
+        capturedMatchId: manualMatchId,
+        homeTeamId: ids.homeTeamId,
+      }),
+    ).toEqual({
+      attackerDefinitionMatchCount: 1,
+      capturedMatchCount: 1,
+      capturedPayloadMatchCount: 1,
+    });
+    await createForm.evaluate((form) => {
+      form
+        .querySelectorAll('[data-e2e-untrusted-context="true"]')
+        .forEach((input) => input.remove());
+    });
+    await expect(
+      admin.page.locator('input[name="operation"], input[name="matchId"]'),
+    ).toHaveCount(0);
+    await createSection.getByRole("button", { name: "יצירת משחק ידני" }).click();
+    await expect(
+      createSection.getByText("המשחק כבר תואם לפרטים שנשלחו."),
+    ).toBeVisible();
+    await expect(createForm).toHaveAttribute("data-manual-match-id", manualMatchId);
+    expect(
+      readManualMatchBoundaryPersistenceInDisposableLocalDatabase({
+        attackerMatchId: ids.matchId,
+        awayTeamId: ids.awayTeamId,
+        capturedMatchId: manualMatchId,
+        homeTeamId: ids.homeTeamId,
+      }),
+    ).toEqual({
+      attackerDefinitionMatchCount: 1,
+      capturedMatchCount: 1,
+      capturedPayloadMatchCount: 1,
+    });
+
+    const externalId =
+      attachApiFootballIdentityToScoringMatchInDisposableLocalDatabase(
+        ids.matchId,
+      );
+    const unauthorizedClear = await attemptDirectClearAsUser(
+      memberASession.accessToken,
+      ids.matchId,
+    );
+    expect(unauthorizedClear.ok).toBe(false);
+    await admin.page.reload();
+
     const matchCard = admin.page
       .locator("article")
-      .filter({ hasText: names.homeTeamName })
-      .filter({ hasText: names.awayTeamName });
+      .filter({
+        has: admin.page.locator(
+          `form[data-manual-match-id="${ids.matchId}"]`,
+        ),
+      });
     await expect(matchCard).toHaveCount(1);
+    await expect(
+      matchCard.getByRole("heading", {
+        name: `${names.homeTeamName} — ${names.awayTeamName}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await matchCard.getByLabel("מצב משחק").selectOption("finished");
     await matchCard.getByLabel(`שערי ${names.homeTeamName}`).fill("2");
     await matchCard.getByLabel(`שערי ${names.awayTeamName}`).fill("1");
     await matchCard.getByRole("button", { name: "שמירת תוצאה" }).click();
     await expect(
       matchCard.getByText("התוצאה נשמרה והדירוגים חושבו מחדש."),
     ).toBeVisible();
+    await expect(
+      matchCard.getByText("תיקון ידני; זהות הספק נשמרה", { exact: true }),
+    ).toBeVisible();
+    await expect(matchCard.getByText("2–1", { exact: true })).toBeVisible();
+
+    const clearForm = matchCard.locator(
+      "form[data-manual-override-clear-match-id]",
+    );
+    await expect(clearForm).toHaveAttribute(
+      "data-manual-override-clear-match-id",
+      ids.matchId,
+    );
+    await expect(clearForm.locator('input[name="matchId"]')).toHaveCount(0);
+    const clearConfirmation = clearForm.getByRole("checkbox", {
+      name: /אני מאשר\/ת שהעדכון הבא של הספק/,
+    });
+    const clearButton = clearForm.getByRole("button", {
+      name: "אישור והחזרת בעלות לספק",
+    });
+    await expect(clearButton).toBeDisabled();
+    await clearForm.evaluate((form) => {
+      (form as HTMLFormElement).requestSubmit();
+    });
+    await expect(
+      clearForm.getByText("יש לאשר במפורש את החזרת הבעלות לספק.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(clearConfirmation).toBeFocused();
+    await clearForm.evaluate((form, forgedMatchId) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "matchId";
+      input.value = forgedMatchId;
+      input.dataset.e2eUntrustedContext = "true";
+      form.append(input);
+    }, manualMatchId);
+    await clearConfirmation.check();
+    await expect(clearButton).toBeEnabled();
+    await clearButton.click();
+    await expect(
+      matchCard.getByText(
+        "הבעלות הוחזרה ל־API-Football. המצב והתוצאה הנוכחיים נשמרו עד לעדכון ספק מאומת.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      matchCard.getByText("API-Football", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(matchCard.getByText("2–1", { exact: true })).toBeVisible();
+    expect(
+      readManualOverrideClearPersistenceInDisposableLocalDatabase({
+        externalId,
+        forgedMatchId: manualMatchId,
+        matchId: ids.matchId,
+      }),
+    ).toEqual({
+      clearAuditCount: 1,
+      clearedMatchCount: 1,
+      exactPredictionCount: 2,
+      forgedClearAuditCount: 0,
+      forgedMatchCount: 1,
+      wrongPredictionCount: 1,
+    });
 
     await admin.page.goto(`/leagues/${leagueId}/standings`);
     await expect(
@@ -332,8 +520,10 @@ test.describe("manual results and competition-ranked standings", () => {
       memberA.page.getByRole("heading", { name: "טבלת דירוג" }),
     ).toBeVisible();
 
-    await admin.context.close();
-    await memberA.context.close();
-    await memberB.context.close();
+    await closeContextsAfterResponseStreams([
+      admin.context,
+      memberA.context,
+      memberB.context,
+    ]);
   });
 });

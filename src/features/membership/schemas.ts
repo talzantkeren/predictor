@@ -5,6 +5,7 @@ import {
   INVITE_TOKEN_HASH_PATTERN,
   INVITE_TOKEN_PATTERN,
 } from "@/features/membership/invite-token";
+import { containsDangerousBidiControl } from "@/lib/untrusted-text";
 
 const timestampSchema = z.string().datetime({ offset: true });
 const nullableTimestampSchema = timestampSchema.nullable().optional().default(null);
@@ -50,6 +51,9 @@ export const rejectJoinRequestInputSchema = approveJoinRequestInputSchema.extend
     .max(300, "סיבת הדחייה יכולה להכיל עד 300 תווים.")
     .refine((value) => !/[\p{Cc}\p{Zl}\p{Zp}]/u.test(value), {
       message: "סיבת הדחייה חייבת להיכתב בשורה אחת.",
+    })
+    .refine((value) => !containsDangerousBidiControl(value), {
+      message: "סיבת הדחייה מכילה תווי כיווניות בלתי־נראים שאינם מותרים.",
     }),
 });
 
@@ -203,9 +207,9 @@ const dashboardJoinRequestRpcSchema = z
     proofs: request.proofs,
   }));
 
-export const dashboardJoinRequestsRpcSchema = z
+export const dashboardJoinRequestPageRpcSchema = z
   .array(dashboardJoinRequestRpcSchema)
-  .max(100);
+  .max(26);
 
 const managerJoinRequestRpcSchema = z
   .object({
@@ -234,9 +238,54 @@ const managerJoinRequestRpcSchema = z
     proofs: request.proofs,
   }));
 
-export const managerJoinRequestsRpcSchema = z
+export const managerJoinRequestPageRpcSchema = z
   .array(managerJoinRequestRpcSchema)
-  .max(100);
+  .max(26);
+
+const activeLeagueMemberRpcSchema = z
+  .object({
+    membership_id: z.string().uuid(),
+    display_name: z.string().min(1).max(80),
+    approved_at: timestampSchema,
+  })
+  .strict()
+  .transform((member) => ({
+    membershipId: member.membership_id,
+    displayName: member.display_name,
+    approvedAt: member.approved_at,
+  }));
+
+export const activeLeagueMemberPageRpcSchema = z
+  .array(activeLeagueMemberRpcSchema)
+  .max(26);
+
+const joinRequestStatusFilterSchema = z.enum([
+  "pending_proof",
+  "pending_approval",
+  "approved",
+  "rejected",
+]);
+
+export function parseJoinRequestStatusFilter(value: unknown):
+  | {
+      success: true;
+      data:
+        | "pending_proof"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | undefined;
+    }
+  | { success: false } {
+  if (value === undefined || value === "") {
+    return { success: true, data: undefined };
+  }
+
+  const parsed = joinRequestStatusFilterSchema.safeParse(value);
+  return parsed.success
+    ? { success: true, data: parsed.data }
+    : { success: false };
+}
 
 export const approvedJoinRequestRpcSchema = z
   .object({

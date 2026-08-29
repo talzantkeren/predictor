@@ -1,12 +1,15 @@
-import Link from "next/link";
+import Link from "@/components/ui/app-link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { DemoNotice } from "@/components/ui/demo-notice";
 import { ErrorState } from "@/components/ui/error-state";
+import { IsolatedText } from "@/components/ui/isolated-text";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { requireAuthenticatedUser } from "@/features/auth/session";
+import { CompleteLeagueForm } from "@/features/leagues/components/complete-league-form";
 import { LeagueTabs } from "@/features/leagues/components/league-tabs";
+import { StartLeagueForm } from "@/features/leagues/components/start-league-form";
 import {
   formatDemoAmount,
   formatPrizePercentage,
@@ -60,14 +63,15 @@ export default async function LeagueSummaryPage({
             </span>
             <div className="min-w-0">
               <p className="break-words text-sm font-bold text-ink-muted">
-                {league.competitionName} · <bdi>{league.seasonName}</bdi>
+                <IsolatedText>{league.competitionName}</IsolatedText> ·{" "}
+                <IsolatedText>{league.seasonName}</IsolatedText>
               </p>
               <h1 className="mt-1 break-words text-3xl font-black tracking-tight text-ink sm:text-4xl">
-                {league.name}
+                <IsolatedText>{league.name}</IsolatedText>
               </h1>
               {league.description ? (
                 <p className="mt-3 max-w-3xl whitespace-pre-wrap break-words leading-7 text-ink-secondary">
-                  {league.description}
+                  <IsolatedText>{league.description}</IsolatedText>
                 </p>
               ) : (
                 <p className="mt-3 text-ink-muted">לא נוסף תיאור לליגה.</p>
@@ -187,7 +191,11 @@ export default async function LeagueSummaryPage({
               <div className="min-w-0">
                 <dt className="font-bold text-ink-muted">הוראות Demo</dt>
                 <dd className="mt-1 whitespace-pre-wrap break-words leading-6 text-ink-secondary">
-                  {league.demoPaymentInstructions ?? "לא הוגדרו הוראות."}
+                  {league.demoPaymentInstructions ? (
+                    <IsolatedText>{league.demoPaymentInstructions}</IsolatedText>
+                  ) : (
+                    "לא הוגדרו הוראות."
+                  )}
                 </dd>
               </div>
               <div>
@@ -209,6 +217,16 @@ export default async function LeagueSummaryPage({
               <h2 id="management-title" className="text-xl font-black text-ink">
                 כלים לניהול הליגה
               </h2>
+              {league.status === "open" ? (
+                <div className="mt-4">
+                  <StartLeagueForm leagueId={league.id} />
+                </div>
+              ) : null}
+              {league.status === "active" ? (
+                <div className="mt-4">
+                  <CompleteLeagueForm leagueId={league.id} />
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3">
                 <Link
                   href={`/leagues/${league.id}/members`}

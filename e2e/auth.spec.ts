@@ -1,4 +1,6 @@
-import { expect, type APIRequestContext, test } from "@playwright/test";
+import { expect, type APIRequestContext, test } from "./support/stream-safe-test";
+
+import { closeContextsAfterResponseStreams } from "./support/response-streams";
 
 import {
   fillPasswordWithoutReportValue,
@@ -189,6 +191,7 @@ test.describe("authentication and profile", () => {
   }) => {
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const email = `slice1-${suffix}@example.com`;
+    const unknownEmail = `slice1-unknown-${suffix}@example.com`;
     const secondEmail = `slice1-second-${suffix}@example.com`;
     const password = `Aa1!${crypto.randomUUID()}`;
     const replacementPassword = `Bb2!${crypto.randomUUID()}`;
@@ -220,8 +223,12 @@ test.describe("authentication and profile", () => {
     const confirmationContext = await browser.newContext();
     const flowPage = await confirmationContext.newPage();
     await navigateSensitiveAuthUrl(flowPage, confirmationEmail.link);
-    await expect(flowPage).toHaveURL(/\/login\?status=confirmation-completed$/);
-    await expect(flowPage.getByText("כתובת האימייל אושרה")).toBeVisible();
+    await expect(flowPage).toHaveURL(
+      /\/login\?status=confirmation-session-mismatch$/,
+    );
+    await expect(
+      flowPage.getByRole("alert").getByText("לא ניתן להשלים חיבור אוטומטי"),
+    ).toBeVisible();
     await flowPage.getByLabel("כתובת אימייל").fill(email);
     await fillPasswordWithoutReportValue(flowPage, "סיסמה", password);
     await flowPage.getByRole("button", { name: "התחברות" }).click();
@@ -261,12 +268,20 @@ test.describe("authentication and profile", () => {
     await expect(flowPage).toHaveURL(/\/login\?status=signed-out$/);
     await flowPage.getByRole("link", { name: "שכחתי סיסמה" }).click();
     await expect(flowPage).toHaveURL(/\/forgot-password$/);
+    await flowPage.getByLabel("כתובת אימייל").fill(unknownEmail);
+    await flowPage.getByRole("button", { name: "שליחת קישור לשחזור" }).click();
+    const unknownAddressNotice = flowPage.getByRole("status");
+    await expect(unknownAddressNotice).toHaveText(
+      "אם קיים חשבון התואם לכתובת, נשלח אליו קישור לשחזור הסיסמה.",
+    );
+    const accountNeutralCopy = await unknownAddressNotice.textContent();
+
+    await flowPage.waitForTimeout(1_100);
     await flowPage.getByLabel("כתובת אימייל").fill(email);
     await flowPage.getByRole("button", { name: "שליחת קישור לשחזור" }).click();
-    await expect(
-      flowPage.getByText("אם קיים חשבון התואם לכתובת"),
-    ).toBeVisible();
-
+    await expect(flowPage.getByRole("status")).toHaveText(
+      accountNeutralCopy ?? "",
+    );
     const recoveryEmail = await waitForAuthEmail(
       request,
       email,
@@ -276,10 +291,10 @@ test.describe("authentication and profile", () => {
     const recoveryPage = await recoveryContext.newPage();
     await navigateSensitiveAuthUrl(recoveryPage, recoveryEmail.link);
     await expect(recoveryPage).toHaveURL(
-      /\/forgot-password\?status=recovery-browser-mismatch$/,
+      /\/forgot-password\?status=recovery-session-mismatch$/,
     );
     await expect(
-      recoveryPage.getByText("יש לבקש כאן קישור חדש"),
+      recoveryPage.getByRole("alert").getByText("יש לבקש כאן קישור חדש"),
     ).toBeVisible();
     await recoveryPage.waitForTimeout(1_100);
     await recoveryPage.getByLabel("כתובת אימייל").fill(email);
@@ -295,7 +310,17 @@ test.describe("authentication and profile", () => {
       email,
       [confirmationEmail.id, recoveryEmail.id],
     );
+    const callbackRequestPromise = recoveryPage.waitForRequest((candidate) => {
+      const candidateUrl = new URL(candidate.url());
+
+      return (
+        candidateUrl.pathname === "/auth/confirm" &&
+        candidateUrl.searchParams.has("code") &&
+        candidateUrl.searchParams.get("next") === "/update-password"
+      );
+    });
     await navigateSensitiveAuthUrl(recoveryPage, sameBrowserRecoveryEmail.link);
+    const consumedRecoveryCallbackUrl = (await callbackRequestPromise).url();
     await expect(recoveryPage).toHaveURL(/\/update-password$/);
     await fillPasswordWithoutReportValue(
       recoveryPage,
@@ -310,7 +335,9 @@ test.describe("authentication and profile", () => {
     await recoveryPage.getByRole("button", { name: "עדכון סיסמה" }).click();
 
     await expect(recoveryPage).toHaveURL(/\/login\?status=password-updated$/);
-    await expect(recoveryPage.getByText("הסיסמה עודכנה בהצלחה")).toBeVisible();
+    await expect(
+      recoveryPage.getByRole("status").getByText("הסיסמה עודכנה בהצלחה"),
+    ).toBeVisible();
     await expect
       .poll(async () =>
         (await recoveryContext.cookies()).some(
@@ -318,6 +345,28 @@ test.describe("authentication and profile", () => {
         ),
       )
       .toBe(false);
+
+    await navigateSensitiveAuthUrl(recoveryPage, consumedRecoveryCallbackUrl);
+    await expect(recoveryPage).toHaveURL(
+      /\/forgot-password\?status=recovery-link-reused$/,
+    );
+    await expect(
+      recoveryPage
+        .getByRole("alert")
+        .filter({ hasText: "קישור השחזור כבר שימש" }),
+    ).toBeVisible();
+
+    await recoveryPage.goto("/dashboard");
+    await expect(recoveryPage).toHaveURL(/\/login\?next=%2Fdashboard$/);
+    await recoveryPage.getByLabel("כתובת אימייל").fill(email);
+    await fillPasswordWithoutReportValue(recoveryPage, "סיסמה", password);
+    await recoveryPage.getByRole("button", { name: "התחברות" }).click();
+    await expect(recoveryPage).toHaveURL(/\/login\?next=%2Fdashboard$/);
+    await expect(
+      recoveryPage
+        .getByRole("alert")
+        .filter({ hasText: "כתובת האימייל או הסיסמה שגויות" }),
+    ).toBeVisible();
 
     await recoveryPage.getByLabel("כתובת אימייל").fill(email);
     await fillPasswordWithoutReportValue(
@@ -341,7 +390,7 @@ test.describe("authentication and profile", () => {
     const secondPage = await secondContext.newPage();
     await navigateSensitiveAuthUrl(secondPage, secondConfirmationEmail.link);
     await expect(secondPage).toHaveURL(
-      /\/login\?status=confirmation-completed$/,
+      /\/login\?status=confirmation-session-mismatch$/,
     );
     await secondPage.getByLabel("כתובת אימייל").fill(secondEmail);
     await fillPasswordWithoutReportValue(secondPage, "סיסמה", password);
@@ -382,8 +431,10 @@ test.describe("authentication and profile", () => {
     expect(foreignUpdate.ok).toBe(true);
     expect(await foreignUpdate.json()).toEqual([]);
 
-    await confirmationContext.close();
-    await recoveryContext.close();
-    await secondContext.close();
+    await closeContextsAfterResponseStreams([
+      confirmationContext,
+      recoveryContext,
+      secondContext,
+    ]);
   });
 });

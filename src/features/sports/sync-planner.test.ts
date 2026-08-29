@@ -7,6 +7,7 @@ import {
   batchTargetFixtureIds,
   buildApiFootballApplyPlan,
   planSyncResults,
+  SyncPlannerError,
   type StoredMatchSnapshot,
 } from "@/features/sports/sync-planner";
 import { MATCH_STATUSES } from "@/features/sports/types";
@@ -159,13 +160,13 @@ describe("future provider sync result planner", () => {
 
     expect(() =>
       planSyncResults(contract.storedMatches, [normalized, normalized]),
-    ).toThrow("unique match IDs");
+    ).toThrow(SyncPlannerError);
     expect(() =>
       planSyncResults(
         [contract.storedMatches[0], contract.storedMatches[0]],
         [normalized],
       ),
-    ).toThrow("unique external IDs");
+    ).toThrow(SyncPlannerError);
   });
 });
 
@@ -229,7 +230,7 @@ describe("API-Football bounded apply planning", () => {
       20,
       5,
     ]);
-    expect(() => batchTargetFixtureIds(["1", "1"])).toThrow("unique");
+    expect(() => batchTargetFixtureIds(["1", "1"])).toThrow(SyncPlannerError);
   });
 
   it("produces atomic apply batches of at most 50 and is idempotent/pure", () => {
@@ -359,7 +360,7 @@ describe("API-Football bounded apply planning", () => {
           Array.from({ length: 1_001 }, (_, index) => normalizedFixture(index)),
         ),
       ),
-    ).toThrow("at most 1000 fixtures");
+    ).toThrow(SyncPlannerError);
   });
 
   it("carries an unknown fixture team into targeted apply by provider ID", () => {

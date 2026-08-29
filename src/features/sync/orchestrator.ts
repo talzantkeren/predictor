@@ -2,18 +2,22 @@ import "server-only";
 
 import {
   ApiFootballClientError,
+  type ApiFootballClientErrorCode,
   type ApiFootballTransport,
 } from "@/features/sports/api-football-client";
 import { getApiFootballSafeErrorCode } from "@/features/sports/api-football-provider";
+import { buildManualCatalogPayload } from "@/features/sports/manual-catalog";
 import { createSportsProvider } from "@/features/sports/provider-factory";
-import { buildApiFootballApplyPlan } from "@/features/sports/sync-planner";
+import {
+  buildApiFootballApplyPlan,
+  type PlannedApiFootballApply,
+} from "@/features/sports/sync-planner";
 import type { SportsProviderId, SportsSyncPlan } from "@/features/sports/types";
-import { SyncError } from "@/features/sync/errors";
 import {
   applyApiFootballSyncBatch,
+  applyManualFixtureCatalog,
   claimApiFootballSync,
   finalizeApiFootballSync,
-  recordManualSyncAttempt,
 } from "@/features/sync/private-sync-gateway";
 import type {
   ClaimedSportsSync,
@@ -21,20 +25,36 @@ import type {
 } from "@/features/sync/types";
 
 type SyncDependencies = {
-  recordManual: typeof recordManualSyncAttempt;
+  applyManual: typeof applyManualFixtureCatalog;
   claim: typeof claimApiFootballSync;
   apply: typeof applyApiFootballSyncBatch;
   finalize: typeof finalizeApiFootballSync;
 };
 
 const defaultDependencies: SyncDependencies = {
-  recordManual: recordManualSyncAttempt,
+  applyManual: applyManualFixtureCatalog,
   claim: claimApiFootballSync,
   apply: applyApiFootballSyncBatch,
   finalize: finalizeApiFootballSync,
 };
 
-const safeFailureMessages: Record<string, string> = {
+type FinalizableFailureCode =
+  | ApiFootballClientErrorCode
+  | "SYNC_APPLY_FAILED"
+  | "SYNC_PLAN_FAILED";
+
+type FinalizableFailure = {
+  errorCode: FinalizableFailureCode;
+  errorMessageSafe: string;
+  fixturesSeen: number;
+  quotaRemaining: number | null;
+  retryAfterSeconds: number | null;
+};
+
+const safeFailureMessages: Record<
+  FinalizableFailureCode | "SYNC_FINALIZE_FAILED",
+  string
+> = {
   PROVIDER_ABORTED: "The sports provider request was aborted safely.",
   PROVIDER_AUTH_FAILED: "The sports provider rejected its server credential.",
   PROVIDER_BAD_RESPONSE: "The sports provider returned an invalid envelope.",
@@ -46,6 +66,7 @@ const safeFailureMessages: Record<string, string> = {
   PROVIDER_UNAVAILABLE: "The sports provider is temporarily unavailable.",
   SYNC_APPLY_FAILED: "The validated provider batch could not be applied safely.",
   SYNC_FINALIZE_FAILED: "The Sync run could not be finalized safely.",
+  SYNC_PLAN_FAILED: "The normalized provider snapshot could not be planned safely.",
 };
 
 function planFromClaim(claim: ClaimedSportsSync): SportsSyncPlan {
@@ -54,18 +75,58 @@ function planFromClaim(claim: ClaimedSportsSync): SportsSyncPlan {
     : { kind: claim.syncKind };
 }
 
-function failureDetails(error: unknown) {
-  const errorCode =
-    error instanceof SyncError
-      ? "SYNC_APPLY_FAILED"
-      : getApiFootballSafeErrorCode(error);
+function providerFailureDetails(error: unknown): FinalizableFailure {
+  const errorCode = getApiFootballSafeErrorCode(error);
   return {
     errorCode,
     errorMessageSafe: safeFailureMessages[errorCode],
+    fixturesSeen: 0,
     retryAfterSeconds:
       error instanceof ApiFootballClientError
         ? error.retryAfterSeconds
         : null,
+    quotaRemaining:
+      error instanceof ApiFootballClientError ? error.quotaRemaining : null,
+  };
+}
+
+function stageFailureDetails(
+  errorCode: "SYNC_APPLY_FAILED" | "SYNC_PLAN_FAILED",
+  metadata: { fixturesSeen: number; quotaRemaining: number | null },
+): FinalizableFailure {
+  return {
+    errorCode,
+    errorMessageSafe: safeFailureMessages[errorCode],
+    fixturesSeen: metadata.fixturesSeen,
+    quotaRemaining: metadata.quotaRemaining,
+    retryAfterSeconds: null,
+  };
+}
+
+async function finalizeFailedRun(
+  systemActorId: string,
+  claim: ClaimedSportsSync,
+  failure: FinalizableFailure,
+  operatorNotes: string[],
+  finalize: SyncDependencies["finalize"],
+): Promise<SyncInvocationResult> {
+  try {
+    await finalize(systemActorId, claim, {
+      status: "failed",
+      ...failure,
+      operatorNotes,
+    });
+  } catch {
+    return {
+      runId: claim.runId,
+      status: "failed",
+      reason: "SYNC_FINALIZE_FAILED",
+    };
+  }
+  return {
+    runId: claim.runId,
+    status: "failed",
+    reason: failure.errorCode,
   };
 }
 
@@ -80,12 +141,21 @@ export async function runSportsSync(
   dependencies: SyncDependencies = defaultDependencies,
 ): Promise<SyncInvocationResult> {
   if (input.provider === "manual") {
-    const attempt = await dependencies.recordManual(input.systemActorId);
-    return {
-      runId: attempt.id,
-      status: "skipped",
-      reason: attempt.reason,
-    };
+    const provider = createSportsProvider({ provider: "manual" });
+    const snapshot = await provider.getSyncSnapshot({ kind: "catalog" });
+    const payload = buildManualCatalogPayload(snapshot);
+    const attempt = await dependencies.applyManual(input.systemActorId, payload);
+    return attempt.status === "failed"
+      ? {
+          runId: attempt.runId,
+          status: "failed",
+          reason: attempt.reason,
+        }
+      : {
+          runId: attempt.runId,
+          status: "succeeded",
+          reason: attempt.reason,
+        };
   }
 
   const claim = await dependencies.claim(input.systemActorId, input.force);
@@ -97,21 +167,60 @@ export async function runSportsSync(
     };
   }
 
-  let operatorNotes: string[] = [];
+  let snapshot: Awaited<
+    ReturnType<ReturnType<typeof createSportsProvider>["getSyncSnapshot"]>
+  >;
   try {
     const provider = createSportsProvider({
       provider: input.provider,
       apiKey: input.apiKey,
       transport: input.transport,
     });
-    const snapshot = await provider.getSyncSnapshot(planFromClaim(claim));
-    const applyPlan = buildApiFootballApplyPlan(snapshot);
-    operatorNotes = applyPlan.operatorNotes;
+    snapshot = await provider.getSyncSnapshot(planFromClaim(claim));
+  } catch (error) {
+    return finalizeFailedRun(
+      input.systemActorId,
+      claim,
+      providerFailureDetails(error),
+      [],
+      dependencies.finalize,
+    );
+  }
 
+  let applyPlan: PlannedApiFootballApply;
+  try {
+    applyPlan = buildApiFootballApplyPlan(snapshot);
+  } catch {
+    return finalizeFailedRun(
+      input.systemActorId,
+      claim,
+      stageFailureDetails("SYNC_PLAN_FAILED", {
+        fixturesSeen: 0,
+        quotaRemaining: snapshot.quota.dailyRemaining,
+      }),
+      [],
+      dependencies.finalize,
+    );
+  }
+
+  try {
     for (const batch of applyPlan.batches) {
       await dependencies.apply(input.systemActorId, claim, batch);
     }
+  } catch {
+    return finalizeFailedRun(
+      input.systemActorId,
+      claim,
+      stageFailureDetails("SYNC_APPLY_FAILED", {
+        fixturesSeen: applyPlan.fixturesSeen,
+        quotaRemaining: snapshot.quota.dailyRemaining,
+      }),
+      applyPlan.operatorNotes,
+      dependencies.finalize,
+    );
+  }
 
+  try {
     await dependencies.finalize(input.systemActorId, claim, {
       status: "succeeded",
       fixturesSeen: applyPlan.fixturesSeen,
@@ -119,25 +228,11 @@ export async function runSportsSync(
       quotaRemaining: snapshot.quota.dailyRemaining,
     });
     return { runId: claim.runId, status: "succeeded", reason: "SUCCEEDED" };
-  } catch (error) {
-    const failure = failureDetails(error);
-    try {
-      await dependencies.finalize(input.systemActorId, claim, {
-        status: "failed",
-        ...failure,
-        operatorNotes,
-      });
-    } catch {
-      return {
-        runId: claim.runId,
-        status: "failed",
-        reason: "SYNC_FINALIZE_FAILED",
-      };
-    }
+  } catch {
     return {
       runId: claim.runId,
       status: "failed",
-      reason: failure.errorCode,
+      reason: "SYNC_FINALIZE_FAILED",
     };
   }
 }

@@ -1,3 +1,5 @@
+import type { KeysetPage } from "@/lib/keyset-pagination";
+
 export type JoinRequestStatus =
   | "pending_proof"
   | "pending_approval"
@@ -55,6 +57,8 @@ export type JoinRequestDashboardItem = {
   proofs: ProofSummary[];
 };
 
+export type JoinRequestDashboardPage = KeysetPage<JoinRequestDashboardItem>;
+
 export type ManagerJoinRequestItem = {
   requestId: string;
   requesterDisplayName: string;
@@ -65,6 +69,16 @@ export type ManagerJoinRequestItem = {
   decidedAt: string | null;
   proofs: ProofSummary[];
 };
+
+export type ManagerJoinRequestPage = KeysetPage<ManagerJoinRequestItem>;
+
+export type ActiveLeagueMember = {
+  membershipId: string;
+  displayName: string;
+  approvedAt: string;
+};
+
+export type ActiveLeagueMemberPage = KeysetPage<ActiveLeagueMember>;
 
 export type LeagueInviteSettings = {
   id: string;

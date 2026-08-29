@@ -1,0 +1,96 @@
+# Checklist לבוחן ולחזרה האנושית
+
+סטטוס: `VERIFIED — OWNER_REPORTED_PASS` על candidate
+`4b77e2412336ed1151849c5db8d05d5947a46e45`. אין בקובץ credentials או מידע
+אישי; פרטי חשבונות נמסרים מחוץ ל־Git. ה־checkboxes להלן נשארים חוזה שימוש
+חוזר ואינם טענה שכל checkbox נלכד בנפרד; ראיית הסגירה היא שורת הדיווח המסוננת.
+
+## לפני הפעלת הטיימר
+
+- [ ] `git rev-parse HEAD` שווה ל־`<candidate-sha>` שנרשם ביומן החזרה.
+- [ ] `npm.cmd run presentation:build:check` אימת את מצגת המאגר הפנימית בלי
+  לכתוב על המצגת החיצונית שנבחרה.
+- [ ] כל **13/13** השקפים וכל **13/13** קובצי הרינדור הפנימיים נפתחו ונבדקו
+  חזותית כראיית reproducibility.
+- [ ] כל **18/18** שקפי `Predictor1_Final_Presentation_HE.pptx` נפתחו; hash
+  הקובץ תואם ל־`8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
+- [ ] בכל שורה עברית סדר המילים והפיסוק טבעיים; טקסט מעורב כגון Next.js 16,
+  Supabase, PostgreSQL, Demo ו־RTL נקרא נכון.
+- [ ] אין clipping, overlap או contrast חלש, והטקסט קריא ממרחק הקרנה.
+- [ ] Supabase מקומי disposable והיישום המקומי מוכנים; ספק Sports מוגדר
+  `manual` וללא credential.
+- [ ] שתי sessions מקומיות מורשות מוכנות בלי להציג סיסמה.
+- [ ] חמש תמונות הגיבוי פתוחות לפי הסדר הנכון.
+- [ ] Production והמאגר ייפתחו ידנית רק אחרי שקף 18; הם טקסט רגיל במצגת
+  הנבחרת ואינם hyperlink.
+
+## הסיפור המוצרי
+
+- [ ] מוסברים הבעיה, קהל היעד והצורך במקור אמת אחד.
+- [ ] מוסברים אורח, מבקש הצטרפות, חבר פעיל, מנהל ליגה ומנהל מערכת.
+- [ ] ההפרדה בין הרשאת תפקיד לבין הרשאה לליגה מסוימת נאמרת במפורש.
+- [ ] המחזור `open` → `active` → `completed` מחובר לדמו המקומי.
+- [ ] הזמנה, בקשה, תמונת Demo, אישור ורשימת חברים פרטית מוצגים דרך ה־UI או
+  מוחלפים במפורש ב־`01-open-league.png` וב־`02-open-approved-members.png`.
+- [ ] הפעלה, ניחוש 2:1, תוצאה 2:1 ודירוג נוכחי עם 3 נקודות מוצגים דרך ה־UI או
+  מוחלפים במפורש ב־`03-active-current-report.png`.
+- [ ] השלמה ודירוג סופי קפוא עם 3 נקודות מוצגים דרך ה־UI או מוחלפים במפורש
+  ב־`04-completed-final-frozen.png`.
+- [ ] תיקון מאוחר ל־1:1 מוצג כ־reconciliation מפורש; לאחר ההחלה הדירוג נשאר
+  סופי ומציג 0 נקודות, או שמוצגת `05-completed-final-reconciled.png`.
+- [ ] שום mutation ישיר במסד אינו מזייף שלב שנראה למשתמש.
+
+## ארכיטקטורה, נתונים ואבטחה
+
+- [ ] מוסברים Next.js 16, ‏Server Components, ‏Server Actions ו־Route Handlers.
+- [ ] מוסבר מה PostgreSQL מחזיק: constraints, ‏RLS, זמן מסד, transactions
+  וניקוד set-based.
+- [ ] מודל הנתונים מפריד בין `join_requests`, ‏`payment_proofs` ו־
+  `league_members`, ובין review, ‏snapshot ו־reconciliation.
+- [ ] מוסברת הרשאת משאב נפרדת ממגבלת רשימה ומ־pagination.
+- [ ] מוסברים RLS, ‏least-privilege grants ומשמעת SECURITY DEFINER.
+- [ ] מוסבר מסלול ה־proof הפרטי: אימות, WebP חדש, bucket פרטי ו־signed URL רק
+  לאחר הרשאה.
+- [ ] מוסבר ש־`clock_timestamp()` נקרא לאחר רכישת הנעילות ושה־countdown אינו
+  מקור סמכות.
+- [ ] מוסבר ש־completion מקפיא snapshot וסוגר בקשות פתוחות באותה transaction,
+  ותיקון מאוחר אינו משכתב דוח סופי בשקט.
+
+## בדיקות, סקייל וגבולות
+
+- [ ] מוסבר ההבדל בין Vitest, ‏pgTAP ו־Playwright.
+- [ ] כל ספירת בדיקות שמופיעה בשקף 10 תואמת לפלט שנצפה על ה־SHA הסופי.
+- [ ] כל צומת Function Scan ומספר שורות בשקף 11 תואמים לפלט
+  `npm run scale:plans` שנצפה על ה־SHA הסופי.
+- [ ] מוסברים keyset pagination, שאילתות תחומות, אינדקסים ו־Sync מוגבל.
+- [ ] נאמר במפורש: Demo בלבד; אין כסף אמיתי או מסמך פיננסי אמיתי.
+- [ ] נאמר במפורש: אין generative AI בזמן ריצה ב־MVP.
+- [ ] נאמר במפורש: ב־Local, ‏Preview ו־CI משתמשים רק ב־Manual adapter,
+  recorded fixtures ו־fake transport; אין ספק Sports חי.
+- [ ] סיכוני SMTP, מגבלות ספק ופעולות Hosted/Production מוצגים כראיות נפרדות,
+  לא כבדיקות שכבר עברו.
+
+## עמידות וסיום
+
+- [ ] תקלה מקומית מעבירה בתוך 20 שניות לתמונה המתאימה.
+- [ ] נאמר המשפט: “השלב החי לא נצפה. אמשיך מצילום גיבוי שנלכד מאותו תרחיש
+  Playwright מקומי; הצילום אינו הופך את השלב שלא נצפה ל־PASS.”
+- [ ] המציג אומר איזה שלב חי לא נצפה ואינו טוען שהוא עבר.
+- [ ] לאחר שקף 18 נפתחים ידנית קישור Production הציבורי וקישור המאגר
+  בלשוניות נפרדות.
+- [ ] ב־Production מוצג עמוד Demo ציבורי בלבד; אין login או mutation.
+- [ ] future work מופרד מן ה־MVP ומוצמד לטריגר מדיד או לאישור היקף.
+- [ ] משך ההצגה שנמדד הוא בין 10:00 ל־15:00.
+- [ ] ניתן לענות על שאלות בנושאי רכיבים, אבטחה, סקייל ו־tradeoffs מן המצגת
+  ומראיות המאגר.
+
+## שורת ראיה אנושית
+
+| Candidate SHA | התחלה/סיום (Asia/Jerusalem) | משך | 18/18 שקפים | UI מקומי | 5/5 תמונות גיבוי | Production | GitHub | הסברי בוחן | בסיס תצפית | תוצאה/הערה מסוננת |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `4b77e2412336ed1151849c5db8d05d5947a46e45` | NOT_CAPTURED — owner לא שמר זמן מדויק | `OWNER_REPORTED_WITHIN_10:00–15:00` | PASS — OWNER_REPORTED 18/18 | OWNER_REPORTED_FALLBACK_USED; פרטי UI חי לא נשמרו | PASS — OWNER_REPORTED 5/5 | PASS — OWNER_REPORTED_OPENED | PASS — OWNER_REPORTED_OPENED | PASS — OWNER_REPORTED; פירוט מילולי לא נשמר | OWNER_REPORTED; agent לא צפה ולא נשמר screenshot | VERIFIED — OWNER_REPORTED_PASS |
+
+השורה מולאה מתוך אישור owner מפורש מ־30.8.2026. ה־agent לא צפה בחזרה, וזמני
+התחלה/סיום, משך מדויק ו־screenshot לא נשמרו; אין כאן claim אחר. כשל עתידי או
+ראיה סותרת מחייבים לפתוח מחדש את הרשומה, ולא להסתירם באמצעות שינוי בדיקה,
+workflow, מצגת או checklist.

@@ -567,6 +567,32 @@ describe("POST /api/join-requests/[requestId]/proofs", () => {
     expect(mocks.removePrivateProof).toHaveBeenCalledOnce();
   });
 
+  it("compensates an upload when league completion wins before finalization", async () => {
+    mocks.finalizePaymentProof.mockRejectedValue(
+      mapProofDatabaseError({
+        code: "P0001",
+        message: "REQUEST_NOT_UPLOADABLE",
+      }),
+    );
+
+    const response = await POST(
+      multipartRequest([
+        {
+          bytes: await syntheticImage("png"),
+          filename: "proof.png",
+          mimeType: "image/png",
+        },
+      ]),
+      routeContext(),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await responseCode(response)).toBe("REQUEST_NOT_UPLOADABLE");
+    expect(mocks.uploadPrivateProof).toHaveBeenCalledOnce();
+    expect(mocks.finalizePaymentProof).toHaveBeenCalledOnce();
+    expect(mocks.removePrivateProof).toHaveBeenCalledOnce();
+  });
+
   it("emits only the sanitized recovery event when compensation also fails", async () => {
     mocks.finalizePaymentProof.mockRejectedValue(
       mapProofDatabaseError({

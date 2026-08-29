@@ -86,9 +86,50 @@ select ok(
 );
 select ok(
   position('pg_try_advisory_lock' in lower(pg_get_functiondef('public.claim_sports_sync(text,boolean)'::regprocedure))) = 0
-  and position('score_match' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('private.slice9_lock_leagues' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('slice9_apply_api_football_sync_batch_with_global_lock' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('from private.slice9_apply_api_football_sync_batch_unserialized(' in lower(pg_get_functiondef('private.slice9_apply_api_football_sync_batch_with_global_lock(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
+  and position('from public.score_match(' in lower(pg_get_functiondef('private.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) > 0
   and position('update public.predictions' in lower(pg_get_functiondef('public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure))) = 0,
-  'the lease is row-based and apply delegates scoring without direct prediction writes'
+  'the lease is row-based and the executable apply chain reaches the public scoring boundary without direct prediction writes'
+);
+select ok(
+  position(
+    'where season.external_provider = ''api-football'''
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'join public.matches as match'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'join public.leagues as league on league.season_id = match.season_id'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0
+  and position(
+    'private.slice9_lock_leagues'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) < position(
+    'private.slice9_apply_api_football_sync_batch_with_global_lock'
+    in lower(pg_get_functiondef(
+      'public.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  )
+  and position(
+    'where season.external_provider = ''api-football'''
+    in lower(pg_get_functiondef(
+      'private.apply_api_football_sync_batch(uuid,bigint,uuid,jsonb)'::regprocedure
+    ))
+  ) > 0,
+  'the outer apply lock set remains a superset of provider-season and existing-fixture scoring targets'
 );
 
 create temp table slice7b_demo_counts as
@@ -203,6 +244,15 @@ select * from extensions.dblink(
 ) as finalized(status text);
 select is(extensions.dblink_disconnect('slice7b_claim_one'), 'OK', 'session one disconnects');
 select is(extensions.dblink_disconnect('slice7b_claim_two'), 'OK', 'session two disconnects');
+
+-- This scenario exercises a catalog apply contract, not multi-kind fairness.
+-- Make only catalog due so committed attempts from earlier real sessions or
+-- preceding pgTAP files cannot select another valid due kind here.
+update public.sync_leases
+set last_catalog_at = null,
+    last_targeted_at = clock_timestamp(),
+    last_reconciliation_at = clock_timestamp()
+where provider = 'api-football';
 
 set local role service_role;
 select set_config(
@@ -1008,24 +1058,50 @@ select set_config(
 );
 create temp table slice7b_rate_claim as
 select * from public.claim_sports_sync('api-football', true);
+select throws_ok(
+  format(
+    'select public.finalize_sports_sync(%L, %L, %L, %L, %L, %L, %L, %L::text[], %L, %L)',
+    (select result_run_id from slice7b_rate_claim),
+    (select result_generation from slice7b_rate_claim),
+    (select result_token from slice7b_rate_claim),
+    'failed', 'PROVIDER_RATE_LIMITED',
+    'The sports provider rate limit was reached.',
+    0, '{}', 17, 3601
+  ),
+  'P0001', 'VALIDATION_ERROR',
+  'finalize rejects a retry hint above the durable 3600-second contract'
+);
+select throws_ok(
+  format(
+    'select public.finalize_sports_sync(%L, %L, %L, %L, %L, %L, %L, %L::text[], %L, %L)',
+    (select result_run_id from slice7b_rate_claim),
+    (select result_generation from slice7b_rate_claim),
+    (select result_token from slice7b_rate_claim),
+    'failed', 'PROVIDER_RATE_LIMITED',
+    'The sports provider rate limit was reached.',
+    0, '{}', -1, 120
+  ),
+  'P0001', 'VALIDATION_ERROR',
+  'finalize rejects negative provider quota metadata'
+);
 create temp table slice7b_rate_finalized as
 select finalized.* from slice7b_rate_claim as claim
 cross join lateral public.finalize_sports_sync(
   claim.result_run_id, claim.result_generation, claim.result_token,
   'failed', 'PROVIDER_RATE_LIMITED',
   'The sports provider rate limit was reached.',
-  0, array[]::text[], null, 30
+  0, array[]::text[], 17, 120
 ) as finalized;
 reset role;
 select results_eq(
-  $$select run.status::text, run.error_code,
-           lease.backoff_until > clock_timestamp()
+  $$select run.status::text, run.error_code, run.quota_remaining,
+           lease.backoff_until = run.finished_at + interval '120 seconds'
     from slice7b_rate_claim as claim
     join public.sync_runs as run on run.id = claim.result_run_id
     cross join public.sync_leases as lease
     where lease.provider = 'api-football'$$,
-  $$values ('failed'::text, 'PROVIDER_RATE_LIMITED'::text, true)$$,
-  'a finalized 429 failure stores a bounded provider backoff'
+  $$values ('failed'::text, 'PROVIDER_RATE_LIMITED'::text, 17, true)$$,
+  'a finalized 429 failure stores safe quota and the exact bounded provider backoff'
 );
 create temp table slice7b_backoff_run_count as
 select count(*)::bigint as count from public.sync_runs;
@@ -1075,6 +1151,11 @@ select results_eq(
     from slice7b_force_cooldown$$,
   $$values ('NOT_DUE'::text, 'FORCE_COOLDOWN'::text, null::uuid)$$,
   'forced catalog attempts have a durable one-minute cooldown without history bloat'
+);
+select is(
+  (select count(*)::bigint from public.sync_runs),
+  (select count from slice7b_backoff_run_count),
+  'FORCE_COOLDOWN creates no sync history row'
 );
 
 set local role service_role;

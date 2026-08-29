@@ -206,7 +206,7 @@ export function seedManagerReportStatusesInDisposableLocalDatabase({
 
 export function setLeagueStatusInDisposableLocalDatabase(
   leagueId: string,
-  status: "active" | "completed",
+  status: "open" | "active" | "completed",
 ) {
   assertCanonicalUuid(leagueId, "report league");
   assertDisposableLocalDatabaseIsRunning();
@@ -367,6 +367,160 @@ export type ScoringMatchFixtureIds = {
   matchId: string;
 };
 
+export function readManualMatchBoundaryPersistenceInDisposableLocalDatabase({
+  attackerMatchId,
+  awayTeamId,
+  capturedMatchId,
+  homeTeamId,
+}: {
+  attackerMatchId: string;
+  awayTeamId: string;
+  capturedMatchId: string;
+  homeTeamId: string;
+}) {
+  for (const [label, value] of Object.entries({
+    attackerMatchId,
+    awayTeamId,
+    capturedMatchId,
+    homeTeamId,
+  })) {
+    assertCanonicalUuid(value, label);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--field-separator=|",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select count(*) filter (where match.id = '${capturedMatchId}'::uuid), count(*) filter (where match.id = '${capturedMatchId}'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '${homeTeamId}'::uuid and match.away_team_id = '${awayTeamId}'::uuid and match.kickoff_at = '2099-10-17T16:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null), count(*) filter (where match.id = '${attackerMatchId}'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 98 and match.home_team_id = '${homeTeamId}'::uuid and match.away_team_id = '${awayTeamId}'::uuid and match.kickoff_at < clock_timestamp() and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) from public.matches as match where match.id in ('${capturedMatchId}'::uuid, '${attackerMatchId}'::uuid);`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const values = result.stdout.trim().split("|").map(Number);
+  const [capturedMatchCount, capturedPayloadMatchCount, attackerDefinitionMatchCount] =
+    values;
+  if (
+    result.status !== 0 ||
+    values.length !== 3 ||
+    capturedMatchCount === undefined ||
+    capturedPayloadMatchCount === undefined ||
+    attackerDefinitionMatchCount === undefined ||
+    values.some((value) => !Number.isSafeInteger(value) || value < 0)
+  ) {
+    throw new Error("Local Manual match boundary could not be verified.");
+  }
+
+  return {
+    attackerDefinitionMatchCount,
+    capturedMatchCount,
+    capturedPayloadMatchCount,
+  };
+}
+
+export function attachApiFootballIdentityToScoringMatchInDisposableLocalDatabase(
+  matchId: string,
+) {
+  assertCanonicalUuid(matchId, "scoring match");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const externalId = String(
+    Number.parseInt(matchId.replaceAll("-", "").slice(0, 12), 16) + 1,
+  );
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `update public.matches as match set external_provider = 'api-football', external_id = '${externalId}', provider_status = 'NS' where match.id = '${matchId}'::uuid and match.external_provider is null and match.external_id is null and match.provider_status is null and not match.is_manually_overridden;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (fixture.status !== 0 || fixture.stdout.trim() !== "UPDATE 1") {
+    throw new Error("Local API-Football scoring identity could not be attached.");
+  }
+  return externalId;
+}
+
+export function readManualOverrideClearPersistenceInDisposableLocalDatabase({
+  externalId,
+  forgedMatchId,
+  matchId,
+}: {
+  externalId: string;
+  forgedMatchId: string;
+  matchId: string;
+}) {
+  assertCanonicalUuid(forgedMatchId, "forged clear match");
+  assertCanonicalUuid(matchId, "cleared scoring match");
+  if (!/^[1-9][0-9]{0,19}$/.test(externalId)) {
+    throw new Error("Local API-Football fixture ID was invalid.");
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--field-separator=|",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select count(*) filter (where match.id = '${matchId}'::uuid and match.status = 'finished' and match.home_score = 2 and match.away_score = 1 and match.result_version = 1 and not match.is_manually_overridden and match.predictions_locked_at is not null and match.external_provider = 'api-football' and match.external_id = '${externalId}' and match.provider_status = 'NS'), count(*) filter (where match.id = '${forgedMatchId}'::uuid and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and match.is_manually_overridden and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null), (select count(*) from public.predictions as prediction where prediction.match_id = '${matchId}'::uuid and prediction.points = 3 and prediction.is_exact and prediction.is_correct_outcome and prediction.scored_result_version = 1 and prediction.scored_rule_version = 1), (select count(*) from public.predictions as prediction where prediction.match_id = '${matchId}'::uuid and prediction.points = 0 and not prediction.is_exact and not prediction.is_correct_outcome and prediction.scored_result_version = 1 and prediction.scored_rule_version = 1), (select count(*) from public.audit_logs as audit where audit.entity_id = '${matchId}'::uuid and audit.action = 'match_manual_override_cleared'), (select count(*) from public.audit_logs as audit where audit.entity_id = '${forgedMatchId}'::uuid and audit.action = 'match_manual_override_cleared') from public.matches as match where match.id in ('${matchId}'::uuid, '${forgedMatchId}'::uuid);`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const values = result.stdout.trim().split("|").map(Number);
+  const [
+    clearedMatchCount,
+    forgedMatchCount,
+    exactPredictionCount,
+    wrongPredictionCount,
+    clearAuditCount,
+    forgedClearAuditCount,
+  ] = values;
+  if (
+    result.status !== 0 ||
+    values.length !== 6 ||
+    values.some((value) => !Number.isSafeInteger(value) || value < 0)
+  ) {
+    throw new Error("Local Manual override handoff could not be verified.");
+  }
+
+  return {
+    clearAuditCount,
+    clearedMatchCount,
+    exactPredictionCount,
+    forgedClearAuditCount,
+    forgedMatchCount,
+    wrongPredictionCount,
+  };
+}
+
 export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
   assertCanonicalUuid(userId, "system administrator");
   assertDisposableLocalDatabaseIsRunning();
@@ -389,6 +543,127 @@ export function grantSystemAdminInDisposableLocalDatabase(userId: string) {
 
   if (fixture.status !== 0 || fixture.stdout.trim() !== "INSERT 0 1") {
     throw new Error("Local system-administrator fixture could not be created.");
+  }
+}
+
+export type LifecycleCatalogFixtureIds = {
+  competitionId: string;
+  seasonId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+};
+
+export function seedLifecycleCatalogInDisposableLocalDatabase(
+  ids: LifecycleCatalogFixtureIds,
+) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `lifecycle ${label}`);
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const suffix = ids.competitionId.replaceAll("-", "").slice(0, 12);
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `begin; insert into public.competitions (id, name, slug, country_code) values ('${ids.competitionId}'::uuid, 'תחרות Lifecycle ${suffix}', 'lifecycle-${suffix}', 'IL'); insert into public.seasons (id, competition_id, name, starts_on, ends_on, is_current) values ('${ids.seasonId}'::uuid, '${ids.competitionId}'::uuid, '2026/27 Lifecycle', '2026-08-01', '2027-06-30', true); insert into public.teams (id, name, short_name) values ('${ids.homeTeamId}'::uuid, 'קבוצת Lifecycle בית ${suffix}', 'בית ${suffix}'), ('${ids.awayTeamId}'::uuid, 'קבוצת Lifecycle חוץ ${suffix}', 'חוץ ${suffix}'); commit;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "INSERT 0 1" ||
+    output[2] !== "INSERT 0 1" ||
+    output[3] !== "INSERT 0 2" ||
+    output[4] !== "COMMIT"
+  ) {
+    throw new Error("Local lifecycle catalog fixture could not be created.");
+  }
+
+  return {
+    awayTeamName: `קבוצת Lifecycle חוץ ${suffix}`,
+    competitionName: `תחרות Lifecycle ${suffix}`,
+    homeTeamName: `קבוצת Lifecycle בית ${suffix}`,
+  };
+}
+
+export function removeLifecycleFixtureFromDisposableLocalDatabase({
+  ids,
+  leagueId,
+  systemAdminUserId,
+}: {
+  ids: LifecycleCatalogFixtureIds;
+  leagueId?: string;
+  systemAdminUserId?: string;
+}) {
+  for (const [label, value] of Object.entries(ids)) {
+    assertCanonicalUuid(value, `lifecycle cleanup ${label}`);
+  }
+  if (leagueId) assertCanonicalUuid(leagueId, "lifecycle cleanup league");
+  if (systemAdminUserId) {
+    assertCanonicalUuid(systemAdminUserId, "lifecycle cleanup administrator");
+  }
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanupSql = `begin;
+delete from public.audit_logs
+where ${leagueId ? `entity_id = '${leagueId}'::uuid or` : ""}
+      entity_id in (
+        select match.id from public.matches as match
+        where match.season_id = '${ids.seasonId}'::uuid
+      );
+${leagueId ? `delete from public.league_match_reconciliations where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.league_match_snapshots where league_id = '${leagueId}'::uuid;` : ""}
+delete from public.match_result_reviews
+where match_id in (
+  select match.id from public.matches as match
+  where match.season_id = '${ids.seasonId}'::uuid
+);
+${leagueId ? `delete from public.predictions where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.rate_limit_events where join_request_id in (select request.id from public.join_requests as request where request.league_id = '${leagueId}'::uuid);` : ""}
+${leagueId ? `delete from public.payment_proofs where join_request_id in (select request.id from public.join_requests as request where request.league_id = '${leagueId}'::uuid);` : ""}
+${leagueId ? `delete from public.join_requests where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.invite_links where league_id = '${leagueId}'::uuid;` : ""}
+${leagueId ? `delete from public.leagues where id = '${leagueId}'::uuid;` : ""}
+delete from public.matches where season_id = '${ids.seasonId}'::uuid;
+${systemAdminUserId ? `delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid;` : ""}
+delete from public.seasons where id = '${ids.seasonId}'::uuid;
+delete from public.competitions where id = '${ids.competitionId}'::uuid;
+delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid);
+select 'LIFECYCLE_FIXTURE_REMOVED';
+commit;`;
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: cleanupSql, windowsHide: true },
+  );
+
+  if (
+    cleanup.status !== 0 ||
+    !cleanup.stdout.split(/\r?\n/).includes("LIFECYCLE_FIXTURE_REMOVED")
+  ) {
+    throw new Error("Local lifecycle fixture could not be removed safely.");
   }
 }
 
@@ -425,10 +700,118 @@ export function countSyncRunsInDisposableLocalDatabase() {
   return count;
 }
 
+export function removeManualCatalogLeafFromDisposableLocalDatabase() {
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      "begin; delete from public.matches where id = '26000000-0000-4000-8000-000000000203'::uuid; delete from public.teams where id = '26000000-0000-4000-8000-000000000106'::uuid; commit;",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    output[1] !== "DELETE 1" ||
+    output[2] !== "DELETE 1" ||
+    output[3] !== "COMMIT"
+  ) {
+    throw new Error("Local Manual catalog leaf could not be removed safely.");
+  }
+}
+
+export function restoreManualCatalogLeafInDisposableLocalDatabase() {
+  assertDisposableLocalDatabaseIsRunning();
+
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      "begin; insert into public.teams (id, name, short_name) values ('26000000-0000-4000-8000-000000000106'::uuid, 'הפועל באר שבע', 'באר שבע') on conflict (id) do nothing; insert into public.matches (id, season_id, round_number, home_team_id, away_team_id, kickoff_at, status) values ('26000000-0000-4000-8000-000000000203'::uuid, '26000000-0000-4000-8000-000000000027'::uuid, 1, '26000000-0000-4000-8000-000000000105'::uuid, '26000000-0000-4000-8000-000000000106'::uuid, '2026-10-18T17:00:00Z'::timestamptz, 'scheduled') on conflict (id) do nothing; do $restore$ begin if not exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid and team.name = 'הפועל באר שבע' and team.short_name = 'באר שבע' and team.logo_url is null and team.external_provider is null and team.external_id is null) or not exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '26000000-0000-4000-8000-000000000105'::uuid and match.away_team_id = '26000000-0000-4000-8000-000000000106'::uuid and match.kickoff_at = '2026-10-18T17:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.provider_round_label is null and match.provider_status is null and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) then raise exception 'Manual catalog leaf restore conflict'; end if; end $restore$; commit;",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+  const output = fixture.stdout.trim().split(/\r?\n/);
+  if (
+    fixture.status !== 0 ||
+    output[0] !== "BEGIN" ||
+    !/^INSERT 0 [01]$/.test(output[1] ?? "") ||
+    !/^INSERT 0 [01]$/.test(output[2] ?? "") ||
+    output[3] !== "DO" ||
+    output[4] !== "COMMIT"
+  ) {
+    throw new Error("Local Manual catalog leaf could not be restored safely.");
+  }
+}
+
+export function manualCatalogAttemptIsPersistedInDisposableLocalDatabase({
+  outcome,
+  runId,
+  systemActorId,
+}: {
+  outcome: "applied" | "conflict";
+  runId: string;
+  systemActorId: string;
+}) {
+  assertCanonicalUuid(runId, "Manual catalog sync run");
+  assertCanonicalUuid(systemActorId, "Manual catalog system actor");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const expectedPersistence =
+    outcome === "applied"
+      ? `run.status = 'succeeded' and run.rows_inserted = 2 and run.teams_changed = 1 and run.matches_changed = 1 and run.error_code is null and exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid and team.name = 'הפועל באר שבע' and team.short_name = 'באר שבע' and team.logo_url is null and team.external_provider is null and team.external_id is null) and exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid and match.season_id = '26000000-0000-4000-8000-000000000027'::uuid and match.round_number = 1 and match.home_team_id = '26000000-0000-4000-8000-000000000105'::uuid and match.away_team_id = '26000000-0000-4000-8000-000000000106'::uuid and match.kickoff_at = '2026-10-18T17:00:00Z'::timestamptz and match.status = 'scheduled' and match.home_score is null and match.away_score is null and match.result_version = 0 and not match.is_manually_overridden and match.provider_round_label is null and match.provider_status is null and match.predictions_locked_at is null and match.external_provider is null and match.external_id is null) and (select count(*) from public.audit_logs as audit where audit.actor_id = '${systemActorId}'::uuid and audit.action = 'manual_catalog_applied') = 1`
+      : `run.status = 'failed' and run.rows_inserted = 0 and run.teams_changed = 0 and run.matches_changed = 0 and run.error_code = 'MANUAL_CATALOG_CONFLICT' and not exists (select 1 from public.teams as team where team.id = '26000000-0000-4000-8000-000000000106'::uuid) and not exists (select 1 from public.matches as match where match.id = '26000000-0000-4000-8000-000000000203'::uuid) and (select count(*) from public.audit_logs as audit where audit.actor_id = '${systemActorId}'::uuid and audit.action = 'manual_catalog_applied') = 0`;
+
+  const result = spawnSync(
+    "docker",
+    [
+      "exec",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+      "--command",
+      `select (${expectedPersistence} and run.provider = 'manual' and run.sync_kind = 'manual' and run.finished_at is not null)::text from public.sync_runs as run where run.id = '${runId}'::uuid;`,
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (result.status !== 0) {
+    throw new Error("Local Manual catalog persistence could not be verified.");
+  }
+
+  return result.stdout.trim() === "true";
+}
+
 export function removeSyncFixturesFromDisposableLocalDatabase({
+  auditActorId,
+  manualCatalogAuditCount,
   runIds,
   systemAdminUserId,
 }: {
+  auditActorId: string;
+  manualCatalogAuditCount: 0 | 1;
   runIds: string[];
   systemAdminUserId: string;
 }) {
@@ -436,6 +819,7 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
     throw new Error("Local sync cleanup requires one to ten run IDs.");
   }
   for (const runId of runIds) assertCanonicalUuid(runId, "sync run");
+  assertCanonicalUuid(auditActorId, "sync audit actor");
   assertCanonicalUuid(systemAdminUserId, "system administrator");
   assertDisposableLocalDatabaseIsRunning();
   const sqlRunIds = runIds.map((runId) => `'${runId}'::uuid`).join(",");
@@ -451,7 +835,7 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
       "--username=postgres",
       "--dbname=postgres",
       "--command",
-      `begin; delete from public.sync_runs where id in (${sqlRunIds}); delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
+      `begin; delete from public.audit_logs where actor_id = '${auditActorId}'::uuid and action = 'manual_catalog_applied'; delete from public.sync_runs where id in (${sqlRunIds}); delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; commit;`,
     ],
     { encoding: "utf8", windowsHide: true },
   );
@@ -460,9 +844,10 @@ export function removeSyncFixturesFromDisposableLocalDatabase({
   if (
     cleanup.status !== 0 ||
     output[0] !== "BEGIN" ||
-    output[1] !== `DELETE ${runIds.length}` ||
-    output[2] !== "DELETE 1" ||
-    output[3] !== "COMMIT"
+    output[1] !== `DELETE ${manualCatalogAuditCount}` ||
+    output[2] !== `DELETE ${runIds.length}` ||
+    output[3] !== "DELETE 1" ||
+    output[4] !== "COMMIT"
   ) {
     throw new Error("Local sync fixtures could not be removed safely.");
   }
@@ -624,15 +1009,18 @@ export function seedScoringMatchInDisposableLocalDatabase(
 
 export function removeScoringFixturesFromDisposableLocalDatabase({
   ids,
+  manualMatchId,
   systemAdminUserId,
 }: {
   ids: ScoringMatchFixtureIds;
+  manualMatchId?: string;
   systemAdminUserId: string;
 }) {
   for (const [label, value] of Object.entries(ids)) {
     assertCanonicalUuid(value, label);
   }
   assertCanonicalUuid(systemAdminUserId, "system administrator");
+  if (manualMatchId) assertCanonicalUuid(manualMatchId, "Manual match");
   assertDisposableLocalDatabaseIsRunning();
 
   const cleanup = spawnSync(
@@ -646,7 +1034,7 @@ export function removeScoringFixturesFromDisposableLocalDatabase({
       "--username=postgres",
       "--dbname=postgres",
       "--command",
-      `begin; delete from public.audit_logs where entity_type = 'match_result' and entity_id = '${ids.matchId}'::uuid; delete from public.predictions where match_id = '${ids.matchId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; delete from public.matches where id = '${ids.matchId}'::uuid; delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
+      `begin; delete from public.audit_logs where entity_id in ('${ids.matchId}'::uuid${manualMatchId ? `, '${manualMatchId}'::uuid` : ""}); delete from public.predictions where match_id = '${ids.matchId}'::uuid; delete from public.system_admins where user_id = '${systemAdminUserId}'::uuid; delete from public.matches where id in ('${ids.matchId}'::uuid${manualMatchId ? `, '${manualMatchId}'::uuid` : ""}); delete from public.teams where id in ('${ids.homeTeamId}'::uuid, '${ids.awayTeamId}'::uuid); commit;`,
     ],
     { encoding: "utf8", windowsHide: true },
   );
@@ -658,11 +1046,338 @@ export function removeScoringFixturesFromDisposableLocalDatabase({
     cleanup.status !== 0 ||
     output[0] !== "BEGIN" ||
     !matchDelete ||
-    Number(matchDelete[1]) !== 1 ||
+    Number(matchDelete[1]) !== (manualMatchId ? 2 : 1) ||
     !teamDelete ||
     Number(teamDelete[1]) !== 2 ||
     output[6] !== "COMMIT"
   ) {
     throw new Error("Local scoring fixtures could not be removed safely.");
+  }
+}
+
+export type PaginationFixture = {
+  detailMatchId: string;
+  foreignLeagueId: string;
+  futureMatchIds: string[];
+  homeTeamName: string;
+  predictionLastDisplayName: string;
+  queueLastDisplayName: string;
+  selectorLastLeagueName: string;
+};
+
+function assertPaginationNamespace(value: string) {
+  if (!/^[0-9a-f]{8}$/.test(value)) {
+    throw new Error("Local pagination fixture namespace was malformed.");
+  }
+}
+
+function paginationUuid(namespace: string, group: string, ordinal: number) {
+  return `${namespace}-${group}-4000-8000-${ordinal.toString().padStart(12, "0")}`;
+}
+
+export function seedPaginationFixturesInDisposableLocalDatabase({
+  namespace,
+  leagueId,
+  managerId,
+  viewerId,
+}: {
+  namespace: string;
+  leagueId: string;
+  managerId: string;
+  viewerId: string;
+}): PaginationFixture {
+  assertPaginationNamespace(namespace);
+  assertCanonicalUuid(leagueId, "pagination league");
+  assertCanonicalUuid(managerId, "pagination manager");
+  assertCanonicalUuid(viewerId, "pagination viewer");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const detailMatchId = paginationUuid(namespace, "0700", 1);
+  const foreignLeagueId = paginationUuid(namespace, "0900", 1);
+  const homeTeamId = paginationUuid(namespace, "0800", 1);
+  const awayTeamId = paginationUuid(namespace, "0800", 2);
+  const homeTeamName = `קבוצת עמוד בית ${namespace}`;
+  const awayTeamName = `קבוצת עמוד חוץ ${namespace}`;
+  const fixtureSql = `begin;
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  '${paginationUuid(namespace, "0001", 1)}'::uuid,
+  'authenticated', 'authenticated',
+  'pagination-foreign-${namespace}@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  '{"display_name":"Pagination foreign manager"}', now(), now()
+);
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  ('${namespace}-0100-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'authenticated', 'authenticated',
+  'pagination-queue-${namespace}-' || series.i::text || '@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  pg_catalog.jsonb_build_object(
+    'display_name', 'מבקש עמוד ${namespace} ' || series.i::text
+  ),
+  now(), now()
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at
+)
+select
+  '00000000-0000-0000-0000-000000000000',
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'authenticated', 'authenticated',
+  'pagination-prediction-${namespace}-' || series.i::text || '@example.com',
+  extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')),
+  now(), '{"provider":"email","providers":["email"]}',
+  pg_catalog.jsonb_build_object(
+    'display_name', 'מנחש עמוד ${namespace} ' || series.i::text
+  ),
+  now(), now()
+from pg_catalog.generate_series(2, 26) as series(i);
+insert into public.teams (id, name, short_name) values
+  ('${homeTeamId}'::uuid, '${homeTeamName}', 'בית ${namespace}'),
+  ('${awayTeamId}'::uuid, '${awayTeamName}', 'חוץ ${namespace}');
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+)
+select
+  ('${namespace}-0300-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${managerId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגת בחירה ${namespace} ' || series.i::text,
+  'open',
+  '2026-08-27 09:00:00+00'::timestamptz,
+  '2026-08-27 09:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 25) as series(i);
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+)
+select
+  ('${namespace}-0400-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${managerId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגת בקשה ${namespace} ' || series.i::text,
+  'open',
+  '2026-08-27 10:00:00+00'::timestamptz,
+  '2026-08-27 10:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.leagues (
+  id, manager_id, season_id, name, status, created_at, updated_at
+) values (
+  '${foreignLeagueId}'::uuid,
+  '${paginationUuid(namespace, "0001", 1)}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  'ליגה זרה ${namespace}', 'open', now(), now()
+);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+)
+select
+  ('${namespace}-0300-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${viewerId}'::uuid, 'active', '${managerId}'::uuid, now()
+from pg_catalog.generate_series(1, 25) as series(i);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+) values (
+  '${leagueId}'::uuid, '${viewerId}'::uuid, 'active', '${managerId}'::uuid, now()
+);
+insert into public.league_members (
+  league_id, user_id, status, approved_by, approved_at
+)
+select
+  '${leagueId}'::uuid,
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'active', '${managerId}'::uuid, now()
+from pg_catalog.generate_series(2, 26) as series(i);
+insert into public.join_requests (
+  id, league_id, user_id, status, created_at, updated_at
+)
+select
+  ('${namespace}-0500-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${leagueId}'::uuid,
+  ('${namespace}-0100-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  'pending_approval',
+  '2026-08-27 11:00:00+00'::timestamptz,
+  '2026-08-27 11:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.join_requests (
+  id, league_id, user_id, status, created_at, updated_at
+)
+select
+  ('${namespace}-0600-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  ('${namespace}-0400-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${viewerId}'::uuid,
+  'pending_proof',
+  '2026-08-27 12:00:00+00'::timestamptz,
+  '2026-08-27 12:00:00+00'::timestamptz
+from pg_catalog.generate_series(1, 26) as series(i);
+insert into public.matches (
+  id, season_id, round_number, home_team_id, away_team_id,
+  kickoff_at, status, created_at, updated_at
+) values (
+  '${detailMatchId}'::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  76, '${homeTeamId}'::uuid, '${awayTeamId}'::uuid,
+  clock_timestamp() - interval '1 day', 'scheduled', now(), now()
+);
+insert into public.matches (
+  id, season_id, round_number, home_team_id, away_team_id,
+  kickoff_at, status, created_at, updated_at
+)
+select
+  ('${namespace}-0701-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '26000000-0000-4000-8000-000000000027'::uuid,
+  77, '${homeTeamId}'::uuid, '${awayTeamId}'::uuid,
+  '2099-01-01 12:00:00+00'::timestamptz,
+  'scheduled', now(), now()
+from pg_catalog.generate_series(1, 31) as series(i);
+insert into public.predictions (
+  id, league_id, match_id, user_id,
+  predicted_home_score, predicted_away_score, created_at, updated_at
+) values (
+  '${paginationUuid(namespace, "0a00", 1)}'::uuid,
+  '${leagueId}'::uuid, '${detailMatchId}'::uuid, '${viewerId}'::uuid,
+  1, 1, '2026-08-27 13:00:00+00'::timestamptz,
+  '2026-08-27 13:00:00+00'::timestamptz
+);
+insert into public.predictions (
+  id, league_id, match_id, user_id,
+  predicted_home_score, predicted_away_score, created_at, updated_at
+)
+select
+  ('${namespace}-0a00-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  '${leagueId}'::uuid,
+  '${detailMatchId}'::uuid,
+  ('${namespace}-0200-4000-8000-' || lpad(series.i::text, 12, '0'))::uuid,
+  series.i % 4, series.i % 3,
+  '2026-08-27 13:00:00+00'::timestamptz,
+  '2026-08-27 13:00:00+00'::timestamptz
+from pg_catalog.generate_series(2, 26) as series(i);
+select 'PAGINATION_FIXTURE_READY';
+commit;`;
+  const fixture = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: fixtureSql, windowsHide: true },
+  );
+
+  if (
+    fixture.status !== 0 ||
+    !fixture.stdout.split(/\r?\n/).includes("PAGINATION_FIXTURE_READY")
+  ) {
+    throw new Error("Local pagination fixture could not be created.");
+  }
+
+  return {
+    detailMatchId,
+    foreignLeagueId,
+    futureMatchIds: Array.from({ length: 31 }, (_, index) =>
+      paginationUuid(namespace, "0701", index + 1),
+    ),
+    homeTeamName,
+    predictionLastDisplayName: `מנחש עמוד ${namespace} 26`,
+    queueLastDisplayName: `מבקש עמוד ${namespace} 1`,
+    selectorLastLeagueName: `ליגת בחירה ${namespace} 25`,
+  };
+}
+
+export function removePaginationFixturesFromDisposableLocalDatabase({
+  namespace,
+  leagueId,
+  managerId,
+  viewerId,
+}: {
+  namespace: string;
+  leagueId: string;
+  managerId: string;
+  viewerId: string;
+}) {
+  assertPaginationNamespace(namespace);
+  assertCanonicalUuid(leagueId, "pagination cleanup league");
+  assertCanonicalUuid(managerId, "pagination cleanup manager");
+  assertCanonicalUuid(viewerId, "pagination cleanup viewer");
+  assertDisposableLocalDatabaseIsRunning();
+
+  const cleanupSql = `begin;
+delete from public.predictions
+where id between '${namespace}-0a00-4000-8000-000000000001'::uuid
+             and '${namespace}-0a00-4000-8000-000000000026'::uuid;
+delete from public.join_requests
+where id between '${namespace}-0500-4000-8000-000000000001'::uuid
+             and '${namespace}-0600-4000-8000-000000000026'::uuid;
+delete from public.league_members
+where league_id = '${leagueId}'::uuid
+  and (
+    user_id = '${viewerId}'::uuid
+    or user_id between '${namespace}-0200-4000-8000-000000000002'::uuid
+                       and '${namespace}-0200-4000-8000-000000000026'::uuid
+  );
+delete from public.league_members
+where league_id between '${namespace}-0300-4000-8000-000000000001'::uuid
+                    and '${namespace}-0300-4000-8000-000000000025'::uuid;
+delete from public.matches
+where id between '${namespace}-0700-4000-8000-000000000001'::uuid
+             and '${namespace}-0701-4000-8000-000000000031'::uuid;
+delete from public.leagues
+where id between '${namespace}-0300-4000-8000-000000000001'::uuid
+             and '${namespace}-0400-4000-8000-000000000026'::uuid
+   or id = '${paginationUuid(namespace, "0900", 1)}'::uuid;
+delete from public.teams
+where id in (
+  '${paginationUuid(namespace, "0800", 1)}'::uuid,
+  '${paginationUuid(namespace, "0800", 2)}'::uuid
+);
+delete from public.system_admins where user_id = '${managerId}'::uuid;
+delete from auth.users
+where id = '${paginationUuid(namespace, "0001", 1)}'::uuid
+   or id between '${namespace}-0100-4000-8000-000000000001'::uuid
+             and '${namespace}-0200-4000-8000-000000000026'::uuid;
+select 'PAGINATION_FIXTURE_REMOVED';
+commit;`;
+  const cleanup = spawnSync(
+    "docker",
+    [
+      "exec",
+      "--interactive",
+      localDatabaseContainer,
+      "psql",
+      "--no-psqlrc",
+      "--set=ON_ERROR_STOP=1",
+      "--tuples-only",
+      "--no-align",
+      "--username=postgres",
+      "--dbname=postgres",
+    ],
+    { encoding: "utf8", input: cleanupSql, windowsHide: true },
+  );
+
+  if (
+    cleanup.status !== 0 ||
+    !cleanup.stdout.split(/\r?\n/).includes("PAGINATION_FIXTURE_REMOVED")
+  ) {
+    throw new Error("Local pagination fixture could not be removed safely.");
   }
 }
