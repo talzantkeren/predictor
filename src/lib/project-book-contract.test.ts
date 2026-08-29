@@ -17,7 +17,7 @@ const workflow = readFileSync(
 
 describe("derived project book contract", () => {
   it("uses rerun counts and the current Slice 8/9 state", () => {
-    expect(source).toContain("גרסה 1.3");
+    expect(source).toContain("גרסה 2.0");
     expect(source).toContain("PASS — מטריצת RULES מלאה");
     expect(source).toContain("PASS — מטריצת DATA מלאה");
     expect(source).toContain("PASS — מטריצת FLOWS מלאה");
@@ -36,6 +36,72 @@ describe("derived project book contract", () => {
     expect(source).toContain("[תכנית טכנית וסדר בדיקות](technical-plan.md)");
     expect(source).toContain("[הוראות evaluator](evaluator-runbook.md)");
     expect(source).toContain("[חבילת המצגת](../presentation/README.md)");
+  });
+
+  it("maps every required course artifact to a section of the book", () => {
+    const [, submissionMap = ""] = source.split("## מפת ההגשה");
+    const requiredArtifacts = [
+      "קישור לאפליקציה ב־Vercel",
+      "קישור ל־GitHub repository",
+      "מסמך אפיון מוצר",
+      "מסמך תכנון טכני",
+      "מסמך אפיון בדיקות",
+      "קוד הבדיקות",
+      "מסמך סקייל בסיסי",
+      "מסמך אבטחה בסיסית",
+      "הוראות הרצה מקומית",
+      "מצגת 10–15 דקות",
+    ];
+    for (const artifact of requiredArtifacts) {
+      expect(submissionMap).toContain(artifact);
+    }
+
+    // One chapter per course stage, so no stage is silently dropped.
+    const stageHeadings = [
+      "## 2. בחירת המוצר והערך העסקי",
+      "## 3. אפיון מוצר",
+      "## 4. ארכיטקטורת התוכנה",
+      "## 5. תכנון טכני מפורט",
+      "## 6. מימוש המוצר",
+      "## 7. אפיון בדיקות",
+      "## 8. מימוש בדיקות וראיות",
+      "## 9. סקייל בסיסי",
+      "## 10. אבטחה בסיסית",
+      "## 11. פריסה, הרצה מקומית ומשתני סביבה",
+      "## 12. שימוש בסוכני קידוד ואחריות על הקוד",
+      "## 13. הכנה להצגת המוצר",
+    ];
+    for (const heading of stageHeadings) {
+      expect(source).toContain(heading);
+    }
+  });
+
+  it("renders Hebrew at the same size as Latin in every style", () => {
+    // Word sizes a right-to-left run from w:szCs, not w:sz. The stock
+    // python-docx template ships heading styles with their own w:szCs, so
+    // without an explicit override the Hebrew half of a heading renders
+    // smaller than the Latin half. Assert the rendered file, not the
+    // generator's source, so the check survives a refactor.
+    const probe = `
+import re, sys, zipfile
+styles = zipfile.ZipFile("docs/project-book.docx").read("word/styles.xml").decode("utf-8")
+mismatched = []
+for style in re.findall(r"<w:style [^>]*w:styleId=\\"([^\\"]+)\\".*?</w:style>", styles, re.S):
+    body = re.search(r"<w:style [^>]*w:styleId=\\"" + re.escape(style) + r"\\".*?</w:style>", styles, re.S).group(0)
+    sz = re.findall(r"<w:sz w:val=\\"(\\d+)\\"", body)
+    sz_cs = re.findall(r"<w:szCs w:val=\\"(\\d+)\\"", body)
+    if sz and sz_cs and sz[0] != sz_cs[0]:
+        mismatched.append((style, sz[0], sz_cs[0]))
+if mismatched:
+    sys.exit("Latin/Hebrew size mismatch: " + repr(mismatched))
+print("sizes aligned")
+`;
+    const result = spawnSync("python", ["-c", probe], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(result.stdout).toContain("sizes aligned");
   });
 
   it("exposes deterministic generation and drift-check commands", () => {

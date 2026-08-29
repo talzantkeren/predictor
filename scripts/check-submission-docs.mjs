@@ -121,7 +121,7 @@ for (const forbidden of ["Slice 10", "RELEASE_READY", "דוח פיננסי אמ�
 }
 
 for (const expected of [
-  "גרסה 1.3",
+  "גרסה 2.0",
   "PASS — מטריצת RULES מלאה",
   "PASS — מטריצת DATA מלאה",
   "PASS — מטריצת FLOWS מלאה",

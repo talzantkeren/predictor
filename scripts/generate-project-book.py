@@ -112,6 +112,42 @@ def parse_markdown(source: str) -> list[Block]:
     return blocks
 
 
+# OOXML property containers are ordered sequences, not bags. python-docx's
+# get_or_add_* helpers already insert in order; raw OxmlElement appends do not,
+# so they go through _ordered_child, which keeps the file schema-valid.
+RPR_ORDER = (
+    "rStyle rFonts b bCs i iCs caps smallCaps strike dstrike outline shadow"
+    " emboss imprint noProof snapToGrid vanish webHidden color spacing w kern"
+    " position sz szCs highlight u effect bdr shd fitText vertAlign rtl cs em"
+    " lang eastAsianLayout specVanish oMath"
+).split()
+
+PPR_ORDER = (
+    "pStyle keepNext keepLines pageBreakBefore framePr widowControl numPr"
+    " suppressLineNumbers pBdr shd tabs suppressAutoHyphens kinsoku wordWrap"
+    " overflowPunct topLinePunct autoSpaceDE autoSpaceDN bidi adjustRightInd"
+    " snapToGrid spacing ind contextualSpacing mirrorIndents suppressOverlap jc"
+    " textDirection textAlignment textboxTightWrap outlineLvl divId cnfStyle"
+    " rPr sectPr pPrChange"
+).split()
+
+
+def _ordered_child(parent, tag: str, order: list[str]):
+    """Return parent's child `tag`, inserting it at its schema position."""
+    existing = parent.find(qn(f"w:{tag}"))
+    if existing is not None:
+        return existing
+    element = OxmlElement(f"w:{tag}")
+    rank = order.index(tag)
+    for child in parent:
+        child_tag = child.tag.split("}")[-1]
+        if child_tag in order and order.index(child_tag) > rank:
+            child.addprevious(element)
+            return element
+    parent.append(element)
+    return element
+
+
 def set_cell_margins(cell, top: int = 100, start: int = 120, bottom: int = 100, end: int = 120) -> None:
     tc = cell._tc
     tc_pr = tc.get_or_add_tcPr()
@@ -131,8 +167,7 @@ def set_cell_margins(cell, top: int = 100, start: int = 120, bottom: int = 100, 
 def set_paragraph_rtl(paragraph) -> None:
     paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     p_pr = paragraph._p.get_or_add_pPr()
-    if p_pr.find(qn("w:bidi")) is None:
-        p_pr.append(OxmlElement("w:bidi"))
+    _ordered_child(p_pr, "bidi", PPR_ORDER)
 
 
 def set_run_font(
@@ -149,21 +184,24 @@ def set_run_font(
     run._element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:hAnsi"), font_name)
     run._element.get_or_add_rPr().get_or_add_rFonts().set(qn("w:cs"), font_name)
     run_properties = run._element.get_or_add_rPr()
-    language = run_properties.find(qn("w:lang"))
-    if language is None:
-        language = OxmlElement("w:lang")
-        run_properties.append(language)
-    language.set(qn("w:val"), "he-IL")
+    _ordered_child(run_properties, "lang", RPR_ORDER).set(qn("w:val"), "he-IL")
     if rtl is not None:
-        direction = run_properties.find(qn("w:rtl"))
-        if direction is None:
-            direction = OxmlElement("w:rtl")
-            run_properties.append(direction)
-        direction.set(qn("w:val"), "1" if rtl else "0")
+        _ordered_child(run_properties, "rtl", RPR_ORDER).set(
+            qn("w:val"), "1" if rtl else "0"
+        )
     if size is not None:
         run.font.size = Pt(size)
+        # Hebrew is a complex script: Word sizes an rtl run from w:szCs, not
+        # w:sz. Without this the Hebrew renders at the inherited default while
+        # the Latin tokens in the same line use the intended size.
+        _ordered_child(run_properties, "szCs", RPR_ORDER).set(
+            qn("w:val"), str(int(round(size * 2)))
+        )
     if bold is not None:
         run.bold = bold
+        _ordered_child(run_properties, "bCs", RPR_ORDER).set(
+            qn("w:val"), "1" if bold else "0"
+        )
     if color is not None:
         run.font.color.rgb = color
 
@@ -301,6 +339,13 @@ def configure_styles(document: Document) -> None:
         r_fonts = r_pr.get_or_add_rFonts()
         for attribute in ("ascii", "hAnsi", "cs"):
             r_fonts.set(qn(f"w:{attribute}"), "Arial")
+        # The stock python-docx template ships heading styles with their own
+        # w:szCs. Left alone it overrides the size above for every Hebrew run,
+        # so a heading renders large in Latin and small in Hebrew.
+        _ordered_child(r_pr, "szCs", RPR_ORDER).set(
+            qn("w:val"), str(int(round(size * 2)))
+        )
+        _ordered_child(r_pr, "bCs", RPR_ORDER).set(qn("w:val"), "1" if bold else "0")
 
 
 def configure_section(document: Document) -> None:
@@ -504,9 +549,10 @@ def build_document(source_path: Path, output_path: Path) -> None:
             paragraph.paragraph_format.right_indent = Inches(0.15)
             paragraph.paragraph_format.space_before = Pt(5)
             paragraph.paragraph_format.space_after = Pt(10)
-            shading = OxmlElement("w:shd")
+            shading = _ordered_child(
+                paragraph._p.get_or_add_pPr(), "shd", PPR_ORDER
+            )
             shading.set(qn("w:fill"), "EAF2F8")
-            paragraph._p.get_or_add_pPr().append(shading)
         else:
             paragraph = document.add_paragraph()
 
