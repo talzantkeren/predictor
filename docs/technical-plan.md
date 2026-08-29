@@ -2,9 +2,9 @@
 
 | שדה | ערך |
 | --- | --- |
-| גרסה | 3.19 |
-| תאריך עדכון | 26 באוגוסט 2026 |
-| סטטוס | Slice 8 — דוח מנהל לא־כספי — הושלם; השלב הבא הוא Slice 9 — סגירת lifecycle, Hardening, מסמכים והצגה |
+| גרסה | 3.20 |
+| תאריך עדכון | 29 באוגוסט 2026 |
+| סטטוס | Slice 9 בעבודה — `S9-DEF-002` (הכרעות זמן לפני serialization) נסגר; הבא בתור לפי ה־critical path הוא `S9-DEF-001`/`S9-DEF-004` ואז capability work של `S9-DEF-003`/`007`/`008`/`009` |
 | דדליין | 6 בספטמבר 2026 |
 
 ## 1. מטרת המסמך
@@ -845,6 +845,11 @@ Async Server Components אינם יעד ל־Vitest; בודקים את ה־Servic
 - actor חסר/שגוי/שהוסר נדחה ללא כתיבת `sync_runs` או `audit_logs`.
 - שתי sessions מוכיחות `CONCURRENT_ATTEMPT` בזמן xact lock מוחזק,
   `MANUAL_PROVIDER` לאחר שחרורו, ושאין session lock דולף.
+- `S9-DEF-002` נסגר: כל invariant תלוי־זמן נדגם מ־`clock_timestamp()` אחרי
+  הנעילה שמסדרת אותו. `save_prediction` דוגמת אחרי `for update` על המשחק, latch
+  הביטול הוכרע בתוך `private.apply_api_football_sync_batch` הנעול, ו־
+  `claim_sports_sync` דוגמת מחדש אחרי נעילת `sync_leases`. הרגרסיה היא
+  `supabase/tests/serialized-time.test.sql` עם sessions אמיתיים דרך `dblink`.
 - Slice 9 מוסיף replay/concurrency ל־manual import: `MANUAL_APPLIED` פעם אחת,
   אחריו `MANUAL_NO_CHANGE`, ללא כפילות team/match/audit וללא merge בשם תצוגה.
 - `sync_leases` ו־RPCs החיים: `NOT_DUE` ללא run, claim יחיד בשתי sessions אמיתיות, concurrent,

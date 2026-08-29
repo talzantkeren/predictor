@@ -704,7 +704,8 @@ waiver ל־P2 דורש owner, נימוק, mitigation ותאריך בכתב. אי
 ### S9-DEF-002 — החלטות זמן מתקבלות לפני serialization
 
 - Type: `DATA_INTEGRITY`
-- Severity: `P1`; Confidence: `CONFIRMED`; Release blocking: `Yes`
+- Severity: `P1`; Confidence: `CONFIRMED`; Release blocking: `Yes — resolved
+  2026-08-29`
 - Affected requirements/slices: PRED-03/05, MATCH-06/07, LEAGUE-05; Slices 5,
   7b ו־lifecycle המתוכנן.
 - Environment and pinned SHA: real local PostgreSQL multi-session + static,
@@ -740,8 +741,25 @@ waiver ל־P2 דורש owner, נימוק, mitigation ותאריך בכתב. אי
 - Regression: שלושה pgTAP/dblink או harness רב־connection אמיתי, כולל hold/
   release across kickoff, cancellation+reactivation, due/cooldown/lease boundary;
   unit Promise יחיד אינו מספיק.
+- Resolution/evidence, 2026-08-29:
+  `supabase/migrations/20260829010000_slice9_serialized_time_decisions.sql`
+  מזיזה forward-only את נקודת הדגימה בשלושת המסלולים בלי לשנות חתימה, grants או
+  return shape. `save_prediction` דוגמת `clock_timestamp()` מיד אחרי `for update`
+  על שורת המשחק ומכריעה את ה־deadline לפיה. חישוב latch הביטול הועבר מן
+  ה־wrapper אל `private.apply_api_football_sync_batch`, מיד אחרי נעילת שורת
+  המשחק; ה־wrapper אינו קורא עוד את השורה מראש ואינו קובע `locksPredictions`.
+  `claim_sports_sync` דוגמת מחדש את הזמן אחרי `for update` על `sync_leases`
+  במקום ב־declare block.
+- Regression evidence: `supabase/tests/serialized-time.test.sql` — 47 assertions
+  מול sessions אמיתיים דרך `dblink`. כל תרחיש שולח את השאילתה לפני הגבול, מאמת
+  שהיא עדיין `dblink_is_busy` אחרי שהגבול חלף, ורק אז משחרר את הנעילה. על הקוד
+  שלפני התיקון נכשלות שש assertions — `PREDICTION_LOCKED` ואי־כתיבת שורה,
+  קביעת latch לביטול, דחיית reactivation, חסימת ניחוש מאוחר, ו־lease מלא אחרי
+  `backoff_until`; אחרי התיקון כל 47 עוברות, ועשר ה־suites הקיימות נשארות
+  ירוקות.
 - Dependencies/order: ראשון ב־DB לפני lifecycle/sync fixes; Waiver: N/A;
-  Status: `Open`.
+  Status: **`Resolved — 2026-08-29`** (regression pgTAP רב־session ירוק;
+  Hosted/CI evidence נאסף תחת REQ-003/REQ-005).
 
 ### S9-DEF-003 — fallback ידני מלא למשחקים חסר
 

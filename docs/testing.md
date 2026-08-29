@@ -165,9 +165,12 @@ kickoff ואין שימוש בשעון הדפדפן כגבול קבלה. ה־see
 | Playwright | שני חברים מאומתים ב־Desktop Chrome/UTC וב־Pixel 5/`Asia/Jerusalem`; רשימת משחקים וכל חמשת הסטטוסים/תוצאה/שעה מקומית/נעילה; create→refresh timestamp→edit; `Promise.all` כפול שמחזיר שורה אחת; UI, תוכן ה־RSC ו־PostgREST שמסתירים ניחוש אחר לפני kickoff; שינוי kickoff מקומי לעבר ללא sleep; stale create/edit וה־RPC הישיר נדחים; reveal לשני החברים; outsider ולאחר מכן pending requester מקבלים not-found ואפס שורות; RTL וללא overflow |
 | Manual/Preview | כניסה כחבר פעיל, בדיקת רשימה ומסנן, שמירה ועריכה, שעה מוחלטת + timezone, stale-tab בטוח וחשיפה בשני חשבונות. Preview דורש שה־migrations החדשות יוחלו בפרויקט Supabase המורשה לפני בדיקה מאומתת |
 
-`now()` של PostgreSQL קבוע בתוך transaction של pgTAP. לכן fixture עם
-`kickoff_at := now()` מוכיח דחייה מדויקת, ו־`now() + interval '1 second'`
-מוכיח הרשאה ללא `sleep`. Playwright משנה fixture סינתטי ל־דקה בעבר דרך helper
+`now()` של PostgreSQL קבוע בתוך transaction של pgTAP, ואילו `save_prediction`
+דוגמת `clock_timestamp()` אחרי נעילת שורת המשחק. `clock_timestamp()` תמיד מאוחר
+מ־`now()` של אותה transaction, ולכן fixture עם `kickoff_at := now()` עדיין מוכיח
+דחייה מדויקת, ו־`now() + interval '1 second'` עדיין מוכיח הרשאה ללא `sleep`.
+את ההפרש בין שני מקורות הזמן — transaction שהתחיל לפני ה־kickoff ומכריע אחריו —
+אי אפשר להוכיח בחיבור יחיד; הוא נבדק ב־`serialized-time.test.sql`. Playwright משנה fixture סינתטי ל־דקה בעבר דרך helper
 שמקבל UUIDs קנוניים בלבד, דורש בדיוק `UPDATE 1` ואינו מדפיס stderr. כך גם טופס
 שכבר פתוח נבדק מול זמן המסד בפעולת השמירה.
 
@@ -405,3 +408,45 @@ npm run test:e2e -- e2e/reports.spec.ts
   בדסקטופ וב־Pixel 5, כולל AuthZ, current/final והיעדר overflow.
 - client-secret scan עבר על 50 build artifacts. לא בוצעה קריאת ספק חיה,
   mutation Hosted, deploy או merge.
+
+## Slice 9: הכרעות זמן מסודרות (S9-DEF-002)
+
+`S9-DEF-002` היה פגם שחיבור יחיד אינו יכול לחשוף: שלוש פונקציות הכריעו invariant
+תלוי־זמן לפי חותמת שנדגמה **לפני** הנעילה שמסדרת את ההכרעה, ולכן contender
+שהמתין לנעילה פעל לפי שעון ישן. התיקון הוא forward-only ומזיז רק את נקודת
+הדגימה; חתימות, grants ו־return shapes לא השתנו.
+
+### מטריצת כיסוי
+
+| שכבה | כיסוי |
+| --- | --- |
+| pgTAP רב־session (`serialized-time.test.sql`) | שלוש רגרסיות מול sessions אמיתיים שמחזיקים נעילה על פני הגבול: `save_prediction` שהתחיל לפני kickoff ונדחה ב־`PREDICTION_LOCKED` בלי לכתוב שורה; ביטול ספק שנצפה לפני kickoff, נכתב אחריו, קובע latch, וה־reactivation העתידית נדחית ואינה מחזירה חשיפה; `claim_sports_sync` שהמתין על שורת ה־lease מעבר ל־`backoff_until` מכריע לפי זמן טרי ומקבל lease מלא |
+| pgTAP קיים | כל עשר ה־suites הקיימות ממשיכות לעבור ללא שינוי, כולל `predictions`, `scoring`, `sync` ו־`sync-api-football` |
+
+כל תרחיש מוכיח את התלות בזמן בשלושה שלבים: השאילתה נשלחת לפני הגבול, נשארת
+`dblink_is_busy` גם אחרי שהגבול חלף (כלומר היא באמת חסומה על הנעילה), ורק אז
+הנעילה משתחררת. כך הבדיקה נכשלת על הקוד שלפני התיקון ועוברת אחריו, ואינה
+מסתמכת על `sleep` שרירותי. ה־fixtures נכתבים ונמחקים דרך session נפרד, וה־
+`sync_leases` המשותפת מוחזרת למצבה בסוף הקובץ.
+
+### הרצה ממוקדת
+
+```powershell
+npm exec -- supabase test db supabase/tests/serialized-time.test.sql
+```
+
+### הרצה מקומית כאשר images של Supabase אינם זמינים
+
+`npm run test:db` הוא השער הקנוני והוא זה שרץ ב־CI. כאשר הסביבה חוסמת את
+משיכת ה־images של Supabase, `scripts/local-db/` בונה מסד PostgreSQL מקומי מאותן
+migrations ו־seed ומריץ את אותם קבצי pgTAP ללא שינוי:
+
+```bash
+bash scripts/local-db/reset.sh
+bash scripts/local-db/test.sh
+```
+
+זהו fallback בלבד ואינו תחליף: הוא מריץ PostgreSQL 16 במקום 17, ומדמה את שכבת
+`auth`/`storage` של הפלטפורמה במקום להריץ אותה. תוצאה ירוקה שם אינה מחליפה
+`Supabase database tests` ב־CI, ואינה מכסה `supabase db lint` או
+`npm run types:check` שדורשים את ה־stack עצמו.

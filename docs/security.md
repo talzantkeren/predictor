@@ -266,7 +266,10 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 - ה־RPC גוזר actor מ־`auth.uid()`, נועל את שורות הליגה, החברות והמשחק, דורש
   `league_members.status='active'`, מאמת שהעונות זהות ודוחה כאשר הליגה
   `completed`/`archived`, כאשר סטטוס המשחק אינו `scheduled`/`postponed`, או
-  כאשר `now() >= kickoff_at`. בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
+  כאשר הזמן שנדגם הגיע ל־`kickoff_at`. את הזמן הוא דוגם ב־`clock_timestamp()`
+  **אחרי** `for update` על שורת המשחק, ולא מזמן תחילת ה־transaction; לכן ניחוש
+  שהתחיל לפני ה־kickoff וחיכה לנעילה נדחה כמו כל ניחוש מאוחר.
+  בדיקת lifecycle מתבצעת רק אחרי בדיקת החברות:
   זר מקבל `FORBIDDEN` זהה בלי ללמוד אם הליגה קיימת או read-only. ה־Action מבצע
   מחדש session → Zod → AuthZ למשאב → RPC, אך אינו מקור האכיפה לזמן או לסטטוס.
 - `predicted_outcome` הוא generated column. הלקוח שולח רק שני ציונים שלמים
@@ -290,7 +293,7 @@ credential stuffing, או שה־evaluator דורש את היכולת במפור�
 
 | איום | גבול אכיפה | בדיקה |
 | --- | --- | --- |
-| שינוי או יצירה אחרי נעילה | membership/match row locks + `now() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי ו־stale replay; Playwright מזיז kickoff לעבר ובודק stale create/edit + RPC |
+| שינוי או יצירה אחרי נעילה | membership/match row locks ואז `clock_timestamp() < kickoff_at` בתוך RPC; UI אינו סמכותי | pgTAP לפני/בדיוק/אחרי ו־stale replay; session אמיתי שמחזיק את שורת המשחק על פני ה־kickoff; Playwright מזיז kickoff לעבר ובודק stale create/edit + RPC |
 | הצצה לניחוש אחר לפני הפתיחה | RLS חברות+זמן; שאילתות ממוקדות; אין hidden rows ב־payload | שני משתמשים: UI ללא שם/score ו־PostgREST מסונן מחזיר `[]`; אחרי kickoff שתי השורות נחשפות |
 | IDOR בין ליגות/עונות | Action AuthZ, RPC התאמת membership/season, consistency trigger ו־RLS | other league, cross-season, outsider ו־`?league=` זר נדחים; parent season change עם prediction נכשל |
 | זיוף actor/outcome/points | actor מ־`auth.uid()`, outcome generated, scoring fields אינם בקלט ואין table writes | direct INSERT/UPDATE/DELETE נכשל; outcome HOME/DRAW/AWAY נגזר; `points=0` ו־metadata `NULL` |
