@@ -85,7 +85,7 @@ multi-session. ריצה מיידית ללא reset חשפה fixture שנותר מ
 | Production Cron | `S9-DEF-012` | TRACKED_BY_RECORD | final acceptance רק אחרי merge; לא נוסה כאן |
 | Hosted migration parity | `S9-REQ-003` | TRACKED_BY_RECORD | 19 migrations נשארו local-only; לא נפרסו כאן |
 | Public repository access | `S9-REQ-003` | TRACKED_BY_RECORD | לאחר כל השערים: visibility Public, ‏anonymous README/main/final SHA ו־clean clone; Demo access נשאר מחוץ ל־Git אם נדרש |
-| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | הרצה מדודה נפרדת |
+| Human rehearsal | `S9-REQ-002` | TRACKED_BY_RECORD | המצגת הרשמית שנבחרה כוללת 18 שקפים; 13 השקפים שבמאגר הם QA פנימי. נדרשת הרצה אנושית מדודה 10–15 דקות על 18/18 |
 | Final Production SHA | `S9-REQ-003` | TRACKED_BY_RECORD | immutable deployment/alias אחרי merge בלבד |
 
 ## ראיות

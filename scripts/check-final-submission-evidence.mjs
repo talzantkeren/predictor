@@ -35,14 +35,25 @@ for (const expected of [
   "19 migrations של Slice 9 נשארו local-only",
   "Public repository access",
   "Hosted migration parity",
-  "Final Production and Public closeout",
+  "Final Production, Public and package closeout",
   "slice-9-req-003-final-production-review.md",
   "S9-REQ-003-owner-template.md",
+  "Predictor1_Project_Book_HE_v2.1.pdf",
+  "Predictor1_Project_Book_HE_v2.1.docx",
+  "Predictor1_Final_Presentation_HE.pptx",
+  "DBA0AE5F200394A70BDDF65E7229C0443F8D8145D9704096986AA73CB8F5D0EA",
+  "73FB802509CD8D18579079FD05B8B9817C44D1A75543566F09D27581C998318D",
+  "8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C",
+  "FINAL_SUBMISSION_DIRECTORY: NOT_RUN",
+  "LINKS_FINAL_SHA_AND_PUBLIC_URLS: NOT_RUN",
+  "ZIP_ROOT_SHAPE: NOT_RUN",
+  "ZIP_EXTRACT_REOPEN_HASH_LINK_SECRET_QA: NOT_RUN",
+  "byte-for-byte",
 ]) {
   invariant(evidence.includes(expected), `Final-submission evidence is missing: ${expected}`);
 }
 
-const ownerRows = ["Final Production and Public closeout"];
+const ownerRows = ["Final Production, Public and package closeout"];
 for (const row of ownerRows) {
   const pattern = new RegExp(`\\| ${row.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")} \\|[^\\n]+\\| OWNER_ACTION_REQUIRED \\|`, "u");
   invariant(pattern.test(evidence), `Owner gate is not explicitly OAR: ${row}`);
@@ -51,7 +62,7 @@ for (const row of ownerRows) {
 const oarRows = evidence.match(/^\|[^\n]+\|[^\n]+\| OWNER_ACTION_REQUIRED \|$/gmu) ?? [];
 invariant(oarRows.length === 1, `Expected exactly one owner-action row, found ${oarRows.length}.`);
 invariant(
-  !/\| Final Production and Public closeout \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence),
+  !/\| Final Production, Public and package closeout \|[^\n]+\| (?:PASS|VERIFIED) \|/u.test(evidence),
   "The external final gate was marked complete without owner evidence.",
 );
 invariant(!/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/u.test(evidence), "Final-submission evidence resembles a JWT.");
@@ -68,5 +79,5 @@ for (const stale of [
 }
 
 console.log(
-  "Final-submission register verified: observed CI is recorded and one consolidated Production/Public owner action remains.",
+  "Final-submission register verified: observed CI and frozen artifact bytes are recorded, and one consolidated Production/Public/package owner action remains.",
 );

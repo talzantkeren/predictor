@@ -80,10 +80,18 @@ npm run presentation:check
 
 ## מסלול evaluator
 
+תוצרי המאגר (`docs/project-book.docx` והמצגת בת 13 השקפים) הם ראיות
+reproducibility. קובצי ההגשה הרשמיים הם
+`Predictor1_Project_Book_HE_v2.1.pdf`,
+`Predictor1_Project_Book_HE_v2.1.docx` ו־
+`Predictor1_Final_Presentation_HE.pptx`; הם מועתקים byte-for-byte לאחר
+ה־closeout. המצגת הרשמית כוללת 18 שקפים, וחזרת `S9-REQ-002` נמדדת על 18/18.
+
 1. לפתוח את Production ולאשר בית RTL במצב Demo. אם נדרשת זרימת Auth מלאה,
    להשתמש בזהות שנמסרה מחוץ ל־Git; אין להניח ש־Preview Auth עובד.
-2. לבצע את `presentation/demo-script.md`: פתיחה → הצטרפות → משחק → הפעלת
-   הליגה → ניחוש → תוצאה → דירוג נוכחי → השלמת הליגה → דירוג סופי.
+2. לבצע את המסלול הרשמי בן 18 השקפים שב־`presentation/timing-guide.md` ואת
+   `presentation/demo-script.md`: פתיחה → הצטרפות → משחק → הפעלת הליגה →
+   ניחוש → תוצאה → דירוג נוכחי → השלמת הליגה → דירוג סופי.
 3. להראות תיקון מאוחר ו־reconciliation מפורש, או להשתמש בנכסי fallback אם
    הסביבה אינה זמינה. אין mutation ישיר למסד כדי ליצור שלב נראה.
 4. לפתוח את ספר הפרויקט, security, scale ו־testing ולהצליב אותם מול אותו SHA.
@@ -96,7 +104,7 @@ npm run presentation:check
 | Hosted Email | השירות המובנה (2/h, organization members בלבד) מאושר ל־Demo; למסור כתובת mailbox מורשית ולקבל link, וה־agent מריץ את `docs/runbooks/slice-9-def-004-hosted-auth.md`; אין רכישת SMTP נדרשת | למלא את `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; ללא recipient, link או credential |
 | Hosted Cron | לבצע פעם אחת את `docs/runbooks/slice-9-def-012-production-cron.md` אחרי final deploy | למלא `docs/evidence/slice-9/w5/S9-DEF-012-owner-template.md`; רק response/run/lease columns מסוננים |
 | page zoom spot-check | Chrome Zoom=200% על candidate: keyboard ב־admin matches, ‏members/error ו־settings; אין clipping/overlap/page overflow | zoom, גרסת Chrome, שלושת המסכים, PASS/FAIL; מטריצת forced DSF מלאה כבר מתועדת ב־S9-DEF-022 |
-| חזרה | לבצע ולתעד 10–15 דקות לפי `presentation/rehearsal-log.md` | SHA, משך, קישורים, fallback ותוצאה |
+| חזרה | לבצע ולתעד 10–15 דקות על 18/18 שקפי `Predictor1_Final_Presentation_HE.pptx` לפי `presentation/rehearsal-log.md`; 13/13 שבמאגר הם QA פנימי בלבד | SHA, hash מצגת, משך, קישורים, fallback ותוצאה |
 | Public/final SHA | לאחר merge ו־Production סופי להעביר את המאגר ל־Public, לאמת README/default `main`/final SHA ו־clean clone ללא credentials; גישת Demo, אם נדרשת, נמסרת מחוץ ל־Git | מצב anonymous access, ‏SHA וקישור בלבד; אין credential |
 
 שער ה־Vercel Sports נסגר ב־28 באוגוסט 2026: `SPORTS_API_KEY` נשאר Sensitive

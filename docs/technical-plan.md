@@ -1557,6 +1557,18 @@ Dispositions שאינם נספרים שוב: `S9-DEF-005` מוזג ל־`S9-REQ-0
   שייכים ל־`S9-DEF-022`; scope סוד הספורט שייך ל־`S9-DEF-025`. כל אחת משלוש
   הרשומות מקבלת status עצמאי ואינה סוגרת את האחרות.
 
+**בחירת תוצרי ההגשה של ה־owner — 29.8.2026:** לתיק ההגשה החיצוני בלבד
+נבחרו שלושת הבינאריים שסיפק ה־owner. הם יועתקו byte-for-byte לשמות היעד
+`Predictor1_Project_Book_HE_v2.1.pdf`,
+`Predictor1_Project_Book_HE_v2.1.docx` ו־
+`Predictor1_Final_Presentation_HE.pptx`; אין לערוך metadata, לייצא מחדש או
+להוסיף להם מספר סטודנט. `docs/project-book.docx` ו־
+`presentation/predictor1-final-project.pptx` נשארים ראיית reproducibility של
+המאגר ואינם הבינאריים הסופיים שנבחרו. חזרת `S9-REQ-002` נמדדת על המצגת
+הנבחרת בת 18 השקפים. בחירת הקובץ והסכמה למגבלות המספור, speaker notes
+והקישורים כטקסט אינן חזרה ואינן PASS. תיק ההגשה, `LINKS.txt` וה־ZIP נשארים
+`NOT_RUN` עד final SHA ופרסום Public.
+
 #### Technical decision ledger
 
 | ID | מצב | owner/הכרעה |
@@ -1653,7 +1665,9 @@ Preview ו־Production קשורים לאותו SHA; מצגת ודמו עברו r
 | provenance של מקור הקורס | `docs/course-source.md`; ה־PDF המדויק נמסר בנפרד בערוץ הרשמי |
 | הוראות הרצה ומשתני סביבה | `README.md`, `.env.example` |
 | Vercel URL ו־GitHub | `README.md` ועמוד ההגשה |
-| מצגת 10–15 דקות | `presentation/` או קישור מצורף להגשה |
+| ספר פרויקט סופי | `Predictor1_Project_Book_HE_v2.1.pdf` ו־`Predictor1_Project_Book_HE_v2.1.docx` בתיק ההגשה החיצוני; מועתקים byte-for-byte מן הבינאריים שאישר ה־owner |
+| מצגת 10–15 דקות | `Predictor1_Final_Presentation_HE.pptx` בתיק ההגשה החיצוני, 18 שקפים; `presentation/` נשאר ראיית reproducibility פנימית בת 13 שקפים |
+| קישורים ו־ZIP | `LINKS.txt` וה־ZIP החיצוני נוצרים רק לאחר final SHA, ‏CI ו־Public access מאומתים |
 
 ## 20. המשימה הבאה לסוכן הקידוד
 

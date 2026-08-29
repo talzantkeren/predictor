@@ -2,24 +2,27 @@
 
 Status: `NOT_RUN`
 
-This file is intentionally empty of results. Replace placeholders only after
-performing `docs/runbooks/slice-9-def-004-hosted-auth.md`. Do not record an email
-address, password, token, cookie, full callback URL/query, SMTP credential,
-provider payload or raw rate-limit header.
+The final-SHA section of this file is intentionally empty of results. The
+pre-merge checkpoint may contain only sanitized owner-reported outcomes. Replace
+the final placeholders only after performing
+`docs/runbooks/slice-9-def-004-hosted-auth.md`. Do not record an email address,
+password, token, cookie, full callback URL/query, SMTP credential, provider
+payload or raw rate-limit header.
 
 ## Pre-merge delivery checkpoint
 
 | Field | Safe result |
 | --- | --- |
-| Pre-merge candidate SHA | `787d2dac461622d42f2f727d4faa32e24e32e10c` |
+| Pre-merge deployment | EXISTING_PRODUCTION_ALIAS; source SHA was not recaptured during the owner-reported flow |
 | Built-in delivery classification | BUILT_IN_DELIVERY_CONFIRMED; CUSTOM_SMTP_ABSENT |
-| Recovery request UTC / safe UI code | 2026-08-28T21:31:35Z / AUTH_HTTP_200; owner-authorized replacement 2026-08-28T23:09:47Z / APP_RECOVERY_ACCEPTED_WITH_PKCE |
-| Owner reported message received | YES — both authorized messages; recipient omitted |
-| Callback reached `/update-password` | NO — replacement rejected pre-callback with `access_denied / otp_expired` |
-| Password update safe result | NOT_RUN — no recovery session; no password mutation |
-| Reused link denied | NOT_RUN — pre-callback rejection is not replay evidence |
-| Old password denied | NOT_RUN — no password transition |
-| New password login | NOT_RUN — no password transition |
+| Recovery request UTC / safe UI code | 2026-08-29 / OWNER_INITIATED_APP_RECOVERY_ACCEPTED; exact UTC and elapsed time NOT_CAPTURED |
+| Owner reported message received | YES — authorized recovery message received; recipient omitted |
+| Callback reached `/update-password` | YES — OWNER_REPORTED_SAME_BROWSER_CALLBACK; artifact NOT_CAPTURED |
+| Password update safe result | PASS — OWNER_REPORTED_PASSWORD_UPDATED; values omitted |
+| Reused link denied | PASS — OWNER_REPORTED_REPLAY_DENIED; link omitted |
+| Old password denied | PASS — OWNER_REPORTED_OLD_PASSWORD_DENIED; value omitted |
+| New password login | PASS — OWNER_REPORTED_NEW_PASSWORD_LOGIN; value omitted |
+| Observation basis | OWNER_REPORTED_SAME_DEVICE_FLOW; no browser artifact retained |
 
 This checkpoint never changes the final status. Final evidence below is captured
 again after merge and Production deployment.

@@ -1,4 +1,4 @@
-# S9-REQ-003 — final Production and Public repository closeout
+# S9-REQ-003 — final Production, Public repository and package closeout
 
 Status: `OWNER_ACTION_REQUIRED`.
 
@@ -8,9 +8,10 @@ recorded, but it grants no PASS. Start this runbook only after every documented
 pre-merge gate passed on the exact candidate SHA, PR #14 was merged without
 direct push or auto-merge, and the final Production deployment exists.
 
-The owner approved Public visibility and publication of technical author
-metadata on 29 August 2026. No evaluator GitHub identity is required. Any Demo
-credential delivery method that is needed remains out of band and outside Git.
+The owner approved Public visibility, publication of technical author metadata
+and the three frozen external submission binaries on 29 August 2026. No
+evaluator GitHub identity is required. Any Demo credential delivery method that
+is needed remains out of band and outside Git.
 
 An authenticated agent can perform every other step. Never reveal, copy,
 screenshot, or save an environment secret, credential,
@@ -35,6 +36,7 @@ corresponding step has actually completed.
 | Pre-public publication audit | Gitleaks on the clean worktree and a mirror of every advertised ref; GitHub CLI/API inventory for PRs, Actions, Releases and Issues | scanner/version, surface counts, inaccessible non-public payload count, finding counts and PASS/FAIL only; no value |
 | Public repository verification | pre/post GitHub settings snapshot, anonymous HTTP/API, credential-disabled `git ls-remote` and clean clone | visibility, README/default `main`/final SHA, protection/rulesets, secret scanning/push protection and PASS/FAIL only |
 | Post-public publication scan | a fresh anonymous mirror and the same trusted scanner after visibility changes | advertised-ref/commit counts, finding counts and PASS/FAIL only; no value |
+| Final submission package | the three frozen source basenames, final SHA/CI/Public URLs and a fresh `<Downloads>/Predictor1_Final_Submission` directory | source/copied SHA-256, exactly four files, one-root ZIP, reopen/link/secret-scan results and PASS/FAIL only |
 
 Nothing in this runbook calls `vercel env pull`, reveals an environment value,
 reads Vault, exports a token or asks anyone to re-enter a secret.
@@ -303,9 +305,50 @@ after the visibility, anonymous-access, protection and security-feature checks.
 Demo credentials, if required, remain outside Git and are not part of repository
 access.
 
+## 8A. Build and verify the four-file submission package
+
+Run this step only after step 8 is complete, the repository is Public, anonymous
+access is verified and `$finalSha` plus the final main CI URL are known. Use the
+three source basenames and hashes frozen in `docs/final-submission-evidence.md`.
+Do not run a generator, export Office/PDF content, edit metadata, or add the
+student number to a tracked file. The number is written only to the external
+`LINKS.txt`.
+
+1. Require all three source files to exist in `<Downloads>` and require their
+   SHA-256 values to equal the frozen manifest. Stop on any mismatch.
+2. Require `<Downloads>/Predictor1_Final_Submission` and
+   `<Downloads>/Predictor1_Final_Submission.zip` not to exist; create a new clean
+   directory rather than merging with an old package.
+3. Copy the three sources byte-for-byte to exactly these names:
+   `Predictor1_Project_Book_HE_v2.1.pdf`,
+   `Predictor1_Project_Book_HE_v2.1.docx` and
+   `Predictor1_Final_Presentation_HE.pptx`. Rehash each copy and require equality
+   with its source.
+4. Create UTF-8 `LINKS.txt` with the verified Production URL, Public repository
+   URL, `$finalSha`, final main CI URL, README local-run pointer, the three file
+   descriptions and an out-of-band Demo-access note. Do not include a password,
+   token, recovery link, cookie or other credential.
+5. Require the directory to contain exactly those four files. Create a ZIP with
+   one root directory named `Predictor1_Final_Submission` and exactly the same
+   four children; do not add source code, `.env`, `node_modules`, `.next`, dumps,
+   screenshots or evidence.
+6. Extract the ZIP to a new temporary directory. Reopen/render the extracted
+   PDF, DOCX and all 18 PPTX slides; require valid RTL/no corruption and retain
+   the owner-approved numbering/notes/plain-text-link limitations unchanged.
+   Rehash the extracted binaries, anonymously check both URLs from the extracted
+   `LINKS.txt`, and run the trusted secret scanner on the extracted directory.
+7. Require the ZIP path to be outside Git and absent from `git status --short`.
+   Record only paths using `<Downloads>`, filenames, hashes, counts and PASS/FAIL.
+
+Completion requires all of:
+`FINAL_SUBMISSION_DIRECTORY: PASS`,
+`LINKS_FINAL_SHA_AND_PUBLIC_URLS: PASS`,
+`ZIP_ROOT_SHAPE: PASS` and
+`ZIP_EXTRACT_REOPEN_HASH_LINK_SECRET_QA: PASS`.
+
 ## 9. Close the post-merge gate and re-run document gates
 
-Fill the template only when steps 1–8 all refer to the same `$finalSha`. Then
+Fill the template only when steps 1–8 and 8A all refer to the same `$finalSha`. Then
 run:
 
 ```powershell

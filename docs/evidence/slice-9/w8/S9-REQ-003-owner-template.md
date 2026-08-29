@@ -2,7 +2,7 @@
 
 Status: `NOT_RUN`.
 
-This file records only the two owner decisions already observed below. Every
+This file records only the owner decisions already observed below. Every
 operational field stays `NOT_RUN`/`NOT_CAPTURED` until the authenticated agent
 executes `docs/runbooks/slice-9-req-003-final-production-review.md`; never store
 secrets, Demo credentials, cookies, signed URLs, or environment values.
@@ -14,6 +14,7 @@ Executor: authenticated post-merge agent.
 ```text
 Public publication approval received: APPROVED — 2026-08-29
 technical author metadata publication accepted: ACCEPTED — 2026-08-29
+external PDF/DOCX/PPTX bytes selected and frozen: APPROVED — 2026-08-29
 approved Demo access method received, if required: PRIVATE_SUBMISSION_FIELD_ONLY — 2026-08-29
 credential recorded in Git: NO
 ```
@@ -133,6 +134,28 @@ post-public validated real-secret count: NOT_CAPTURED
 out-of-band Demo access supplied, if required: NOT_RUN
 verification timestamp: NOT_CAPTURED
 credential recorded here: NOT_RUN
+```
+
+## Final four-file submission package
+
+```text
+source PDF SHA-256: NOT_CAPTURED
+copied PDF SHA-256: NOT_CAPTURED
+source DOCX SHA-256: NOT_CAPTURED
+copied DOCX SHA-256: NOT_CAPTURED
+source PPTX SHA-256: NOT_CAPTURED
+copied PPTX SHA-256: NOT_CAPTURED
+FINAL_SUBMISSION_DIRECTORY: NOT_RUN
+LINKS_FINAL_SHA_AND_PUBLIC_URLS: NOT_RUN
+exactly four files in directory: NOT_RUN
+ZIP_ROOT_SHAPE: NOT_RUN
+extracted file count exactly four: NOT_RUN
+extracted binary hashes equal copied hashes: NOT_RUN
+extracted PDF/DOCX/PPTX reopened and rendered: NOT_RUN
+extracted LINKS anonymous URL checks: NOT_RUN
+extracted directory validated real-secret count: NOT_CAPTURED
+ZIP_EXTRACT_REOPEN_HASH_LINK_SECRET_QA: NOT_RUN
+ZIP absent from Git status: NOT_RUN
 ```
 
 ## Final verification

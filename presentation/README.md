@@ -22,6 +22,22 @@ Production נפתח בסיום כקישור ציבורי נפרד בלבד; אי
 - `fallback/` — חמש תמונות מסוננות מאותו תרחיש Playwright.
 - `rehearsal-log.md` — שער החזרה האנושית; אין לסמן אותו PASS בלי חזרה שנמדדה.
 
+### הבחנה בין ראיית המאגר לתוצר ההגשה
+
+החבילה בת 13 השקפים לעיל נשארת ראיית reproducibility דטרמיניסטית של המאגר.
+ה־owner בחר לתיק ההגשה החיצוני מצגת אחרת בת 18 שקפים, שמועתקת byte-for-byte
+לשם `Predictor1_Final_Presentation_HE.pptx`; SHA-256 שלה הוא
+`8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
+אין להפנות אליה את `presentation:build` או לדרוס אותה. חזרת 10–15 הדקות
+נמדדת על 18/18 שקפי התוצר הנבחר, בעוד 13/13 השקפים והרינדורים שבמאגר ממשיכים
+להיבדק כחוזה פנימי בלבד.
+
+במצגת הנבחרת המספור הגלוי מדלג על 13, notes של שקפים 14–18 חוזרים על notes
+קודמים והקישורים בשקף 13 הם טקסט רגיל. ה־owner אישר שימור byte-for-byte של
+המגבלות האלה; האישור אינו PASS. המציג משתמש ב־talk track הייעודי שב־
+`timing-guide.md`, פותח את הקישורים ידנית ומשתמש בחמש תמונות הגיבוי הקנוניות
+כאשר ה־UI המקומי אינו נצפה.
+
 ## חמש תמונות הגיבוי
 
 1. `fallback/01-open-league.png` — ליגה פתוחה.
@@ -92,7 +108,8 @@ npm.cmd run test:e2e:run -- e2e/lifecycle.spec.ts --project=desktop-chromium
 | בדיקות וסקייל | 10–11 | Vitest, ‏pgTAP, ‏Playwright ו־query plans עם Function Scan ושורות שנמדדו על ה־SHA הסופי |
 | tradeoffs, גבולות ועתיד | 12–13 | modular monolith, Manual fallback, ‏Demo-only, ללא runtime AI והרחבות רק אחרי ראיה |
 
-לפני מסירה יש לפתוח את כל שלוש־עשרה תמונות הרינדור, לעבוד לפי
-`timing-guide.md`, למלא את `evaluator-checklist.md`, לפתוח את שני הקישורים
-בשקף 13 ולמלא את `rehearsal-log.md` מול אותו candidate SHA. עד לביצוע החזרה
-האנושית, S9-REQ-002 נשאר `OWNER_ACTION_REQUIRED`.
+לפני מסירה יש לפתוח את 13/13 תמונות הרינדור הפנימיות לצורך QA, ואת 18/18
+שקפי המצגת הנבחרת לצורך החזרה הרשמית. עובדים לפי המסלול המתאים ב־
+`timing-guide.md`, ממלאים את `evaluator-checklist.md`, פותחים ידנית את שני
+הקישורים וממלאים את `rehearsal-log.md` מול אותו candidate SHA. עד לביצוע
+החזרה האנושית, S9-REQ-002 נשאר `OWNER_ACTION_REQUIRED`.

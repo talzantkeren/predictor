@@ -485,6 +485,9 @@ npm run verify
 האבטחה של Auth, פרופילים וליגות ב־[`docs/security.md`](./docs/security.md).
 חבילת ההצגה נמצאת ב־[`presentation/README.md`](./presentation/README.md), וספר
 הפרויקט הנגזר נמצא ב־[`docs/project-book.docx`](./docs/project-book.docx).
+אלה ראיות reproducibility של המאגר; הבינאריים הרשמיים שנבחרו לתיק ההגשה
+החיצוני מתועדים ב־[`docs/final-submission-evidence.md`](./docs/final-submission-evidence.md)
+ונשמרים byte-for-byte מחוץ ל־Git.
 
 ## פריסה
 

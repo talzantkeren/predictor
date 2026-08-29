@@ -12,7 +12,29 @@ Final CI run: <final-run-id>
 Final Production SHA: <final-sha>
 Public repository access: OWNER_ACTION_REQUIRED
 Hosted migration parity: OWNER_ACTION_REQUIRED
+FINAL_SUBMISSION_DIRECTORY: NOT_RUN
+LINKS_FINAL_SHA_AND_PUBLIC_URLS: NOT_RUN
+ZIP_ROOT_SHAPE: NOT_RUN
+ZIP_EXTRACT_REOPEN_HASH_LINK_SECRET_QA: NOT_RUN
 ```
+
+## בינאריים סופיים שנבחרו מחוץ ל־Git
+
+ב־29.8.2026 ה־owner קבע כי שלושת הקבצים הבאים הם המקור הרשמי לתיק ההגשה.
+הטבלה משתמשת בשמות בסיס בלבד; נתיב פרופיל משתמש אינו נשמר במאגר. העותקים
+יועברו ל־`<Downloads>/Predictor1_Final_Submission` רק לאחר final SHA ופרסום
+Public, בלי generator, export מחדש, שינוי metadata או שינוי תוכן:
+
+| Source basename | Final copy basename | Bytes | SHA-256 | Disposition |
+| --- | --- | ---: | --- | --- |
+| `Predictor1_Project_Book_HE_v2.1 (2).pdf` | `Predictor1_Project_Book_HE_v2.1.pdf` | 492432 | `DBA0AE5F200394A70BDDF65E7229C0443F8D8145D9704096986AA73CB8F5D0EA` | OWNER_APPROVED_BYTES_FROZEN |
+| `Predictor1_Project_Book_HE_v2.1 (2) (1).docx` | `Predictor1_Project_Book_HE_v2.1.docx` | 71129 | `73FB802509CD8D18579079FD05B8B9817C44D1A75543566F09D27581C998318D` | OWNER_APPROVED_BYTES_FROZEN |
+| `Predictor1-Final-Project-Upgraded-RTL (2).pptx` | `Predictor1_Final_Presentation_HE.pptx` | 763248 | `8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C` | OWNER_APPROVED_BYTES_FROZEN; 18 slides and 18 notes parts |
+
+הבינאריים האלה גוברים **רק** לצורכי תיק ההגשה וה־ZIP. ‏`docs/project-book.docx`
+והמצגת בת 13 השקפים שב־`presentation/` נשארים ראיות reproducibility פנימיות
+של המאגר. בחירת הקבצים אינה rehearsal ואינה מוכיחה folder/ZIP QA. מספר
+הסטודנט ייכתב רק ב־`LINKS.txt` החיצוני; הוא אינו נרשם כאן או בקובץ tracked.
 
 ## GitHub Actions — הכשל האמיתי והתיקון שנצפו
 
@@ -93,7 +115,7 @@ migrations מרוחקות, בעוד 19 migrations של Slice 9 נשארו local-
 
 | שער | פעולה מדויקת | סטטוס |
 | --- | --- | --- |
-| Final Production and Public closeout | agent מבצע לאחר merge את `docs/runbooks/slice-9-req-003-final-production-review.md`: final/main SHA ו־merge, CI, Hosted migrations/env scopes, Production+incognito, snapshot הגנות, מעבר ל־Public, גישה אנונימית/clone ושערי מסמכים. אישור owner לפרסום ול־author metadata התקבל; גישת Demo, אם נדרשת, נשארת מחוץ ל־Git | OWNER_ACTION_REQUIRED |
+| Final Production, Public and package closeout | agent מבצע לאחר merge את `docs/runbooks/slice-9-req-003-final-production-review.md`: final/main SHA ו־merge, CI, Hosted migrations/env scopes, Production+incognito, snapshot הגנות, מעבר ל־Public, גישה אנונימית/clone ושערי מסמכים. לאחריהם בלבד נוצרים `LINKS.txt`, תיק ארבעת הקבצים וה־ZIP; העותקים נבדקים byte-for-byte וה־ZIP עובר extract/reopen/hash/link/secret QA. אישור owner לפרסום, ל־author metadata ולבינאריים הנבחרים התקבל; גישת Demo, אם נדרשת, נשארת מחוץ ל־Git | OWNER_ACTION_REQUIRED |
 
 התבנית הריקה נמצאת ב־
 `docs/evidence/slice-9/w8/S9-REQ-003-owner-template.md`. אין לסמן את הרשומה

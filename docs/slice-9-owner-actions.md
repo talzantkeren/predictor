@@ -144,17 +144,16 @@ mailbox disposable מאושר.
 ולא נדרשת רכישת SMTP. שני callback entries היסטוריים של Preview עדיין קיימים;
 agent יסיר אותם לאחר merge דרך URL Configuration בלי secret.
 
-**קלט owner עכשיו (2–5 דקות):** למסור מחוץ ל־Git כתובת מדויקת שהיא גם member
-ב־Supabase organization וגם חשבון Auth מוכר; לאשר recovery יחיד; ואז להחזיר
-את הקישור שהתקבל מן mailbox. כתובת plus-alias מתאימה רק אם אותו alias מדויק
-כבר member. אין למסור password.
+**Checkpoint לפני merge:** הושלם לפי דיווח owner ב־29.8.2026. ה־owner יזם
+recovery חדש דרך Production באותו מכשיר ודיווח על callback, עדכון סיסמה,
+replay denial, old-password denial ו־new-password login. הכתובת, הקישור,
+ה־cookies והסיסמאות לא נשמרו. UTC מדויק ו־artifact דפדפן לא נלכדו.
 
 **פעולת agent:** לבצע את
-`docs/runbooks/slice-9-def-004-hosted-auth.md`: pre-merge send יחיד, callback,
-password update עם handoff ללחיצה הסופית, replay denial, logout ו־old/new login.
-לאחר merge להסיר את ה־Preview callbacks ולצלם מחדש confirmation/recovery/
-known-unknown/429 על final SHA. אין לשמור כתובת, password, callback query או
-provider response.
+`docs/runbooks/slice-9-def-004-hosted-auth.md`. לאחר merge להסיר את ה־Preview
+callbacks ולצלם מחדש confirmation/recovery/known-unknown/429 על final SHA.
+ה־owner נדרש רק לאשר את בקשת ה־final ולהשלים את קישור ה־mailbox באותו דפדפן;
+אין לשמור כתובת, password, callback query או provider response.
 
 **ראיה לשמור:** למלא
 `docs/evidence/slice-9/w2/S9-DEF-004-owner-template.md`; לשמור בחבילת owner את
@@ -171,14 +170,16 @@ git status --short
 ## 7. S9-REQ-002 — חזרה אנושית רציפה 10–15 דקות
 
 **איפה:** production build מקומי של ה־exact candidate SHA; קישור Production
-הציבורי נפתח read-only רק לפי התסריט. ה־PPTX
-`presentation/predictor1-final-project.pptx`, שתי sessions מורשות ותמונות
-`presentation/fallback/` פתוחות מראש.
+הציבורי נפתח read-only רק לפי התסריט. `Predictor1_Final_Presentation_HE.pptx`
+בת 18 השקפים, שתי sessions מורשות ותמונות `presentation/fallback/` פתוחות
+מראש. המצגת בת 13 השקפים שבמאגר היא QA פנימי בלבד; hash המצגת הרשמית הוא
+`8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C`.
 
 **פעולה יחידה:** presenter אנושי מבצע פעם אחת את
-`presentation/demo-script.md` עם timer רציף, בלי database mutation שמזייף שלב
-מוצרי. במקרה outage עוברים לתמונת fallback המתאימה תוך 20 שניות ומצהירים מה
-לא נצפה. משך נדרש: 10:00–15:00.
+המסלול הרשמי ב־`presentation/timing-guide.md` ואת
+`presentation/demo-script.md` עם timer רציף, בלי database mutation שמזייף
+שלב מוצרי. במקרה outage עוברים לתמונת fallback המתאימה תוך 20 שניות
+ומצהירים מה לא נצפה. משך נדרש: 10:00–15:00 ו־18/18 שקפים.
 
 **ראיה לשמור:** למלא את כל השורות ב־`presentation/evaluator-checklist.md` ואת
 השורה האנושית ב־`presentation/rehearsal-log.md`: candidate SHA, זמן התחלה/סיום,

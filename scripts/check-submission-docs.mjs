@@ -126,6 +126,9 @@ const courseSource = documents.get("docs/course-source.md");
 const ownerActions = documents.get("docs/slice-9-owner-actions.md");
 const deliveryLedger = documents.get("docs/slice-9-delivery-ledger.md");
 const reviewPacket = documents.get("docs/slice-9-review-packet.md");
+const finalSubmissionEvidence = documents.get("docs/final-submission-evidence.md");
+const presentationReadme = documents.get("presentation/README.md");
+const rehearsalLog = documents.get("presentation/rehearsal-log.md");
 
 invariant(!readme.includes("מצב נוכחי: Slice 8"), "README still describes Slice 8 as current.");
 invariant(!readme.includes("מתוכננות ל־Slice 9"), "README still describes lifecycle as future work.");
@@ -164,6 +167,34 @@ invariant(
 );
 for (const expected of ["OWNER_ACTION_REQUIRED", "השירות המובנה", "Chrome Zoom=200%", "SPORTS_API_KEY"]) {
   invariant(evaluator.includes(expected), `Evaluator runbook is missing owner guidance: ${expected}`);
+}
+for (const expected of [
+  "byte-for-byte",
+  "Predictor1_Project_Book_HE_v2.1.pdf",
+  "Predictor1_Project_Book_HE_v2.1.docx",
+  "Predictor1_Final_Presentation_HE.pptx",
+  "DBA0AE5F200394A70BDDF65E7229C0443F8D8145D9704096986AA73CB8F5D0EA",
+  "73FB802509CD8D18579079FD05B8B9817C44D1A75543566F09D27581C998318D",
+  "8B805B3C735C14A03BDE2BC3830F011842842549150B7E37A8E7F62C5D40B62C",
+  "ראיות reproducibility פנימיות",
+  "FINAL_SUBMISSION_DIRECTORY: NOT_RUN",
+  "ZIP_EXTRACT_REOPEN_HASH_LINK_SECRET_QA: NOT_RUN",
+]) {
+  invariant(
+    finalSubmissionEvidence.includes(expected),
+    `Final artifact selection is missing: ${expected}`,
+  );
+}
+for (const expected of [
+  "13/13",
+  "18/18",
+  "Predictor1_Final_Presentation_HE.pptx",
+  "OWNER_ACTION_REQUIRED",
+]) {
+  invariant(
+    presentationReadme.includes(expected) || rehearsalLog.includes(expected),
+    `Presentation delivery split is missing: ${expected}`,
+  );
 }
 const trackedOwnerRecordIds = [
   "S9-DEF-025",
